@@ -31,6 +31,27 @@ Important context, decisions made, or follow-up items.
 
 ---
 
+## Session 4 — 2026-05-05
+**Branch:** `chore/trigger-deploy-verification`
+**Developer:** Claude Code (wamburamuhere@gmail.com)
+**Summary:** Deployment verification trigger — re-runs the full deploy pipeline after cPanel API token was correctly saved in GitHub Secrets.
+
+### Changes
+- sessions.md updated to record this session and trigger the deploy workflow
+
+### Files Modified
+- `sessions.md` — Session 4 entry (this entry)
+
+### Database Changes
+- None
+
+### Notes
+- First deploy attempt failed because the cPanel API token was not saved before the workflow ran
+- Token has now been saved correctly in GitHub → Settings → Secrets → `CPANEL_API_TOKEN`
+- This PR exists solely to trigger a clean end-to-end deploy run: tests → cPanel pull → site verification
+
+---
+
 ## Session 3 — 2026-05-05
 **Branch:** `chore/cpanel-deploy-workflow`
 **Developer:** Claude Code (wamburamuhere@gmail.com)
