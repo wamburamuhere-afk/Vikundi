@@ -31,6 +31,62 @@ Important context, decisions made, or follow-up items.
 
 ---
 
+## Session 7 — 2026-05-05
+**Branch:** `fix/webhook-deploy`
+**Developer:** Claude Code (wamburamuhere@gmail.com)
+**Summary:** Switched deployment to PHP webhook — FTP passive mode ports are blocked by hosting provider firewall, causing upload failure and .htaccess corruption (site 403). Webhook calls server via HTTPS port 443 (always open), which runs `git pull origin main` directly.
+
+### Root Cause of FTP Failure
+- FTP control connection (port 21) succeeded, but data connections use random high ports (passive mode)
+- Hosting provider firewall blocks inbound connections on those ports from external IPs (GitHub Actions)
+- FTP upload started but data channel timed out → partial/zeroed .htaccess → Apache 403 on all requests
+
+### Immediate Fix (manual — .htaccess restoration)
+- .htaccess was corrupted by partial FTP upload
+- User must restore via cPanel File Manager → public_html/vikundi/.htaccess → Edit → paste correct content → Save → chmod 644
+- Correct .htaccess content is in the repo at `.htaccess` (version in git is authoritative)
+
+### Changes
+- `deploy.yml` — replaced FTP deployment with HTTPS webhook call:
+  - POST to `DEPLOY_HOOK_URL` with `Authorization: Bearer <DEPLOY_HOOK_SECRET>`
+  - Server responds 200 on success, 500 on git pull failure
+  - Still blocks on Job 1 (tests must pass before deploy)
+  - Smoke-tests live URL after webhook succeeds
+- `deploy-hook.php` — new webhook receiver script:
+  - Validates `Authorization: Bearer <token>` against `/home/bjptechn/.deploy-secret` (outside web root)
+  - Runs `git fetch origin main && git reset --hard origin/main`
+  - Logs output to `/home/bjptechn/.deploy-log`
+  - Returns plain-text 200 OK or 500 FAILED
+
+### Files Created
+- `deploy-hook.php` — HTTPS webhook receiver for GitHub Actions deploys
+
+### Files Modified
+- `.github/workflows/deploy.yml` — webhook deployment (replaces broken FTP approach)
+- `sessions.md` — Session 7 entry
+
+### GitHub Secrets to update
+Remove old secrets (no longer needed): `FTP_HOST`, `FTP_USERNAME`, `FTP_PASSWORD`
+Add new secrets:
+  - `DEPLOY_HOOK_URL`    → https://vikundi.bjptechnologies.co.tz/deploy-hook.php
+  - `DEPLOY_HOOK_SECRET` → any strong random string (e.g. output of `openssl rand -hex 32`)
+
+### One-time server setup required
+1. In cPanel File Manager, navigate to `/home/bjptechn/` (one level above public_html)
+2. Create a new file named `.deploy-secret`
+3. Edit it — paste in the same random string you set as `DEPLOY_HOOK_SECRET` in GitHub
+4. Save and set permissions to **600** (owner read-only)
+5. Verify git is set up: cPanel → Git Version Control → confirm vikundi repo is listed and tracking `main`
+
+### Notes
+- The webhook script uses `git reset --hard origin/main` (not just `git pull`) to guarantee the server matches GitHub exactly, even if someone edited files directly on the server
+- The secret file at `/home/bjptechn/.deploy-secret` is outside the web root — cannot be accessed via HTTP
+- Deploy log at `/home/bjptechn/.deploy-log` — check this if a deploy fails
+- `.cpanel.yml` has a hardcoded path `bjptech` (old username) — it is not executed by this approach so it doesn't matter, but clean up when convenient
+- `deploy-hook.php` is excluded from the deploy-gate.yml syntax checks? No — it IS included, so it must be valid PHP (it is)
+
+---
+
 ## Session 6 — 2026-05-05
 **Branch:** `fix/ftp-deploy`
 **Developer:** Claude Code (wamburamuhere@gmail.com)
