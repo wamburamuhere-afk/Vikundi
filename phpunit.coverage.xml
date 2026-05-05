@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    PHPUnit coverage configuration — used ONLY by:
+      composer test-coverage
+
+    Requires Xdebug (XDEBUG_MODE=coverage) or PCOV to be installed.
+    Do NOT use this config in CI — coverage: none is set there.
+
+    Usage:
+      XDEBUG_MODE=coverage php vendor/bin/phpunit -c phpunit.coverage.xml
+      OR just:
+      composer test-coverage
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         colors="true"
+         stopOnFailure="false">
+
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Feature">
+            <directory>tests/Feature</directory>
+        </testsuite>
+    </testsuites>
+
+    <!-- Files to instrument for coverage -->
+    <source>
+        <include>
+            <file>helpers.php</file>
+            <file>core/permissions.php</file>
+        </include>
+    </source>
+
+    <!-- Report destination -->
+    <coverage>
+        <report>
+            <html outputDirectory="coverage"/>
+        </report>
+    </coverage>
+
+</phpunit>
