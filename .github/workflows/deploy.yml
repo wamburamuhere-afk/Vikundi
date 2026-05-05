@@ -1,17 +1,18 @@
-name: Deploy to Production (cPanel via FTP)
+name: Deploy to Production (PHP Webhook)
 
 # Triggers on every push to main (i.e. after a reviewed PR merges).
 # Job 1 re-runs the full test suite — if tests fail, deployment is blocked.
-# Job 2 deploys changed files to cPanel via FTP (port 21).
+# Job 2 calls the deploy-hook.php webhook on the live server via HTTPS.
 #
-# Why FTP: cPanel shared hosting always exposes port 21. The cPanel UAPI
-# (port 2083) is often restricted by hosting providers to browser sessions
-# only — external API token access is blocked at their firewall level.
+# Why webhook: SSH (port 22) is blocked, cPanel UAPI tokens are blocked by
+# the hosting provider firewall, and FTP passive mode data ports are blocked.
+# HTTPS port 443 is always open. The webhook script runs `git pull` directly
+# on the server using the git repo already set up via cPanel Git Version Control.
 #
 # Required GitHub Secrets (Settings → Secrets → Actions):
-#   FTP_HOST      — FTP hostname, usually the same as your domain
-#   FTP_USERNAME  — cPanel username (bjptech)
-#   FTP_PASSWORD  — cPanel account password
+#   DEPLOY_HOOK_URL    — full URL to deploy-hook.php, e.g.:
+#                        https://vikundi.bjptechnologies.co.tz/deploy-hook.php
+#   DEPLOY_HOOK_SECRET — the secret token you saved in /home/bjptechn/.deploy-secret
 on:
   push:
     branches:
@@ -59,9 +60,8 @@ jobs:
         run: composer test-feature
 
   # ---------------------------------------------------------------------------
-  # Job 2 — Deploy changed files to cPanel via FTP.
-  # Only uploads files that changed since the last deploy (tracked via a
-  # .ftp-deploy-sync-state.json file stored on the server).
+  # Job 2 — Trigger deployment by calling the webhook on the live server.
+  # The server runs `git pull origin main` and reports back.
   # ---------------------------------------------------------------------------
   deploy:
     name: Deploy to cPanel — vikundi.bjptechnologies.co.tz
@@ -73,54 +73,60 @@ jobs:
       url: https://vikundi.bjptechnologies.co.tz
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Check secrets are configured
+        run: |
+          if [ -z "${{ secrets.DEPLOY_HOOK_URL }}" ]; then
+            echo "❌ DEPLOY_HOOK_URL secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.DEPLOY_HOOK_SECRET }}" ]; then
+            echo "❌ DEPLOY_HOOK_SECRET secret is not set"
+            exit 1
+          fi
+          echo "✅ Secrets configured"
 
-      - name: Deploy changed files via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
-        with:
-          server:      ${{ secrets.FTP_HOST }}
-          username:    ${{ secrets.FTP_USERNAME }}
-          password:    ${{ secrets.FTP_PASSWORD }}
-          protocol:    ftp
-          port:        21
-          local-dir:   ./
-          server-dir:  public_html/vikundi/
+      - name: Trigger deployment webhook
+        id: webhook
+        run: |
+          echo "→ Calling deploy webhook..."
 
-          # Files that must never be uploaded to the server:
-          #   - includes/config.php  → lives only on the server, has DB credentials
-          #   - vendor/              → not needed in production (app uses direct requires)
-          #   - uploads/ etc.        → user-generated content, server-only
-          #   - tests/, phpunit*     → dev tooling only
-          #   - .claude/, .github/  → CI/dev metadata
-          #   - coverage/            → local report output
-          #   - backups/             → server-side backups
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/vendor/**
-            includes/config.php
-            uploads/**
-            backups/**
-            documents/**
-            downloads/**
-            coverage/**
-            tests/**
-            .claude/**
-            .github/**
-            phpunit.xml
-            phpunit.coverage.xml
-            composer.json
-            composer.lock
-            .cpanel.yml
-            sessions.md
-            CLAUDE.md
+          RESPONSE=$(curl -sS \
+            --max-time 60 \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.DEPLOY_HOOK_SECRET }}" \
+            -H "X-GitHub-SHA: ${{ github.sha }}" \
+            -H "X-GitHub-Actor: ${{ github.actor }}" \
+            -w "\n__HTTP_STATUS__%{http_code}" \
+            "${{ secrets.DEPLOY_HOOK_URL }}" 2>&1)
 
-      # ── Smoke test: verify the live site responds after deploy ─────────────
+          # Split response body and HTTP status
+          HTTP_STATUS=$(echo "$RESPONSE" | grep '__HTTP_STATUS__' | sed 's/__HTTP_STATUS__//')
+          BODY=$(echo "$RESPONSE" | grep -v '__HTTP_STATUS__')
+
+          echo "HTTP status: $HTTP_STATUS"
+          echo "Response:"
+          echo "$BODY"
+
+          # Save status for summary step
+          echo "http_status=$HTTP_STATUS" >> $GITHUB_OUTPUT
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          # Fail the step if the webhook returned non-200
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo ""
+            echo "❌ Webhook returned HTTP $HTTP_STATUS — deployment failed"
+            exit 1
+          fi
+
+          echo ""
+          echo "✅ Deployment webhook succeeded"
+
       - name: Verify site is up after deployment
         run: |
-          echo "→ Checking live site..."
-          sleep 10
+          echo "→ Waiting 5 seconds for changes to take effect..."
+          sleep 5
 
           HTTP_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" \
             --max-time 30 \
@@ -133,17 +139,27 @@ jobs:
           else
             echo "⚠️  Site returned HTTP $HTTP_STATUS — check manually at:"
             echo "   https://vikundi.bjptechnologies.co.tz"
+            exit 1
           fi
 
-      # ── Write deployment summary to GitHub Actions step summary ───────────
       - name: Deployment summary
+        if: always()
         run: |
-          echo "### 🚀 Deployed to Production" >> $GITHUB_STEP_SUMMARY
+          STATUS="${{ steps.webhook.outputs.http_status }}"
+          if [ "$STATUS" = "200" ]; then
+            ICON="✅"
+            RESULT="Success"
+          else
+            ICON="❌"
+            RESULT="Failed (HTTP $STATUS)"
+          fi
+
+          echo "### ${ICON} Deployment — ${RESULT}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| | |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
           echo "| **Commit** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Triggered by** | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Method** | FTP → cPanel |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Method** | HTTPS webhook → git pull |" >> $GITHUB_STEP_SUMMARY
           echo "| **Site** | https://vikundi.bjptechnologies.co.tz |" >> $GITHUB_STEP_SUMMARY
           echo "| **Time** | $(date -u '+%Y-%m-%d %H:%M UTC') |" >> $GITHUB_STEP_SUMMARY
