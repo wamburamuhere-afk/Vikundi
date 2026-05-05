@@ -31,6 +31,46 @@ Important context, decisions made, or follow-up items.
 
 ---
 
+## Session 2 — 2026-05-05
+**Branch:** `chore/github-actions-ci`
+**Developer:** Claude Code (wamburamuhere@gmail.com)
+**Summary:** GitHub Actions CI/CD workflows — automated PHPUnit test runs on every PR and a deployment quality gate before merging to main.
+
+### Changes
+- Created `.github/workflows/` directory with three workflow files
+- `ci.yml` — runs on every push to working branches and PRs to `develop`/`main`
+  - Job 1: **Unit Tests** (PHP 8.2) — fast gate, no database required
+  - Job 2: **Feature Tests** (PHP 8.2) — runs after unit tests pass; MySQL 8.0 service pre-wired and ready to enable for future DB-dependent feature tests
+  - Composer dependency caching between runs for speed
+- `deploy-gate.yml` — runs only on PRs targeting `main` (deployment quality gate)
+  - Validates `composer.json`
+  - Checks `includes/config.php` is NOT committed (credentials guard)
+  - Checks `.env` files are NOT committed
+  - PHP syntax check across all application files (excludes `vendor/`, `TCPDF/`)
+  - Full PHPUnit test suite (Unit + Feature)
+  - Warns (non-blocking) if `sessions.md` was not updated in the PR
+  - Confirms `vendor/` is gitignored
+- `pr-labeler.yml` — auto-labels PRs based on branch prefix (`feat/` → feature, `fix/` → bug, `chore/` → chore, `hotfix/` → hotfix, etc.)
+
+### Files Created
+- `.github/workflows/ci.yml` — PHPUnit CI pipeline (unit + feature jobs)
+- `.github/workflows/deploy-gate.yml` — Pre-merge checks for main branch
+- `.github/workflows/pr-labeler.yml` — Automatic PR label applicator
+
+### Files Modified
+- `sessions.md` — Added Session 2 entry (this entry)
+
+### Database Changes
+- None
+
+### Notes
+- **To use the MySQL service in Feature tests:** un-comment the "Create CI database config" and "Import database schema" blocks in `ci.yml`'s feature-tests job. You will also need a `database/vikundi.sql` schema dump that creates all tables cleanly.
+- **PR labels:** Create these labels in GitHub → Issues → Labels before they auto-apply: `feature`, `bug`, `chore`, `hotfix`, `documentation`, `refactor`, `tests`
+- **composer.lock:** Run `composer install` locally once you have PHP 8.2+, then commit the generated `composer.lock`. This makes CI builds fully reproducible and faster (cache hits on exact versions).
+- Trigger: CI will fire on the next push to any `feat/**`, `fix/**`, `chore/**`, `hotfix/**` branch, and on every PR to `develop` or `main`.
+
+---
+
 ## Session 1 — 2026-05-05
 **Branch:** `chore/project-scaffolding`
 **Developer:** Claude Code (wamburamuhere@gmail.com)

@@ -1,0 +1,132 @@
+name: Deploy Gate — Pre-merge quality checks
+
+# Only runs on Pull Requests targeting main.
+# This is the hard gate that must pass before anything lands in production.
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  deploy-gate:
+    name: Deployment Quality Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Get the code ────────────────────────────────────────────────────
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0    # Full history needed for git diff checks below
+
+      # ── 2. PHP setup ───────────────────────────────────────────────────────
+      - name: Set up PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo, pdo_mysql, mbstring, xml, ctype, fileinfo, intl
+          coverage: none
+          tools: composer:v2
+
+      # ── 3. Validate composer.json ──────────────────────────────────────────
+      - name: Validate composer.json
+        run: composer validate
+
+      # ── 4. Install dependencies ────────────────────────────────────────────
+      - name: Get Composer cache directory
+        id: composer-cache-dir
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache-dir.outputs.dir }}
+          key: ${{ runner.os }}-php8.2-composer-${{ hashFiles('**/composer.json') }}
+          restore-keys: |
+            ${{ runner.os }}-php8.2-composer-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      # ── 5. Security: ensure config.php was not committed ───────────────────
+      - name: Check config.php is not committed
+        run: |
+          if git ls-files --error-unmatch includes/config.php 2>/dev/null; then
+            echo "❌ CRITICAL: includes/config.php is tracked by git!"
+            echo "   This file contains database credentials and must NEVER be committed."
+            echo "   Remove it: git rm --cached includes/config.php"
+            exit 1
+          fi
+          echo "✅ includes/config.php is correctly excluded from git."
+
+      # ── 6. Security: ensure no .env files were committed ───────────────────
+      - name: Check .env files are not committed
+        run: |
+          if git ls-files | grep -E '^\.env($|\.)'; then
+            echo "❌ CRITICAL: .env file(s) found in git tracking!"
+            exit 1
+          fi
+          echo "✅ No .env files committed."
+
+      # ── 7. PHP syntax check — all application PHP files ────────────────────
+      - name: PHP syntax check
+        run: |
+          echo "Scanning PHP files for syntax errors..."
+          ERRORS=0
+          while IFS= read -r -d '' file; do
+            if ! php -l "$file" > /dev/null 2>&1; then
+              php -l "$file"
+              ERRORS=$((ERRORS + 1))
+            fi
+          done < <(find . \
+            -name "*.php" \
+            -not -path "./vendor/*" \
+            -not -path "./TCPDF/*" \
+            -print0)
+
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "❌ $ERRORS PHP syntax error(s) found. Fix before merging."
+            exit 1
+          fi
+          echo "✅ All PHP files passed syntax check."
+
+      # ── 8. Full test suite (Unit + Feature) ────────────────────────────────
+      - name: Run full PHPUnit test suite
+        run: composer test
+
+      # ── 9. sessions.md must have been updated ──────────────────────────────
+      - name: Verify sessions.md was updated
+        run: |
+          BASE=${{ github.event.pull_request.base.sha }}
+          HEAD=${{ github.event.pull_request.head.sha }}
+
+          if git diff --name-only "$BASE".."$HEAD" | grep -q "^sessions\.md$"; then
+            echo "✅ sessions.md has been updated in this PR."
+          else
+            echo ""
+            echo "⚠️  WARNING: sessions.md was not updated in this PR."
+            echo "   Per project workflow, sessions.md must be updated to"
+            echo "   describe what changed before merging to main."
+            echo ""
+            echo "   This is a warning, not a blocker — the gate will still pass."
+            echo "   Please update sessions.md before your next merge."
+          fi
+
+      # ── 10. Confirm vendor/ is gitignored ──────────────────────────────────
+      - name: Check vendor/ directory is not committed
+        run: |
+          if git ls-files vendor/ | grep -q .; then
+            echo "❌ vendor/ directory contains tracked files!"
+            echo "   The vendor/ directory must be in .gitignore."
+            exit 1
+          fi
+          echo "✅ vendor/ is correctly excluded from git."
+
+      # ── Gate summary ───────────────────────────────────────────────────────
+      - name: Deploy gate summary
+        run: |
+          echo ""
+          echo "══════════════════════════════════════════"
+          echo "  ✅  DEPLOY GATE PASSED — safe to merge  "
+          echo "══════════════════════════════════════════"
+          echo ""
