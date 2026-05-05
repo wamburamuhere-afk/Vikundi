@@ -1,0 +1,133 @@
+name: Deploy to Production (cPanel)
+
+# Triggers on every push to main (i.e. after a reviewed PR merges).
+# Job 1 re-runs the full test suite — if tests fail, deployment is blocked.
+# Job 2 calls cPanel's Git Version Control API to pull the latest main branch.
+# No SSH access required — uses a cPanel API token stored as a GitHub secret.
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1 — Re-run the full test suite on the exact commit that landed on main.
+  # A failing commit can never reach production.
+  # ---------------------------------------------------------------------------
+  test:
+    name: Verify tests pass on main
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo, pdo_mysql, mbstring, xml, ctype, fileinfo, intl
+          coverage: none
+          tools: composer:v2
+
+      - name: Get Composer cache directory
+        id: composer-cache-dir
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache-dir.outputs.dir }}
+          key: ${{ runner.os }}-php8.2-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php8.2-composer-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Run Unit Tests
+        run: composer test-unit
+
+      - name: Run Feature Tests
+        run: composer test-feature
+
+  # ---------------------------------------------------------------------------
+  # Job 2 — Tell cPanel to pull the latest main branch.
+  # Uses the cPanel UAPI Git Version Control endpoint (no SSH needed).
+  # Requires three GitHub secrets:
+  #   CPANEL_USERNAME  — your cPanel username (bjptech)
+  #   CPANEL_API_TOKEN — from cPanel > Security > Manage API Tokens
+  #   CPANEL_HOSTNAME  — your domain (bjptechnologies.co.tz)
+  # ---------------------------------------------------------------------------
+  deploy:
+    name: Deploy to cPanel — vikundi.bjptechnologies.co.tz
+    runs-on: ubuntu-latest
+    needs: test    # Blocked until tests pass
+
+    environment:
+      name: production
+      url: https://vikundi.bjptechnologies.co.tz
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── Trigger cPanel Git pull via UAPI ───────────────────────────────────
+      - name: Trigger cPanel Git Version Control pull
+        run: |
+          echo "→ Triggering cPanel Git pull for repository: vikundi"
+
+          RESPONSE=$(curl -sS \
+            --max-time 60 \
+            -H "Authorization: cpanel ${{ secrets.CPANEL_USERNAME }}:${{ secrets.CPANEL_API_TOKEN }}" \
+            "https://${{ secrets.CPANEL_HOSTNAME }}:2083/execute/VersionControl/update?name=vikundi")
+
+          echo "cPanel API response:"
+          echo "$RESPONSE" | python3 -m json.tool 2>/dev/null || echo "$RESPONSE"
+
+          # Check the API returned success status
+          STATUS=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status',0))" 2>/dev/null || echo "0")
+
+          if [ "$STATUS" = "1" ]; then
+            echo ""
+            echo "✅ cPanel pull triggered successfully."
+          else
+            echo ""
+            echo "❌ cPanel API call failed or returned an error."
+            echo "   Check that CPANEL_USERNAME, CPANEL_API_TOKEN, and CPANEL_HOSTNAME"
+            echo "   are set correctly in GitHub Secrets."
+            echo "   Also confirm the repo is named 'vikundi' in cPanel Git Version Control."
+            exit 1
+          fi
+
+      # ── Wait for cPanel to finish the pull, then verify the site responds ──
+      - name: Verify site is up after deployment
+        run: |
+          echo "→ Waiting 15 seconds for cPanel to complete the pull..."
+          sleep 15
+
+          HTTP_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" \
+            --max-time 30 \
+            "https://vikundi.bjptechnologies.co.tz/login" 2>/dev/null || echo "000")
+
+          echo "HTTP status: $HTTP_STATUS"
+
+          if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "302" ]; then
+            echo "✅ Site responded with HTTP $HTTP_STATUS — deployment looks good."
+          else
+            echo "⚠️  Site returned HTTP $HTTP_STATUS — verify manually."
+            echo "   This may be a transient issue and does not block the deploy record."
+          fi
+
+      # ── Write deployment summary to the GitHub Actions step summary page ───
+      - name: Deployment summary
+        run: |
+          echo "### 🚀 Deployed to Production" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| | |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Triggered by** | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Site** | https://vikundi.bjptechnologies.co.tz |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Server path** | \`/home/bjptech/public_html/vikundi\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Time** | $(date -u '+%Y-%m-%d %H:%M UTC') |" >> $GITHUB_STEP_SUMMARY

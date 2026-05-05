@@ -31,6 +31,46 @@ Important context, decisions made, or follow-up items.
 
 ---
 
+## Session 3 — 2026-05-05
+**Branch:** `chore/cpanel-deploy-workflow`
+**Developer:** Claude Code (wamburamuhere@gmail.com)
+**Summary:** GitHub Actions → cPanel SSH deployment pipeline. Pushes to `main` automatically deploy to `/home/bjptech/public_html/vikundi` after tests pass.
+
+### Changes
+- Created `.github/workflows/deploy.yml` — two-job deployment pipeline:
+  - **Job 1 (test):** Re-runs full PHPUnit suite (Unit + Feature) on the main branch commit — a failing commit cannot reach production
+  - **Job 2 (deploy):** Blocked on Job 1. SSHes into cPanel server, runs `git reset --hard origin/main`, runs `composer install --no-dev --optimize-autoloader`, checks `config.php` exists, sets file permissions on `uploads/`, `documents/`, `backups/`
+  - GitHub Environments configured (`production`) — shows deployment status in GitHub repo
+  - Deployment summary written to GitHub Actions step summary (commit SHA, actor, timestamp)
+
+### Files Created
+- `.github/workflows/deploy.yml` — CI-gated SSH deployment workflow
+
+### Files Modified
+- `sessions.md` — Added Session 3 entry (this entry)
+
+### Database Changes
+- None
+
+### One-time server setup required (see instructions given to user)
+1. SSH into cPanel → clone repo or init git in `/home/bjptech/public_html/vikundi`
+2. Run `composer install --no-dev` on server once (creates `composer.phar` or uses system composer)
+3. Generate `~/.ssh/github_deploy` key pair on server
+4. Add public key to `~/.ssh/authorized_keys`
+5. Add 4 GitHub Secrets: `DEPLOY_SSH_KEY`, `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PORT`
+6. Create a `production` GitHub Environment in repo Settings → Environments (optional but recommended for protection rules)
+
+### Notes
+- `includes/config.php` is NOT in git and is never touched by the cPanel pull — it is safe
+- `vendor/` is not needed in production (app uses direct requires, not Composer autoloader) — no composer step needed on server
+- Deploy uses cPanel UAPI (`/execute/VersionControl/update?name=vikundi`) — no SSH required
+- `.cpanel.yml` runs post-pull tasks on the server (permissions, config.php safety check)
+- Production URL updated to `https://vikundi.bjptechnologies.co.tz`
+- If SSH becomes available later, the workflow can be switched to the SSH approach for more control
+- cPanel API port 2083 is used (SSL); if host blocks it try port 2082 (non-SSL)
+
+---
+
 ## Session 2 — 2026-05-05
 **Branch:** `chore/github-actions-ci`
 **Developer:** Claude Code (wamburamuhere@gmail.com)

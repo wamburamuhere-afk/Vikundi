@@ -1,0 +1,28 @@
+---
+# .cpanel.yml — cPanel Git Version Control deployment tasks
+#
+# These tasks run on the cPanel server automatically after every
+# git pull triggered by GitHub Actions (via the cPanel UAPI).
+#
+# The %PROJECT_ROOT% variable is the repository root on the server:
+#   /home/bjptech/public_html/vikundi
+#
+# IMPORTANT: includes/config.php is NOT in git and will NEVER be
+# touched by these tasks. It must exist on the server manually.
+
+deployment:
+  tasks:
+    # 1. Log the deployment with timestamp and commit hash
+    - echo "=== Vikundi Deploy: $(date '+%Y-%m-%d %H:%M:%S') ==="
+    - echo "Commit $(git -C %PROJECT_ROOT% rev-parse --short HEAD)"
+
+    # 2. Set correct permissions on writable directories
+    - find %PROJECT_ROOT%/uploads   -type d -exec chmod 755 {} \; 2>/dev/null || true
+    - find %PROJECT_ROOT%/uploads   -type f -exec chmod 644 {} \; 2>/dev/null || true
+    - find %PROJECT_ROOT%/documents -type d -exec chmod 755 {} \; 2>/dev/null || true
+    - find %PROJECT_ROOT%/backups   -type d -exec chmod 755 {} \; 2>/dev/null || true
+
+    # 3. Confirm config.php exists (safety warning — never committed to git)
+    - test -f %PROJECT_ROOT%/includes/config.php && echo "config.php present" || echo "WARNING config.php MISSING"
+
+    - echo "=== Deploy complete ==="
