@@ -31,6 +31,38 @@ Important context, decisions made, or follow-up items.
 
 ---
 
+## Session 6 — 2026-05-05
+**Branch:** `fix/ftp-deploy`
+**Developer:** Claude Code (wamburamuhere@gmail.com)
+**Summary:** Switched deployment method from cPanel UAPI to FTP — cPanel API tokens are blocked at the hosting provider firewall level.
+
+### Changes
+- `deploy.yml` — replaced cPanel UAPI approach with `SamKirkland/FTP-Deploy-Action@v4.3.4`
+  - Connects via FTP port 21 (always open on shared hosting)
+  - Uploads only files that changed since last deploy (state tracked in `.ftp-deploy-sync-state.json` on server)
+  - Excludes: `includes/config.php`, `vendor/`, `uploads/`, `backups/`, `documents/`, `downloads/`, `tests/`, `.claude/`, `.github/`, `phpunit*`, `composer.*`, `coverage/`, `sessions.md`, `CLAUDE.md`, `.cpanel.yml`
+  - Smoke-tests the live URL after deploy
+- `.gitignore` — added `.ftp-deploy-sync-state.json` (state file created by FTP deploy action)
+
+### Files Modified
+- `.github/workflows/deploy.yml` — FTP deployment (replaces broken cPanel API approach)
+- `.gitignore` — exclude FTP state file
+- `sessions.md` — Session 6 entry
+
+### GitHub Secrets to update
+Remove old secrets (no longer needed): `CPANEL_API_TOKEN`, `CPANEL_HOSTNAME`
+Add new secrets:
+  - `FTP_HOST`     → bjptechnologies.co.tz (or ftp.bjptechnologies.co.tz)
+  - `FTP_USERNAME` → bjptech
+  - `FTP_PASSWORD` → your cPanel account password
+
+### Notes
+- Root cause: cPanel UAPI port 2083 is open but returns "Access denied" for API tokens — hosting provider restricts API token access to browser sessions only
+- FTP (port 21) is universally open on all cPanel shared hosting plans
+- The FTP action maintains a `.ftp-deploy-sync-state.json` on the server so only changed files are uploaded on subsequent deploys (first deploy uploads everything)
+
+---
+
 ## Session 5 — 2026-05-05
 **Branch:** `fix/cpanel-deploy-endpoint`
 **Developer:** Claude Code (wamburamuhere@gmail.com)

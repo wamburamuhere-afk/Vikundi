@@ -1,8 +1,17 @@
-name: Deploy to Production (cPanel)
+name: Deploy to Production (cPanel via FTP)
 
 # Triggers on every push to main (i.e. after a reviewed PR merges).
 # Job 1 re-runs the full test suite — if tests fail, deployment is blocked.
-# Job 2 calls cPanel's VersionControlDeployment API to pull + run .cpanel.yml
+# Job 2 deploys changed files to cPanel via FTP (port 21).
+#
+# Why FTP: cPanel shared hosting always exposes port 21. The cPanel UAPI
+# (port 2083) is often restricted by hosting providers to browser sessions
+# only — external API token access is blocked at their firewall level.
+#
+# Required GitHub Secrets (Settings → Secrets → Actions):
+#   FTP_HOST      — FTP hostname, usually the same as your domain
+#   FTP_USERNAME  — cPanel username (bjptech)
+#   FTP_PASSWORD  — cPanel account password
 on:
   push:
     branches:
@@ -11,7 +20,6 @@ on:
 jobs:
   # ---------------------------------------------------------------------------
   # Job 1 — Re-run the full test suite on the exact commit that landed on main.
-  # A failing commit can never reach production.
   # ---------------------------------------------------------------------------
   test:
     name: Verify tests pass on main
@@ -51,12 +59,9 @@ jobs:
         run: composer test-feature
 
   # ---------------------------------------------------------------------------
-  # Job 2 — Tell cPanel to pull latest main and run .cpanel.yml tasks.
-  # Uses POST /execute/VersionControlDeployment/create (correct deploy endpoint).
-  # Requires three GitHub Secrets:
-  #   CPANEL_USERNAME  — cPanel username (bjptech)
-  #   CPANEL_API_TOKEN — long alphanumeric string from cPanel > Manage API Tokens
-  #   CPANEL_HOSTNAME  — server hostname (bjptechnologies.co.tz)
+  # Job 2 — Deploy changed files to cPanel via FTP.
+  # Only uploads files that changed since the last deploy (tracked via a
+  # .ftp-deploy-sync-state.json file stored on the server).
   # ---------------------------------------------------------------------------
   deploy:
     name: Deploy to cPanel — vikundi.bjptechnologies.co.tz
@@ -71,78 +76,66 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ── Verify all required secrets are present ────────────────────────────
-      - name: Check secrets are configured
-        run: |
-          MISSING=0
-          [ -z "${{ secrets.CPANEL_USERNAME }}"  ] && echo "❌ CPANEL_USERNAME is not set"  && MISSING=1
-          [ -z "${{ secrets.CPANEL_API_TOKEN }}" ] && echo "❌ CPANEL_API_TOKEN is not set" && MISSING=1
-          [ -z "${{ secrets.CPANEL_HOSTNAME }}"  ] && echo "❌ CPANEL_HOSTNAME is not set"  && MISSING=1
-          [ "$MISSING" = "1" ] && exit 1
-          echo "✅ All secrets present."
+      - name: Deploy changed files via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server:      ${{ secrets.FTP_HOST }}
+          username:    ${{ secrets.FTP_USERNAME }}
+          password:    ${{ secrets.FTP_PASSWORD }}
+          protocol:    ftp
+          port:        21
+          local-dir:   ./
+          server-dir:  public_html/vikundi/
 
-      # ── Trigger cPanel deployment via UAPI ────────────────────────────────
-      # Correct endpoint: POST VersionControlDeployment/create
-      # This runs git pull on the server AND executes .cpanel.yml tasks.
-      # repository_root must be the absolute path on the server.
-      - name: Trigger cPanel deployment
-        run: |
-          echo "→ Calling cPanel VersionControlDeployment/create ..."
+          # Files that must never be uploaded to the server:
+          #   - includes/config.php  → lives only on the server, has DB credentials
+          #   - vendor/              → not needed in production (app uses direct requires)
+          #   - uploads/ etc.        → user-generated content, server-only
+          #   - tests/, phpunit*     → dev tooling only
+          #   - .claude/, .github/  → CI/dev metadata
+          #   - coverage/            → local report output
+          #   - backups/             → server-side backups
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/vendor/**
+            includes/config.php
+            uploads/**
+            backups/**
+            documents/**
+            downloads/**
+            coverage/**
+            tests/**
+            .claude/**
+            .github/**
+            phpunit.xml
+            phpunit.coverage.xml
+            composer.json
+            composer.lock
+            .cpanel.yml
+            sessions.md
+            CLAUDE.md
 
-          RESPONSE=$(curl -sS \
-            --max-time 60 \
-            -X POST \
-            -H "Authorization: cpanel ${{ secrets.CPANEL_USERNAME }}:${{ secrets.CPANEL_API_TOKEN }}" \
-            "https://${{ secrets.CPANEL_HOSTNAME }}:2083/execute/VersionControlDeployment/create" \
-            --data-urlencode "repository_root=/home/${{ secrets.CPANEL_USERNAME }}/public_html/vikundi")
-
-          echo "cPanel API response:"
-          echo "$RESPONSE" | python3 -m json.tool 2>/dev/null || echo "$RESPONSE"
-
-          # Guard: plain-text "Access denied" means token auth failed
-          if echo "$RESPONSE" | grep -qi "access denied"; then
-            echo ""
-            echo "❌ Authentication failed — 'Access denied' returned."
-            echo "   CPANEL_API_TOKEN likely contains the token NAME, not the token VALUE."
-            echo "   In cPanel: Security → Manage API Tokens → Revoke → recreate."
-            echo "   Copy the long alphanumeric string shown at creation — that is the value."
-            exit 1
-          fi
-
-          # Parse JSON status
-          STATUS=$(echo "$RESPONSE" | python3 -c \
-            "import sys,json; d=json.load(sys.stdin); print(d.get('status', d.get('result',{}).get('status',0)))" \
-            2>/dev/null || echo "0")
-
-          if [ "$STATUS" = "1" ]; then
-            echo ""
-            echo "✅ Deployment triggered successfully."
-          else
-            echo ""
-            echo "❌ cPanel returned an error. Check the response above."
-            exit 1
-          fi
-
-      # ── Wait then smoke-test the live site ────────────────────────────────
+      # ── Smoke test: verify the live site responds after deploy ─────────────
       - name: Verify site is up after deployment
         run: |
-          echo "→ Waiting 20 seconds for cPanel to complete the pull..."
-          sleep 20
+          echo "→ Checking live site..."
+          sleep 10
 
           HTTP_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" \
             --max-time 30 \
             "https://vikundi.bjptechnologies.co.tz/login" 2>/dev/null || echo "000")
 
-          echo "HTTP status from live site: $HTTP_STATUS"
+          echo "HTTP status: $HTTP_STATUS"
 
           if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "302" ]; then
-            echo "✅ Site is responding — deployment successful."
+            echo "✅ Site is responding — deployment complete."
           else
-            echo "⚠️  Site returned HTTP $HTTP_STATUS — verify manually at:"
+            echo "⚠️  Site returned HTTP $HTTP_STATUS — check manually at:"
             echo "   https://vikundi.bjptechnologies.co.tz"
           fi
 
-      # ── Write deployment summary ───────────────────────────────────────────
+      # ── Write deployment summary to GitHub Actions step summary ───────────
       - name: Deployment summary
         run: |
           echo "### 🚀 Deployed to Production" >> $GITHUB_STEP_SUMMARY
@@ -151,6 +144,6 @@ jobs:
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
           echo "| **Commit** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Triggered by** | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Method** | FTP → cPanel |" >> $GITHUB_STEP_SUMMARY
           echo "| **Site** | https://vikundi.bjptechnologies.co.tz |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Server path** | \`/home/bjptech/public_html/vikundi\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Time** | $(date -u '+%Y-%m-%d %H:%M UTC') |" >> $GITHUB_STEP_SUMMARY

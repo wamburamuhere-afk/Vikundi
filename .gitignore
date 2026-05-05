@@ -23,6 +23,9 @@
 *.log
 /logs/
 
+# === FTP deploy state (created by SamKirkland/FTP-Deploy-Action on server) ===
+.ftp-deploy-sync-state.json
+
 # === Scratch / temporary dev files ===
 /scratch/
 
