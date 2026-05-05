@@ -1,0 +1,142 @@
+name: CI — PHPUnit Test Suite
+
+# Runs on every push to any working branch and on PRs targeting develop or main.
+# Keeps the test loop fast: unit tests first (no DB), feature tests second.
+on:
+  push:
+    branches:
+      - develop
+      - 'feat/**'
+      - 'fix/**'
+      - 'chore/**'
+      - 'hotfix/**'
+  pull_request:
+    branches:
+      - develop
+      - main
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: PHPUnit — Unit tests (no database required)
+  # Fast gate: pure PHP function tests, RBAC session tests, auth redirect tests.
+  # ---------------------------------------------------------------------------
+  unit-tests:
+    name: Unit Tests (PHP ${{ matrix.php-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version: ['8.2']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up PHP ${{ matrix.php-version }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: pdo, pdo_mysql, mbstring, xml, ctype, fileinfo, intl
+          coverage: none
+          tools: composer:v2
+
+      - name: Validate composer.json
+        run: composer validate
+
+      - name: Get Composer cache directory
+        id: composer-cache-dir
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache-dir.outputs.dir }}
+          key: ${{ runner.os }}-php${{ matrix.php-version }}-composer-${{ hashFiles('**/composer.json') }}
+          restore-keys: |
+            ${{ runner.os }}-php${{ matrix.php-version }}-composer-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Run Unit Tests
+        run: composer test-unit
+
+  # ---------------------------------------------------------------------------
+  # Job 2: PHPUnit — Feature tests
+  # Session/auth flow tests. Currently DB-free; MySQL service is wired up
+  # and ready to enable when your Feature tests need real DB queries.
+  # ---------------------------------------------------------------------------
+  feature-tests:
+    name: Feature Tests (PHP ${{ matrix.php-version }})
+    runs-on: ubuntu-latest
+    needs: unit-tests    # Only run if unit tests passed
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version: ['8.2']
+
+    # ── MySQL service (pre-wired — un-comment env block below when needed) ───
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ''
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: vikundi_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up PHP ${{ matrix.php-version }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: pdo, pdo_mysql, mbstring, xml, ctype, fileinfo, intl
+          coverage: none
+          tools: composer:v2
+
+      - name: Get Composer cache directory
+        id: composer-cache-dir
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache-dir.outputs.dir }}
+          key: ${{ runner.os }}-php${{ matrix.php-version }}-composer-${{ hashFiles('**/composer.json') }}
+          restore-keys: |
+            ${{ runner.os }}-php${{ matrix.php-version }}-composer-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      # ── When Feature tests need the DB, create config.php pointing at the
+      #    CI MySQL service. Un-comment the block below at that point. ──────
+      # - name: Create CI database config
+      #   run: |
+      #     cat > includes/config.php << 'EOF'
+      #     <?php
+      #     $pdo = new PDO(
+      #         'mysql:host=127.0.0.1;port=3306;dbname=vikundi_test;charset=utf8mb4',
+      #         'root', ''
+      #     );
+      #     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+      #     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+      #     EOF
+      #
+      # - name: Import database schema
+      #   run: |
+      #     mysql -h 127.0.0.1 -u root vikundi_test < database/vikundi.sql
+
+      - name: Run Feature Tests
+        run: composer test-feature

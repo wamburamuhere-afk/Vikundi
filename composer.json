@@ -17,6 +17,6 @@
         "test":          "@php vendor/bin/phpunit",
         "test-unit":     "@php vendor/bin/phpunit --testsuite Unit",
         "test-feature":  "@php vendor/bin/phpunit --testsuite Feature",
-        "test-coverage": "@php vendor/bin/phpunit --coverage-html coverage"
+        "test-coverage": "@php vendor/bin/phpunit -c phpunit.coverage.xml --coverage-html coverage"
     }
 }
