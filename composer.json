@@ -1,0 +1,22 @@
+{
+    "name": "vikundi/vicoba-management",
+    "description": "VICOBA Group Management and Microfinance Platform",
+    "type": "project",
+    "require": {
+        "php": ">=8.2"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.0"
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test":          "@php vendor/bin/phpunit",
+        "test-unit":     "@php vendor/bin/phpunit --testsuite Unit",
+        "test-feature":  "@php vendor/bin/phpunit --testsuite Feature",
+        "test-coverage": "@php vendor/bin/phpunit --coverage-html coverage"
+    }
+}

@@ -1,0 +1,75 @@
+# Sessions Log — Vikundi VICOBA Management System
+
+This file tracks every development session, modification, and significant change made to the project. Update it at the end of every session before pushing.
+
+---
+
+## Log Format
+
+```
+## Session [N] — YYYY-MM-DD
+**Branch:** `branch-name`
+**Developer:** Name / Claude Code
+**Summary:** One-line description of what was done
+
+### Changes
+- Description of change 1
+- Description of change 2
+
+### Files Created
+- `path/to/file` — purpose
+
+### Files Modified
+- `path/to/file` — what changed and why
+
+### Database Changes
+- Table/column added, modified, or removed (if any)
+
+### Notes
+Important context, decisions made, or follow-up items.
+```
+
+---
+
+## Session 1 — 2026-05-05
+**Branch:** `chore/project-scaffolding`
+**Developer:** Claude Code (wamburamuhere@gmail.com)
+**Summary:** Initial project scaffolding — git setup, GitHub branches, documentation, PHPUnit test suite, and custom Claude Code skills/agents.
+
+### Changes
+- Initialized git repository and pushed to GitHub (`https://github.com/wamburamuhere-afk/Vikundi.git`)
+- Established `main` as the deployment (king) branch — `git branch -M main`
+- Created `develop` as the integration branch (branched from main)
+- Created `chore/project-scaffolding` as the working branch for this session (branched from develop)
+- Codebase fully committed to `main` (application files), scaffolding on working branch
+
+### Files Created
+- `README.md` — Full project README: features, stack, installation guide, contributing workflow
+- `CLAUDE.md` — Claude Code context file: architecture, patterns, branching rules, commands
+- `sessions.md` — This file (session tracking log going forward)
+- `.gitignore` — Excludes: `includes/config.php`, `uploads/`, `backups/`, `downloads/`, `documents/`, `vendor/`, `scratch/`, IDE files, coverage output
+- `includes/config.example.php` — Database config template (safe to commit; copy to `config.php` locally)
+- `composer.json` — PHPUnit 11 dependency + `composer test` / `test-unit` / `test-feature` / `test-coverage` scripts
+- `phpunit.xml` — PHPUnit configuration: Unit + Feature test suites, bootstrap, colors
+- `tests/bootstrap.php` — Test bootstrapper: stubs `redirectTo()` + `isAuthenticated()`, starts PHP session, loads helpers + permissions
+- `tests/Unit/HelpersTest.php` — 30+ unit tests covering: `calculateTotalInterest()`, `addMonthsWithAnchor()`, `get_status_badge()`, `format_currency()`, `format_date()`, `calculate_leave_days()`, `format_phone()`, `safe_output()`, `get_variance_color()`, `format_number()`
+- `tests/Unit/PermissionsTest.php` — 20+ unit tests covering: `isAdmin()`, `canView()`, `canCreate()`, `canEdit()`, `canDelete()`, `getPermissionSummary()`, `arePermissionsLoaded()`
+- `tests/Feature/AuthTest.php` — Feature test placeholder: auth session checks, redirect stub verification
+- `.claude/commands/db-backup.md` — Skill: create timestamped MySQL database backup
+- `.claude/commands/run-tests.md` — Skill: run PHPUnit test suite and report results
+- `.claude/commands/new-feature.md` — Skill: scaffold a new feature with boilerplate + test files
+- `.claude/commands/deploy-check.md` — Skill: pre-deployment checklist before merging to main
+- `.claude/agents/vicoba-reviewer.md` — Agent: VICOBA-aware code reviewer (security, RBAC, audit logging, patterns)
+- `.claude/agents/test-writer.md` — Agent: PHPUnit test writer specialized in Vikundi codebase
+
+### Files Modified
+- None (initial scaffolding session)
+
+### Database Changes
+- None
+
+### Notes
+- `includes/config.php` is in `.gitignore` — every developer must copy from `config.example.php`
+- All new features going forward require tests in `tests/Unit/` or `tests/Feature/`
+- Branching rules: `feat/*` / `fix/*` / `chore/*` / `hotfix/*` → PR to `develop` → PR to `main`
+- User will manually PR `chore/project-scaffolding` → `develop` → `main`
