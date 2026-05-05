@@ -1,0 +1,31 @@
+RewriteEngine On
+RewriteBase /
+
+# Disable directory listing & content negotiation
+Options -Indexes -MultiViews
+
+# Block direct access to internal files
+RewriteRule ^roots\.php$ - [F,L]
+
+# 1. Force Redirect .php to clean URL (only for public pages, ignore internal folders)
+RewriteCond %{THE_REQUEST} ^[A-Z]{3,}\s/+([^?]+)\.php [NC]
+RewriteCond %1 !^(actions|ajax|api)/ [NC]
+RewriteRule ^ /%1 [R=301,L]
+
+# 2. Allow existing non-PHP directories and files
+RewriteCond %{REQUEST_FILENAME} -d [OR]
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteCond %{REQUEST_FILENAME} !\.php$
+RewriteRule ^ - [L]
+
+# 3. Front Controller (all other requests through index.php)
+RewriteRule ^ index.php [L,QSA]
+
+# PHP session cookie path
+<IfModule mod_php.c>
+    php_value session.cookie_path "/"
+</IfModule>
+
+# Custom error pages
+ErrorDocument 404 /404.php
+ErrorDocument 403 /403.php

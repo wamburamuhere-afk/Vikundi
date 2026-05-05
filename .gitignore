@@ -1,0 +1,41 @@
+# === Composer / PHP Dependencies ===
+/vendor/
+
+# === Database Credentials — NEVER commit config.php ===
+/includes/config.php
+
+# === User-generated content (kept locally, not in git) ===
+/uploads/*
+!/uploads/.gitkeep
+/backups/*
+!/backups/.gitkeep
+/downloads/*
+!/downloads/.gitkeep
+/documents/*
+!/documents/.gitkeep
+
+# === Test output ===
+/.phpunit.result.cache
+/coverage/
+/phpunit.xml.local
+
+# === Logs ===
+*.log
+/logs/
+
+# === Scratch / temporary dev files ===
+/scratch/
+
+# === IDE / Editor ===
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === Environment files ===
+.env
+.env.local
+.env.*.local
