@@ -56,8 +56,12 @@ Important context, decisions made, or follow-up items.
 - `.github/workflows/ci.yml` — PHPUnit CI pipeline (unit + feature jobs)
 - `.github/workflows/deploy-gate.yml` — Pre-merge checks for main branch
 - `.github/workflows/pr-labeler.yml` — Automatic PR label applicator
+- `phpunit.coverage.xml` — Separate PHPUnit config for local coverage reports (requires Xdebug/PCOV)
+- `composer.lock` — Locked dependency versions (PHPUnit 11.5.55 + 26 transitive packages)
 
 ### Files Modified
+- `phpunit.xml` — Removed `<source>` and `<coverage>` blocks; these triggered a "No code coverage driver" PHPUnit warning (exit code 1) that would have failed CI steps. Moved to `phpunit.coverage.xml`.
+- `composer.json` — Updated `test-coverage` script to use `-c phpunit.coverage.xml`
 - `sessions.md` — Added Session 2 entry (this entry)
 
 ### Database Changes

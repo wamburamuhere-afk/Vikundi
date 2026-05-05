@@ -1,4 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Base PHPUnit configuration — used by:
+      composer test          (all suites)
+      composer test-unit     (Unit suite only)
+      composer test-feature  (Feature suite only)
+
+    No <source> or <coverage> here — those live in phpunit.coverage.xml
+    so that running tests without Xdebug/PCOV never emits a coverage
+    driver warning (which would cause exit-code 1 and fail CI).
+
+    To generate an HTML coverage report locally (requires Xdebug or PCOV):
+      composer test-coverage
+-->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
          bootstrap="tests/bootstrap.php"
@@ -13,18 +26,5 @@
             <directory>tests/Feature</directory>
         </testsuite>
     </testsuites>
-
-    <source>
-        <include>
-            <file>helpers.php</file>
-            <file>core/permissions.php</file>
-        </include>
-    </source>
-
-    <coverage>
-        <report>
-            <html outputDirectory="coverage"/>
-        </report>
-    </coverage>
 
 </phpunit>
