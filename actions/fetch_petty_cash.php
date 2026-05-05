@@ -116,14 +116,22 @@ foreach ($vouchers as $v) {
     </div>';
 
     $data[] = [
-        'sno' => $sno++,
-        'voucher_no' => '<code>' . htmlspecialchars($v['voucher_no']) . '</code>',
-        'date' => date('d/m/Y', strtotime($v['transaction_date'])),
-        'payee' => '<strong>' . htmlspecialchars($v['payee_name']) . '</strong><br><small class="text-muted">' . htmlspecialchars($v['category']) . '</small>',
+        'sno'         => $sno++,
+        'voucher_no'  => '<code>' . htmlspecialchars($v['voucher_no']) . '</code>',
+        'date'        => date('d/m/Y', strtotime($v['transaction_date'])),
+        'payee'       => '<strong>' . htmlspecialchars($v['payee_name']) . '</strong><br><small class="text-muted">' . htmlspecialchars($v['category']) . '</small>',
         'description' => '<div class="small text-wrap" style="max-width: 250px;">' . htmlspecialchars($v['description']) . '</div>',
-        'amount' => '<div class="text-center fw-bold">' . number_format($v['amount'], 2) . '</div>',
-        'status' => $status_badge,
-        'action' => $actions
+        'amount'      => '<div class="text-center fw-bold">' . number_format($v['amount'], 2) . '</div>',
+        'status'      => $status_badge,
+        'action'      => $actions,
+        // Raw fields consumed by the mobile card view (drawCallback)
+        'raw_id'          => $v['id'],
+        'raw_voucher_no'  => $v['voucher_no'],
+        'raw_payee'       => $v['payee_name'],
+        'raw_category'    => $v['category'],
+        'raw_description' => $v['description'],
+        'raw_amount'      => $v['amount'],
+        'raw_status'      => $v['status'],
     ];
 }
 

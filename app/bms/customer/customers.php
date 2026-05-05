@@ -183,7 +183,7 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                 </div>
             </div>
         </div>
-        <div class="card-body p-0">
+        <div class="card-body p-0 d-none d-md-block d-print-block">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0" id="membersTable">
                     <thead class="bg-light">
@@ -281,6 +281,123 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                 </table>
             </div>
         </div>
+
+        <!-- ═══ CARD VIEW — Mobile Only (hidden on desktop + print) ═══ -->
+        <div class="p-3 d-md-none d-print-none" id="memberCardsWrapper">
+            <?php foreach ($members as $idx => $m):
+                $_lang_c = $_SESSION['preferred_language'] ?? 'en';
+                $_sw_c   = ($_lang_c === 'sw');
+                $full_name_c = trim(($m['first_name'] ?? '') . ' ' . ($m['middle_name'] ?? '') . ' ' . ($m['last_name'] ?? ''));
+
+                $c_status_class = 'bg-secondary';
+                if ($m['user_status'] == 'active')    $c_status_class = 'bg-success';
+                elseif ($m['user_status'] == 'inactive') $c_status_class = 'bg-danger';
+                elseif ($m['user_status'] == 'pending')  $c_status_class = 'bg-warning text-dark';
+                elseif ($m['user_status'] == 'suspended') $c_status_class = 'bg-dark';
+
+                $c_st_map = $_sw_c
+                    ? ['active'=>'Hai (Active)', 'pending'=>'Pending', 'inactive'=>'Haitumiki', 'suspended'=>'Imesitishwa']
+                    : ['active'=>'Active',        'pending'=>'Pending', 'inactive'=>'Inactive',   'suspended'=>'Suspended'];
+                $c_status_text  = $c_st_map[$m['user_status']] ?? ucfirst($m['user_status']);
+                $c_avatar       = strtoupper(substr($m['first_name'] ?? 'M', 0, 1));
+                $c_search_text  = strtolower(implode(' ', [
+                    $full_name_c, $m['username'] ?? '', $m['email'] ?? '',
+                    $m['phone'] ?? '', $m['nida_number'] ?? '',
+                    $m['state'] ?? '', $m['district'] ?? '', $m['city'] ?? ''
+                ]));
+            ?>
+            <div class="vk-member-card"
+                 data-name="<?= htmlspecialchars($c_search_text) ?>"
+                 data-status-text="<?= htmlspecialchars(strtolower($c_status_text)) ?>">
+
+                <!-- Header: avatar · name · role · badge -->
+                <div class="vk-card-header">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="vk-card-avatar"><?= $c_avatar ?></div>
+                        <div class="flex-grow-1" style="min-width:0;">
+                            <div class="fw-bold text-dark lh-sm mb-1"><?= safe_output($full_name_c ?: $m['username']) ?></div>
+                            <small class="text-muted"><?= safe_output($m['username']) ?> &middot; <?= safe_output($m['user_role']) ?></small>
+                        </div>
+                        <span class="badge <?= $c_status_class ?> rounded-pill"><?= safe_output($c_status_text) ?></span>
+                    </div>
+                </div>
+
+                <!-- Body: label on left, value on right -->
+                <div class="vk-card-body">
+                    <div class="vk-card-row">
+                        <span class="vk-card-label"><?= $_sw_c ? 'Jina Kamili' : 'Full Name' ?></span>
+                        <span class="vk-card-value"><?= safe_output($full_name_c ?: '—') ?></span>
+                    </div>
+                    <div class="vk-card-row">
+                        <span class="vk-card-label">NIDA</span>
+                        <span class="vk-card-value"><?= safe_output($m['nida_number'] ?? '—') ?></span>
+                    </div>
+                    <div class="vk-card-row">
+                        <span class="vk-card-label"><?= $_sw_c ? 'Barua Pepe' : 'Email' ?></span>
+                        <span class="vk-card-value"><?= safe_output($m['email'] ?? '—') ?></span>
+                    </div>
+                    <div class="vk-card-row">
+                        <span class="vk-card-label"><?= $_sw_c ? 'Simu' : 'Phone' ?></span>
+                        <span class="vk-card-value"><?= safe_output($m['phone'] ?? '—') ?></span>
+                    </div>
+                    <div class="vk-card-row">
+                        <span class="vk-card-label"><?= $_sw_c ? 'Mkoa' : 'Region' ?></span>
+                        <span class="vk-card-value"><?= safe_output($m['state'] ?? '—') ?></span>
+                    </div>
+                    <div class="vk-card-row">
+                        <span class="vk-card-label"><?= $_sw_c ? 'Wilaya' : 'District' ?></span>
+                        <span class="vk-card-value"><?= safe_output($m['district'] ?? ($m['city'] ?? '—')) ?></span>
+                    </div>
+                    <div class="vk-card-row">
+                        <span class="vk-card-label"><?= $_sw_c ? 'Kianzio' : 'Init. Savings' ?></span>
+                        <span class="vk-card-value fw-semibold text-success"><?= number_format($m['initial_savings'] ?? 0, 0) ?> TZS</span>
+                    </div>
+                </div>
+
+                <!-- Actions: icon-only, consistent colors -->
+                <div class="vk-card-actions">
+                    <a href="<?= getUrl('member_statement') ?>?id=<?= $m['customer_id'] ?>"
+                       class="btn btn-sm btn-outline-info vk-btn-action"
+                       title="<?= $_sw_c ? 'Taarifa ya Fedha' : 'Financial Statement' ?>">
+                        <i class="bi bi-bar-chart-line-fill"></i>
+                    </a>
+                    <a href="<?= getUrl('profile') ?>?id=<?= $m['user_id'] ?>&ref=list"
+                       class="btn btn-sm btn-outline-primary vk-btn-action"
+                       title="<?= $_sw_c ? 'Angalia Wasifu' : 'View Details' ?>">
+                        <i class="bi bi-eye-fill"></i>
+                    </a>
+                    <?php if (!$m['is_deceased'] && $can_edit_members): ?>
+                    <a href="<?= getUrl('profile') ?>?id=<?= $m['user_id'] ?>&edit=1&ref=list"
+                       class="btn btn-sm btn-outline-warning vk-btn-action"
+                       title="<?= $_sw_c ? 'Badili Taarifa' : 'Edit Member' ?>">
+                        <i class="bi bi-pencil-fill"></i>
+                    </a>
+                    <button class="btn btn-sm btn-outline-secondary vk-btn-action"
+                            onclick="openStatusModal(<?= $m['user_id'] ?>, '<?= $m['user_status'] ?>')"
+                            title="<?= $_sw_c ? 'Badili Hali' : 'Change Status' ?>">
+                        <i class="bi bi-toggles"></i>
+                    </button>
+                    <?php endif; ?>
+                    <?php if ($can_delete_members): ?>
+                    <button class="btn btn-sm btn-outline-danger vk-btn-action"
+                            onclick="deleteMember(<?= $m['user_id'] ?>)"
+                            title="<?= $_sw_c ? 'Mfute Mwanachama' : 'Delete Member' ?>">
+                        <i class="bi bi-trash3-fill"></i>
+                    </button>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endforeach; ?>
+
+            <div id="cardsEmptyState" class="d-none text-center py-5">
+                <i class="bi bi-search fs-1 text-muted d-block mb-3"></i>
+                <p class="text-muted mb-0">
+                    <?= (($_SESSION['preferred_language'] ?? 'en') === 'sw') ? 'Hakuna matokeo ya utafutaji huu.' : 'No matching members found.' ?>
+                </p>
+            </div>
+        </div>
+        <!-- ═══ END CARD VIEW ═══ -->
+
     </div>
 </div>
 
@@ -804,16 +921,36 @@ $(document).ready(function() {
         $('#current-length').text(len === -1 ? ( '<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Zote' : 'All' ?>' ) : len);
     };
 
-    // Custom Search
+    // Custom Search — filters both DataTable and mobile card view
     $('#searchMembers').on('keyup', function() {
-        table.search($(this).val()).draw();
+        var v = $(this).val();
+        table.search(v).draw();
+        filterMemberCards(v, $('#statusFilter').val());
     });
 
-    // Custom Status Filter â€” column 6 is Status (0-indexed)
+    // Custom Status Filter — filters both DataTable and mobile card view
     $('#statusFilter').on('change', function() {
-        table.column(6).search($(this).val()).draw();
+        var v = $(this).val();
+        table.column(6).search(v).draw();
+        filterMemberCards($('#searchMembers').val(), v);
     });
 });
+
+function filterMemberCards(searchVal, statusVal) {
+    var search = (searchVal || '').toLowerCase().trim();
+    var statusFilter = (statusVal || '').toLowerCase().trim();
+    var visible = 0;
+    $('.vk-member-card').each(function() {
+        var name       = ($(this).data('name') || '').toLowerCase();
+        var statusText = ($(this).attr('data-status-text') || '').toLowerCase();
+        var matchSearch = !search || name.indexOf(search) !== -1;
+        var matchStatus = !statusFilter || statusText.indexOf(statusFilter) !== -1;
+        var show = matchSearch && matchStatus;
+        $(this).toggle(show);
+        if (show) visible++;
+    });
+    $('#cardsEmptyState').toggleClass('d-none', visible > 0);
+}
 
 function applyFilters() {
     if ($.fn.DataTable.isDataTable('#membersTable')) {

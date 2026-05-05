@@ -200,7 +200,7 @@ $total_all = $stmt_total_all->fetchColumn() ?? 0;
 
     <!-- Table Card -->
     <div class="card border-0 shadow-sm" style="border-radius: 15px;">
-        <div class="card-body p-2 p-md-4">
+        <div class="card-body p-2 p-md-4 d-none d-md-block d-print-block">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0 w-100" id="pettyCashTable">
                     <thead class="bg-light text-muted small text-uppercase">
@@ -224,6 +224,15 @@ $total_all = $stmt_total_all->fetchColumn() ?? 0;
                 </table>
             </div>
         </div>
+
+        <!-- ═══ CARD VIEW — Mobile Only (server-side; rendered by drawCallback) ═══ -->
+        <div class="p-3 d-md-none d-print-none" id="pettyCashCardsWrapper">
+            <div id="pettyCashCardsEmptyState" class="d-none text-center py-5">
+                <i class="bi bi-search fs-1 text-muted d-block mb-3"></i>
+                <p class="text-muted mb-0"><?= $isSwahili ? 'Hakuna vocha zilizopatikana.' : 'No vouchers found.' ?></p>
+            </div>
+        </div>
+        <!-- ═══ END CARD VIEW ═══ -->
     </div>
 
     <!-- 4. PRINT FOOTER (Persistent on every page during print) -->
@@ -444,6 +453,7 @@ $(document).ready(function() {
         },
         order: [[2, 'desc']],
         pageLength: 25,
+        drawCallback: function() { renderPettyCashCards(this.api()); },
         initComplete: function() {
             $('.dataTables_filter').appendTo('#custom-search');
             $('.dt-buttons').appendTo('#action-tools');

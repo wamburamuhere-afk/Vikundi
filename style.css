@@ -21,9 +21,103 @@
 
 /* Ensure buttons are the same size */
 .btn {
-    min-width: 85px; /* Standard width for both buttons */
-    padding: 10px 20px; /* Consistent padding */
-    font-size: 16px; /* Standard font size */
-    line-height: 1.5; /* Ensure consistent height */
+    min-width: 85px;
+    padding: 10px 20px;
+    font-size: 16px;
+    line-height: 1.5;
     text-align: center;
+}
+
+/* ============================================================
+   VIKUNDI — RESPONSIVE CARD VIEW
+   Mobile (<768px): card view  |  Desktop (≥768px): table view
+   Print: always table, cards always hidden
+   ============================================================ */
+
+/* Icon-only action buttons — overrides .btn min-width globally */
+.vk-btn-action {
+    min-width: 36px !important;
+    width: 36px;
+    height: 36px;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px !important;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+/* Card container */
+.vk-member-card {
+    background: #ffffff;
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+.vk-member-card:last-child { margin-bottom: 0; }
+
+/* Card header: avatar + name + status badge */
+.vk-card-header {
+    padding: 12px 14px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+.vk-card-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #0d6efd, #0a58ca);
+    color: #fff;
+    font-weight: 700;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Card body: label-value rows */
+.vk-card-body { padding: 2px 14px; }
+
+.vk-card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 7px 0;
+    border-bottom: 1px solid #f1f3f5;
+    gap: 8px;
+    min-width: 0;
+}
+.vk-card-row:last-child { border-bottom: none; }
+
+.vk-card-label {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-width: 115px;
+}
+.vk-card-value {
+    font-size: 13px;
+    color: #212529;
+    text-align: right;
+    word-break: break-word;
+    min-width: 0;
+}
+
+/* Card actions: icon-only button strip */
+.vk-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+    flex-wrap: wrap;
 }
