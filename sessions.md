@@ -31,6 +31,31 @@ Important context, decisions made, or follow-up items.
 
 ---
 
+## Session 5 — 2026-05-05
+**Branch:** `fix/cpanel-deploy-endpoint`
+**Developer:** Claude Code (wamburamuhere@gmail.com)
+**Summary:** Fixed cPanel deploy workflow — wrong API endpoint and improved auth error detection.
+
+### Changes
+- `deploy.yml` — two fixes:
+  1. **Wrong endpoint:** `/execute/VersionControl/update` → `POST /execute/VersionControlDeployment/create` with `repository_root` parameter. The old endpoint updates repo settings, not trigger a pull. The correct one triggers git pull + `.cpanel.yml` tasks.
+  2. **Better auth error detection:** Added explicit guard for plain-text "Access denied" response (means token NAME was used instead of token VALUE). Prints a clear fix message and exits 1.
+  3. Added "Check secrets are configured" step that fails fast if any secret is missing.
+  4. `repository_root` now uses `CPANEL_USERNAME` secret dynamically (`/home/CPANEL_USERNAME/public_html/vikundi`) instead of hard-coded path.
+
+### Files Modified
+- `.github/workflows/deploy.yml` — correct endpoint + auth error guard
+- `sessions.md` — Session 5 entry
+
+### Database Changes
+- None
+
+### Notes
+- Root cause of "Access denied": token NAME ("github-deploy") was saved as the secret instead of the token VALUE (long alphanumeric string shown only at creation time)
+- Fix: revoke token in cPanel → recreate → copy the VALUE immediately → update CPANEL_API_TOKEN secret in GitHub
+
+---
+
 ## Session 4 — 2026-05-05
 **Branch:** `chore/trigger-deploy-verification`
 **Developer:** Claude Code (wamburamuhere@gmail.com)

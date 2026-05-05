@@ -2,8 +2,7 @@ name: Deploy to Production (cPanel)
 
 # Triggers on every push to main (i.e. after a reviewed PR merges).
 # Job 1 re-runs the full test suite — if tests fail, deployment is blocked.
-# Job 2 calls cPanel's Git Version Control API to pull the latest main branch.
-# No SSH access required — uses a cPanel API token stored as a GitHub secret.
+# Job 2 calls cPanel's VersionControlDeployment API to pull + run .cpanel.yml
 on:
   push:
     branches:
@@ -52,17 +51,17 @@ jobs:
         run: composer test-feature
 
   # ---------------------------------------------------------------------------
-  # Job 2 — Tell cPanel to pull the latest main branch.
-  # Uses the cPanel UAPI Git Version Control endpoint (no SSH needed).
-  # Requires three GitHub secrets:
-  #   CPANEL_USERNAME  — your cPanel username (bjptech)
-  #   CPANEL_API_TOKEN — from cPanel > Security > Manage API Tokens
-  #   CPANEL_HOSTNAME  — your domain (bjptechnologies.co.tz)
+  # Job 2 — Tell cPanel to pull latest main and run .cpanel.yml tasks.
+  # Uses POST /execute/VersionControlDeployment/create (correct deploy endpoint).
+  # Requires three GitHub Secrets:
+  #   CPANEL_USERNAME  — cPanel username (bjptech)
+  #   CPANEL_API_TOKEN — long alphanumeric string from cPanel > Manage API Tokens
+  #   CPANEL_HOSTNAME  — server hostname (bjptechnologies.co.tz)
   # ---------------------------------------------------------------------------
   deploy:
     name: Deploy to cPanel — vikundi.bjptechnologies.co.tz
     runs-on: ubuntu-latest
-    needs: test    # Blocked until tests pass
+    needs: test
 
     environment:
       name: production
@@ -72,54 +71,78 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ── Trigger cPanel Git pull via UAPI ───────────────────────────────────
-      - name: Trigger cPanel Git Version Control pull
+      # ── Verify all required secrets are present ────────────────────────────
+      - name: Check secrets are configured
         run: |
-          echo "→ Triggering cPanel Git pull for repository: vikundi"
+          MISSING=0
+          [ -z "${{ secrets.CPANEL_USERNAME }}"  ] && echo "❌ CPANEL_USERNAME is not set"  && MISSING=1
+          [ -z "${{ secrets.CPANEL_API_TOKEN }}" ] && echo "❌ CPANEL_API_TOKEN is not set" && MISSING=1
+          [ -z "${{ secrets.CPANEL_HOSTNAME }}"  ] && echo "❌ CPANEL_HOSTNAME is not set"  && MISSING=1
+          [ "$MISSING" = "1" ] && exit 1
+          echo "✅ All secrets present."
+
+      # ── Trigger cPanel deployment via UAPI ────────────────────────────────
+      # Correct endpoint: POST VersionControlDeployment/create
+      # This runs git pull on the server AND executes .cpanel.yml tasks.
+      # repository_root must be the absolute path on the server.
+      - name: Trigger cPanel deployment
+        run: |
+          echo "→ Calling cPanel VersionControlDeployment/create ..."
 
           RESPONSE=$(curl -sS \
             --max-time 60 \
+            -X POST \
             -H "Authorization: cpanel ${{ secrets.CPANEL_USERNAME }}:${{ secrets.CPANEL_API_TOKEN }}" \
-            "https://${{ secrets.CPANEL_HOSTNAME }}:2083/execute/VersionControl/update?name=vikundi")
+            "https://${{ secrets.CPANEL_HOSTNAME }}:2083/execute/VersionControlDeployment/create" \
+            --data-urlencode "repository_root=/home/${{ secrets.CPANEL_USERNAME }}/public_html/vikundi")
 
           echo "cPanel API response:"
           echo "$RESPONSE" | python3 -m json.tool 2>/dev/null || echo "$RESPONSE"
 
-          # Check the API returned success status
-          STATUS=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status',0))" 2>/dev/null || echo "0")
-
-          if [ "$STATUS" = "1" ]; then
+          # Guard: plain-text "Access denied" means token auth failed
+          if echo "$RESPONSE" | grep -qi "access denied"; then
             echo ""
-            echo "✅ cPanel pull triggered successfully."
-          else
-            echo ""
-            echo "❌ cPanel API call failed or returned an error."
-            echo "   Check that CPANEL_USERNAME, CPANEL_API_TOKEN, and CPANEL_HOSTNAME"
-            echo "   are set correctly in GitHub Secrets."
-            echo "   Also confirm the repo is named 'vikundi' in cPanel Git Version Control."
+            echo "❌ Authentication failed — 'Access denied' returned."
+            echo "   CPANEL_API_TOKEN likely contains the token NAME, not the token VALUE."
+            echo "   In cPanel: Security → Manage API Tokens → Revoke → recreate."
+            echo "   Copy the long alphanumeric string shown at creation — that is the value."
             exit 1
           fi
 
-      # ── Wait for cPanel to finish the pull, then verify the site responds ──
+          # Parse JSON status
+          STATUS=$(echo "$RESPONSE" | python3 -c \
+            "import sys,json; d=json.load(sys.stdin); print(d.get('status', d.get('result',{}).get('status',0)))" \
+            2>/dev/null || echo "0")
+
+          if [ "$STATUS" = "1" ]; then
+            echo ""
+            echo "✅ Deployment triggered successfully."
+          else
+            echo ""
+            echo "❌ cPanel returned an error. Check the response above."
+            exit 1
+          fi
+
+      # ── Wait then smoke-test the live site ────────────────────────────────
       - name: Verify site is up after deployment
         run: |
-          echo "→ Waiting 15 seconds for cPanel to complete the pull..."
-          sleep 15
+          echo "→ Waiting 20 seconds for cPanel to complete the pull..."
+          sleep 20
 
           HTTP_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" \
             --max-time 30 \
             "https://vikundi.bjptechnologies.co.tz/login" 2>/dev/null || echo "000")
 
-          echo "HTTP status: $HTTP_STATUS"
+          echo "HTTP status from live site: $HTTP_STATUS"
 
           if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "302" ]; then
-            echo "✅ Site responded with HTTP $HTTP_STATUS — deployment looks good."
+            echo "✅ Site is responding — deployment successful."
           else
-            echo "⚠️  Site returned HTTP $HTTP_STATUS — verify manually."
-            echo "   This may be a transient issue and does not block the deploy record."
+            echo "⚠️  Site returned HTTP $HTTP_STATUS — verify manually at:"
+            echo "   https://vikundi.bjptechnologies.co.tz"
           fi
 
-      # ── Write deployment summary to the GitHub Actions step summary page ───
+      # ── Write deployment summary ───────────────────────────────────────────
       - name: Deployment summary
         run: |
           echo "### 🚀 Deployed to Production" >> $GITHUB_STEP_SUMMARY
