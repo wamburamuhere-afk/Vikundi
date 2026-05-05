@@ -61,10 +61,13 @@ Important context, decisions made, or follow-up items.
 6. Create a `production` GitHub Environment in repo Settings → Environments (optional but recommended for protection rules)
 
 ### Notes
-- `includes/config.php` is NOT in git and will NEVER be overwritten by `git reset --hard` — it is safe
-- `vendor/` is in `.gitignore` — Composer installs it fresh on the server from `composer.lock`
-- Update the `url:` field in `deploy.yml` (line with `bjptech.com/vikundi`) to your real domain
-- The deploy script uses `git reset --hard origin/main` (not `git pull`) to guarantee the server exactly matches what's on GitHub, avoiding merge conflicts
+- `includes/config.php` is NOT in git and is never touched by the cPanel pull — it is safe
+- `vendor/` is not needed in production (app uses direct requires, not Composer autoloader) — no composer step needed on server
+- Deploy uses cPanel UAPI (`/execute/VersionControl/update?name=vikundi`) — no SSH required
+- `.cpanel.yml` runs post-pull tasks on the server (permissions, config.php safety check)
+- Production URL updated to `https://vikundi.bjptechnologies.co.tz`
+- If SSH becomes available later, the workflow can be switched to the SSH approach for more control
+- cPanel API port 2083 is used (SSL); if host blocks it try port 2082 (non-SSL)
 
 ---
 
