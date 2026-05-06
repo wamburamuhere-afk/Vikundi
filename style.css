@@ -21,9 +21,134 @@
 
 /* Ensure buttons are the same size */
 .btn {
-    min-width: 85px; /* Standard width for both buttons */
-    padding: 10px 20px; /* Consistent padding */
-    font-size: 16px; /* Standard font size */
-    line-height: 1.5; /* Ensure consistent height */
+    min-width: 85px;
+    padding: 10px 20px;
+    font-size: 16px;
+    line-height: 1.5;
     text-align: center;
+}
+
+/* ============================================================
+   VIKUNDI — RESPONSIVE CARD VIEW
+   Mobile (<768px): card view  |  Desktop (≥768px): table view
+   Print: always table, cards always hidden
+   ============================================================ */
+
+/* Icon-only action buttons — overrides .btn min-width globally */
+.vk-btn-action {
+    min-width: 36px !important;
+    width: 36px;
+    height: 36px;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px !important;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+/* Card container */
+.vk-member-card {
+    background: #ffffff;
+    border: 1.5px solid #ced4da;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.10);
+}
+.vk-member-card:last-child { margin-bottom: 0; }
+
+/* Card header: avatar + name + status badge */
+.vk-card-header {
+    padding: 12px 14px;
+    background: #f8f9fa;
+    border-bottom: 1.5px solid #ced4da;
+}
+.vk-card-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #0d6efd, #0a58ca);
+    color: #fff;
+    font-weight: 700;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Card body: label-value rows */
+.vk-card-body { padding: 2px 14px; }
+
+.vk-card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid #e9ecef;
+    gap: 8px;
+    min-width: 0;
+}
+.vk-card-row:last-child { border-bottom: none; }
+
+.vk-card-label {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-width: 115px;
+}
+.vk-card-value {
+    font-size: 13px;
+    color: #212529;
+    text-align: right;
+    word-break: break-word;
+    min-width: 0;
+}
+
+/* Card actions: icon-only button strip */
+.vk-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: #f8f9fa;
+    border-top: 1.5px solid #ced4da;
+    flex-wrap: wrap;
+}
+
+/* ============================================================
+   TWO-COLUMN CARD GRID — activates when .vk-cards-wrapper is used
+   Single column on phones < 480 px, two columns 480 px +
+   ============================================================ */
+@media (min-width: 480px) and (max-width: 767px) {
+    .vk-cards-wrapper {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+    .vk-cards-wrapper .vk-member-card { margin-bottom: 0; }
+}
+
+/* Compact internals for narrower cards (both grid columns and any narrow context) */
+@media (min-width: 480px) and (max-width: 767px) {
+    .vk-cards-wrapper .vk-card-label {
+        min-width: 72px;
+        font-size: 10.5px;
+        letter-spacing: 0.2px;
+    }
+    .vk-cards-wrapper .vk-card-value { font-size: 12px; }
+    .vk-cards-wrapper .vk-card-avatar { width: 34px; height: 34px; font-size: 13px; }
+    .vk-cards-wrapper .vk-card-header { padding: 9px 11px; }
+    .vk-cards-wrapper .vk-card-header small { display: none; }
+    .vk-cards-wrapper .vk-card-header .fw-bold { font-size: 12px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .vk-cards-wrapper .vk-card-body { padding: 1px 11px; }
+    .vk-cards-wrapper .vk-card-row { padding: 5px 0; }
+    .vk-cards-wrapper .vk-card-actions { padding: 7px 11px; gap: 5px; }
+    .vk-cards-wrapper .vk-card-header .d-flex { gap: 8px !important; }
 }

@@ -101,8 +101,15 @@ $members = $pdo->query("
     <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
         <div class="card-header bg-white border-bottom py-3">
             <h6 class="mb-0 fw-bold"><i class="bi bi-list-ul me-2 text-primary"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Orodha ya Mikopo' : 'Loans List' ?></h6>
+            <div class="mt-3 d-md-none d-print-none">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" id="loanCardSearch" class="form-control border-start-0"
+                           placeholder="<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Tafuta mkopo...' : 'Search loans...' ?>">
+                </div>
+            </div>
         </div>
-        <div class="card-body p-0">
+        <div class="card-body p-0 d-none d-md-block d-print-block">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0" id="loansTable">
                     <thead class="bg-light text-uppercase small text-muted">
@@ -185,6 +192,127 @@ $members = $pdo->query("
                 </table>
             </div>
         </div>
+
+        <!-- ═══ CARD VIEW — Mobile Only ═══ -->
+        <div class="p-3 d-md-none d-print-none vk-cards-wrapper" id="loanCardsWrapper">
+            <?php $c_sno = 1; foreach ($loans as $loan):
+                $_lang_l     = $_SESSION['preferred_language'] ?? 'en';
+                $_sw_l       = ($_lang_l === 'sw');
+                $l_status    = strtolower($loan['status'] ?? 'pending');
+                $l_badge     = match($l_status) {
+                    'pending'   => 'bg-warning text-dark',
+                    'approved'  => 'bg-info text-white',
+                    'disbursed' => 'bg-primary text-white',
+                    'repaid'    => 'bg-success text-white',
+                    'defaulted' => 'bg-danger text-white',
+                    default     => 'bg-secondary text-white'
+                };
+                $l_label = match($l_status) {
+                    'pending'   => ($_sw_l ? 'Inasubiri'      : 'Pending'),
+                    'approved'  => ($_sw_l ? 'Imeidhinishwa'  : 'Approved'),
+                    'disbursed' => ($_sw_l ? 'Imetolewa'      : 'Disbursed'),
+                    'repaid'    => ($_sw_l ? 'Imelipwa'       : 'Repaid'),
+                    'defaulted' => ($_sw_l ? 'Deni'           : 'Defaulted'),
+                    default     => ucfirst($l_status)
+                };
+                $l_ref     = htmlspecialchars($loan['reference_number'] ?? 'LN-'.$loan['loan_id']);
+                $l_name    = $loan['member_name'] ?? 'Member';
+                $l_avatar  = strtoupper(substr($l_name, 0, 1));
+                $l_balance = $loan['balance'] ?? 0;
+                $l_search  = strtolower(implode(' ', [
+                    $l_ref, $l_name, $loan['member_phone'] ?? '', $l_status, $l_label
+                ]));
+            ?>
+            <div class="vk-member-card"
+                 data-name="<?= htmlspecialchars($l_search) ?>"
+                 data-status-text="<?= htmlspecialchars(strtolower($l_label)) ?>">
+
+                <!-- Header: avatar · name · ref · badge -->
+                <div class="vk-card-header">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="vk-card-avatar" style="background: linear-gradient(135deg, #198754, #146c43);">
+                            <?= $l_avatar ?>
+                        </div>
+                        <div class="flex-grow-1" style="min-width:0;">
+                            <div class="fw-bold text-dark lh-sm mb-1"><?= safe_output($l_name) ?></div>
+                            <small class="text-muted"><?= $l_ref ?> &middot; <?= safe_output($loan['member_phone'] ?? '—') ?></small>
+                        </div>
+                        <span class="badge rounded-pill <?= $l_badge ?> px-3"><?= $l_label ?></span>
+                    </div>
+                </div>
+
+                <!-- Body: label on left, value on right -->
+                <div class="vk-card-body">
+                    <div class="vk-card-row">
+                        <span class="vk-card-label"><?= $_sw_l ? 'Mkopo (TZS)' : 'Loan (TZS)' ?></span>
+                        <span class="vk-card-value fw-bold"><?= number_format($loan['amount'], 2) ?></span>
+                    </div>
+                    <div class="vk-card-row">
+                        <span class="vk-card-label"><?= $_sw_l ? 'Riba' : 'Interest' ?></span>
+                        <span class="vk-card-value"><?= $loan['interest_rate'] ?>%</span>
+                    </div>
+                    <div class="vk-card-row">
+                        <span class="vk-card-label"><?= $_sw_l ? 'Jumla Kulipa' : 'Total Repay' ?></span>
+                        <span class="vk-card-value fw-bold"><?= number_format($loan['total_repayment'], 2) ?></span>
+                    </div>
+                    <div class="vk-card-row">
+                        <span class="vk-card-label"><?= $_sw_l ? 'Zilizolipwa' : 'Paid' ?></span>
+                        <span class="vk-card-value fw-bold text-info"><?= number_format($loan['total_paid'] ?? 0, 2) ?></span>
+                    </div>
+                    <div class="vk-card-row">
+                        <span class="vk-card-label"><?= $_sw_l ? 'Baki' : 'Balance' ?></span>
+                        <span class="vk-card-value fw-bold <?= $l_balance > 0 ? 'text-danger' : 'text-success' ?>">
+                            <?= number_format($l_balance, 2) ?>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Actions: icon-only, status-dependent, consistent colors -->
+                <div class="vk-card-actions">
+                    <a href="<?= getUrl('loans/details') ?>?id=<?= $loan['loan_id'] ?>"
+                       class="btn btn-sm btn-outline-primary vk-btn-action"
+                       title="<?= $_sw_l ? 'Taarifa Kamili' : 'View Details' ?>">
+                        <i class="bi bi-eye-fill"></i>
+                    </a>
+                    <?php if ($l_status === 'pending'): ?>
+                    <button class="btn btn-sm btn-outline-warning vk-btn-action"
+                            onclick="rejectLoan(<?= $loan['loan_id'] ?>)"
+                            title="<?= $_sw_l ? 'Kataa' : 'Reject' ?>">
+                        <i class="bi bi-person-x-fill"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger vk-btn-action"
+                            onclick="deleteLoan(<?= $loan['loan_id'] ?>)"
+                            title="<?= $_sw_l ? 'Futa Mkopo' : 'Delete Loan' ?>">
+                        <i class="bi bi-trash-fill"></i>
+                    </button>
+                    <?php endif; ?>
+                    <?php if ($l_status === 'approved'): ?>
+                    <button class="btn btn-sm btn-outline-success vk-btn-action"
+                            onclick="disburseLoan(<?= $loan['loan_id'] ?>)"
+                            title="<?= $_sw_l ? 'Toa Fedha' : 'Disburse Funds' ?>">
+                        <i class="bi bi-cash-stack"></i>
+                    </button>
+                    <?php endif; ?>
+                    <?php if (in_array($l_status, ['approved', 'disbursed'])): ?>
+                    <button class="btn btn-sm btn-outline-info vk-btn-action"
+                            onclick="openPaymentModal(<?= $loan['loan_id'] ?>, '<?= htmlspecialchars($l_name, ENT_QUOTES) ?>', <?= $l_balance ?>)"
+                            title="<?= $_sw_l ? 'Ingiza Malipo' : 'Enter Payment' ?>">
+                        <i class="bi bi-cash-coin"></i>
+                    </button>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endforeach; ?>
+
+            <div id="loanCardsEmptyState" class="d-none text-center py-5">
+                <i class="bi bi-search fs-1 text-muted d-block mb-3"></i>
+                <p class="text-muted mb-0">
+                    <?= (($_SESSION['preferred_language'] ?? 'en') === 'sw') ? 'Hakuna mkopo unaolingana.' : 'No matching loans found.' ?>
+                </p>
+            </div>
+        </div>
+        <!-- ═══ END CARD VIEW ═══ -->
+
     </div>
 </div>
 
@@ -381,6 +509,21 @@ function disburseLoan(id) {
 function openPaymentModal(id, name, bal) {
     $('#payLoanId').val(id); $('#payMemberName').text(name); $('#payBalance').text('TZS ' + parseFloat(bal).toLocaleString());
     new bootstrap.Modal(document.getElementById('paymentModal')).show();
+}
+
+// Mobile card search
+$('#loanCardSearch').on('keyup', function() { filterLoanCards($(this).val()); });
+
+function filterLoanCards(searchVal) {
+    var search = (searchVal || '').toLowerCase().trim();
+    var visible = 0;
+    $('#loanCardsWrapper .vk-member-card').each(function() {
+        var name = ($(this).data('name') || '').toLowerCase();
+        var show = !search || name.indexOf(search) !== -1;
+        $(this).toggle(show);
+        if (show) visible++;
+    });
+    $('#loanCardsEmptyState').toggleClass('d-none', visible > 0);
 }
 </script>
 

@@ -31,6 +31,59 @@ Important context, decisions made, or follow-up items.
 
 ---
 
+## Session 8 — 2026-05-05
+**Branch:** `feat/responsive-print-ui-tier2`
+**Developer:** Claude Code (wamburamuhere@gmail.com)
+**Summary:** Tier 2 responsive print UI — mobile card view for expenses.php, transactions.php, vicoba_reports.php; fixed card border visibility and added 2-column grid layout across all card views.
+
+### Changes
+
+#### Card UI Fixes (applied retroactively to Tier 1 output)
+- `style.css` — darkened card border (`#e9ecef` → `#ced4da`, 1px → 1.5px), stronger shadow, visible row dividers, actions border; added `.vk-cards-wrapper` 2-column CSS Grid for screens ≥ 480 px with compact label/avatar overrides
+- `app/bms/customer/customers.php` — added `vk-cards-wrapper` class to `#memberCardsWrapper`
+- `app/bms/loans/loans_list.php` — added `vk-cards-wrapper` class to `#loanCardsWrapper`
+- `app/constant/accounts/petty_cash.php` — added `vk-cards-wrapper` class to `#pettyCashCardsWrapper`
+
+#### Tier 2 — expenses.php (Death Assistance)
+- Table wrapper gets `d-none d-md-block d-print-block` — hides table on mobile
+- New `#deathCardsWrapper` div (`d-md-none d-print-none vk-cards-wrapper`) holds mobile cards
+- `drawCallback: renderDeathCards(api)` added to `#deathExpensesTable` DataTable config
+- `renderDeathCards(api)` — builds red-gradient cards from server-side AJAX data (member_name, phone_number, deceased_name, deceased_relationship, amount, status); shows View/Approve(pending)/Delete buttons
+- `vkEscape(s)` helper added for XSS-safe innerHTML insertion
+
+#### Tier 2 — transactions.php (Journal Entries)
+- `<div class="table-responsive">` gets `d-none d-md-block d-print-block`
+- PHP loop `#transactionCardsWrapper` with 2-column grid; cards show Reference, Amount, Created By; status-dependent buttons: View, Edit+Post (draft), Reverse (posted), Delete
+- `filterTransactionCards(searchVal, statusVal)` JS function filters cards by `data-search` and `data-status` attributes
+- `applyFilters()` and `clearFilters()` updated to call `filterTransactionCards()`
+
+#### Tier 2 — vicoba_reports.php (Group Reports)
+- Savings table: `d-none d-md-block d-print-block`; `#savingsCardsWrapper` PHP loop shows Member Name, Total Savings with blue avatar
+- Expenses table: `d-none d-md-block d-print-block`; `#expensesCardsWrapper` PHP loop shows Type, Date, Note, Amount; red avatar for Funeral Aid, purple for General
+
+### Files Created
+- `tests/Unit/ResponsivePrintTier2Test.php` — 30 unit tests covering status badges, safe_output XSS, format_currency, number_format, date formatting, htmlspecialchars, mb_substr truncation, and card search filter logic
+
+### Files Modified
+- `style.css` — card border/shadow improvements + 2-column grid
+- `app/bms/customer/customers.php` — vk-cards-wrapper class
+- `app/bms/loans/loans_list.php` — vk-cards-wrapper class
+- `app/constant/accounts/petty_cash.php` — vk-cards-wrapper class
+- `app/constant/accounts/expenses.php` — card view + renderDeathCards
+- `app/constant/accounts/transactions.php` — card view + filterTransactionCards
+- `app/constant/reports/vicoba_reports.php` — savings + expenses card views
+
+### Database Changes
+- None
+
+### Notes
+- Tier 3 remaining: member_statement.php, expense_report.php, loan_details.php
+- All 100 unit tests pass (composer test-unit)
+- 2-column grid activates at ≥480 px; single column on very small phones (<480 px)
+- Print always shows table, cards always hidden in print (`d-print-none`)
+
+---
+
 ## Session 7 — 2026-05-05
 **Branch:** `fix/webhook-deploy`
 **Developer:** Claude Code (wamburamuhere@gmail.com)

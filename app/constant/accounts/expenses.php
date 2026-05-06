@@ -127,7 +127,7 @@ $subtitle = $is_sw ? 'Rekodi na dhibiti misaada kwa wanachama waliofiwa' : 'Reco
             </div>
             <h6 class="fw-bold mb-0 text-dark d-none d-md-block"><?= $is_sw ? 'Ripoti ya Misiba' : 'Death Report' ?></h6>
         </div>
-        <div class="card-body p-0">
+        <div class="card-body p-0 d-none d-md-block d-print-block">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0" id="deathExpensesTable" style="width: 100%;">
                     <thead class="bg-light text-muted small uppercase text-center">
@@ -150,6 +150,13 @@ $subtitle = $is_sw ? 'Rekodi na dhibiti misaada kwa wanachama waliofiwa' : 'Reco
                         </tr>
                     </tfoot>
                 </table>
+            </div>
+        </div>
+        <!-- ═══ CARD VIEW — Mobile Only (server-side; rendered by drawCallback) ═══ -->
+        <div class="p-3 d-md-none d-print-none vk-cards-wrapper" id="deathCardsWrapper">
+            <div id="deathCardsEmptyState" class="d-none text-center py-5">
+                <i class="bi bi-heart-pulse fs-1 text-muted d-block mb-3"></i>
+                <p class="text-muted mb-0"><?= $is_sw ? 'Hakuna rekodi zilizopatikana.' : 'No records found.' ?></p>
             </div>
         </div>
     </div>
@@ -405,6 +412,7 @@ $(document).ready(function() {
             lengthMenu: "_MENU_",
             zeroRecords: isSw ? "Hakuna data" : "No records found"
         },
+        drawCallback: function() { renderDeathCards(this.api()); },
         initComplete: function() { $('.dataTables_length').appendTo('#lenContainer'); }
     });
 
@@ -531,11 +539,79 @@ function deleteDeathExpense(id) {
         }
     });
 }
+function vkEscape(s) {
+    if (s === null || s === undefined) return '—';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderDeathCards(api) {
+    var $wrapper = $('#deathCardsWrapper');
+    var $empty   = $('#deathCardsEmptyState');
+    $wrapper.find('.vk-member-card').remove();
+    var rows = api.rows({ page: 'current' }).data();
+    if (rows.length === 0) { $empty.removeClass('d-none'); return; }
+    $empty.addClass('d-none');
+    var html = '';
+    rows.each(function(d) {
+        var status   = d.status || 'pending';
+        var id       = parseInt(d.id);
+        var memberId = parseInt(d.member_id);
+        var avatar   = vkEscape((d.member_name || 'M').charAt(0).toUpperCase());
+        var amount   = parseFloat(d.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 });
+        var badge    = status === 'approved' ? 'bg-success text-white' : 'bg-warning text-dark';
+        var badgeLbl = status === 'approved' ? (isSw ? 'Imeidhinishwa' : 'Approved') : (isSw ? 'Inasubiri' : 'Pending');
+        var approveBtn = status === 'pending' ? `
+            <button class="btn btn-sm btn-success vk-btn-action" onclick="approveDeathExpense(${id})" title="${isSw ? 'Idhinisha' : 'Approve'}">
+                <i class="bi bi-check-circle-fill"></i>
+            </button>` : '';
+        html += `<div class="vk-member-card">
+            <div class="vk-card-header d-flex justify-content-between align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="vk-card-avatar" style="background:linear-gradient(135deg,#dc3545,#b02a37);">${avatar}</div>
+                    <div class="flex-grow-1" style="min-width:0;">
+                        <div class="fw-bold text-dark lh-sm" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${vkEscape(d.member_name)}</div>
+                        <small class="text-muted">${vkEscape(d.expense_date)}</small>
+                    </div>
+                </div>
+                <span class="badge ${badge} rounded-pill px-2" style="font-size:10px;">${badgeLbl}</span>
+            </div>
+            <div class="vk-card-body">
+                <div class="vk-card-row">
+                    <span class="vk-card-label">${isSw ? 'Simu' : 'Phone'}</span>
+                    <span class="vk-card-value"><span class="badge bg-light text-dark border">${vkEscape(d.phone_number)}</span></span>
+                </div>
+                <div class="vk-card-row">
+                    <span class="vk-card-label">${isSw ? 'Aliyefariki' : 'Deceased'}</span>
+                    <span class="vk-card-value">${vkEscape(d.deceased_name)}</span>
+                </div>
+                <div class="vk-card-row">
+                    <span class="vk-card-label">${isSw ? 'Uhusiano' : 'Relation'}</span>
+                    <span class="vk-card-value">${vkEscape(d.deceased_relationship)}</span>
+                </div>
+                <div class="vk-card-row">
+                    <span class="vk-card-label">${isSw ? 'Kiasi' : 'Amount'}</span>
+                    <span class="vk-card-value fw-bold text-danger">${amount}</span>
+                </div>
+            </div>
+            <div class="vk-card-actions">
+                <button class="btn btn-sm btn-primary vk-btn-action" onclick="viewDeathDetails(${id},${memberId})" title="${isSw ? 'Tazama' : 'View'}">
+                    <i class="bi bi-eye-fill"></i>
+                </button>
+                ${approveBtn}
+                <button class="btn btn-sm btn-danger vk-btn-action" onclick="deleteDeathExpense(${id})" title="${isSw ? 'Futa' : 'Delete'}">
+                    <i class="bi bi-trash3-fill"></i>
+                </button>
+            </div>
+        </div>`;
+    });
+    $wrapper.prepend(html);
+}
+
 function logAndExport() {
     const table = $('#deathExpensesTable').DataTable();
     const data = table.rows().data().toArray();
     let csv = [];
-    
+
     // Headers
     const headers = [
         isSw ? 'Nambari' : 'S/No',
