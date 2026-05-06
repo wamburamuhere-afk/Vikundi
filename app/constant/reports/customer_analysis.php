@@ -100,16 +100,38 @@ $latest_members = $pdo->query("
         </div>
     </div>
 
-    <!-- Print-Only Header -->
-    <div class="d-none d-print-block mb-4">
-        <div class="text-center py-4 border-bottom border-primary border-4 mb-4">
-            <h2 class="fw-bold mb-1"><?= $is_sw ? 'RIPOTI YA UCHAMBUZI WA WANACHAMA' : 'MEMBER ANALYSIS REPORT' ?></h2>
-            <div class="text-muted small"><?= $is_sw ? 'Imetengenezwa Tarehe:' : 'Generated Date:' ?> <?= date('d/m/Y H:i') ?></div>
+    <!-- Print Header (Visible ONLY on Print) -->
+    <div class="d-none d-print-block">
+        <div class="text-center mb-4">
+            <img src="/assets/images/<?= htmlspecialchars($group_logo ?? 'logo1.png') ?>" alt="Logo" style="height: 80px; width: auto; margin-bottom: 10px; object-fit: contain;">
+            <h2 class="fw-bold mb-1 text-uppercase" style="color: #0d6efd !important;"><?= htmlspecialchars($group_name ?? 'KIKUNDI') ?></h2>
+            <h4 class="fw-bold text-dark text-uppercase border-top border-bottom py-2 mt-2">
+                <?= $is_sw ? 'RIPOTI YA UCHAMBUZI WA WANACHAMA' : 'MEMBER ANALYSIS REPORT' ?>
+            </h4>
+            <div class="small text-muted mt-1"><?= $is_sw ? 'Tarehe ya Printi:' : 'Print Date:' ?> <?= date('d M, Y H:i') ?></div>
         </div>
     </div>
 
-    <!-- Stats Row -->
-    <div class="row g-4 mb-4">
+    <!-- Print-only summary table (replaces stat cards) -->
+    <div class="d-none d-print-block mb-3">
+        <table class="table table-bordered table-sm mb-0" style="font-size: 11px;">
+            <thead class="table-light"><tr>
+                <th><?= $is_sw ? 'Wanachama Wote' : 'Total Members' ?></th>
+                <th><?= $is_sw ? 'Walio Active' : 'Active Members' ?></th>
+                <th><?= $is_sw ? 'Wapya (Siku 30)' : 'New (Last 30 Days)' ?></th>
+                <th><?= $is_sw ? 'Waliofariki' : 'Deceased' ?></th>
+            </tr></thead>
+            <tbody><tr>
+                <td class="fw-bold text-primary"><?= number_format($total_members) ?></td>
+                <td class="fw-bold text-success"><?= number_format($active_members) ?></td>
+                <td class="fw-bold text-info">+ <?= number_format($new_last_30) ?></td>
+                <td class="fw-bold text-danger"><?= number_format($deceased_count) ?></td>
+            </tr></tbody>
+        </table>
+    </div>
+
+    <!-- Stats Row (screen only) -->
+    <div class="row g-4 mb-4 d-print-none">
         <div class="col-6 col-md-3">
             <div class="card border-0 shadow-sm h-100 rounded-4 overflow-hidden border-start border-4 border-primary">
                 <div class="card-body p-4 bg-white">
@@ -226,7 +248,8 @@ $latest_members = $pdo->query("
 
 <style>
     @media print {
-        body { background: white !important; font-size: 11px; }
+        @page { margin: 1cm; }
+        body { background: white !important; font-size: 11px; padding-bottom: 55px; }
         .card { border: 1px solid #ddd !important; box-shadow: none !important; margin-bottom: 20px !important; page-break-inside: avoid; }
         .nav-pills, .btn, .d-print-none { display: none !important; }
         .col-6 { width: 50% !important; flex: 0 0 50% !important; }
@@ -287,6 +310,8 @@ $(document).ready(function() {
     }
 });
 </script>
+
+<?php include PRINT_FOOTER_FILE; ?>
 
 <?php
 $content = ob_get_clean();
