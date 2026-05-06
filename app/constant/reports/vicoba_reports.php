@@ -179,7 +179,7 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
                     <span class="badge bg-primary rounded-pill px-3"><?= $active_members ?> <?= $is_sw ? 'Wanachama' : 'Members' ?></span>
                 </div>
                 <div class="card-body p-0">
-                    <div class="table-responsive">
+                    <div class="table-responsive d-none d-md-block d-print-block">
                         <table class="table table-hover align-middle mb-0" id="savingsReportTable">
                             <thead class="bg-light text-uppercase small text-muted">
                                 <tr>
@@ -208,6 +208,28 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
                             </tfoot>
                         </table>
                     </div>
+                    <!-- ═══ CARD VIEW — Mobile Only ═══ -->
+                    <div class="p-3 d-md-none d-print-none vk-cards-wrapper" id="savingsCardsWrapper">
+                        <?php foreach ($savings_data as $row):
+                            $sv_avatar = strtoupper(substr($row['member_name'] ?? 'M', 0, 1));
+                        ?>
+                        <div class="vk-member-card">
+                            <div class="vk-card-header d-flex align-items-center gap-2">
+                                <div class="vk-card-avatar" style="background:linear-gradient(135deg,#0d6efd,#0a58ca);"><?= $sv_avatar ?></div>
+                                <div class="flex-grow-1" style="min-width:0;">
+                                    <div class="fw-bold text-dark lh-sm" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><?= htmlspecialchars($row['member_name']) ?></div>
+                                    <small class="text-muted"><?= htmlspecialchars($row['phone'] ?? '—') ?></small>
+                                </div>
+                            </div>
+                            <div class="vk-card-body">
+                                <div class="vk-card-row">
+                                    <span class="vk-card-label"><?= $is_sw ? 'Jumla Akiba' : 'Total Savings' ?></span>
+                                    <span class="vk-card-value fw-bold text-primary">TZS <?= number_format($row['total_savings']) ?></span>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
             </div>
         </div>
@@ -219,7 +241,7 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
                     <h6 class="mb-0 fw-bold text-danger"><?= $is_sw ? 'Historia ya Matumizi Endelevu' : 'Cumulative Expenses History' ?></h6>
                 </div>
                 <div class="card-body p-0">
-                    <div class="table-responsive">
+                    <div class="table-responsive d-none d-md-block d-print-block">
                         <table class="table table-hover align-middle mb-0" id="expensesReportDetailTable">
                             <thead class="bg-light text-uppercase small text-muted">
                                 <tr>
@@ -231,10 +253,9 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($expenses_data as $idx => $exp): 
+                                <?php foreach ($expenses_data as $idx => $exp):
                                     $exp_type = $exp['type'] === 'death' ? ($is_sw ? 'Msaada wa Msiba' : 'Funeral Aid') : ($is_sw ? 'Matumizi Kawaida' : 'General');
-                                    // Use blue (primary) for both to follow user's blue-only rule
-                                    $exp_class = 'bg-primary'; 
+                                    $exp_class = 'bg-primary';
                                 ?>
                                 <tr>
                                     <td class="ps-4 small text-muted"><?= $idx+1 ?></td>
@@ -255,6 +276,41 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
                                 </tr>
                             </tfoot>
                         </table>
+                    </div>
+                    <!-- ═══ CARD VIEW — Mobile Only ═══ -->
+                    <div class="p-3 d-md-none d-print-none vk-cards-wrapper" id="expensesCardsWrapper">
+                        <?php if (empty($expenses_data)): ?>
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-cash-stack fs-1 d-block mb-3"></i>
+                            <p><?= $is_sw ? 'Hakuna matumizi bado' : 'No expenses recorded' ?></p>
+                        </div>
+                        <?php else: foreach ($expenses_data as $exp):
+                            $exp_type_lbl  = $exp['type'] === 'death' ? ($is_sw ? 'Msaada wa Msiba' : 'Funeral Aid') : ($is_sw ? 'Matumizi Kawaida' : 'General');
+                            $exp_avatar    = $exp['type'] === 'death' ? 'F' : 'G';
+                            $exp_av_color  = $exp['type'] === 'death'
+                                ? 'linear-gradient(135deg,#dc3545,#b02a37)'
+                                : 'linear-gradient(135deg,#6f42c1,#5a32a3)';
+                        ?>
+                        <div class="vk-member-card">
+                            <div class="vk-card-header d-flex justify-content-between align-items-center gap-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="vk-card-avatar" style="background:<?= $exp_av_color ?>;"><?= $exp_avatar ?></div>
+                                    <div class="fw-bold text-dark" style="font-size:13px;"><?= $exp_type_lbl ?></div>
+                                </div>
+                                <small class="text-muted"><?= date('d/m/Y', strtotime($exp['date'])) ?></small>
+                            </div>
+                            <div class="vk-card-body">
+                                <div class="vk-card-row">
+                                    <span class="vk-card-label"><?= $is_sw ? 'Maelezo' : 'Note' ?></span>
+                                    <span class="vk-card-value"><?= htmlspecialchars($exp['description'] ?? '—') ?></span>
+                                </div>
+                                <div class="vk-card-row">
+                                    <span class="vk-card-label"><?= $is_sw ? 'Kiasi' : 'Amount' ?></span>
+                                    <span class="vk-card-value fw-bold text-danger">TZS <?= number_format($exp['amount']) ?></span>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; endif; ?>
                     </div>
                 </div>
             </div>

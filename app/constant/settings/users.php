@@ -50,8 +50,8 @@ $lang = $_SESSION['preferred_language'] ?? 'en';
             </a>
         </div>
         
-        <div class="card-body">
-            <div class="table-responsive">
+        <div class="card-body p-0">
+            <div class="table-responsive d-none d-md-block d-print-block">
                 <table id="usersTable" class="table table-striped table-hover" style="width:100%">
                     <thead>
                         <tr>
@@ -71,6 +71,8 @@ $lang = $_SESSION['preferred_language'] ?? 'en';
                     </tbody>
                 </table>
             </div>
+            <!-- ═══ CARD VIEW — Mobile Only ═══ -->
+            <div class="p-3 d-md-none d-print-none" id="usersCardsWrapper"></div>
         </div>
     </div>
 </div>
@@ -321,8 +323,77 @@ $(document).ready(function() {
             { width: "8%", targets: 6 },  // Status
             { width: "15%", targets: 7 }, // Last Login
             { width: "12%", targets: 8 }  // Actions
-        ]
+        ],
+        drawCallback: function() {
+            renderUsersCards(this.api());
+        }
     });
+
+    function vkEscU(s) {
+        if (s == null) return '';
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function renderUsersCards(api) {
+        var isSw = <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'true' : 'false' ?>;
+        var currentUserId = parseInt(<?= $_SESSION['user_id'] ?? 0 ?>);
+        var jsRoleMap = {
+            'admin': {en:'Admin',sw:'Msimamizi Mkuu'}, 'mwenyekiti': {en:'Chairman',sw:'Mwenyekiti'},
+            'katibu': {en:'Secretary',sw:'Katibu'}, 'secretary': {en:'Secretary',sw:'Katibu'},
+            'mhazini': {en:'Treasurer',sw:'Mhazini'}, 'treasurer': {en:'Treasurer',sw:'Mhazini'},
+            'mjumbe': {en:'Board Member',sw:'Mjumbe'}, 'member': {en:'Member',sw:'Mwanachama'},
+            'mwanachama': {en:'Member',sw:'Mwanachama'}, 'loan officer': {en:'Loan Officer',sw:'Afisa Mkopo'}
+        };
+        var roleColors = {'admin':'danger','mwenyekiti':'success','chairman':'success','katibu':'info','secretary':'info','mhazini':'warning','treasurer':'warning'};
+
+        var html = '';
+        api.rows({page:'current'}).data().each(function(row) {
+            if (!row) return;
+            var name = vkEscU(row.full_name || row.username || '');
+            var initials = name.trim() ? name.trim().split(/\s+/).map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase() : 'U';
+            var roleName = row.role_name || '';
+            var roleLow  = roleName.toLowerCase();
+            var roleDisp = roleName;
+            for (var key in jsRoleMap) {
+                if (roleLow.includes(key)) { roleDisp = isSw ? jsRoleMap[key].sw : jsRoleMap[key].en; break; }
+            }
+            var roleClass = 'primary';
+            for (var key in roleColors) { if (roleLow.includes(key)) { roleClass = roleColors[key]; break; } }
+            var isActive = row.is_active == 1;
+            var isCurrentUser = (parseInt(row.user_id) === currentUserId);
+            var lastLogin = row.last_login && row.last_login !== 'Never'
+                ? (function(d){ var dt=new Date(d.replace(' ','T')); return isNaN(dt)?d:dt.toLocaleDateString(isSw?'sw-TZ':'en-GB',{day:'2-digit',month:'short',year:'numeric'}); })(row.last_login)
+                : (isSw?'Hajawahi':'Never');
+
+            var actions = '<button class="btn vk-btn-action btn-primary assign-role" data-id="'+vkEscU(row.user_id)+'" data-role="'+vkEscU(row.role_id)+'" title="'+(isSw?'Gawa Nafasi':'Assign Role')+'"><i class="bi bi-person-gear"></i></button>';
+            if (!isCurrentUser) {
+                if (isActive) {
+                    actions += '<button class="btn vk-btn-action btn-secondary toggle-user" data-id="'+vkEscU(row.user_id)+'" data-custid="'+vkEscU(row.customer_id)+'" data-fullname="'+vkEscU(row.full_name)+'" data-action="inactive" title="'+(isSw?'Zima':'Deactivate')+'"><i class="bi bi-person-x"></i></button>';
+                } else {
+                    actions += '<button class="btn vk-btn-action btn-success toggle-user" data-id="'+vkEscU(row.user_id)+'" data-custid="'+vkEscU(row.customer_id)+'" data-fullname="'+vkEscU(row.full_name)+'" data-action="active" title="'+(isSw?'Washa':'Activate')+'"><i class="bi bi-person-check"></i></button>';
+                }
+                actions += '<button class="btn vk-btn-action btn-danger delete-user" data-id="'+vkEscU(row.user_id)+'" data-custid="'+vkEscU(row.customer_id)+'" data-fullname="'+vkEscU(row.full_name)+'" title="'+(isSw?'Futa':'Delete')+'"><i class="bi bi-trash-fill"></i></button>';
+            }
+
+            html += '<div class="vk-member-card">'
+                + '<div class="vk-card-header d-flex justify-content-between align-items-center gap-2">'
+                + '<div class="d-flex align-items-center gap-2">'
+                + '<div class="vk-card-avatar" style="background:linear-gradient(135deg,#0d6efd,#0a58ca);">'+initials+'</div>'
+                + '<div><div class="fw-bold text-dark" style="font-size:13px;">'+name+'</div>'
+                + '<small class="text-muted">'+vkEscU(row.username)+'</small></div></div>'
+                + '<span class="badge bg-'+roleClass+' rounded-pill px-2" style="font-size:10px;">'+vkEscU(roleDisp)+'</span>'
+                + '</div>'
+                + '<div class="vk-card-body">'
+                + '<div class="vk-card-row"><span class="vk-card-label">'+(isSw?'Barua Pepe':'Email')+'</span><span class="vk-card-value small text-muted">'+vkEscU(row.email)+'</span></div>'
+                + '<div class="vk-card-row"><span class="vk-card-label">'+(isSw?'Hali':'Status')+'</span><span class="vk-card-value"><span class="badge bg-'+(isActive?'success':'secondary')+'">'+(isActive?'Active':'Inactive')+'</span></span></div>'
+                + '<div class="vk-card-row"><span class="vk-card-label">'+(isSw?'Mwisho':'Last Login')+'</span><span class="vk-card-value small">'+vkEscU(lastLogin)+'</span></div>'
+                + '</div>'
+                + '<div class="vk-card-actions">'+actions+'</div>'
+                + '</div>';
+        });
+
+        $('#usersCardsWrapper').html(html || '<div class="text-center py-5 text-muted"><p>'+(isSw?'Hakuna watumiaji':'No users found')+'</p></div>');
+    }
 
     // Role Assignment Modal
     var roleModal = new bootstrap.Modal(document.getElementById('roleModal'));

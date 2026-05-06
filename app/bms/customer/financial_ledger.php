@@ -169,10 +169,11 @@ function fmt($n) { return number_format($n, 0); }
                         </tr>
                     </thead>
                     <tbody class="bg-white">
-                        <?php 
+                        <?php
                         $grand_total_contributed = 0;
                         $grand_total_target = 0;
-                        foreach ($members as $idx => $m): 
+                        $ledger_rows = [];
+                        foreach ($members as $idx => $m):
                             $mid = $m['customer_id'];
                             $m_contribs = $contributions[$mid] ?? [];
                             
@@ -236,6 +237,7 @@ function fmt($n) { return number_format($n, 0); }
                             $surplus_deficit = ($total_raw_pool - $entrance_fee_rate) - $target_amt;
                             
                             $status_class = $surplus_deficit >= 0 ? 'text-success' : 'text-danger';
+                            $ledger_rows[] = compact('m', 'idx', 'entrance_paid', 'monthly_total', 'total_member_contributed', 'total_assistance', 'agm_paid', 'balance', 'target_amt', 'surplus_deficit', 'status_class');
                         ?>
                         <tr>
                             <td class="text-center text-muted small"><?= $idx + 1 ?></td>
@@ -266,6 +268,61 @@ function fmt($n) { return number_format($n, 0); }
                     </tbody>
                 </table>
             </div>
+            <!-- ═══ CARD VIEW — Mobile Only ═══ -->
+            <div class="p-3 d-md-none d-print-none vk-cards-wrapper" id="ledgerCardsWrapper">
+                <?php if (empty($ledger_rows)): ?>
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-file-earmark-spreadsheet fs-1 d-block mb-3"></i>
+                    <p><?= $is_sw ? 'Hakuna wanachama.' : 'No members found.' ?></p>
+                </div>
+                <?php else: foreach ($ledger_rows as $row):
+                    $lm        = $row['m'];
+                    $l_surplus = $row['surplus_deficit'];
+                    $l_pos     = $l_surplus >= 0;
+                    $l_initials = strtoupper(substr($lm['first_name'] ?? 'U', 0, 1) . substr($lm['last_name'] ?? 'N', 0, 1));
+                    $l_av_color = $l_pos
+                        ? 'linear-gradient(135deg,#198754,#146c43)'
+                        : 'linear-gradient(135deg,#dc3545,#b02a37)';
+                    $l_search  = strtolower(($lm['first_name'] ?? '') . ' ' . ($lm['last_name'] ?? '') . ' ' . ($lm['mpesa_name'] ?? ''));
+                ?>
+                <div class="vk-member-card" data-search="<?= htmlspecialchars($l_search) ?>">
+                    <div class="vk-card-header d-flex justify-content-between align-items-center gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="vk-card-avatar" style="background:<?= $l_av_color ?>;"><?= $l_initials ?></div>
+                            <div>
+                                <div class="fw-bold text-dark" style="font-size:13px;"><?= htmlspecialchars($lm['first_name'] . ' ' . $lm['last_name']) ?></div>
+                                <?php if ($lm['mpesa_name']): ?>
+                                <small class="text-muted"><?= htmlspecialchars($lm['mpesa_name']) ?></small>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <span class="badge <?= $l_pos ? 'bg-success' : 'bg-danger' ?> rounded-pill px-2" style="font-size:10px;">
+                            <?= ($l_pos ? '+' : '') . fmt($l_surplus) ?>
+                        </span>
+                    </div>
+                    <div class="vk-card-body">
+                        <div class="vk-card-row">
+                            <span class="vk-card-label"><?= $is_sw ? 'Jumla' : 'Total' ?></span>
+                            <span class="vk-card-value fw-bold"><?= fmt($row['total_member_contributed']) ?></span>
+                        </div>
+                        <div class="vk-card-row">
+                            <span class="vk-card-label"><?= $is_sw ? 'Baki' : 'Balance' ?></span>
+                            <span class="vk-card-value fw-bold text-primary"><?= fmt($row['balance']) ?></span>
+                        </div>
+                        <div class="vk-card-row">
+                            <span class="vk-card-label"><?= $is_sw ? 'Target' : 'Target' ?></span>
+                            <span class="vk-card-value"><?= fmt($row['target_amt']) ?></span>
+                        </div>
+                        <?php if ($row['total_assistance'] > 0): ?>
+                        <div class="vk-card-row">
+                            <span class="vk-card-label"><?= $is_sw ? 'Misaada' : 'Aid' ?></span>
+                            <span class="vk-card-value text-danger">-<?= fmt($row['total_assistance']) ?></span>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endforeach; endif; ?>
+            </div>
         </div>
     </div>
 
@@ -289,6 +346,13 @@ $(document).ready(function() {
                 }
             },
             "dom": '<"d-none"Bl><"d-flex flex-wrap justify-content-between align-items-center px-3 pt-3 d-print-none"f>rt<"d-flex flex-wrap justify-content-between align-items-center p-3 d-print-none"ip>',
+            "drawCallback": function() {
+                var term = (this.api().search() || '').toLowerCase().trim();
+                $('#ledgerCardsWrapper .vk-member-card').each(function() {
+                    var text = ($(this).data('search') || '').toLowerCase();
+                    $(this).toggle(!term || text.includes(term));
+                });
+            },
             "buttons": [
                 {
                     extend: 'excelHtml5',

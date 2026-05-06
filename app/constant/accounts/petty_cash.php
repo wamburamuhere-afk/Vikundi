@@ -200,7 +200,7 @@ $total_all = $stmt_total_all->fetchColumn() ?? 0;
 
     <!-- Table Card -->
     <div class="card border-0 shadow-sm" style="border-radius: 15px;">
-        <div class="card-body p-2 p-md-4">
+        <div class="card-body p-2 p-md-4 d-none d-md-block d-print-block">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0 w-100" id="pettyCashTable">
                     <thead class="bg-light text-muted small text-uppercase">
@@ -224,6 +224,15 @@ $total_all = $stmt_total_all->fetchColumn() ?? 0;
                 </table>
             </div>
         </div>
+
+        <!-- ═══ CARD VIEW — Mobile Only (server-side; rendered by drawCallback) ═══ -->
+        <div class="p-3 d-md-none d-print-none vk-cards-wrapper" id="pettyCashCardsWrapper">
+            <div id="pettyCashCardsEmptyState" class="d-none text-center py-5">
+                <i class="bi bi-search fs-1 text-muted d-block mb-3"></i>
+                <p class="text-muted mb-0"><?= $isSwahili ? 'Hakuna vocha zilizopatikana.' : 'No vouchers found.' ?></p>
+            </div>
+        </div>
+        <!-- ═══ END CARD VIEW ═══ -->
     </div>
 
     <!-- 4. PRINT FOOTER (Persistent on every page during print) -->
@@ -444,6 +453,7 @@ $(document).ready(function() {
         },
         order: [[2, 'desc']],
         pageLength: 25,
+        drawCallback: function() { renderPettyCashCards(this.api()); },
         initComplete: function() {
             $('.dataTables_filter').appendTo('#custom-search');
             $('.dt-buttons').appendTo('#action-tools');
@@ -681,6 +691,86 @@ function viewVoucher(id) {
             Swal.fire('Error', r.message, 'error');
         }
     });
+}
+
+// ── Mobile card rendering — called by DataTable drawCallback after every AJAX draw ──
+function renderPettyCashCards(api) {
+    var $wrapper = $('#pettyCashCardsWrapper');
+    var $empty   = $('#pettyCashCardsEmptyState');
+    $wrapper.find('.vk-member-card').remove();
+
+    var rows = api.rows({ page: 'current' }).data();
+    if (rows.length === 0) { $empty.removeClass('d-none'); return; }
+    $empty.addClass('d-none');
+
+    var badgeMap = { pending: 'bg-warning text-dark', approved: 'bg-success text-white', rejected: 'bg-danger text-white' };
+    var labelEn  = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
+    var labelSw  = { pending: 'Inasubiri', approved: 'Imeidhinishwa', rejected: 'Imekataliwa' };
+
+    var html = '';
+    rows.each(function(d) {
+        var status = d.raw_status || 'pending';
+        var badge  = badgeMap[status] || 'bg-secondary text-white';
+        var label  = (isSwahili ? labelSw : labelEn)[status] || status;
+        var id     = parseInt(d.raw_id);
+        var avatar = vkEscape((d.raw_payee || 'P').charAt(0).toUpperCase());
+        var amount = parseFloat(d.raw_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 });
+
+        var pendingActions = status === 'pending' ? `
+            <button class="btn btn-sm btn-outline-warning vk-btn-action" onclick="editVoucher(${id})" title="${isSwahili ? 'Hariri' : 'Edit'}">
+                <i class="bi bi-pencil-fill"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-success vk-btn-action" onclick="approveVoucher(${id})" title="${isSwahili ? 'Idhinisha' : 'Approve'}">
+                <i class="bi bi-check-circle-fill"></i>
+            </button>` : '';
+
+        html += `
+        <div class="vk-member-card">
+            <div class="vk-card-header">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="vk-card-avatar" style="background:linear-gradient(135deg,#6f42c1,#5a32a3);">${avatar}</div>
+                    <div class="flex-grow-1" style="min-width:0;">
+                        <div class="fw-bold text-dark lh-sm mb-1">${vkEscape(d.raw_payee)}</div>
+                        <small class="text-muted">${vkEscape(d.raw_voucher_no)} &middot; ${vkEscape(d.raw_category)}</small>
+                    </div>
+                    <span class="badge rounded-pill ${badge} px-3">${label}</span>
+                </div>
+            </div>
+            <div class="vk-card-body">
+                <div class="vk-card-row">
+                    <span class="vk-card-label">${isSwahili ? 'Tarehe' : 'Date'}</span>
+                    <span class="vk-card-value">${vkEscape(d.date)}</span>
+                </div>
+                <div class="vk-card-row">
+                    <span class="vk-card-label">${isSwahili ? 'Maelezo' : 'Description'}</span>
+                    <span class="vk-card-value">${vkEscape(d.raw_description)}</span>
+                </div>
+                <div class="vk-card-row">
+                    <span class="vk-card-label">${isSwahili ? 'Kiasi' : 'Amount'}</span>
+                    <span class="vk-card-value fw-bold text-success">TSh ${amount}</span>
+                </div>
+            </div>
+            <div class="vk-card-actions">
+                <button class="btn btn-sm btn-outline-primary vk-btn-action" onclick="viewVoucher(${id})" title="${isSwahili ? 'Tazama' : 'View'}">
+                    <i class="bi bi-eye-fill"></i>
+                </button>
+                ${pendingActions}
+                <button class="btn btn-sm btn-outline-secondary vk-btn-action" onclick="printVoucher(${id})" title="${isSwahili ? 'Chapa' : 'Print'}">
+                    <i class="bi bi-printer-fill"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger vk-btn-action" onclick="deleteVoucher(${id})" title="${isSwahili ? 'Futa' : 'Delete'}">
+                    <i class="bi bi-trash3-fill"></i>
+                </button>
+            </div>
+        </div>`;
+    });
+
+    $wrapper.prepend(html);
+}
+
+function vkEscape(s) {
+    if (s === null || s === undefined) return '—';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 </script>
 

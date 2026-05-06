@@ -193,7 +193,7 @@ foreach ($members as $m) {
         </div>
     </div>
     <div class="card-body p-0">
-        <div class="table-responsive p-3">
+        <div class="table-responsive p-3 d-none d-md-block d-print-block">
             <table class="table hover align-middle mb-0 w-100" id="pendingTable">
                 <thead class="small bg-light">
                     <tr>
@@ -243,6 +243,54 @@ foreach ($members as $m) {
                 </tbody>
             </table>
         </div>
+        <!-- ═══ CARD VIEW — Mobile Only ═══ -->
+        <div class="p-3 d-md-none d-print-none vk-cards-wrapper" id="pendingCardsWrapper">
+            <?php foreach ($pending_list as $p):
+                $pc_name   = $p['customer_name'] ?: ($p['first_name'] . ' ' . $p['last_name']);
+                $pc_letter = strtoupper(substr($pc_name, 0, 1));
+                $pc_isSw   = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
+            ?>
+            <div class="vk-member-card">
+                <div class="vk-card-header d-flex justify-content-between align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="vk-card-avatar" style="background:linear-gradient(135deg,#0d6efd,#0a58ca);"><?= $pc_letter ?></div>
+                        <div>
+                            <div class="fw-bold text-dark" style="font-size:13px;"><?= htmlspecialchars($pc_name) ?></div>
+                            <small class="text-muted"><?= htmlspecialchars($p['phone'] ?? '') ?></small>
+                        </div>
+                    </div>
+                    <span class="badge bg-light text-primary border border-primary-subtle rounded-pill px-2" style="font-size:10px;"><?= strtoupper($p['contribution_type']) ?></span>
+                </div>
+                <div class="vk-card-body">
+                    <div class="vk-card-row">
+                        <span class="vk-card-label"><?= $pc_isSw ? 'Tarehe' : 'Date' ?></span>
+                        <span class="vk-card-value"><?= date('d/m/Y H:i', strtotime($p['created_at'])) ?></span>
+                    </div>
+                    <div class="vk-card-row">
+                        <span class="vk-card-label"><?= $pc_isSw ? 'Kiasi' : 'Amount' ?></span>
+                        <span class="vk-card-value fw-bold text-primary"><?= number_format($p['amount'], 0) ?></span>
+                    </div>
+                </div>
+                <div class="vk-card-actions">
+                    <?php if ($is_leader): ?>
+                    <button onclick="approveContribution(<?= $p['contribution_id'] ?>)" class="btn vk-btn-action btn-success" title="Approve">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </button>
+                    <?php endif; ?>
+                    <?php if (!empty($p['evidence_path'])): ?>
+                    <a href="<?= getUrl($p['evidence_path']) ?>" target="_blank" class="btn vk-btn-action btn-primary" title="Receipt">
+                        <i class="bi bi-receipt"></i>
+                    </a>
+                    <?php endif; ?>
+                    <?php if ($is_leader): ?>
+                    <button onclick="rejectContribution(<?= $p['contribution_id'] ?>)" class="btn vk-btn-action btn-danger" title="Reject">
+                        <i class="bi bi-x-circle"></i>
+                    </button>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
     </div>
 </div>
 <?php endif; ?>
@@ -267,7 +315,7 @@ foreach ($members as $m) {
             </div>
         </div>
 
-        <div class="table-responsive">
+        <div class="table-responsive d-none d-md-block d-print-block">
             <table class="table table-bordered align-middle text-center mb-0" id="ledgerTable" style="width: 100% !important;">
                 <thead class="small bg-light fw-bold text-uppercase">
                     <tr>
@@ -289,6 +337,8 @@ foreach ($members as $m) {
                 </tbody>
             </table>
         </div>
+        <!-- ═══ CARD VIEW — Mobile Only ═══ -->
+        <div class="p-3 d-md-none d-print-none vk-cards-wrapper" id="ledgerCardsWrapper"></div>
     </div>
 </div>
 
@@ -583,8 +633,42 @@ $(document).ready(function() {
         "pageLength": 25,
         "language": {
             "url": 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/' + (isSw ? 'sw.json' : 'en-GB.json')
+        },
+        "drawCallback": function() {
+            renderLedgerCards(this.api());
         }
     });
+
+    function vkEscL(s) {
+        if (s == null) return '';
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function renderLedgerCards(api) {
+        var isSw = '<?= ($_SESSION['preferred_language'] ?? 'en') ?>' === 'sw';
+        var html = '';
+        api.rows({page:'current'}).data().each(function(row) {
+            if (!row) return;
+            var initial = row.name ? row.name.trim()[0].toUpperCase() : '?';
+            html += '<div class="vk-member-card">'
+                + '<div class="vk-card-header d-flex justify-content-between align-items-center gap-2">'
+                + '<div class="d-flex align-items-center gap-2">'
+                + '<div class="vk-card-avatar" style="background:linear-gradient(135deg,#0d6efd,#0a58ca);">'+initial+'</div>'
+                + '<div><div class="fw-bold text-dark" style="font-size:13px;">'+vkEscL(row.name)+'</div>'
+                + '<small class="text-muted">'+vkEscL(row.phone)+'</small></div></div>'
+                + '<span class="badge bg-primary rounded-pill px-2" style="font-size:10px;">'+vkEscL(row.grand_total ? row.grand_total.toLocaleString() : 0)+'</span>'
+                + '</div>'
+                + '<div class="vk-card-body">'
+                + '<div class="vk-card-row"><span class="vk-card-label">'+(isSw?'Jumla ya Robo':'Block Total')+'</span><span class="vk-card-value fw-bold">'+vkEscL(row.block_total ? row.block_total.toLocaleString() : '—')+'</span></div>'
+                + '<div class="vk-card-row"><span class="vk-card-label">'+(isSw?'Jumla Kuu':'Grand Total')+'</span><span class="vk-card-value fw-bold text-primary">'+vkEscL(row.grand_total ? row.grand_total.toLocaleString() : '—')+'</span></div>'
+                + '</div>'
+                + '<div class="vk-card-actions">'
+                + '<a href="<?= getUrl('member_statement') ?>?id='+vkEscL(row.customer_id)+'" class="btn vk-btn-action btn-primary" title="'+(isSw?'Taarifa':'Statement')+'"><i class="bi bi-file-earmark-person"></i></a>'
+                + '</div>'
+                + '</div>';
+        });
+        $('#ledgerCardsWrapper').html(html || '<div class="text-center py-5 text-muted"><p>'+(isSw?'Hakuna data':'No data')+'</p></div>');
+    }
 
     // Custom Length Menu for Ledger
     let ledgerLength = $(`

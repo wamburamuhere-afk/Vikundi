@@ -31,6 +31,137 @@ Important context, decisions made, or follow-up items.
 
 ---
 
+## Session 10 — 2026-05-05
+**Branch:** `feat/responsive-print-ui-tier4`
+**Developer:** mbosso khani / Claude Code
+**Summary:** Tier 4 responsive print UI — card views for 7 remaining pages (dormant members, budget, death analysis, financial ledger, user roles, users, manage contributions)
+
+### Changes
+- Added `.vk-member-card` card views (mobile-only, `d-md-none d-print-none`) to all 7 pages
+- Added `d-none d-md-block d-print-block` to all affected `table-responsive` divs so tables stay visible on desktop and print
+- Used `vk-cards-wrapper` class (2-column CSS grid at 480–767px) on all card containers
+- Client-side DataTable files: PHP loop generates cards; `drawCallback` filters by search term; `data-search` attributes on cards
+- Server-side AJAX files (`users.php`, `manage_contributions.php` ledger): `drawCallback` rebuilds cards from current page data using `vkEscU`/`vkEscL` XSS helpers
+- `financial_ledger.php`: collects per-row summary into `$ledger_rows[]` array during table loop, then renders simplified cards (Total, Balance, Target, Surplus/Deficit) — per-month columns intentionally omitted from mobile view
+- `user_roles.php`: card view added only to "User Assignments" tab; Roles list-group and Permissions Matrix left as-is (already mobile-friendly / too complex for cards)
+- `manage_contributions.php`: two separate card views — pending approvals (PHP loop with Approve/Reject buttons) and ledger grid (server-side AJAX drawCallback)
+- 35 new PHPUnit unit tests added in `ResponsivePrintTier4Test.php`
+
+### Files Created
+- `tests/Unit/ResponsivePrintTier4Test.php` — 35 unit tests covering badge logic, avatar colours, variance signs, date formatting, XSS safety
+
+### Files Modified
+- `app/bms/customer/dormant_members.php` — card view + filterDormantCards() + drawCallback
+- `app/constant/accounts/budget.php` — card view + drawCallback search sync
+- `app/constant/reports/death_analysis.php` — card view + drawCallback
+- `app/bms/customer/financial_ledger.php` — $ledger_rows[] collection + simplified card view + drawCallback
+- `app/constant/settings/user_roles.php` — card view for usersTable (User Assignments tab) + drawCallback
+- `app/constant/settings/users.php` — server-side drawCallback + renderUsersCards() with full action buttons
+- `app/bms/customer/manage_contributions.php` — pending PHP loop cards + ledger server-side drawCallback + renderLedgerCards()
+
+### Database Changes
+- None
+
+### Notes
+- `library.php` and `customer_analysis.php` skipped: library not found in codebase; customer_analysis is charts/stats only, no list table
+- `financial_ledger.php` card shows summary only (no per-month columns) — same rationale as monthly analysis matrix in member_statement.php
+- All 155 unit tests pass (composer test-unit)
+
+---
+
+## Session 9 — 2026-05-05
+**Branch:** `feat/responsive-print-ui-tier2`
+**Developer:** Claude Code (wamburamuhere@gmail.com)
+**Summary:** Tier 3 responsive card view — member_statement.php (death benefit history), expense_report.php (consolidated expenses), loan_details.php (repayment schedule).
+
+### Changes
+
+#### Tier 3 — member_statement.php (Member Financial Statement)
+- Monthly analysis grid (12+ columns) intentionally left as table — matrix layout is not suitable for cards
+- Death Benefit History section: `<div class="table-responsive">` → `d-none d-md-block d-print-block`
+- New `#deathBenefitCardsWrapper` PHP loop; red-gradient avatar (deceased initial); rows: Date, Amount; type badge in header
+
+#### Tier 3 — expense_report.php (Consolidated Expense Report)
+- `#expenseDetailTable` table-responsive → `d-none d-md-block d-print-block`
+- New `#expenseReportCardsWrapper` PHP loop; teal avatar (G) for General, red avatar (D) for Death; rows: Note, Amount; date in header
+
+#### Tier 3 — loan_details.php (Loan Repayment Schedule)
+- Repayment schedule table-responsive → `d-none d-md-block d-print-block`
+- New `#scheduleCardsWrapper` PHP loop; avatar colour: green (paid), red (overdue), blue (pending); rows: Deni, Ulipaji; status badge + overdue warning in header
+- Left-column loan summary intentionally left unchanged — already a card-style responsive layout
+
+### Files Created
+- `tests/Unit/ResponsivePrintTier3Test.php` — 24 unit tests covering instalment badge logic, overdue detection, avatar colour selection, expense category labels, XSS escaping, number/date formatting (124 total tests, all pass)
+
+### Files Modified
+- `app/constant/reports/member_statement.php` — death benefit card view
+- `app/constant/reports/expense_report.php` — consolidated expense card view
+- `app/bms/loans/loan_details.php` — repayment schedule card view
+- `sessions.md` — Session 9 entry
+
+### Database Changes
+- None
+
+### Notes
+- All three Tiers of responsive print UI are now complete
+- Print always shows table (d-print-block on table-responsive, d-print-none on card wrapper)
+- 2-column card grid activates at ≥480 px via .vk-cards-wrapper; single column on very small phones
+
+---
+
+## Session 8 — 2026-05-05
+**Branch:** `feat/responsive-print-ui-tier2`
+**Developer:** Claude Code (wamburamuhere@gmail.com)
+**Summary:** Tier 2 responsive print UI — mobile card view for expenses.php, transactions.php, vicoba_reports.php; fixed card border visibility and added 2-column grid layout across all card views.
+
+### Changes
+
+#### Card UI Fixes (applied retroactively to Tier 1 output)
+- `style.css` — darkened card border (`#e9ecef` → `#ced4da`, 1px → 1.5px), stronger shadow, visible row dividers, actions border; added `.vk-cards-wrapper` 2-column CSS Grid for screens ≥ 480 px with compact label/avatar overrides
+- `app/bms/customer/customers.php` — added `vk-cards-wrapper` class to `#memberCardsWrapper`
+- `app/bms/loans/loans_list.php` — added `vk-cards-wrapper` class to `#loanCardsWrapper`
+- `app/constant/accounts/petty_cash.php` — added `vk-cards-wrapper` class to `#pettyCashCardsWrapper`
+
+#### Tier 2 — expenses.php (Death Assistance)
+- Table wrapper gets `d-none d-md-block d-print-block` — hides table on mobile
+- New `#deathCardsWrapper` div (`d-md-none d-print-none vk-cards-wrapper`) holds mobile cards
+- `drawCallback: renderDeathCards(api)` added to `#deathExpensesTable` DataTable config
+- `renderDeathCards(api)` — builds red-gradient cards from server-side AJAX data (member_name, phone_number, deceased_name, deceased_relationship, amount, status); shows View/Approve(pending)/Delete buttons
+- `vkEscape(s)` helper added for XSS-safe innerHTML insertion
+
+#### Tier 2 — transactions.php (Journal Entries)
+- `<div class="table-responsive">` gets `d-none d-md-block d-print-block`
+- PHP loop `#transactionCardsWrapper` with 2-column grid; cards show Reference, Amount, Created By; status-dependent buttons: View, Edit+Post (draft), Reverse (posted), Delete
+- `filterTransactionCards(searchVal, statusVal)` JS function filters cards by `data-search` and `data-status` attributes
+- `applyFilters()` and `clearFilters()` updated to call `filterTransactionCards()`
+
+#### Tier 2 — vicoba_reports.php (Group Reports)
+- Savings table: `d-none d-md-block d-print-block`; `#savingsCardsWrapper` PHP loop shows Member Name, Total Savings with blue avatar
+- Expenses table: `d-none d-md-block d-print-block`; `#expensesCardsWrapper` PHP loop shows Type, Date, Note, Amount; red avatar for Funeral Aid, purple for General
+
+### Files Created
+- `tests/Unit/ResponsivePrintTier2Test.php` — 30 unit tests covering status badges, safe_output XSS, format_currency, number_format, date formatting, htmlspecialchars, mb_substr truncation, and card search filter logic
+
+### Files Modified
+- `style.css` — card border/shadow improvements + 2-column grid
+- `app/bms/customer/customers.php` — vk-cards-wrapper class
+- `app/bms/loans/loans_list.php` — vk-cards-wrapper class
+- `app/constant/accounts/petty_cash.php` — vk-cards-wrapper class
+- `app/constant/accounts/expenses.php` — card view + renderDeathCards
+- `app/constant/accounts/transactions.php` — card view + filterTransactionCards
+- `app/constant/reports/vicoba_reports.php` — savings + expenses card views
+
+### Database Changes
+- None
+
+### Notes
+- Tier 3 remaining: member_statement.php, expense_report.php, loan_details.php
+- All 100 unit tests pass (composer test-unit)
+- 2-column grid activates at ≥480 px; single column on very small phones (<480 px)
+- Print always shows table, cards always hidden in print (`d-print-none`)
+
+---
+
 ## Session 7 — 2026-05-05
 **Branch:** `fix/webhook-deploy`
 **Developer:** Claude Code (wamburamuhere@gmail.com)

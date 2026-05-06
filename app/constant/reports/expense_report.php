@@ -144,7 +144,7 @@ $trend_values = array_column($trend_data, 'total');
                     <h6 class="mb-0 fw-bold"><?= $is_sw ? 'Historia kamili ya Matumizi' : 'Detailed Expenditure History' ?></h6>
                 </div>
                 <div class="card-body p-0">
-                    <div class="table-responsive">
+                    <div class="table-responsive d-none d-md-block d-print-block">
                         <table class="table table-hover align-middle mb-0" id="expenseDetailTable">
                             <thead class="bg-light text-uppercase small text-muted">
                                 <tr>
@@ -156,7 +156,7 @@ $trend_values = array_column($trend_data, 'total');
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($expenses_data as $idx => $exp): 
+                                <?php foreach ($expenses_data as $idx => $exp):
                                     $cat_sw = $exp['category'] === 'General' ? 'Matumizi ya Kikundi' : 'Msaada wa Msiba';
                                     $cat_en = $exp['category'];
                                     $cat_class = $exp['category'] === 'General' ? 'bg-info' : 'bg-danger';
@@ -171,6 +171,42 @@ $trend_values = array_column($trend_data, 'total');
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
+                    </div>
+                    <!-- ═══ CARD VIEW — Mobile Only ═══ -->
+                    <div class="p-3 d-md-none d-print-none vk-cards-wrapper" id="expenseReportCardsWrapper">
+                        <?php if (empty($expenses_data)): ?>
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-cash-stack fs-1 d-block mb-3"></i>
+                            <p><?= $is_sw ? 'Hakuna matumizi bado' : 'No expenses recorded' ?></p>
+                        </div>
+                        <?php else: foreach ($expenses_data as $exp):
+                            $er_is_general = ($exp['category'] === 'General');
+                            $er_cat_lbl    = $is_sw ? ($er_is_general ? 'Matumizi ya Kikundi' : 'Msaada wa Msiba') : $exp['category'];
+                            $er_avatar     = $er_is_general ? 'G' : 'D';
+                            $er_av_color   = $er_is_general
+                                ? 'linear-gradient(135deg,#0dcaf0,#0aa2c0)'
+                                : 'linear-gradient(135deg,#dc3545,#b02a37)';
+                        ?>
+                        <div class="vk-member-card">
+                            <div class="vk-card-header d-flex justify-content-between align-items-center gap-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="vk-card-avatar" style="background:<?= $er_av_color ?>;"><?= $er_avatar ?></div>
+                                    <div class="fw-bold text-dark" style="font-size:13px;"><?= $er_cat_lbl ?></div>
+                                </div>
+                                <small class="text-muted"><?= date('d/m/Y', strtotime($exp['date'])) ?></small>
+                            </div>
+                            <div class="vk-card-body">
+                                <div class="vk-card-row">
+                                    <span class="vk-card-label"><?= $is_sw ? 'Maelezo' : 'Note' ?></span>
+                                    <span class="vk-card-value"><?= htmlspecialchars($exp['description'] ?? '—') ?></span>
+                                </div>
+                                <div class="vk-card-row">
+                                    <span class="vk-card-label"><?= $is_sw ? 'Kiasi' : 'Amount' ?></span>
+                                    <span class="vk-card-value fw-bold text-danger">TZS <?= number_format($exp['amount']) ?></span>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; endif; ?>
                     </div>
                 </div>
             </div>
