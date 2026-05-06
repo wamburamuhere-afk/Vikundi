@@ -155,7 +155,7 @@ $ref = $loan['reference_number'] ?: 'LN-' . str_pad($loan_id, 4, '0', STR_PAD_LE
                     <h6 class="mb-0 fw-bold"><i class="bi bi-calendar-check me-2 text-primary"></i> Jedwali la Marejesho (Instalments)</h6>
                 </div>
                 <div class="card-body p-0">
-                    <div class="table-responsive">
+                    <div class="table-responsive d-none d-md-block d-print-block">
                         <table class="table table-hover align-middle mb-0">
                             <thead class="bg-light small text-uppercase text-muted">
                                 <tr>
@@ -198,6 +198,54 @@ $ref = $loan['reference_number'] ?: 'LN-' . str_pad($loan_id, 4, '0', STR_PAD_LE
                                 <?php endif; ?>
                             </tbody>
                         </table>
+                    </div>
+                    <!-- ═══ CARD VIEW — Mobile Only ═══ -->
+                    <div class="p-3 d-md-none d-print-none vk-cards-wrapper" id="scheduleCardsWrapper">
+                        <?php if (empty($schedule)): ?>
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-calendar-x fs-1 d-block mb-3"></i>
+                            <p>Hakuna jedwali lililotengenezwa bado.</p>
+                        </div>
+                        <?php else: foreach ($schedule as $i => $inst):
+                            $sc_status  = strtolower($inst['status'] ?? 'pending');
+                            $sc_overdue = ($sc_status === 'pending' || $sc_status === 'partial') && $inst['due_date'] < date('Y-m-d');
+                            $sc_badge   = match($sc_status) {
+                                'paid'    => ['Imelipwa',   'bg-success text-white'],
+                                'partial' => ['Sehemu',     'bg-warning text-dark'],
+                                'late'    => ['Imechelewa', 'bg-danger text-white'],
+                                default   => ['Inasubiri',  'bg-light text-dark border']
+                            };
+                            $sc_av_color = $sc_status === 'paid'
+                                ? 'linear-gradient(135deg,#198754,#146c43)'
+                                : ($sc_overdue ? 'linear-gradient(135deg,#dc3545,#b02a37)' : 'linear-gradient(135deg,#0d6efd,#0a58ca)');
+                        ?>
+                        <div class="vk-member-card <?= $sc_overdue ? 'border-danger' : '' ?>">
+                            <div class="vk-card-header d-flex justify-content-between align-items-center gap-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="vk-card-avatar" style="background:<?= $sc_av_color ?>;"><?= $i + 1 ?></div>
+                                    <div>
+                                        <div class="fw-bold text-dark" style="font-size:13px;"><?= date('d/m/Y', strtotime($inst['due_date'])) ?></div>
+                                        <?php if ($sc_overdue): ?>
+                                        <small class="text-danger fw-bold" style="font-size:10px;">!!! IMECHELEWA</small>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                                <span class="badge <?= $sc_badge[1] ?> rounded-pill px-2" style="font-size:10px;"><?= $sc_badge[0] ?></span>
+                            </div>
+                            <div class="vk-card-body">
+                                <div class="vk-card-row">
+                                    <span class="vk-card-label">Deni (TZS)</span>
+                                    <span class="vk-card-value fw-bold">TZS <?= number_format($inst['amount'], 2) ?></span>
+                                </div>
+                                <div class="vk-card-row">
+                                    <span class="vk-card-label">Ulipaji</span>
+                                    <span class="vk-card-value fw-bold text-<?= ($inst['amount_paid'] ?? 0) > 0 ? 'success' : 'muted' ?>">
+                                        TZS <?= number_format($inst['amount_paid'] ?? 0, 2) ?>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; endif; ?>
                     </div>
                 </div>
             </div>

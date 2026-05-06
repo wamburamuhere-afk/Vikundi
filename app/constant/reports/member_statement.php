@@ -252,7 +252,7 @@ $total_expenses = array_sum(array_column($expenses, 'amount'));
         <h6 class="mb-0 fw-bold"><i class="bi bi-heart-break me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Historia ya Misaada ya Misiba' : 'Death Benefit History' ?></h6>
     </div>
     <div class="card-body p-0">
-        <div class="table-responsive">
+        <div class="table-responsive d-none d-md-block d-print-block">
             <table class="table table-hover align-middle mb-0">
                 <thead class="bg-light small">
                     <tr>
@@ -273,6 +273,33 @@ $total_expenses = array_sum(array_column($expenses, 'amount'));
                     <?php endforeach; ?>
                 </tbody>
             </table>
+        </div>
+        <!-- ═══ CARD VIEW — Mobile Only ═══ -->
+        <?php $_ms_sw = (($_SESSION['preferred_language'] ?? 'en') === 'sw'); ?>
+        <div class="p-3 d-md-none d-print-none vk-cards-wrapper" id="deathBenefitCardsWrapper">
+            <?php foreach ($expenses as $ex):
+                $db_avatar = strtoupper(substr($ex['deceased_name'] ?? 'D', 0, 1));
+            ?>
+            <div class="vk-member-card">
+                <div class="vk-card-header d-flex justify-content-between align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="vk-card-avatar" style="background:linear-gradient(135deg,#dc3545,#b02a37);"><?= $db_avatar ?></div>
+                        <div class="fw-bold text-dark" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><?= htmlspecialchars($ex['deceased_name']) ?></div>
+                    </div>
+                    <span class="badge bg-light text-dark border px-2" style="font-size:10px;"><?= ucfirst($ex['deceased_type'] ?? '—') ?></span>
+                </div>
+                <div class="vk-card-body">
+                    <div class="vk-card-row">
+                        <span class="vk-card-label"><?= $_ms_sw ? 'Tarehe' : 'Date' ?></span>
+                        <span class="vk-card-value"><?= date('d/m/Y', strtotime($ex['expense_date'])) ?></span>
+                    </div>
+                    <div class="vk-card-row">
+                        <span class="vk-card-label"><?= $_ms_sw ? 'Kiasi' : 'Amount' ?></span>
+                        <span class="vk-card-value fw-bold text-danger">- TZS <?= number_format($ex['amount'], 0) ?></span>
+                    </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
         </div>
     </div>
 </div>

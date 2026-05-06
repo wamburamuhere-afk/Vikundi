@@ -31,6 +31,46 @@ Important context, decisions made, or follow-up items.
 
 ---
 
+## Session 9 — 2026-05-05
+**Branch:** `feat/responsive-print-ui-tier2`
+**Developer:** Claude Code (wamburamuhere@gmail.com)
+**Summary:** Tier 3 responsive card view — member_statement.php (death benefit history), expense_report.php (consolidated expenses), loan_details.php (repayment schedule).
+
+### Changes
+
+#### Tier 3 — member_statement.php (Member Financial Statement)
+- Monthly analysis grid (12+ columns) intentionally left as table — matrix layout is not suitable for cards
+- Death Benefit History section: `<div class="table-responsive">` → `d-none d-md-block d-print-block`
+- New `#deathBenefitCardsWrapper` PHP loop; red-gradient avatar (deceased initial); rows: Date, Amount; type badge in header
+
+#### Tier 3 — expense_report.php (Consolidated Expense Report)
+- `#expenseDetailTable` table-responsive → `d-none d-md-block d-print-block`
+- New `#expenseReportCardsWrapper` PHP loop; teal avatar (G) for General, red avatar (D) for Death; rows: Note, Amount; date in header
+
+#### Tier 3 — loan_details.php (Loan Repayment Schedule)
+- Repayment schedule table-responsive → `d-none d-md-block d-print-block`
+- New `#scheduleCardsWrapper` PHP loop; avatar colour: green (paid), red (overdue), blue (pending); rows: Deni, Ulipaji; status badge + overdue warning in header
+- Left-column loan summary intentionally left unchanged — already a card-style responsive layout
+
+### Files Created
+- `tests/Unit/ResponsivePrintTier3Test.php` — 24 unit tests covering instalment badge logic, overdue detection, avatar colour selection, expense category labels, XSS escaping, number/date formatting (124 total tests, all pass)
+
+### Files Modified
+- `app/constant/reports/member_statement.php` — death benefit card view
+- `app/constant/reports/expense_report.php` — consolidated expense card view
+- `app/bms/loans/loan_details.php` — repayment schedule card view
+- `sessions.md` — Session 9 entry
+
+### Database Changes
+- None
+
+### Notes
+- All three Tiers of responsive print UI are now complete
+- Print always shows table (d-print-block on table-responsive, d-print-none on card wrapper)
+- 2-column card grid activates at ≥480 px via .vk-cards-wrapper; single column on very small phones
+
+---
+
 ## Session 8 — 2026-05-05
 **Branch:** `feat/responsive-print-ui-tier2`
 **Developer:** Claude Code (wamburamuhere@gmail.com)
