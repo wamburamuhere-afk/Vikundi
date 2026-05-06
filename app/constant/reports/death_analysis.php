@@ -103,7 +103,7 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
             <h4 class="fw-bold text-dark text-uppercase border-top border-bottom py-2 mt-2">
                 <?= $is_sw ? 'UCHAMBUZI WA KIFEDHA: MAFAO YA MISIBA' : 'FUNERAL AID SUSTAINABILITY ANALYSIS' ?>
             </h4>
-            <div class="small text-muted mt-1"><?= $is_sw ? 'Tarehe ya Printi:' : 'Print Date:' ?> <?= date('d M, Y H:i') ?></div>
+            <div class="small text-muted mt-1"><?= $is_sw ? 'Tarehe ya Printi:' : 'Print Date:' ?> <?= date('d m, Y H:i') ?></div>
         </div>
     </div>
 
