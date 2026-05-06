@@ -31,6 +31,44 @@ Important context, decisions made, or follow-up items.
 
 ---
 
+## Session 10 — 2026-05-05
+**Branch:** `feat/responsive-print-ui-tier4`
+**Developer:** mbosso khani / Claude Code
+**Summary:** Tier 4 responsive print UI — card views for 7 remaining pages (dormant members, budget, death analysis, financial ledger, user roles, users, manage contributions)
+
+### Changes
+- Added `.vk-member-card` card views (mobile-only, `d-md-none d-print-none`) to all 7 pages
+- Added `d-none d-md-block d-print-block` to all affected `table-responsive` divs so tables stay visible on desktop and print
+- Used `vk-cards-wrapper` class (2-column CSS grid at 480–767px) on all card containers
+- Client-side DataTable files: PHP loop generates cards; `drawCallback` filters by search term; `data-search` attributes on cards
+- Server-side AJAX files (`users.php`, `manage_contributions.php` ledger): `drawCallback` rebuilds cards from current page data using `vkEscU`/`vkEscL` XSS helpers
+- `financial_ledger.php`: collects per-row summary into `$ledger_rows[]` array during table loop, then renders simplified cards (Total, Balance, Target, Surplus/Deficit) — per-month columns intentionally omitted from mobile view
+- `user_roles.php`: card view added only to "User Assignments" tab; Roles list-group and Permissions Matrix left as-is (already mobile-friendly / too complex for cards)
+- `manage_contributions.php`: two separate card views — pending approvals (PHP loop with Approve/Reject buttons) and ledger grid (server-side AJAX drawCallback)
+- 35 new PHPUnit unit tests added in `ResponsivePrintTier4Test.php`
+
+### Files Created
+- `tests/Unit/ResponsivePrintTier4Test.php` — 35 unit tests covering badge logic, avatar colours, variance signs, date formatting, XSS safety
+
+### Files Modified
+- `app/bms/customer/dormant_members.php` — card view + filterDormantCards() + drawCallback
+- `app/constant/accounts/budget.php` — card view + drawCallback search sync
+- `app/constant/reports/death_analysis.php` — card view + drawCallback
+- `app/bms/customer/financial_ledger.php` — $ledger_rows[] collection + simplified card view + drawCallback
+- `app/constant/settings/user_roles.php` — card view for usersTable (User Assignments tab) + drawCallback
+- `app/constant/settings/users.php` — server-side drawCallback + renderUsersCards() with full action buttons
+- `app/bms/customer/manage_contributions.php` — pending PHP loop cards + ledger server-side drawCallback + renderLedgerCards()
+
+### Database Changes
+- None
+
+### Notes
+- `library.php` and `customer_analysis.php` skipped: library not found in codebase; customer_analysis is charts/stats only, no list table
+- `financial_ledger.php` card shows summary only (no per-month columns) — same rationale as monthly analysis matrix in member_statement.php
+- All 155 unit tests pass (composer test-unit)
+
+---
+
 ## Session 9 — 2026-05-05
 **Branch:** `feat/responsive-print-ui-tier2`
 **Developer:** Claude Code (wamburamuhere@gmail.com)

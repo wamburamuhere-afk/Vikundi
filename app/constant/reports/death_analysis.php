@@ -159,7 +159,7 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
             <h6 class="mb-0 fw-bold text-primary"><?= $is_sw ? 'Mchanganuo wa Kila Aliyefanyiwa Expense' : 'Case-by-Case Payout Analysis' ?></h6>
         </div>
         <div class="card-body p-0">
-            <div class="table-responsive">
+            <div class="table-responsive d-none d-md-block d-print-block">
                 <table class="table table-hover align-middle mb-0" id="deathSustainabilityTable">
                     <thead class="bg-light text-uppercase small text-muted">
                         <tr>
@@ -218,6 +218,69 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
                     </tbody>
                 </table>
             </div>
+            <!-- ═══ CARD VIEW — Mobile Only ═══ -->
+            <div class="p-3 d-md-none d-print-none vk-cards-wrapper" id="deathAnalysisCardsWrapper">
+                <?php if (empty($recipients)): ?>
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-info-circle fs-1 d-block mb-3"></i>
+                    <p><?= $is_sw ? 'Hakuna taarifa zilizopatikana.' : 'No analysis records found.' ?></p>
+                </div>
+                <?php else: foreach ($recipients as $idx => $r):
+                    $da_variance   = $r['total_contributed'] - $r['benefit_paid'];
+                    $da_pos        = $da_variance >= 0;
+                    $da_name       = $r['customer_name'] ?? ($is_sw ? 'Mwanachama' : 'Member');
+                    $da_letter     = strtoupper(substr($da_name, 0, 1));
+                    $da_is_dec     = (int)($r['is_deceased'] ?? 0);
+                    $da_status     = strtolower($r['member_status'] ?? '');
+                    $da_av_color   = $da_is_dec
+                        ? 'linear-gradient(135deg,#343a40,#212529)'
+                        : ($da_status === 'active'
+                            ? 'linear-gradient(135deg,#198754,#146c43)'
+                            : 'linear-gradient(135deg,#fd7e14,#e85d04)');
+                    $da_search     = strtolower($da_name . ' ' . date('d/m/Y', strtotime($r['latest_date'])));
+                ?>
+                <div class="vk-member-card" data-search="<?= htmlspecialchars($da_search) ?>">
+                    <div class="vk-card-header d-flex justify-content-between align-items-center gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="vk-card-avatar" style="background:<?= $da_av_color ?>;"><?= $da_letter ?></div>
+                            <div>
+                                <div class="fw-bold text-dark" style="font-size:13px;"><?= htmlspecialchars($da_name) ?></div>
+                                <small class="text-muted"><?= $is_sw ? 'Hadi:' : 'Latest:' ?> <?= date('d/m/Y', strtotime($r['latest_date'])) ?></small>
+                            </div>
+                        </div>
+                        <?php if ($da_is_dec): ?>
+                        <span class="badge bg-danger rounded-pill px-2" style="font-size:10px;"><?= $is_sw ? 'Marehemu' : 'Deceased' ?></span>
+                        <?php elseif ($da_status === 'active'): ?>
+                        <span class="badge bg-success rounded-pill px-2" style="font-size:10px;">Active</span>
+                        <?php else: ?>
+                        <span class="badge bg-warning text-dark rounded-pill px-2" style="font-size:10px;">Dormant</span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="vk-card-body">
+                        <div class="vk-card-row">
+                            <span class="vk-card-label"><?= $is_sw ? 'Visa' : 'Cases' ?></span>
+                            <span class="vk-card-value"><span class="badge bg-light text-dark border"><?= $r['cases_count'] ?></span></span>
+                        </div>
+                        <div class="vk-card-row">
+                            <span class="vk-card-label"><?= $is_sw ? 'Michango' : 'Contrib.' ?></span>
+                            <span class="vk-card-value fw-bold"><?= number_format($r['total_contributed']) ?></span>
+                        </div>
+                        <div class="vk-card-row">
+                            <span class="vk-card-label"><?= $is_sw ? 'Msaada' : 'Benefit' ?></span>
+                            <span class="vk-card-value fw-bold text-primary"><?= number_format($r['benefit_paid']) ?></span>
+                        </div>
+                        <div class="vk-card-row">
+                            <span class="vk-card-label"><?= $is_sw ? 'Tofauti' : 'Variance' ?></span>
+                            <span class="vk-card-value">
+                                <span class="badge bg-opacity-10 border <?= $da_pos ? 'bg-success text-success' : 'bg-danger text-danger' ?> px-2">
+                                    <?= ($da_pos ? '+' : '-') . number_format(abs($da_variance)) ?>
+                                </span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <?php endforeach; endif; ?>
+            </div>
         </div>
     </div>
 </div>
@@ -238,10 +301,17 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
 <script>
 $(document).ready(function() {
     const lang = { search: '<?= $is_sw ? "Tafuta:" : "Search:" ?>' };
-    $('#deathSustainabilityTable').DataTable({ 
-        language: lang, 
-        pageLength: 25, 
-        order:[[4, 'desc']] 
+    $('#deathSustainabilityTable').DataTable({
+        language: lang,
+        pageLength: 25,
+        order:[[4, 'desc']],
+        drawCallback: function() {
+            var term = (this.api().search() || '').toLowerCase().trim();
+            $('#deathAnalysisCardsWrapper .vk-member-card').each(function() {
+                var text = ($(this).data('search') || '').toLowerCase();
+                $(this).toggle(!term || text.includes(term));
+            });
+        }
     });
 
     const ctx = document.getElementById('comparisonBarChart');
