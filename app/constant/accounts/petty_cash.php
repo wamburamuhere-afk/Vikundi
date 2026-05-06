@@ -226,7 +226,7 @@ $total_all = $stmt_total_all->fetchColumn() ?? 0;
         </div>
 
         <!-- ═══ CARD VIEW — Mobile Only (server-side; rendered by drawCallback) ═══ -->
-        <div class="p-3 d-md-none d-print-none" id="pettyCashCardsWrapper">
+        <div class="p-3 d-md-none d-print-none vk-cards-wrapper" id="pettyCashCardsWrapper">
             <div id="pettyCashCardsEmptyState" class="d-none text-center py-5">
                 <i class="bi bi-search fs-1 text-muted d-block mb-3"></i>
                 <p class="text-muted mb-0"><?= $isSwahili ? 'Hakuna vocha zilizopatikana.' : 'No vouchers found.' ?></p>

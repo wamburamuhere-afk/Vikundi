@@ -194,7 +194,7 @@ $members = $pdo->query("
         </div>
 
         <!-- ═══ CARD VIEW — Mobile Only ═══ -->
-        <div class="p-3 d-md-none d-print-none" id="loanCardsWrapper">
+        <div class="p-3 d-md-none d-print-none vk-cards-wrapper" id="loanCardsWrapper">
             <?php $c_sno = 1; foreach ($loans as $loan):
                 $_lang_l     = $_SESSION['preferred_language'] ?? 'en';
                 $_sw_l       = ($_lang_l === 'sw');

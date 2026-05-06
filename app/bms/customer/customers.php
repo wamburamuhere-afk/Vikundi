@@ -283,7 +283,7 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
         </div>
 
         <!-- ═══ CARD VIEW — Mobile Only (hidden on desktop + print) ═══ -->
-        <div class="p-3 d-md-none d-print-none" id="memberCardsWrapper">
+        <div class="p-3 d-md-none d-print-none vk-cards-wrapper" id="memberCardsWrapper">
             <?php foreach ($members as $idx => $m):
                 $_lang_c = $_SESSION['preferred_language'] ?? 'en';
                 $_sw_c   = ($_lang_c === 'sw');
