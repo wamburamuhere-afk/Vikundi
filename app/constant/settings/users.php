@@ -50,7 +50,7 @@ $lang = $_SESSION['preferred_language'] ?? 'en';
             </a>
         </div>
         
-        <div class="card-body">
+        <div class="card-body p-0">
             <div class="table-responsive d-none d-md-block d-print-block">
                 <table id="usersTable" class="table table-striped table-hover" style="width:100%">
                     <thead>
@@ -72,7 +72,7 @@ $lang = $_SESSION['preferred_language'] ?? 'en';
                 </table>
             </div>
             <!-- ═══ CARD VIEW — Mobile Only ═══ -->
-            <div class="p-3 d-md-none d-print-none vk-cards-wrapper" id="usersCardsWrapper"></div>
+            <div class="p-3 d-md-none d-print-none" id="usersCardsWrapper"></div>
         </div>
     </div>
 </div>
