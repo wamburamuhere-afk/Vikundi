@@ -312,19 +312,12 @@ $total_expenses = array_sum(array_column($expenses, 'amount'));
         display: none !important;
     }
     
-    body { padding-top: 0 !important; margin: 0 !important; background: white !important; font-size: 10px; color: black !important; }
+    @page { margin: 1cm; }
+    body { padding-top: 0 !important; margin: 0 !important; background: white !important; font-size: 10px; color: black !important; padding-bottom: 55px; }
     .container-fluid, .container { width: 100% !important; max-width: none !important; padding: 0 15px !important; margin: 0 !important; }
-    
-    /* Footer Positioning */
-    .print-footer {
-        position: fixed; bottom: 0.8cm; left: 0; right: 0; width: 100%;
-        background: white !important; font-size: 10px; z-index: 9999;
-        text-align: center; padding-top: 15px; border-top: 1px solid #dee2e6;
-    }
 
     /* Safety Zone Logic */
     .d-print-table-footer { display: table-footer-group !important; }
-    @page { margin: 1cm 1cm 2cm 1cm; }
 
     /* Layout Flexibility */
     .card { border: 1px solid #ccc !important; box-shadow: none !important; margin-bottom: 5px !important; page-break-inside: avoid; background: transparent !important; }
@@ -374,11 +367,6 @@ $total_expenses = array_sum(array_column($expenses, 'amount'));
     th, td, .fw-bold { position: static !important; }
 }
 
-/* 4. PRINT FOOTER (Visible only during print) */
-.print-footer { display: none; }
-@media print {
-    .print-footer { display: block !important; }
-}
 
 .table-responsive::-webkit-scrollbar { height: 8px; }
 .table-responsive::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
@@ -389,15 +377,7 @@ th { font-size: 0.65rem; letter-spacing: 0.02em; font-weight: 800; }
 }
 </style>
 
-<!-- 4. PRINT FOOTER (Visible only during print) -->
-<div class="d-none d-print-block print-footer">
-    <div class="row pt-2">
-        <div class="col-12 text-center">
-            <p class="mb-1 text-dark"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nyaraka hii imechapishwa na' : 'This document was printed by' ?> <strong><?= htmlspecialchars($username ?? $_SESSION['username']) ?></strong> - <strong><?= htmlspecialchars($user_role ?? 'Member') ?></strong> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'mnamo' : 'on' ?> <strong><?= date('d M, Y') ?></strong> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'saa' : 'at' ?> <strong><?= date('H:i:s') ?></strong></p>
-            <h6 class="mb-0 fw-bold" style="color: #0d6efd !important;">Powered By BJP Technologies &copy; <?= date('Y') ?>, All Rights Reserved</h6>
-        </div>
-    </div>
-</div>
+<?php include PRINT_FOOTER_FILE; ?>
 
 <?php
 $content = ob_get_clean();

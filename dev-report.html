@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Development Report — Vikundi Management System | 5th May 2026</title>
+<style>
+  /* ── Base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 14px; }
+  body {
+    font-family: 'Segoe UI', Calibri, Arial, sans-serif;
+    color: #1a1a2e;
+    background: #f4f6fb;
+    line-height: 1.65;
+  }
+
+  /* ── Print Button (screen only) ── */
+  .print-bar {
+    background: #0d6efd;
+    color: #fff;
+    text-align: center;
+    padding: 12px 24px;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  .print-bar button {
+    background: #fff;
+    color: #0d6efd;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 22px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .print-bar button:hover { background: #e7f0ff; }
+
+  /* ── Page Wrapper ── */
+  .page {
+    max-width: 900px;
+    margin: 28px auto;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+    overflow: hidden;
+  }
+
+  /* ── Cover Header ── */
+  .cover-header {
+    background: linear-gradient(135deg, #0d6efd 0%, #0a3d91 100%);
+    color: #fff;
+    padding: 40px 48px 36px;
+    position: relative;
+    overflow: hidden;
+  }
+  .cover-header::after {
+    content: '';
+    position: absolute;
+    right: -60px;
+    top: -60px;
+    width: 280px;
+    height: 280px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+  }
+  .cover-header::before {
+    content: '';
+    position: absolute;
+    right: 60px;
+    bottom: -80px;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+  }
+  .org-tag {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    opacity: 0.75;
+    margin-bottom: 10px;
+  }
+  .cover-header h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 6px;
+  }
+  .cover-header h1 span { color: #90c8ff; }
+  .cover-sub {
+    font-size: 1.05rem;
+    opacity: 0.85;
+    margin-bottom: 28px;
+  }
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    margin-top: 4px;
+  }
+  .meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .meta-item .label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.65;
+  }
+  .meta-item .value {
+    font-size: 0.92rem;
+    font-weight: 600;
+  }
+
+  /* ── Summary Strip ── */
+  .summary-strip {
+    background: #f8faff;
+    border-bottom: 1px solid #e3eaff;
+    padding: 20px 48px;
+    display: flex;
+    gap: 36px;
+    flex-wrap: wrap;
+  }
+  .kpi {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 80px;
+    text-align: center;
+  }
+  .kpi .num {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #0d6efd;
+    line-height: 1;
+  }
+  .kpi .desc {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #6c757d;
+  }
+  .kpi-divider {
+    width: 1px;
+    background: #dce5f5;
+    align-self: stretch;
+    margin: 4px 0;
+  }
+
+  /* ── Report Body ── */
+  .report-body { padding: 36px 48px; }
+
+  /* ── Section ── */
+  .section { margin-bottom: 36px; }
+  .section-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #0a3d91;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 10px;
+    border-bottom: 2.5px solid #0d6efd;
+    margin-bottom: 18px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .section-title .icon {
+    width: 30px;
+    height: 30px;
+    background: #e7f0ff;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    color: #0d6efd;
+    flex-shrink: 0;
+  }
+
+  /* ── Work Item ── */
+  .work-item {
+    background: #f9fbff;
+    border: 1px solid #e0e9ff;
+    border-left: 4px solid #0d6efd;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 14px;
+  }
+  .work-item.green  { border-left-color: #198754; }
+  .work-item.orange { border-left-color: #fd7e14; }
+  .work-item.purple { border-left-color: #6f42c1; }
+  .work-item.teal   { border-left-color: #0dcaf0; }
+  .work-item.red    { border-left-color: #dc3545; }
+
+  .work-item-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .work-item-title {
+    font-size: 0.97rem;
+    font-weight: 700;
+    color: #1a1a2e;
+  }
+  .work-item-title small {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 400;
+    color: #6c757d;
+    margin-top: 2px;
+  }
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+  }
+  .badge-blue   { background: #cfe2ff; color: #084298; }
+  .badge-green  { background: #d1e7dd; color: #0a3622; }
+  .badge-orange { background: #ffe5d0; color: #7d2600; }
+  .badge-purple { background: #e8d8f9; color: #3a0074; }
+  .badge-teal   { background: #d3f4f9; color: #093540; }
+  .badge-red    { background: #f8d7da; color: #58151c; }
+
+  .work-item ul {
+    margin: 0;
+    padding-left: 20px;
+    list-style: disc;
+  }
+  .work-item ul li {
+    font-size: 0.87rem;
+    color: #374151;
+    margin-bottom: 4px;
+    line-height: 1.5;
+  }
+  .work-item ul li strong { color: #1a1a2e; }
+
+  /* ── Files Table ── */
+  .files-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.83rem;
+    margin-top: 8px;
+  }
+  .files-table th {
+    background: #e7f0ff;
+    color: #0a3d91;
+    font-weight: 700;
+    padding: 8px 12px;
+    text-align: left;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .files-table td {
+    padding: 7px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    color: #374151;
+    vertical-align: top;
+  }
+  .files-table tr:last-child td { border-bottom: none; }
+  .files-table code {
+    background: #f0f4ff;
+    border: 1px solid #dce5ff;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 0.79rem;
+    color: #0a3d91;
+    font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+  }
+
+  /* ── Test Result Block ── */
+  .test-result {
+    background: #f0fff4;
+    border: 1px solid #a8e6bf;
+    border-radius: 8px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 10px;
+  }
+  .test-result .check {
+    width: 36px;
+    height: 36px;
+    background: #198754;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+  .test-result .test-text .big {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #0a3622;
+  }
+  .test-result .test-text .small {
+    font-size: 0.8rem;
+    color: #198754;
+  }
+
+  /* ── Timeline ── */
+  .timeline { list-style: none; padding: 0; position: relative; }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 16px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #dce5f5;
+  }
+  .timeline li {
+    display: flex;
+    gap: 18px;
+    align-items: flex-start;
+    margin-bottom: 18px;
+    position: relative;
+  }
+  .tl-dot {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #0d6efd;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 800;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+  }
+  .tl-dot.green  { background: #198754; }
+  .tl-dot.orange { background: #fd7e14; }
+  .tl-dot.red    { background: #dc3545; }
+  .tl-content .tl-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-bottom: 2px;
+  }
+  .tl-content .tl-desc {
+    font-size: 0.82rem;
+    color: #6c757d;
+  }
+
+  /* ── Footer ── */
+  .report-footer {
+    background: #f8faff;
+    border-top: 1px solid #e0e9ff;
+    padding: 20px 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.78rem;
+    color: #6c757d;
+  }
+  .report-footer strong { color: #0a3d91; }
+
+  /* ── Print Styles ── */
+  @media print {
+    @page {
+      size: A4;
+      margin: 12mm 14mm 14mm 14mm;
+    }
+    html { font-size: 13px; }
+    body { background: #fff !important; }
+    .print-bar { display: none !important; }
+    .page {
+      max-width: 100%;
+      margin: 0;
+      box-shadow: none;
+      border-radius: 0;
+    }
+    .cover-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .summary-strip { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .work-item { -webkit-print-color-adjust: exact; print-color-adjust: exact; break-inside: avoid; }
+    .section { break-inside: avoid; }
+    .test-result { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .files-table th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Print Bar (screen only) -->
+<div class="print-bar">
+  <span>&#128196; Development Progress Report — Vikundi VICOBA Management System</span>
+  <button onclick="window.print()">&#128438; Download / Save as PDF</button>
+</div>
+
+<div class="page">
+
+  <!-- ══════════════════════ COVER HEADER ══════════════════════ -->
+  <div class="cover-header">
+    <div class="org-tag">&#9679; Vikundi  Management System &nbsp;&#8226;&nbsp; Development Progress Report</div>
+    <h1><span>— Sprint Summary &amp; Delivery Log</span></h1>
+    <div class="cover-sub">Comprehensive record of all system development activities, architectural decisions, and deliverables.</div>
+    <div class="meta-row">
+      <div class="meta-item">
+        <span class="label">Report Date</span>
+        <span class="value">5th May, 2026</span>
+      </div>
+     
+      <div class="meta-item">
+        <span class="label">Prepared By</span>
+        <span class="value">Wambura Muhere</span>
+      </div>
+      <div class="meta-item">
+        <span class="label">Platform</span>
+        <span class="value">PHP 8.2 · MySQL 8.2 · Bootstrap 5.3 · PHPUnit 11</span>
+      </div>
+      <div class="meta-item">
+        <span class="label">Repository</span>
+        <span class="value">github.com/wamburamuhere-afk/Vikundi</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ KPI STRIP ══════════════════════ -->
+  <div class="summary-strip">
+    <div class="kpi">
+      <span class="num">10</span>
+      <span class="desc">Dev Sessions</span>
+    </div>
+    <div class="kpi-divider"></div>
+    <div class="kpi">
+      <span class="num">11</span>
+      <span class="desc">Pages Upgraded</span>
+    </div>
+    <div class="kpi-divider"></div>
+    <div class="kpi">
+      <span class="num">155</span>
+      <span class="desc">Unit Tests Passing</span>
+    </div>
+    <div class="kpi-divider"></div>
+    <div class="kpi">
+      <span class="num">4</span>
+      <span class="desc">Responsive Tiers</span>
+    </div>
+    <div class="kpi-divider"></div>
+    <div class="kpi">
+      <span class="num">3</span>
+      <span class="desc">CI/CD Workflows</span>
+    </div>
+    <div class="kpi-divider"></div>
+    <div class="kpi">
+      <span class="num">100%</span>
+      <span class="desc">Tests Green</span>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ BODY ══════════════════════ -->
+  <div class="report-body">
+
+    <!-- ─── EXECUTIVE SUMMARY ─── -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">&#128196;</span> Executive Summary
+      </div>
+      <p style="font-size:0.93rem;color:#374151;line-height:1.75;">
+        This report documents the complete development sprint conducted on the <strong>Vikundi Management System</strong>
+        between <strong>5th May 2026</strong> and <strong>6th May 2026</strong>. The sprint delivered project scaffolding,
+        a full CI/CD pipeline, automated deployment infrastructure via HTTPS webhook, and a comprehensive four-tier
+        responsive print UI upgrade covering all 11 major listing and reporting pages. All work was executed on feature
+        branches and merged through a reviewed pull-request workflow into <code>develop</code>.
+        The PHPUnit test suite was maintained and expanded to <strong>155 passing unit tests</strong> with zero failures.
+      </p>
+    </div>
+
+    <!-- ─── SECTION 1: SCAFFOLDING ─── -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">&#128295;</span> 1. Project Scaffolding &amp; Tooling Setup
+      </div>
+
+      <div class="work-item green">
+        <div class="work-item-header">
+          <div class="work-item-title">
+            Initial Git &amp; GitHub Repository Setup
+            <small>Session 1 &nbsp;&#8226;&nbsp; Branch: <code>chore/project-scaffolding</code></small>
+          </div>
+          <span class="badge badge-green">COMPLETED</span>
+        </div>
+        <ul>
+          <li>Initialized git repository; pushed full application codebase to <strong>github.com/wamburamuhere-afk/Vikundi</strong></li>
+          <li>Established <strong>main</strong> as the protected deployment branch and <strong>develop</strong> as the integration branch</li>
+          <li>Defined branching strategy: <code>feat/*</code> / <code>fix/*</code> / <code>chore/*</code> / <code>hotfix/*</code> → PR to develop → PR to main</li>
+          <li>Authored <strong>README.md</strong> (full project overview, stack, installation guide, contributing workflow)</li>
+          <li>Authored <strong>CLAUDE.md</strong> (AI pair-programming context: architecture, route map, RBAC patterns, key file reference)</li>
+          <li>Created <strong>sessions.md</strong> — persistent session-tracking log updated at end of every sprint</li>
+          <li>Configured <strong>.gitignore</strong> — excludes <code>includes/config.php</code>, <code>vendor/</code>, <code>uploads/</code>, <code>backups/</code>, coverage output</li>
+          <li>Created <strong>includes/config.example.php</strong> — safe database config template for developer onboarding</li>
+        </ul>
+      </div>
+
+      <div class="work-item green">
+        <div class="work-item-header">
+          <div class="work-item-title">
+            PHPUnit 11 Test Suite Bootstrapped
+            <small>Session 1 &nbsp;&#8226;&nbsp; Branch: <code>chore/project-scaffolding</code></small>
+          </div>
+          <span class="badge badge-green">COMPLETED</span>
+        </div>
+        <ul>
+          <li>Added <strong>PHPUnit 11</strong> via <code>composer.json</code>; test scripts: <code>composer test</code>, <code>test-unit</code>, <code>test-feature</code>, <code>test-coverage</code></li>
+          <li>Configured <strong>phpunit.xml</strong> with Unit and Feature test suites</li>
+          <li>Created <strong>tests/bootstrap.php</strong> — stubs <code>redirectTo()</code> and <code>isAuthenticated()</code>; starts PHP session so unit tests run without web server or database</li>
+          <li>Authored <strong>tests/Unit/HelpersTest.php</strong> — 30+ tests covering: <code>calculateTotalInterest()</code>, <code>addMonthsWithAnchor()</code>, <code>get_status_badge()</code>, <code>format_currency()</code>, <code>format_date()</code>, <code>format_phone()</code>, <code>safe_output()</code></li>
+          <li>Authored <strong>tests/Unit/PermissionsTest.php</strong> — 20+ tests covering: <code>isAdmin()</code>, <code>canView()</code>, <code>canCreate()</code>, <code>canEdit()</code>, <code>canDelete()</code></li>
+          <li>Created <strong>Custom Claude Skills</strong>: <code>/db-backup</code>, <code>/run-tests</code>, <code>/new-feature</code>, <code>/deploy-check</code></li>
+          <li>Created <strong>Custom Claude Agents</strong>: <code>vikundi-reviewer</code> (RBAC/security reviewer), <code>test-writer</code> (PHPUnit specialist)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 2: CI/CD ─── -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">&#9881;</span> 2. CI/CD Pipeline &amp; Automated Deployment
+      </div>
+
+      <div class="work-item purple">
+        <div class="work-item-header">
+          <div class="work-item-title">
+            GitHub Actions CI Pipeline
+            <small>Session 2 &nbsp;&#8226;&nbsp; Branch: <code>chore/github-actions-ci</code></small>
+          </div>
+          <span class="badge badge-purple">COMPLETED</span>
+        </div>
+        <ul>
+          <li><strong>ci.yml</strong> — fires on every push to feature/fix/chore branches and PRs to develop/main; two jobs: Unit Tests (fast, no DB) → Feature Tests (MySQL 8.0 service pre-wired)</li>
+          <li><strong>deploy-gate.yml</strong> — fires only on PRs targeting main; validates <code>composer.json</code>, guards against committed <code>config.php</code> or <code>.env</code> files, runs PHP syntax check across all app files, runs full test suite</li>
+          <li><strong>pr-labeler.yml</strong> — auto-labels PRs based on branch prefix (<code>feat/</code> → feature, <code>fix/</code> → bug, <code>chore/</code> → chore, <code>hotfix/</code> → hotfix)</li>
+          <li>Composer dependency caching configured for fast CI builds; <code>composer.lock</code> committed for fully reproducible builds</li>
+        </ul>
+      </div>
+
+      <div class="work-item orange">
+        <div class="work-item-header">
+          <div class="work-item-title">
+            Deployment Pipeline — Evolution Through 5 Iterations
+            <small>Sessions 3–7 &nbsp;&#8226;&nbsp; Branches: <code>chore/cpanel-deploy-workflow</code>, <code>fix/cpanel-deploy-endpoint</code>, <code>chore/trigger-deploy-verification</code>, <code>fix/ftp-deploy</code>, <code>fix/webhook-deploy</code></small>
+          </div>
+          <span class="badge badge-orange">RESOLVED &amp; OPERATIONAL</span>
+        </div>
+        <ul>
+          <li><strong>Attempt 1 — cPanel UAPI (Session 3):</strong> Two-job pipeline — tests gate then cPanel SSH deploy with <code>git reset --hard origin/main</code> and <code>composer install --no-dev</code></li>
+          <li><strong>Attempt 2 — cPanel API Token Fix (Session 5):</strong> Corrected endpoint from <code>/execute/VersionControl/update</code> → <code>/execute/VersionControlDeployment/create</code>; added auth-error detection for plain-text "Access denied"</li>
+          <li><strong>Attempt 3 — FTP Deploy (Session 6):</strong> Switched to <code>SamKirkland/FTP-Deploy-Action@v4.3.4</code> (port 21) after cPanel API tokens were blocked at hosting firewall. Differential upload — only changed files sent on each deploy</li>
+          <li><strong>Root cause discovered (Session 7):</strong> FTP data connections use random high ports in passive mode — hosting provider firewall blocks these inbound ports from GitHub Actions, corrupting file uploads (zeroed .htaccess → Apache 403 on all requests)</li>
+          <li><strong>Final Solution — HTTPS Webhook (Session 7):</strong> Created <code>deploy-hook.php</code> receiver on server; GitHub Actions POSTs to <code>DEPLOY_HOOK_URL</code> with bearer token; server runs <code>git fetch origin main &amp;&amp; git reset --hard origin/main</code>; uses port 443 (always open). Smoke-test verifies live URL after deploy</li>
+          <li>Webhook secret stored at <code>/home/bjptechn/.deploy-secret</code> (outside web root — not HTTP-accessible)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 3: RESPONSIVE UI ─── -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">&#128241;</span> 3. Responsive Print UI — Four-Tier Upgrade
+      </div>
+
+      <p style="font-size:0.87rem;color:#6c757d;margin-bottom:16px;line-height:1.6;">
+        A systematic upgrade of all listing and reporting pages to support mobile card views alongside desktop tables.
+        The strategy: tables get <code>d-none d-md-block d-print-block</code> (hidden on mobile, visible on desktop/print);
+        mobile card wrappers get <code>d-md-none d-print-none</code> (visible on mobile only, hidden in print).
+        A shared CSS component system (<code>.vk-member-card</code>, <code>.vk-card-header</code>, <code>.vk-card-body</code>,
+        <code>.vk-card-row</code>, <code>.vk-card-actions</code>) provides consistent card styling across all pages.
+        A 2-column CSS grid (<code>.vk-cards-wrapper</code>) activates at ≥ 480 px for efficient screen use.
+      </p>
+
+      <!-- Tier 1 -->
+      <div class="work-item">
+        <div class="work-item-header">
+          <div class="work-item-title">
+            Tier 1 — Members, Loans, Petty Cash
+            <small>Branch: <code>feat/responsive-print-ui</code></small>
+          </div>
+          <span class="badge badge-blue">COMPLETED</span>
+        </div>
+        <ul>
+          <li><strong>customers.php</strong> — Mobile card view for all members; avatar (blue = active, dark = deceased); client-side DataTable search synced via <code>filterMemberCards()</code>; action buttons: Statement, Edit, Change Status, Delete</li>
+          <li><strong>loans_list.php</strong> — Mobile card view for loans list; avatar colour by status (warning = pending, primary = active/disbursed, success = repaid, danger = defaulted); status-dependent action buttons; card search synced to DataTable</li>
+          <li><strong>petty_cash.php</strong> — Mobile card view for petty cash vouchers; server-side AJAX DataTable with <code>drawCallback → renderPettyCashCards(api)</code>; XSS-safe JS card builder with <code>vkEscape()</code> helper; Approve/Reject buttons conditioned on permission flags</li>
+          <li>style.css — <code>.vk-member-card</code> component system: border, shadow, card-row dividers, icon-only action buttons (36×36 px), print-hidden card wrapper</li>
+        </ul>
+      </div>
+
+      <!-- Tier 2 -->
+      <div class="work-item teal">
+        <div class="work-item-header">
+          <div class="work-item-title">
+            Tier 2 — Expenses, Transactions, VICOBA Reports
+            <small>Session 8 &nbsp;&#8226;&nbsp; Branch: <code>feat/responsive-print-ui-tier2</code></small>
+          </div>
+          <span class="badge badge-teal">COMPLETED</span>
+        </div>
+        <ul>
+          <li><strong>expenses.php</strong> — Server-side AJAX card view for death assistance expenses; red-gradient avatar; <code>renderDeathCards(api)</code> function; View/Approve/Delete actions conditioned on status</li>
+          <li><strong>transactions.php</strong> — PHP loop card view for journal entries; status-dependent avatar colour and action buttons (View, Edit+Post for draft, Reverse for posted, Delete); <code>filterTransactionCards()</code> synced to status dropdown and search</li>
+          <li><strong>vicoba_reports.php</strong> — Two separate card views: Savings tab (member name + total savings, blue avatar) and Expenses tab (type + date + amount; red avatar for Funeral Aid, purple for General)</li>
+          <li><strong>style.css</strong> — Card border darkened (#ced4da, 1.5 px), stronger shadow, row dividers; <code>.vk-cards-wrapper</code> 2-column CSS Grid at ≥ 480 px with compact label overrides</li>
+          <li>30 new PHPUnit unit tests added — <strong>ResponsivePrintTier2Test.php</strong> (100 total passing)</li>
+        </ul>
+      </div>
+
+      <!-- Tier 3 -->
+      <div class="work-item purple">
+        <div class="work-item-header">
+          <div class="work-item-title">
+            Tier 3 — Member Statement, Expense Report, Loan Details
+            <small>Session 9 &nbsp;&#8226;&nbsp; Branch: <code>feat/responsive-print-ui-tier2</code></small>
+          </div>
+          <span class="badge badge-purple">COMPLETED</span>
+        </div>
+        <ul>
+          <li><strong>member_statement.php</strong> — Death Benefit History table upgraded; monthly analysis matrix intentionally preserved as table (layout unsuitable for cards); avatar = deceased initial, red gradient</li>
+          <li><strong>expense_report.php</strong> — Consolidated expense detail table upgraded; teal avatar for General expenses, red for Death Assistance; date shown in card header</li>
+          <li><strong>loan_details.php</strong> — Repayment schedule table upgraded; avatar colour: green (paid), red (overdue), blue (pending); overdue warning badge in card header; left-column loan summary left unchanged (already card-responsive)</li>
+          <li>24 new PHPUnit unit tests — <strong>ResponsivePrintTier3Test.php</strong> (124 total passing)</li>
+        </ul>
+      </div>
+
+      <!-- Tier 4 -->
+      <div class="work-item orange">
+        <div class="work-item-header">
+          <div class="work-item-title">
+            Tier 4 — Dormant Members, Budget, Death Analysis, Financial Ledger, User Roles, Users, Contributions
+            <small>Session 10 &nbsp;&#8226;&nbsp; Branch: <code>feat/responsive-print-ui-tier4</code></small>
+          </div>
+          <span class="badge badge-orange">COMPLETED</span>
+        </div>
+        <ul>
+          <li><strong>dormant_members.php</strong> — PHP loop card view; dark avatar for deceased, blue for dormant; search synced via <code>filterDormantCards()</code></li>
+          <li><strong>budget.php</strong> — PHP loop card view; green avatar (approved), yellow (pending); status badge + category letter avatar; conditional edit/delete actions</li>
+          <li><strong>death_analysis.php</strong> — PHP loop card view; three-state avatar (dark = deceased, green = active, orange = dormant); variance badge (+/−) shown in card header; read-only (no actions)</li>
+          <li><strong>financial_ledger.php</strong> — Complex fix: per-row computed values collected into <code>$ledger_rows[]</code> array during table loop, then consumed by simplified card view (Total Contributed, Balance, Target, Surplus/Deficit); per-month columns omitted (matrix not suitable for cards)</li>
+          <li><strong>user_roles.php</strong> — Card view for User Assignments tab only; Roles list-group and Permissions Matrix left unchanged (Permissions Matrix has dynamic columns, not card-friendly)</li>
+          <li><strong>users.php</strong> — Server-side AJAX; <code>renderUsersCards(api)</code> builds card HTML from current page data; role badge colour from role-name map; Activate/Deactivate/Delete conditionally suppressed for the currently-logged-in user</li>
+          <li><strong>manage_contributions.php</strong> — Two independent card views: pending approvals (PHP loop, Approve/Reject/View Receipt buttons) and contribution ledger (server-side AJAX <code>renderLedgerCards(api)</code> with member totals)</li>
+          <li>35 new PHPUnit unit tests — <strong>ResponsivePrintTier4Test.php</strong> (<strong>155 total passing</strong>)</li>
+        </ul>
+        <div class="test-result">
+          <div class="check">&#10003;</div>
+          <div class="test-text">
+            <div class="big">155 Unit Tests — All Passing</div>
+            <div class="small">composer test-unit &nbsp;|&nbsp; PHP 8.2 &nbsp;|&nbsp; PHPUnit 11 &nbsp;|&nbsp; 0 failures &nbsp;|&nbsp; 0 errors &nbsp;|&nbsp; 0 skipped</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 4: BUG FIX ─── -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">&#128027;</span> 4. Bug Fix — users.php Card Layout
+      </div>
+
+      <div class="work-item red">
+        <div class="work-item-header">
+          <div class="work-item-title">
+            users.php — Cards Too Narrow / Content Misaligned on Mobile
+            <small>6th May 2026 &nbsp;&#8226;&nbsp; Branch: <code>feat/responsive-print-ui-tier4</code> &nbsp;&#8226;&nbsp; Commit: <code>bb93d2e</code></small>
+          </div>
+          <span class="badge badge-red">FIXED</span>
+        </div>
+        <ul>
+          <li><strong>Root cause:</strong> Bootstrap's default <code>card-body</code> padding (1 rem) stacked with the inner wrapper's <code>p-3</code> class (another 1 rem), consuming 64 px of horizontal space on each side on narrow mobile screens</li>
+          <li><strong>Second cause:</strong> <code>.vk-cards-wrapper</code> applied a 2-column CSS grid, making each card approximately 133 px wide on 375 px phones — far too narrow to display email, last-login date, and 2–3 action buttons</li>
+          <li><strong>Fix applied:</strong> Changed <code>card-body</code> → <code>card-body p-0</code> to eliminate double-padding; removed <code>vk-cards-wrapper</code> class from the card container to prevent the 2-column grid (single-column layout retained for this content-heavy page)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 5: FILES CREATED/MODIFIED ─── -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">&#128193;</span> 5. Files Created &amp; Modified — Summary
+      </div>
+
+      <table class="files-table">
+        <thead>
+          <tr>
+            <th>File</th>
+            <th>Type</th>
+            <th>Change</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>README.md</code></td><td>Documentation</td><td>Created — full project overview, stack, install guide, contribution rules</td></tr>
+          <tr><td><code>CLAUDE.md</code></td><td>AI Context</td><td>Created — architecture, patterns, RBAC, branching rules for AI pair programming</td></tr>
+          <tr><td><code>sessions.md</code></td><td>Tracking Log</td><td>Created — session-by-session development journal</td></tr>
+          <tr><td><code>composer.json</code></td><td>Config</td><td>Created — PHPUnit 11 dependency + test scripts</td></tr>
+          <tr><td><code>phpunit.xml</code></td><td>Config</td><td>Created — Unit + Feature test suites</td></tr>
+          <tr><td><code>tests/bootstrap.php</code></td><td>Test</td><td>Created — test bootstrapper with stubs</td></tr>
+          <tr><td><code>tests/Unit/HelpersTest.php</code></td><td>Test</td><td>Created — 30+ helper function unit tests</td></tr>
+          <tr><td><code>tests/Unit/PermissionsTest.php</code></td><td>Test</td><td>Created — 20+ RBAC permission unit tests</td></tr>
+          <tr><td><code>tests/Unit/ResponsivePrintTier2Test.php</code></td><td>Test</td><td>Created — 30 card UI unit tests (Tier 2)</td></tr>
+          <tr><td><code>tests/Unit/ResponsivePrintTier3Test.php</code></td><td>Test</td><td>Created — 24 card UI unit tests (Tier 3)</td></tr>
+          <tr><td><code>tests/Unit/ResponsivePrintTier4Test.php</code></td><td>Test</td><td>Created — 35 card UI unit tests (Tier 4)</td></tr>
+          <tr><td><code>.github/workflows/ci.yml</code></td><td>CI/CD</td><td>Created — PHPUnit CI on every push/PR</td></tr>
+          <tr><td><code>.github/workflows/deploy-gate.yml</code></td><td>CI/CD</td><td>Created — pre-merge quality gate for main</td></tr>
+          <tr><td><code>.github/workflows/deploy.yml</code></td><td>CI/CD</td><td>Modified ×3 — evolved: cPanel → FTP → HTTPS Webhook</td></tr>
+          <tr><td><code>deploy-hook.php</code></td><td>Infrastructure</td><td>Created — bearer-token authenticated webhook receiver</td></tr>
+          <tr><td><code>style.css</code></td><td>UI</td><td>Modified — <code>.vk-member-card</code> component system + 2-column grid</td></tr>
+          <tr><td><code>app/bms/customer/customers.php</code></td><td>UI</td><td>Modified — Tier 1 mobile card view</td></tr>
+          <tr><td><code>app/bms/loans/loans_list.php</code></td><td>UI</td><td>Modified — Tier 1 mobile card view</td></tr>
+          <tr><td><code>app/constant/accounts/petty_cash.php</code></td><td>UI</td><td>Modified — Tier 1 mobile card view (server-side AJAX)</td></tr>
+          <tr><td><code>app/constant/accounts/expenses.php</code></td><td>UI</td><td>Modified — Tier 2 mobile card view</td></tr>
+          <tr><td><code>app/constant/accounts/transactions.php</code></td><td>UI</td><td>Modified — Tier 2 mobile card view</td></tr>
+          <tr><td><code>app/constant/reports/vicoba_reports.php</code></td><td>UI</td><td>Modified — Tier 2 dual card views (savings + expenses)</td></tr>
+          <tr><td><code>app/constant/reports/member_statement.php</code></td><td>UI</td><td>Modified — Tier 3 death benefit card view</td></tr>
+          <tr><td><code>app/constant/reports/expense_report.php</code></td><td>UI</td><td>Modified — Tier 3 expense detail card view</td></tr>
+          <tr><td><code>app/bms/loans/loan_details.php</code></td><td>UI</td><td>Modified — Tier 3 repayment schedule card view</td></tr>
+          <tr><td><code>app/bms/customer/dormant_members.php</code></td><td>UI</td><td>Modified — Tier 4 mobile card view</td></tr>
+          <tr><td><code>app/constant/accounts/budget.php</code></td><td>UI</td><td>Modified — Tier 4 mobile card view</td></tr>
+          <tr><td><code>app/constant/reports/death_analysis.php</code></td><td>UI</td><td>Modified — Tier 4 mobile card view</td></tr>
+          <tr><td><code>app/bms/customer/financial_ledger.php</code></td><td>UI</td><td>Modified — Tier 4 mobile card view (ledger row collection pattern)</td></tr>
+          <tr><td><code>app/constant/settings/user_roles.php</code></td><td>UI</td><td>Modified — Tier 4 mobile card view (User Assignments tab only)</td></tr>
+          <tr><td><code>app/constant/settings/users.php</code></td><td>UI</td><td>Modified — Tier 4 server-side AJAX card view + bug fix (p-0 padding)</td></tr>
+          <tr><td><code>app/bms/customer/manage_contributions.php</code></td><td>UI</td><td>Modified — Tier 4 dual card views (pending + ledger AJAX)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ─── SECTION 6: ARCHITECTURE DECISIONS ─── -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">&#127959;</span> 6. Key Architecture Decisions
+      </div>
+
+      <div class="work-item">
+        <div class="work-item-header">
+          <div class="work-item-title">Client-Side vs. Server-Side Card Rendering Strategy</div>
+        </div>
+        <ul>
+          <li><strong>PHP loop (client-side DataTable):</strong> Used for pages where all data is pre-loaded in PHP — customers, loans, transactions, dormant members, budget, death analysis. Card search synced to DataTable via <code>data-search</code> attribute + <code>filterXxxCards(term)</code> function called in <code>drawCallback</code></li>
+          <li><strong>JS drawCallback (server-side AJAX DataTable):</strong> Used for pages where data loads via AJAX — petty_cash, expenses, users, manage_contributions ledger. <code>renderXxxCards(api)</code> rebuilds card HTML from <code>api.rows({page:'current'}).data()</code> after every DataTable draw</li>
+          <li><strong>XSS safety:</strong> <code>vkEscU(s)</code> / <code>vkEscL(s)</code> helpers escape all user-supplied strings inserted via JavaScript <code>innerHTML</code></li>
+        </ul>
+      </div>
+
+      <div class="work-item green">
+        <div class="work-item-header">
+          <div class="work-item-title">Financial Ledger — $ledger_rows[] Collection Pattern</div>
+        </div>
+        <ul>
+          <li>The financial ledger has highly complex per-row computation (dynamic month columns, entrance fee distribution logic, surplus/deficit calculation) inside a single <code>foreach</code> loop</li>
+          <li>Solution: intermediate <code>$ledger_rows[]</code> array collects computed summary values (<code>compact()</code>) at end of each table row iteration</li>
+          <li>Card view consumes <code>$ledger_rows</code> array in a separate PHP loop below the table, with simplified display (Total Contributed, Balance, Target, Aid) — per-month columns intentionally omitted as unsuitable for card layout</li>
+        </ul>
+      </div>
+
+      <div class="work-item purple">
+        <div class="work-item-header">
+          <div class="work-item-title">Deployment — HTTPS Webhook vs. FTP/SSH Approaches</div>
+        </div>
+        <ul>
+          <li><strong>Why not SSH:</strong> cPanel shared hosting blocks inbound SSH from external IPs; GitHub Actions would need special allowlisting</li>
+          <li><strong>Why not FTP:</strong> FTP active mode is blocked (most modern hosting); FTP passive mode uses random high ports (1024–65535) for data connections — hosting provider firewall blocks inbound connections on these ports from GitHub Actions IPs, causing partial uploads and data corruption</li>
+          <li><strong>Why HTTPS Webhook:</strong> Port 443 is universally open on all shared hosting. Server pulls its own update — no inbound connection required from GitHub. Bearer token authentication. Runs <code>git reset --hard origin/main</code> guaranteeing server matches GitHub exactly</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 7: TIMELINE ─── -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">&#128336;</span> 7. Sprint Timeline
+      </div>
+      <ul class="timeline">
+        <li>
+          <div class="tl-dot">S1</div>
+          <div class="tl-content">
+            <div class="tl-title">Session 1 — Project Scaffolding</div>
+            <div class="tl-desc">5th May 2026 &nbsp;|&nbsp; Git, GitHub, README, CLAUDE.md, PHPUnit setup, 50+ initial unit tests</div>
+          </div>
+        </li>
+        <li>
+          <div class="tl-dot">S2</div>
+          <div class="tl-content">
+            <div class="tl-title">Session 2 — CI/CD Pipeline</div>
+            <div class="tl-desc">5th May 2026 &nbsp;|&nbsp; GitHub Actions: ci.yml, deploy-gate.yml, pr-labeler.yml</div>
+          </div>
+        </li>
+        <li>
+          <div class="tl-dot">S3</div>
+          <div class="tl-content">
+            <div class="tl-title">Session 3 — Deployment Setup (Attempt 1: cPanel UAPI)</div>
+            <div class="tl-desc">5th May 2026 &nbsp;|&nbsp; deploy.yml — tests gate + cPanel pull trigger</div>
+          </div>
+        </li>
+        <li>
+          <div class="tl-dot orange">S4</div>
+          <div class="tl-content">
+            <div class="tl-title">Session 4 — Deploy Verification Trigger</div>
+            <div class="tl-desc">5th May 2026 &nbsp;|&nbsp; cPanel API token correctly saved; re-run pipeline to verify</div>
+          </div>
+        </li>
+        <li>
+          <div class="tl-dot orange">S5</div>
+          <div class="tl-content">
+            <div class="tl-title">Session 5 — cPanel Endpoint Fix</div>
+            <div class="tl-desc">5th May 2026 &nbsp;|&nbsp; Corrected API endpoint, improved auth error detection</div>
+          </div>
+        </li>
+        <li>
+          <div class="tl-dot orange">S6</div>
+          <div class="tl-content">
+            <div class="tl-title">Session 6 — FTP Deploy (Attempt 2)</div>
+            <div class="tl-desc">5th May 2026 &nbsp;|&nbsp; Switched from cPanel API to FTP differential upload after API was blocked</div>
+          </div>
+        </li>
+        <li>
+          <div class="tl-dot red">S7</div>
+          <div class="tl-content">
+            <div class="tl-title">Session 7 — HTTPS Webhook (Final Solution)</div>
+            <div class="tl-desc">5th May 2026 &nbsp;|&nbsp; FTP passive mode blocked; created deploy-hook.php; HTTPS webhook operational</div>
+          </div>
+        </li>
+        <li>
+          <div class="tl-dot green">S8</div>
+          <div class="tl-content">
+            <div class="tl-title">Session 8 — Responsive Print UI Tier 2</div>
+            <div class="tl-desc">5th May 2026 &nbsp;|&nbsp; expenses.php, transactions.php, vicoba_reports.php + style.css card system</div>
+          </div>
+        </li>
+        <li>
+          <div class="tl-dot green">S9</div>
+          <div class="tl-content">
+            <div class="tl-title">Session 9 — Responsive Print UI Tier 3</div>
+            <div class="tl-desc">5th May 2026 &nbsp;|&nbsp; member_statement.php, expense_report.php, loan_details.php</div>
+          </div>
+        </li>
+        <li>
+          <div class="tl-dot green">S10</div>
+          <div class="tl-content">
+            <div class="tl-title">Session 10 — Responsive Print UI Tier 4</div>
+            <div class="tl-desc">5th May 2026 &nbsp;|&nbsp; 7 remaining pages — 155 unit tests all passing</div>
+          </div>
+        </li>
+        <li>
+          <div class="tl-dot red">FX</div>
+          <div class="tl-content">
+            <div class="tl-title">Bug Fix — users.php Card Layout</div>
+            <div class="tl-desc">6th May 2026 &nbsp;|&nbsp; Double-padding + 2-column grid removed; cards now single-column, full-width</div>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <!-- ─── SECTION 8: PENDING / NEXT SPRINT ─── -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">&#128203;</span> 8. Pending Work &amp; Next Sprint
+      </div>
+
+      <div class="work-item">
+        <div class="work-item-header">
+          <div class="work-item-title">In Progress — Responsive Header Elements (Top-of-Table)</div>
+          <span class="badge badge-blue">IN PROGRESS</span>
+        </div>
+        <ul>
+          <li>Stats summary cards above tables: currently use <code>col-md-3</code> / <code>col-md-4</code> → stack full-width on mobile; will be upgraded to 2×2 grid using <code>col-6 col-md-3</code></li>
+          <li>Page header action buttons: large <code>px-4 rounded-pill</code> buttons → will receive mobile sizing (<code>btn-sm</code>, responsive padding, <code>flex-wrap</code> on containers)</li>
+          <li>Filter sections: <code>col-md-X</code> filter fields → will become 2-per-row on mobile with <code>col-6 col-md-X</code></li>
+          <li>Scope: all 11 pages across 4 tiers; each tier on its own dedicated branch (<code>fix/responsive-top-tier1</code> through <code>fix/responsive-top-tier4</code>)</li>
+        </ul>
+      </div>
+
+      <div class="work-item">
+        <div class="work-item-header">
+          <div class="work-item-title">One-Time Server Setup Required for HTTPS Webhook</div>
+          <span class="badge badge-orange">PENDING (USER ACTION)</span>
+        </div>
+        <ul>
+          <li>Create <code>/home/bjptechn/.deploy-secret</code> with strong random token; set permissions to 600</li>
+          <li>Add GitHub Secrets: <code>DEPLOY_HOOK_URL</code> and <code>DEPLOY_HOOK_SECRET</code></li>
+          <li>Verify Git Version Control is set up in cPanel and tracking <code>main</code> branch</li>
+          <li>Restore <code>.htaccess</code> in production if corrupted by earlier FTP attempt</li>
+        </ul>
+      </div>
+    </div>
+
+  </div><!-- /report-body -->
+
+  <!-- ══════════════════════ FOOTER ══════════════════════ -->
+  <div class="report-footer">
+    <div>
+      <strong>Vikundi VICOBA Management System</strong> &nbsp;&#8212;&nbsp; Development Report<br>
+      Prepared by Wambura Muhere &nbsp;|&nbsp; wamburamuhere@gmail.com
+    </div>
+    <div style="text-align:right;">
+      Report Date: <strong>5th May, 2026</strong><br>
+      Classification: Internal — Development Team
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+</body>
+</html>

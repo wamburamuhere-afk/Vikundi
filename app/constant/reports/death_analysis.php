@@ -95,16 +95,38 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
         </div>
     </div>
 
-    <!-- Print Header -->
-    <div class="d-none d-print-block mb-5">
-        <div class="text-center py-4 border-bottom border-primary border-4 mb-4">
-            <h2 class="fw-bold mb-1"><?= $is_sw ? 'UCHAMBUZI WA KIFEDHA: MAFAO YA MISIBA' : 'FINANCIAL ANALYSIS: FUNERAL AID' ?></h2>
-            <div class="text-muted small"><?= $is_sw ? 'Imetolewa:' : 'Issued:' ?> <?= date('d/m/Y H:i') ?></div>
+    <!-- Print Header (Visible ONLY on Print) -->
+    <div class="d-none d-print-block">
+        <div class="text-center mb-4">
+            <img src="/assets/images/<?= htmlspecialchars($group_logo ?? 'logo1.png') ?>" alt="Logo" style="height: 80px; width: auto; margin-bottom: 10px; object-fit: contain;">
+            <h2 class="fw-bold mb-1 text-uppercase" style="color: #0d6efd !important;"><?= htmlspecialchars($group_name ?? 'KIKUNDI') ?></h2>
+            <h4 class="fw-bold text-dark text-uppercase border-top border-bottom py-2 mt-2">
+                <?= $is_sw ? 'UCHAMBUZI WA KIFEDHA: MAFAO YA MISIBA' : 'FUNERAL AID SUSTAINABILITY ANALYSIS' ?>
+            </h4>
+            <div class="small text-muted mt-1"><?= $is_sw ? 'Tarehe ya Printi:' : 'Print Date:' ?> <?= date('d M, Y H:i') ?></div>
         </div>
     </div>
 
-    <!-- Stats Review -->
-    <div class="row g-4 mb-5">
+    <!-- Print-only summary table (replaces stat cards) -->
+    <div class="d-none d-print-block mb-3">
+        <table class="table table-bordered table-sm mb-0" style="font-size: 11px;">
+            <thead class="table-light"><tr>
+                <th><?= $is_sw ? 'Jumla ya Misaada' : 'Total Aid Paid' ?></th>
+                <th><?= $is_sw ? 'Jumla Michango' : 'Total Contributions' ?></th>
+                <th><?= $is_sw ? 'Impact ya Mfuko' : 'Fund Impact' ?></th>
+                <th><?= $is_sw ? 'Jumla ya Vifo' : 'Total Cases' ?></th>
+            </tr></thead>
+            <tbody><tr>
+                <td class="fw-bold text-primary">TZS <?= number_format($total_paid) ?></td>
+                <td class="fw-bold text-success">TZS <?= number_format($total_inbound) ?></td>
+                <td class="fw-bold text-danger">- TZS <?= number_format($net_fund_impact) ?></td>
+                <td class="fw-bold"><?= $case_count ?></td>
+            </tr></tbody>
+        </table>
+    </div>
+
+    <!-- Stats Review (screen only) -->
+    <div class="row g-4 mb-5 d-print-none">
         <div class="col-6 col-md-3">
             <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
                 <div class="card-body p-4 bg-white border-bottom border-4 border-primary">
@@ -139,8 +161,8 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
         </div>
     </div>
 
-    <!-- Comparative Chart -->
-    <div class="card border-0 shadow-sm rounded-4 mb-5">
+    <!-- Comparative Chart (screen only) -->
+    <div class="card border-0 shadow-sm rounded-4 mb-5 d-print-none">
         <div class="card-header bg-white py-3 border-bottom">
             <h6 class="mb-0 fw-bold"><?= $is_sw ? 'Mlinganisho wa Michango vs Msaada (Visa 15 vya mwisho)' : 'Contribution vs Benefit Comparison (Top 15 Cases)' ?></h6>
         </div>
@@ -287,10 +309,10 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
 
 <style>
     @media print {
-        body { background: white !important; font-size: 11px; color: black; }
+        @page { margin: 1cm; }
+        body { background: white !important; font-size: 11px; color: black; padding-bottom: 40px; }
         .card { border: 1px solid #ddd !important; box-shadow: none !important; margin-bottom: 25px !important; page-break-inside: avoid; }
         .d-print-none, .btn, .dataTables_filter, .dataTables_length, .dataTables_info, .dataTables_paginate { display: none !important; }
-        canvas { max-width: 100% !important; height: auto !important; }
         .col-6 { width: 50% !important; flex: 0 0 50% !important; }
         .row { display: flex !important; flex-wrap: wrap !important; }
     }
@@ -354,6 +376,8 @@ $(document).ready(function() {
     }
 });
 </script>
+
+<?php include PRINT_FOOTER_FILE; ?>
 
 <?php
 $content = ob_get_clean();

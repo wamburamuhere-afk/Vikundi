@@ -92,16 +92,38 @@ $trend_values = array_column($trend_data, 'total');
         </div>
     </div>
 
-    <!-- Print-Only Header -->
-    <div class="d-none d-print-block mb-4">
-        <div class="text-center py-4 border-bottom border-primary border-4 mb-4">
-            <h2 class="fw-bold mb-1"><?= $is_sw ? 'RIPOTI YA JUMUISHI YA MATUMIZI' : 'CONSOLIDATED EXPENSE REPORT' ?></h2>
-            <div class="text-muted small"><?= $is_sw ? 'Imetengenezwa Tarehe:' : 'Generated Date:' ?> <?= date('d/m/Y H:i') ?></div>
+    <!-- Print Header (Visible ONLY on Print) -->
+    <div class="d-none d-print-block">
+        <div class="text-center mb-4">
+            <img src="/assets/images/<?= htmlspecialchars($group_logo ?? 'logo1.png') ?>" alt="Logo" style="height: 80px; width: auto; margin-bottom: 10px; object-fit: contain;">
+            <h2 class="fw-bold mb-1 text-uppercase" style="color: #0d6efd !important;"><?= htmlspecialchars($group_name ?? 'KIKUNDI') ?></h2>
+            <h4 class="fw-bold text-dark text-uppercase border-top border-bottom py-2 mt-2">
+                <?= $is_sw ? 'RIPOTI YA JUMUISHI YA MATUMIZI' : 'CONSOLIDATED EXPENSE REPORT' ?>
+            </h4>
+            <div class="small text-muted mt-1"><?= $is_sw ? 'Tarehe ya Printi:' : 'Print Date:' ?> <?= date('d M, Y H:i') ?></div>
         </div>
     </div>
 
-    <!-- Summary Cards -->
-    <div class="row g-4 mb-4">
+    <!-- Print-only summary table (replaces stat cards) -->
+    <div class="d-none d-print-block mb-3">
+        <table class="table table-bordered table-sm mb-0" style="font-size: 11px;">
+            <thead class="table-light"><tr>
+                <th><?= $is_sw ? 'Jumla ya Matumizi' : 'Total Expenditures' ?></th>
+                <th><?= $is_sw ? 'Matumizi Kawaida' : 'General Expenses' ?></th>
+                <th><?= $is_sw ? 'Msaada wa Misiba' : 'Funeral Assistance' ?></th>
+                <th><?= $is_sw ? 'Idadi ya Matukio' : 'Total Records' ?></th>
+            </tr></thead>
+            <tbody><tr>
+                <td class="fw-bold text-primary">TZS <?= number_format($total_overall) ?></td>
+                <td class="fw-bold text-info">TZS <?= number_format($total_general) ?></td>
+                <td class="fw-bold text-danger">TZS <?= number_format($total_death) ?></td>
+                <td class="fw-bold"><?= number_format($total_records) ?></td>
+            </tr></tbody>
+        </table>
+    </div>
+
+    <!-- Summary Cards (screen only) -->
+    <div class="row g-4 mb-4 d-print-none">
         <div class="col-6 col-md-3">
             <div class="card border-0 shadow-sm h-100 rounded-4 overflow-hidden">
                 <div class="card-body p-4 bg-white border-bottom border-4 border-primary">
@@ -240,12 +262,12 @@ $trend_values = array_column($trend_data, 'total');
 
 <style>
     @media print {
-        body { background: white !important; font-size: 11px; }
+        @page { margin: 1cm; }
+        body { background: white !important; font-size: 11px; padding-bottom: 40px; }
         .card { border: 1px solid #eee !important; box-shadow: none !important; margin-bottom: 20px !important; page-break-inside: avoid; }
-        .nav-pills, .btn, .d-print-none, .dataTables_filter, .dataTables_length, .dataTables_info, .dataTables_paginate { display: none !important; }
+        .d-print-none, .nav-pills, .btn, .dataTables_filter, .dataTables_length, .dataTables_info, .dataTables_paginate { display: none !important; }
         .col-6 { width: 50% !important; flex: 0 0 50% !important; }
         .row { display: flex !important; flex-wrap: wrap !important; }
-        canvas { max-width: 100% !important; height: auto !important; }
     }
 </style>
 
@@ -279,6 +301,8 @@ $(document).ready(function() {
 
 });
 </script>
+
+<?php include PRINT_FOOTER_FILE; ?>
 
 <?php
 $content = ob_get_clean();
