@@ -319,6 +319,13 @@ class StandardPrintLayoutTest extends TestCase
         $this->assertStringContainsString('@page { margin: 1cm; }', $src);
     }
 
+    public function test_expense_report_cards_visible_in_print(): void
+    {
+        $src = file_get_contents($this->reportsDir . '/expense_report.php');
+        $this->assertStringContainsString('<div class="row g-2 g-md-4 mb-4">', $src);
+        $this->assertStringNotContainsString('<div class="row g-4 mb-4 d-print-none">', $src);
+    }
+
     public function test_customer_analysis_has_1cm_page_margin(): void
     {
         $src = file_get_contents($this->reportsDir . '/customer_analysis.php');

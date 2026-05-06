@@ -104,26 +104,10 @@ $trend_values = array_column($trend_data, 'total');
         </div>
     </div>
 
-    <!-- Print-only summary table (replaces stat cards) -->
-    <div class="d-none d-print-block mb-3">
-        <table class="table table-bordered table-sm mb-0" style="font-size: 11px;">
-            <thead class="table-light"><tr>
-                <th><?= $is_sw ? 'Jumla ya Matumizi' : 'Total Expenditures' ?></th>
-                <th><?= $is_sw ? 'Matumizi Kawaida' : 'General Expenses' ?></th>
-                <th><?= $is_sw ? 'Msaada wa Misiba' : 'Funeral Assistance' ?></th>
-                <th><?= $is_sw ? 'Idadi ya Matukio' : 'Total Records' ?></th>
-            </tr></thead>
-            <tbody><tr>
-                <td class="fw-bold text-primary">TZS <?= number_format($total_overall) ?></td>
-                <td class="fw-bold text-info">TZS <?= number_format($total_general) ?></td>
-                <td class="fw-bold text-danger">TZS <?= number_format($total_death) ?></td>
-                <td class="fw-bold"><?= number_format($total_records) ?></td>
-            </tr></tbody>
-        </table>
-    </div>
 
-    <!-- Summary Cards (screen only) -->
-    <div class="row g-4 mb-4 d-print-none">
+
+    <!-- Summary Cards -->
+    <div class="row g-2 g-md-4 mb-4">
         <div class="col-6 col-md-3">
             <div class="card border-0 shadow-sm h-100 rounded-4 overflow-hidden">
                 <div class="card-body p-4 bg-white border-bottom border-4 border-primary">
@@ -263,8 +247,10 @@ $trend_values = array_column($trend_data, 'total');
 <style>
     @media print {
         @page { margin: 1cm; }
-        body { background: white !important; font-size: 11px; padding-bottom: 40px; }
-        .card { border: 1px solid #eee !important; box-shadow: none !important; margin-bottom: 20px !important; page-break-inside: avoid; }
+        body { background: white !important; font-size: 10px; padding-bottom: 40px; }
+        .card { border: 1px solid #ddd !important; box-shadow: none !important; margin-bottom: 10px !important; page-break-inside: avoid; }
+        .card-body { padding: 10px !important; }
+        .fs-4 { font-size: 1rem !important; }
         .d-print-none, .nav-pills, .btn, .dataTables_filter, .dataTables_length, .dataTables_info, .dataTables_paginate { display: none !important; }
         .col-6 { width: 50% !important; flex: 0 0 50% !important; }
         .row { display: flex !important; flex-wrap: wrap !important; }
