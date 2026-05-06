@@ -337,8 +337,11 @@ try {
         
         /* Print styles */
         @media print {
-            .navbar {
+            .header-wrapper, .navbar {
                 display: none !important;
+            }
+            body {
+                padding-top: 0 !important;
             }
         }
 

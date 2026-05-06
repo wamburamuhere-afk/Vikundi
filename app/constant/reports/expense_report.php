@@ -100,7 +100,7 @@ $trend_values = array_column($trend_data, 'total');
             <h4 class="fw-bold text-dark text-uppercase border-top border-bottom py-2 mt-2">
                 <?= $is_sw ? 'RIPOTI YA JUMUISHI YA MATUMIZI' : 'CONSOLIDATED EXPENSE REPORT' ?>
             </h4>
-            <div class="small text-muted mt-1"><?= $is_sw ? 'Tarehe ya Printi:' : 'Print Date:' ?> <?= date('d M, Y H:i') ?></div>
+            <div class="small text-muted mt-1"><?= $is_sw ? 'Tarehe ya Printi:' : 'Print Date:' ?> <?= date('d m, Y H:i') ?></div>
         </div>
     </div>
 

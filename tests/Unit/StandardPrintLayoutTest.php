@@ -15,11 +15,13 @@ use PHPUnit\Framework\TestCase;
 class StandardPrintLayoutTest extends TestCase
 {
     private string $footerPath;
+    private string $headerPath;
     private string $reportsDir;
 
     protected function setUp(): void
     {
         $this->footerPath  = __DIR__ . '/../../includes/print_footer.php';
+        $this->headerPath  = __DIR__ . '/../../header.php';
         $this->reportsDir  = __DIR__ . '/../../app/constant/reports';
         unset($_SESSION['preferred_language']);
     }
@@ -225,7 +227,7 @@ class StandardPrintLayoutTest extends TestCase
         $_SESSION['preferred_language'] = 'en';
         $username  = 'Test';
         $user_role = 'Admin';
-        $today     = date('d M, Y');
+        $today     = date('d m, Y');
 
         ob_start();
         include $this->footerPath;
@@ -339,5 +341,16 @@ class StandardPrintLayoutTest extends TestCase
     {
         $src = file_get_contents($this->reportsDir . '/customer_analysis.php');
         $this->assertStringContainsString('padding-bottom: 55px', $src);
+    }
+
+    // -------------------------------------------------------------------------
+    // Global Header — Hide wrapper in print
+    // -------------------------------------------------------------------------
+
+    public function test_header_php_hides_wrapper_in_print(): void
+    {
+        $src = file_get_contents($this->headerPath);
+        $this->assertStringContainsString('.header-wrapper, .navbar {', $src);
+        $this->assertStringContainsString('display: none !important;', $src);
     }
 }
