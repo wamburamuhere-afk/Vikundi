@@ -283,6 +283,12 @@ class StandardPrintLayoutTest extends TestCase
         $this->assertStringContainsString('PRINT_FOOTER_FILE', $src);
     }
 
+    public function test_financial_ledger_includes_print_footer_file(): void
+    {
+        $src = file_get_contents(__DIR__ . '/../../app/bms/customer/financial_ledger.php');
+        $this->assertStringContainsString('PRINT_FOOTER_FILE', $src);
+    }
+
     // -------------------------------------------------------------------------
     // Report files — @page margin standardised at 1cm
     // -------------------------------------------------------------------------
