@@ -159,7 +159,7 @@ $breadcrumbs = [
             </div>
         </div>
         <div class="card-body p-0">
-            <div class="table-responsive">
+            <div class="table-responsive d-none d-md-block d-print-block">
                 <table class="table table-hover align-middle mb-0" id="dormantTable">
                     <thead class="bg-light">
                         <tr>
@@ -224,13 +224,71 @@ $breadcrumbs = [
                     </tbody>
                 </table>
             </div>
+            <!-- ═══ CARD VIEW — Mobile Only ═══ -->
+            <div class="p-3 d-md-none d-print-none vk-cards-wrapper" id="dormantCardsWrapper">
+                <?php if (empty($dormant_members)): ?>
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-person-x fs-1 d-block mb-3"></i>
+                    <p><?= $is_sw ? 'Hakuna mwanachama dormant kwa sasa.' : 'No dormant members found.' ?></p>
+                </div>
+                <?php else: foreach ($dormant_members as $m):
+                    $dm_initials = strtoupper(substr($m['first_name'] ?? 'U', 0, 1) . substr($m['last_name'] ?? 'N', 0, 1));
+                    $dm_deceased = !empty($m['is_deceased']);
+                    $dm_av_color = $dm_deceased
+                        ? 'linear-gradient(135deg,#343a40,#212529)'
+                        : 'linear-gradient(135deg,#0d6efd,#0a58ca)';
+                    $dm_search   = strtolower(
+                        ($m['first_name'] ?? '') . ' ' . ($m['last_name'] ?? '') . ' ' .
+                        ($m['username'] ?? '') . ' ' . ($m['phone'] ?? '') . ' ' . ($m['email'] ?? '')
+                    );
+                ?>
+                <div class="vk-member-card" data-search="<?= htmlspecialchars($dm_search) ?>">
+                    <div class="vk-card-header d-flex justify-content-between align-items-center gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="vk-card-avatar" style="background:<?= $dm_av_color ?>;"><?= $dm_initials ?></div>
+                            <div>
+                                <div class="fw-bold text-dark" style="font-size:13px;"><?= htmlspecialchars(($m['first_name'] ?? '') . ' ' . ($m['last_name'] ?? '')) ?></div>
+                                <small class="text-muted"><?= htmlspecialchars($m['username'] ?? '') ?></small>
+                            </div>
+                        </div>
+                        <?php if ($dm_deceased): ?>
+                        <span class="badge bg-dark text-white rounded-pill px-2" style="font-size:10px;"><i class="bi bi-heart-pulse me-1"></i><?= $is_sw ? 'Amefariki' : 'Deceased' ?></span>
+                        <?php else: ?>
+                        <span class="badge bg-primary text-white rounded-pill px-2" style="font-size:10px;"><?= $is_sw ? 'MICHANGO' : 'CONTRIB.' ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="vk-card-body">
+                        <div class="vk-card-row">
+                            <span class="vk-card-label"><?= $is_sw ? 'Simu' : 'Phone' ?></span>
+                            <span class="vk-card-value"><?= htmlspecialchars($m['phone'] ?? '—') ?></span>
+                        </div>
+                        <div class="vk-card-row">
+                            <span class="vk-card-label"><?= $is_sw ? 'Barua Pepe' : 'Email' ?></span>
+                            <span class="vk-card-value small text-muted"><?= htmlspecialchars($m['email'] ?? '—') ?></span>
+                        </div>
+                        <div class="vk-card-row">
+                            <span class="vk-card-label"><?= $is_sw ? 'Kuingia' : 'Registered' ?></span>
+                            <span class="vk-card-value"><?= date('d M Y', strtotime($m['created_at'])) ?></span>
+                        </div>
+                    </div>
+                    <div class="vk-card-actions">
+                        <a href="<?= getUrl('member_statement') ?>?id=<?= $m['customer_id'] ?>" class="btn vk-btn-action btn-primary" title="<?= $is_sw ? 'Taarifa' : 'Statement' ?>">
+                            <i class="bi bi-file-earmark-person"></i>
+                        </a>
+                        <button onclick="deleteDormant(<?= $m['user_id'] ?>)" class="btn vk-btn-action btn-danger" title="<?= $is_sw ? 'Mfute' : 'Delete' ?>">
+                            <i class="bi bi-trash3-fill"></i>
+                        </button>
+                    </div>
+                </div>
+                <?php endforeach; endif; ?>
+            </div>
         </div>
     </div>
 </div>
 
-<?php 
+<?php
 require_once 'footer.php';
-ob_end_flush(); 
+ob_end_flush();
 ?>
 
 <script>
@@ -322,12 +380,16 @@ $(document).ready(function() {
         ],
         language: {
             url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'sw.json' : 'en-GB.json' ?>'
+        },
+        drawCallback: function() {
+            filterDormantCards($('#dormantSearch').val());
         }
     });
 
     // Custom Search
     $('#dormantSearch').on('keyup', function() {
         dormantTable.search(this.value).draw();
+        filterDormantCards(this.value);
     });
 });
 
@@ -342,6 +404,14 @@ function dtPrint() {
 
 function dtExport() {
     dormantTable.button('.buttons-excel').trigger();
+}
+
+function filterDormantCards(val) {
+    var term = (val || '').toLowerCase().trim();
+    $('#dormantCardsWrapper .vk-member-card').each(function() {
+        var text = ($(this).data('search') || '').toLowerCase();
+        $(this).toggle(!term || text.includes(term));
+    });
 }
 
 function deleteDormant(userId) {

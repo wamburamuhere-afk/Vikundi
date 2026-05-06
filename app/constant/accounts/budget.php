@@ -188,7 +188,7 @@ $performance_data = $performance_stmt->fetchAll(PDO::FETCH_ASSOC);
     <!-- Table -->
     <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
         <div class="card-body p-3 p-md-4">
-            <div class="table-responsive">
+            <div class="table-responsive d-none d-md-block d-print-block">
                 <table id="budgetTable" class="table table-hover align-middle mb-0" style="width: 100%;">
                     <thead>
                         <tr class="small text-uppercase text-muted">
@@ -228,6 +228,58 @@ $performance_data = $performance_stmt->fetchAll(PDO::FETCH_ASSOC);
                         </tr>
                     </tfoot>
                 </table>
+            </div>
+            <!-- ═══ CARD VIEW — Mobile Only ═══ -->
+            <div class="d-md-none d-print-none vk-cards-wrapper mt-3" id="budgetCardsWrapper">
+                <?php if (empty($performance_data)): ?>
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-wallet2 fs-1 d-block mb-3"></i>
+                    <p>No budgets found.</p>
+                </div>
+                <?php else: foreach ($performance_data as $item):
+                    $bg_letter   = strtoupper(substr($item['category_name'] ?? 'B', 0, 1));
+                    $bg_approved = ($item['status'] == 'approved');
+                    $bg_av_color = $bg_approved
+                        ? 'linear-gradient(135deg,#198754,#146c43)'
+                        : 'linear-gradient(135deg,#ffc107,#e0a800)';
+                    $bg_search   = strtolower(($item['category_name'] ?? '') . ' ' . ($months[$item['budget_month']] ?? '') . ' ' . $item['budget_year'] . ' ' . $item['status']);
+                ?>
+                <div class="vk-member-card" data-search="<?= htmlspecialchars($bg_search) ?>">
+                    <div class="vk-card-header d-flex justify-content-between align-items-center gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="vk-card-avatar" style="background:<?= $bg_av_color ?>;"><?= $bg_letter ?></div>
+                            <div class="fw-bold text-dark" style="font-size:13px;"><?= htmlspecialchars($item['category_name']) ?></div>
+                        </div>
+                        <span class="badge bg-<?= $bg_approved ? 'success' : 'warning' ?> rounded-pill px-2 text-<?= $bg_approved ? 'white' : 'dark' ?>" style="font-size:10px;"><?= ucfirst($item['status']) ?></span>
+                    </div>
+                    <div class="vk-card-body">
+                        <div class="vk-card-row">
+                            <span class="vk-card-label">Allocated</span>
+                            <span class="vk-card-value fw-bold">TZS <?= number_format($item['allocated_amount'], 2) ?></span>
+                        </div>
+                        <div class="vk-card-row">
+                            <span class="vk-card-label">Period</span>
+                            <span class="vk-card-value"><?= ($months[$item['budget_month']] ?? '') . ' ' . $item['budget_year'] ?></span>
+                        </div>
+                    </div>
+                    <div class="vk-card-actions">
+                        <a href="/accounts/budget_details?id=<?= $item['budget_id'] ?>" class="btn vk-btn-action btn-primary" title="View">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        <?php if ($can_edit_budget): ?>
+                        <button onclick="editBudget(<?= $item['budget_id'] ?>)" class="btn vk-btn-action" style="background:#ffc107;color:#000;" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button onclick="confirmChangeStatus(<?= $item['budget_id'] ?>, '<?= $item['status'] ?>')" class="btn vk-btn-action btn-secondary" title="Status">
+                            <i class="bi bi-arrow-repeat"></i>
+                        </button>
+                        <button onclick="confirmDeleteBudget(<?= $item['budget_id'] ?>)" class="btn vk-btn-action btn-danger" title="Delete">
+                            <i class="bi bi-trash3"></i>
+                        </button>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endforeach; endif; ?>
             </div>
         </div>
     </div>
@@ -275,6 +327,13 @@ $(document).ready(function() {
         responsive: true,
         dom: '<"d-flex flex-wrap align-items-center justify-content-between mb-3" <"d-flex align-items-center" B l > f >rtip',
         lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
+        drawCallback: function() {
+            var term = (this.api().search() || '').toLowerCase().trim();
+            $('#budgetCardsWrapper .vk-member-card').each(function() {
+                var text = ($(this).data('search') || '').toLowerCase();
+                $(this).toggle(!term || text.includes(term));
+            });
+        },
         buttons: [
             { 
                 extend: 'collection', text: '<i class="bi bi-download me-1"></i> Export', className: 'btn btn-sm btn-primary rounded-pill px-3 d-md-none mb-2 me-2', 

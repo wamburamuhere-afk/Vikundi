@@ -518,7 +518,7 @@ function getRoleBadgeColor($role_name) {
                                     <h5 class="mb-0"><?= $isSw ? 'Mgawanyo wa Nafasi' : 'User Role Assignments' ?></h5>
                                 </div>
                                 <div class="card-body">
-                                    <div class="table-responsive">
+                                    <div class="table-responsive d-none d-md-block d-print-block">
                                         <table class="table table-striped table-hover" id="usersTable">
                                             <thead>
                                                 <tr>
@@ -561,6 +561,58 @@ function getRoleBadgeColor($role_name) {
                                                 <?php endforeach; ?>
                                             </tbody>
                                         </table>
+                                    </div>
+                                    <!-- ═══ CARD VIEW — Mobile Only ═══ -->
+                                    <div class="p-3 d-md-none d-print-none vk-cards-wrapper" id="roleUsersCardsWrapper">
+                                        <?php if (empty($users)): ?>
+                                        <div class="text-center py-5 text-muted">
+                                            <i class="bi bi-people fs-1 d-block mb-3"></i>
+                                            <p><?= $isSw ? 'Hakuna watumiaji.' : 'No users found.' ?></p>
+                                        </div>
+                                        <?php else: foreach ($users as $u):
+                                            $ru_name     = htmlspecialchars(trim(($u['first_name'] ?? '') . ' ' . ($u['last_name'] ?? '')));
+                                            $ru_initials = strtoupper(substr($u['first_name'] ?? 'U', 0, 1) . substr($u['last_name'] ?? 'N', 0, 1));
+                                            $ru_role     = translateRole($u['role_name'], $roleMap, $lang);
+                                            $ru_active   = ($u['status'] == 1 || $u['status'] === 'active');
+                                            $ru_bc       = getRoleBadgeColor($u['role_name']);
+                                            $ru_search   = strtolower($ru_name . ' ' . ($u['username'] ?? '') . ' ' . ($u['email'] ?? '') . ' ' . $ru_role);
+                                        ?>
+                                        <div class="vk-member-card" data-search="<?= htmlspecialchars($ru_search) ?>">
+                                            <div class="vk-card-header d-flex justify-content-between align-items-center gap-2">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="vk-card-avatar" style="background:linear-gradient(135deg,#0d6efd,#0a58ca);"><?= $ru_initials ?></div>
+                                                    <div>
+                                                        <div class="fw-bold text-dark" style="font-size:13px;"><?= $ru_name ?></div>
+                                                        <small class="text-muted"><?= htmlspecialchars($u['username'] ?? '') ?></small>
+                                                    </div>
+                                                </div>
+                                                <span class="badge bg-<?= $ru_bc ?> rounded-pill px-2" style="font-size:10px;"><?= htmlspecialchars($ru_role) ?></span>
+                                            </div>
+                                            <div class="vk-card-body">
+                                                <div class="vk-card-row">
+                                                    <span class="vk-card-label"><?= $isSw ? 'Barua Pepe' : 'Email' ?></span>
+                                                    <span class="vk-card-value small text-muted"><?= htmlspecialchars($u['email'] ?? '—') ?></span>
+                                                </div>
+                                                <div class="vk-card-row">
+                                                    <span class="vk-card-label"><?= $isSw ? 'Hali' : 'Status' ?></span>
+                                                    <span class="vk-card-value">
+                                                        <span class="badge bg-<?= $ru_active ? 'success' : 'secondary' ?>">
+                                                            <?= $isSw ? ($ru_active ? 'Hai' : 'Nje') : ($ru_active ? 'Active' : 'Inactive') ?>
+                                                        </span>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="vk-card-actions">
+                                                <button class="btn vk-btn-action btn-primary assign-role"
+                                                        data-user-id="<?= $u['user_id'] ?>"
+                                                        data-user-name="<?= htmlspecialchars($ru_name) ?>"
+                                                        data-current-role="<?= $u['role_id'] ?>"
+                                                        title="<?= $isSw ? 'Gawa Nafasi' : 'Assign Role' ?>">
+                                                    <i class="bi bi-person-gear"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <?php endforeach; endif; ?>
                                     </div>
                                 </div>
                             </div>
@@ -826,7 +878,14 @@ $(document).ready(function() {
     // Initialize DataTables
     $('#usersTable').DataTable({
         pageLength: 25,
-        order: [[0, 'asc']]
+        order: [[0, 'asc']],
+        drawCallback: function() {
+            var term = (this.api().search() || '').toLowerCase().trim();
+            $('#roleUsersCardsWrapper .vk-member-card').each(function() {
+                var text = ($(this).data('search') || '').toLowerCase();
+                $(this).toggle(!term || text.includes(term));
+            });
+        }
     });
 
     $('#permissionsMatrix').DataTable({
