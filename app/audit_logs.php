@@ -194,6 +194,8 @@ require_once ROOT_DIR . '/header.php';
 </style>
 
 <div class="main-logs-content py-4">
+    <!-- Print Header -->
+    <?= getPrintHeader($isSw ? 'KUMBUKUMBU ZA SHUGHULI ZA MFUMO' : 'SYSTEM ACTIVITY LOGS') ?>
     <!-- Header -->
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3 no-print">
         <div>
@@ -362,7 +364,8 @@ require_once ROOT_DIR . '/header.php';
             </nav>
             <?php endif; ?>
         </div>
-    </div>
+    <!-- Print Footer -->
+    <?= getPrintFooter() ?>
 </div>
 
 <style>
@@ -385,25 +388,7 @@ require_once ROOT_DIR . '/header.php';
     .card-body { padding: 0 !important; }
     .table-responsive { overflow: visible !important; }
 
-    /* ── Auto print header ── */
-    .main-logs-content::before {
-        content: '<?= $isSw ? "KUMBUKUMBU ZA SHUGHULI ZA MFUMO" : "SYSTEM ACTIVITY LOGS" ?>';
-        display: block;
-        font-size: 16px;
-        font-weight: 700;
-        text-align: center;
-        margin-bottom: 4px;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-    .main-logs-content::after {
-        content: '<?= $isSw ? "Imechapishwa: " : "Printed: " ?><?= date("d/m/Y H:i") ?>';
-        display: block;
-        font-size: 10px;
-        text-align: right;
-        margin-bottom: 8px;
-        color: #666;
-    }
+    /* Standard print header/footer classes are handled by helpers.php */
 
     /* ── Table styles ── */
     #activityTable {

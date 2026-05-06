@@ -100,13 +100,8 @@ $latest_members = $pdo->query("
         </div>
     </div>
 
-    <!-- Print-Only Header -->
-    <div class="d-none d-print-block mb-4">
-        <div class="text-center py-4 border-bottom border-primary border-4 mb-4">
-            <h2 class="fw-bold mb-1"><?= $is_sw ? 'RIPOTI YA UCHAMBUZI WA WANACHAMA' : 'MEMBER ANALYSIS REPORT' ?></h2>
-            <div class="text-muted small"><?= $is_sw ? 'Imetengenezwa Tarehe:' : 'Generated Date:' ?> <?= date('d/m/Y H:i') ?></div>
-        </div>
-    </div>
+    <!-- Print Header -->
+    <?= getPrintHeader($is_sw ? 'RIPOTI YA UCHAMBUZI WA WANACHAMA' : 'MEMBER ANALYSIS REPORT') ?>
 
     <!-- Stats Row -->
     <div class="row g-4 mb-4">
@@ -220,8 +215,8 @@ $latest_members = $pdo->query("
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
+        </div>    <!-- Print Footer -->
+    <?= getPrintFooter() ?>
 </div>
 
 <style>

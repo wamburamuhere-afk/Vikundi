@@ -99,13 +99,8 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
         </div>
     </div>
 
-    <!-- Print-Only Header -->
-    <div class="d-none d-print-block mb-5">
-        <div class="text-center py-4 border-bottom border-primary border-4 mb-4">
-            <h2 class="fw-bold mb-1"><?= $is_sw ? 'RIPOTI YA KIKUNDI' : 'GROUP FINANCIAL REPORT' ?></h2>
-            <div class="text-muted small"><?= $is_sw ? 'Imetengenezwa Tarehe:' : 'Generated Date:' ?> <?= date('d/m/Y H:i') ?></div>
-        </div>
-    </div>
+    <!-- Print Header -->
+    <?= getPrintHeader($is_sw ? 'RIPOTI YA KIKUNDI' : 'GROUP FINANCIAL REPORT') ?>
 
     <!-- SUMMARY CARDS -->
     <div class="row g-4 mb-5">
@@ -380,7 +375,8 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
             </div>
         </div>
     </div>
-
+    <!-- Print Footer -->
+    <?= getPrintFooter() ?>
 </div>
 
 <style>

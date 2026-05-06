@@ -92,13 +92,8 @@ $trend_values = array_column($trend_data, 'total');
         </div>
     </div>
 
-    <!-- Print-Only Header -->
-    <div class="d-none d-print-block mb-4">
-        <div class="text-center py-4 border-bottom border-primary border-4 mb-4">
-            <h2 class="fw-bold mb-1"><?= $is_sw ? 'RIPOTI YA JUMUISHI YA MATUMIZI' : 'CONSOLIDATED EXPENSE REPORT' ?></h2>
-            <div class="text-muted small"><?= $is_sw ? 'Imetengenezwa Tarehe:' : 'Generated Date:' ?> <?= date('d/m/Y H:i') ?></div>
-        </div>
-    </div>
+    <!-- Print Header -->
+    <?= getPrintHeader($is_sw ? 'RIPOTI YA JUMUISHI YA MATUMIZI' : 'CONSOLIDATED EXPENSE REPORT') ?>
 
     <!-- Summary Cards -->
     <div class="row g-4 mb-4">
@@ -234,8 +229,8 @@ $trend_values = array_column($trend_data, 'total');
                 </div>
             </div>
 
-        </div>
-    </div>
+        </div>    <!-- Print Footer -->
+    <?= getPrintFooter() ?>
 </div>
 
 <style>

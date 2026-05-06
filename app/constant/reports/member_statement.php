@@ -104,17 +104,7 @@ $total_expenses = array_sum(array_column($expenses, 'amount'));
 
 ?>
 <!-- 1. PRINT HEADER (Visible only during print) -->
-<div class="d-none d-print-block">
-    <div class="text-center mb-4">
-        <img src="/assets/images/<?= htmlspecialchars($group_logo ?? 'logo1.png') ?>" alt="Logo" style="height: 80px; width: auto; margin-bottom: 10px; object-fit: contain;">
-        <h2 class="fw-bold mb-1 text-uppercase" style="color: #0d6efd !important;"><?= htmlspecialchars($group_name ?? 'KIKUNDI') ?></h2>
-        <h4 class="fw-bold text-dark text-uppercase border-top border-bottom py-2 mt-2">
-            <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'HALI YA KIFEDHA YA MWANACHAMA' : 'MEMBER FINANCIAL STATEMENT' ?>
-        </h4>
-        <div class="small text-muted mt-1"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mwanachama:' : 'Member:' ?> <?= htmlspecialchars($member['first_name'] . ' ' . $member['last_name']) ?> | #<?= $member['customer_id'] ?></div>
-        <div class="small text-muted mt-1"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Tarehe ya Printi:' : 'Print Date:' ?> <?= date('d M, Y H:i') ?></div>
-    </div>
-</div>
+<?= getPrintHeader(($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'HALI YA KIFEDHA YA MWANACHAMA' : 'MEMBER FINANCIAL STATEMENT', ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mwanachama:' : 'Member:' . ' ' . htmlspecialchars($member['first_name'] . ' ' . $member['last_name']) . ' | #' . $member['customer_id']) ?>
 
 <div class="no-print mb-4">
     <div class="row align-items-center g-3">
@@ -375,10 +365,7 @@ $total_expenses = array_sum(array_column($expenses, 'amount'));
 }
 
 /* 4. PRINT FOOTER (Visible only during print) */
-.print-footer { display: none; }
-@media print {
-    .print-footer { display: block !important; }
-}
+/* Shared print footer styles are now in helpers.php */
 
 .table-responsive::-webkit-scrollbar { height: 8px; }
 .table-responsive::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
@@ -390,14 +377,7 @@ th { font-size: 0.65rem; letter-spacing: 0.02em; font-weight: 800; }
 </style>
 
 <!-- 4. PRINT FOOTER (Visible only during print) -->
-<div class="d-none d-print-block print-footer">
-    <div class="row pt-2">
-        <div class="col-12 text-center">
-            <p class="mb-1 text-dark"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nyaraka hii imechapishwa na' : 'This document was printed by' ?> <strong><?= htmlspecialchars($username ?? $_SESSION['username']) ?></strong> - <strong><?= htmlspecialchars($user_role ?? 'Member') ?></strong> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'mnamo' : 'on' ?> <strong><?= date('d M, Y') ?></strong> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'saa' : 'at' ?> <strong><?= date('H:i:s') ?></strong></p>
-            <h6 class="mb-0 fw-bold" style="color: #0d6efd !important;">Powered By BJP Technologies &copy; <?= date('Y') ?>, All Rights Reserved</h6>
-        </div>
-    </div>
-</div>
+<?= getPrintFooter() ?>
 
 <?php
 $content = ob_get_clean();

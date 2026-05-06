@@ -96,12 +96,7 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
     </div>
 
     <!-- Print Header -->
-    <div class="d-none d-print-block mb-5">
-        <div class="text-center py-4 border-bottom border-primary border-4 mb-4">
-            <h2 class="fw-bold mb-1"><?= $is_sw ? 'UCHAMBUZI WA KIFEDHA: MAFAO YA MISIBA' : 'FINANCIAL ANALYSIS: FUNERAL AID' ?></h2>
-            <div class="text-muted small"><?= $is_sw ? 'Imetolewa:' : 'Issued:' ?> <?= date('d/m/Y H:i') ?></div>
-        </div>
-    </div>
+    <?= getPrintHeader($is_sw ? 'UCHAMBUZI WA KIFEDHA: MAFAO YA MISIBA' : 'FINANCIAL ANALYSIS: FUNERAL AID') ?>
 
     <!-- Stats Review -->
     <div class="row g-4 mb-5">
@@ -283,6 +278,9 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
             </div>
         </div>
     </div>
+    
+    <!-- Print Footer -->
+    <?= getPrintFooter() ?>
 </div>
 
 <style>

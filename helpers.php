@@ -554,4 +554,62 @@ if (!function_exists('format_number')) {
         return number_format((float)$number, $decimals);
     }
 }
+
+/**
+ * Generates the standardized Print Header
+ */
+function getPrintHeader($heading = '', $member_info = '') {
+    global $group_logo, $group_name;
+    $logo = htmlspecialchars($group_logo ?? 'logo1.png');
+    $name = htmlspecialchars($group_name ?? 'KIKUNDI');
+    $is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
+    $print_date_label = $is_sw ? 'Tarehe ya Printi:' : 'Print Date:';
+    $print_date = date('d m, Y H:i');
+    
+    return "
+    <div class='d-none d-print-block'>
+        <div class='text-center mb-4'>
+            <img src='/assets/images/$logo' alt='Logo' style='height: 80px; width: auto; margin-bottom: 10px; object-fit: contain;'>
+            <h2 class='fw-bold mb-1 text-uppercase' style='color: #0d6efd !important;'>$name</h2>
+            <h4 class='fw-bold text-dark text-uppercase border-top border-bottom py-2 mt-2'>$heading</h4>
+            " . ($member_info ? "<div class='small text-muted mt-1'>$member_info</div>" : "") . "
+            <div class='small text-muted mt-1'>$print_date_label $print_date</div>
+        </div>
+    </div>";
+}
+
+/**
+ * Generates the standardized Print Footer
+ */
+function getPrintFooter() {
+    $username = htmlspecialchars($_SESSION['username'] ?? 'User');
+    $user_role = htmlspecialchars($_SESSION['role_name'] ?? 'Member');
+    $is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
+    $printed_by_label = $is_sw ? 'Nyaraka hii imechapishwa na' : 'This document was printed by';
+    $on_label = $is_sw ? 'mnamo' : 'on';
+    $at_label = $is_sw ? 'saa' : 'at';
+    $current_date = date('d m, Y');
+    $current_time = date('H:i:s');
+    $current_year = date('Y');
+    
+    return "
+    <div class='d-none d-print-block print-footer' style='font-size: 10px; text-align: center; width: 100%; padding-top: 15px; border-top: 1px solid #dee2e6;'>
+        <div class='row'>
+            <div class='col-12'>
+                <p class='mb-1 text-dark' style='font-size: 10px;'>
+                    $printed_by_label <strong>$username</strong> - <strong>$user_role</strong> $on_label <strong>$current_date</strong> $at_label <strong>$current_time</strong>
+                </p>
+                <h6 class='mb-0 fw-bold' style='color: #0d6efd !important; font-size: 10px;'>
+                    Powered By BJP Technologies &copy; $current_year, All Rights Reserved
+                </h6>
+            </div>
+        </div>
+    </div>
+    <style>
+        @media print {
+            .print-footer { position: fixed; bottom: 0.8cm; left: 0; right: 0; display: block !important; }
+            body { margin-bottom: 2cm !important; }
+        }
+    </style>";
+}
 ?>
