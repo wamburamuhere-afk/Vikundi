@@ -99,11 +99,38 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
         </div>
     </div>
 
-    <!-- Print Header -->
-    <?= getPrintHeader($is_sw ? 'RIPOTI YA KIKUNDI' : 'GROUP FINANCIAL REPORT') ?>
+    <!-- Print Header (Visible ONLY on Print) -->
+    <div class="d-none d-print-block">
+        <div class="text-center mb-4">
+            <img src="/assets/images/<?= htmlspecialchars($group_logo ?? 'logo1.png') ?>" alt="Logo" style="height: 80px; width: auto; margin-bottom: 10px; object-fit: contain;">
+            <h2 class="fw-bold mb-1 text-uppercase" style="color: #0d6efd !important;"><?= htmlspecialchars($group_name ?? 'KIKUNDI') ?></h2>
+            <h4 class="fw-bold text-dark text-uppercase border-top border-bottom py-2 mt-2">
+                <?= $is_sw ? 'RIPOTI YA KIKUNDI' : 'GROUP FINANCIAL REPORT' ?>
+            </h4>
+            <div class="small text-muted mt-1"><?= $is_sw ? 'Tarehe ya Printi:' : 'Print Date:' ?> <?= date('d M, Y H:i') ?></div>
+        </div>
+    </div>
 
-    <!-- SUMMARY CARDS -->
-    <div class="row g-4 mb-5">
+    <!-- Print-only summary table (replaces stat cards) -->
+    <div class="d-none d-print-block mb-3">
+        <table class="table table-bordered table-sm mb-0" style="font-size: 11px;">
+            <thead class="table-light"><tr>
+                <th><?= $is_sw ? 'Jumla ya Akiba' : 'Total Savings' ?></th>
+                <th><?= $is_sw ? 'Matumizi Yote' : 'Total Expenses' ?></th>
+                <th><?= $is_sw ? 'Baki (Cash)' : 'Balance (Cash)' ?></th>
+                <th><?= $is_sw ? 'Wanachama' : 'Active Members' ?></th>
+            </tr></thead>
+            <tbody><tr>
+                <td class="fw-bold text-primary">TZS <?= number_format($total_savings) ?></td>
+                <td class="fw-bold text-danger">TZS <?= number_format($total_expenses) ?></td>
+                <td class="fw-bold text-success">TZS <?= number_format($available_fund) ?></td>
+                <td class="fw-bold"><?= $active_members ?></td>
+            </tr></tbody>
+        </table>
+    </div>
+
+    <!-- SUMMARY CARDS (screen only) -->
+    <div class="row g-4 mb-5 d-print-none">
         <div class="col-6 col-md-3">
             <div class="card border-0 shadow-sm h-100 rounded-4 overflow-hidden">
                 <div class="card-body p-4 bg-white">
@@ -352,7 +379,7 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
 
     </div><!-- tab-content end -->
 
-    <!-- CHARTS SECTION (At the bottom as requested) -->
+    <!-- CHARTS SECTION (screen only) -->
     <div class="row g-4 mt-5 pt-3 d-print-none">
         <div class="col-md-8">
             <div class="card border-0 shadow-sm rounded-4 h-100">
@@ -375,8 +402,7 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
             </div>
         </div>
     </div>
-    <!-- Print Footer -->
-    <?= getPrintFooter() ?>
+
 </div>
 
 <style>
@@ -384,9 +410,10 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
     .custom-pills .nav-link { color: #6c757d; font-weight: 500; border: 1px solid transparent; }
     .custom-pills .nav-link.active { background-color: var(--primary-blue); color: white; border-color: var(--primary-blue); }
     .tracking-wider { letter-spacing: 0.05em; }
-    
+
     @media print {
-        body { background: white !important; font-size: 11px; color: #000 !important; }
+        @page { margin: 1cm; }
+        body { background: white !important; font-size: 11px; color: #000 !important; padding-bottom: 40px; }
         .no-print-bg, .container-fluid { background: white !important; padding: 0 !important; margin: 0 !important; }
         .row { display: flex !important; flex-wrap: wrap !important; }
         .col-6 { width: 50% !important; flex: 0 0 50% !important; max-width: 50% !important; }
@@ -396,21 +423,14 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
         .table thead th { background-color: #f8f9fa !important; color: #0d6efd !important; border-bottom: 2px solid #0d6efd !important; text-transform: uppercase; font-size: 10px; }
         .table td, .table th { padding: 8px 12px !important; border-bottom: 1px solid #eee !important; }
         .badge { border: 1px solid #0d6efd !important; color: #0d6efd !important; background: transparent !important; border-radius: 4px !important; text-transform: uppercase; font-size: 9px; }
-        
         /* Show all tabs in print */
         .tab-content > .tab-pane { display: block !important; opacity: 1 !important; visibility: visible !important; position: static !important; }
         .d-print-block { display: block !important; }
-        
         /* Hide UI clutter */
         .d-print-none, .nav-pills, .dataTables_filter, .dataTables_length, .dataTables_info, .dataTables_paginate, .btn { display: none !important; }
-        
-        /* Page break management */
         .mt-print-5 { margin-top: 50px !important; }
         h4, h6 { color: #0d6efd !important; }
         .text-primary { color: #0d6efd !important; }
-        
-        /* Charts in print */
-        canvas { max-width: 100% !important; height: auto !important; }
     }
 </style>
 
@@ -477,6 +497,8 @@ $(document).ready(function() {
     }
 });
 </script>
+
+<?php include PRINT_FOOTER_FILE; ?>
 
 <?php
 $content = ob_get_clean();

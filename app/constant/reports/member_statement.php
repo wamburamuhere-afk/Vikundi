@@ -104,7 +104,17 @@ $total_expenses = array_sum(array_column($expenses, 'amount'));
 
 ?>
 <!-- 1. PRINT HEADER (Visible only during print) -->
-<?= getPrintHeader(($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'HALI YA KIFEDHA YA MWANACHAMA' : 'MEMBER FINANCIAL STATEMENT', ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mwanachama:' : 'Member:' . ' ' . htmlspecialchars($member['first_name'] . ' ' . $member['last_name']) . ' | #' . $member['customer_id']) ?>
+<div class="d-none d-print-block">
+    <div class="text-center mb-4">
+        <img src="/assets/images/<?= htmlspecialchars($group_logo ?? 'logo1.png') ?>" alt="Logo" style="height: 80px; width: auto; margin-bottom: 10px; object-fit: contain;">
+        <h2 class="fw-bold mb-1 text-uppercase" style="color: #0d6efd !important;"><?= htmlspecialchars($group_name ?? 'KIKUNDI') ?></h2>
+        <h4 class="fw-bold text-dark text-uppercase border-top border-bottom py-2 mt-2">
+            <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'HALI YA KIFEDHA YA MWANACHAMA' : 'MEMBER FINANCIAL STATEMENT' ?>
+        </h4>
+        <div class="small text-muted mt-1"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mwanachama:' : 'Member:' ?> <?= htmlspecialchars($member['first_name'] . ' ' . $member['last_name']) ?> | #<?= $member['customer_id'] ?></div>
+        <div class="small text-muted mt-1"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Tarehe ya Printi:' : 'Print Date:' ?> <?= date('d M, Y H:i') ?></div>
+    </div>
+</div>
 
 <div class="no-print mb-4">
     <div class="row align-items-center g-3">
@@ -302,19 +312,12 @@ $total_expenses = array_sum(array_column($expenses, 'amount'));
         display: none !important;
     }
     
-    body { padding-top: 0 !important; margin: 0 !important; background: white !important; font-size: 10px; color: black !important; }
+    @page { margin: 1cm; }
+    body { padding-top: 0 !important; margin: 0 !important; background: white !important; font-size: 10px; color: black !important; padding-bottom: 55px; }
     .container-fluid, .container { width: 100% !important; max-width: none !important; padding: 0 15px !important; margin: 0 !important; }
-    
-    /* Footer Positioning */
-    .print-footer {
-        position: fixed; bottom: 0.8cm; left: 0; right: 0; width: 100%;
-        background: white !important; font-size: 10px; z-index: 9999;
-        text-align: center; padding-top: 15px; border-top: 1px solid #dee2e6;
-    }
 
     /* Safety Zone Logic */
     .d-print-table-footer { display: table-footer-group !important; }
-    @page { margin: 1cm 1cm 2cm 1cm; }
 
     /* Layout Flexibility */
     .card { border: 1px solid #ccc !important; box-shadow: none !important; margin-bottom: 5px !important; page-break-inside: avoid; background: transparent !important; }
@@ -364,8 +367,6 @@ $total_expenses = array_sum(array_column($expenses, 'amount'));
     th, td, .fw-bold { position: static !important; }
 }
 
-/* 4. PRINT FOOTER (Visible only during print) */
-/* Shared print footer styles are now in helpers.php */
 
 .table-responsive::-webkit-scrollbar { height: 8px; }
 .table-responsive::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
@@ -376,8 +377,7 @@ th { font-size: 0.65rem; letter-spacing: 0.02em; font-weight: 800; }
 }
 </style>
 
-<!-- 4. PRINT FOOTER (Visible only during print) -->
-<?= getPrintFooter() ?>
+<?php include PRINT_FOOTER_FILE; ?>
 
 <?php
 $content = ob_get_clean();
