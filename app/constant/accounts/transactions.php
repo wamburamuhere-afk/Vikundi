@@ -199,7 +199,7 @@ foreach ($transactions as $transaction) {
             <div id="form-message" class="mb-3"></div>
             
             <?php if (count($transactions) > 0): ?>
-                <div class="table-responsive">
+                <div class="table-responsive d-none d-md-block d-print-block">
                     <table id="transactionsTable" class="table table-striped table-hover">
                         <thead>
                             <tr>
@@ -287,6 +287,77 @@ foreach ($transactions as $transaction) {
                         </tbody>
                     </table>
                 </div>
+
+                <!-- ═══ CARD VIEW — Mobile Only ═══ -->
+                <div class="p-3 d-md-none d-print-none vk-cards-wrapper" id="transactionCardsWrapper">
+                    <?php foreach ($transactions as $txn):
+                        $txn_status = $txn['status'];
+                        $txn_badge  = get_status_badge($txn_status);
+                        $txn_date   = date('M d, Y', strtotime($txn['entry_date']));
+                        $txn_avatar = strtoupper(substr($txn['description'] ?? 'T', 0, 1));
+                        $txn_search = strtolower(
+                            ($txn['description'] ?? '') . ' ' .
+                            ($txn['reference_number'] ?? '') . ' ' .
+                            $txn['total_amount'] . ' ' .
+                            ($txn['created_by_name'] ?? '')
+                        );
+                    ?>
+                    <div class="vk-member-card"
+                         data-status="<?= htmlspecialchars($txn_status) ?>"
+                         data-search="<?= htmlspecialchars($txn_search) ?>">
+                        <div class="vk-card-header d-flex justify-content-between align-items-center gap-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="vk-card-avatar" style="background:linear-gradient(135deg,#0d6efd,#0a58ca);"><?= $txn_avatar ?></div>
+                                <div class="flex-grow-1" style="min-width:0;">
+                                    <div class="fw-bold text-dark lh-sm" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><?= htmlspecialchars(mb_substr($txn['description'] ?? '—', 0, 40)) ?></div>
+                                    <small class="text-muted"><?= $txn_date ?></small>
+                                </div>
+                            </div>
+                            <span class="badge bg-<?= $txn_badge ?> rounded-pill px-2" style="font-size:10px;"><?= ucfirst($txn_status) ?></span>
+                        </div>
+                        <div class="vk-card-body">
+                            <div class="vk-card-row">
+                                <span class="vk-card-label">Reference</span>
+                                <span class="vk-card-value"><code><?= htmlspecialchars($txn['reference_number'] ?? '—') ?></code></span>
+                            </div>
+                            <div class="vk-card-row">
+                                <span class="vk-card-label">Amount</span>
+                                <span class="vk-card-value fw-bold"><?= format_currency($txn['total_amount']) ?></span>
+                            </div>
+                            <div class="vk-card-row">
+                                <span class="vk-card-label">Created By</span>
+                                <span class="vk-card-value"><?= htmlspecialchars($txn['created_by_name'] ?? '—') ?></span>
+                            </div>
+                        </div>
+                        <div class="vk-card-actions">
+                            <a class="btn btn-sm btn-primary vk-btn-action"
+                               href="/accounts/transaction_details?id=<?= $txn['entry_id'] ?>"
+                               title="View Details"><i class="bi bi-eye-fill"></i></a>
+                            <?php if ($txn_status === 'draft'): ?>
+                            <button class="btn btn-sm vk-btn-action" style="background:#fd7e14;color:#fff;border:none;"
+                                    onclick="editTransaction(<?= $txn['entry_id'] ?>)" title="Edit">
+                                <i class="bi bi-pencil-square"></i>
+                            </button>
+                            <button class="btn btn-sm btn-success vk-btn-action"
+                                    onclick="updateStatus(<?= $txn['entry_id'] ?>, 'posted')" title="Post">
+                                <i class="bi bi-check-circle-fill"></i>
+                            </button>
+                            <?php endif; ?>
+                            <?php if ($txn_status === 'posted'): ?>
+                            <button class="btn btn-sm vk-btn-action" style="background:#0dcaf0;color:#fff;border:none;"
+                                    onclick="updateStatus(<?= $txn['entry_id'] ?>, 'reversed')" title="Reverse">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                            </button>
+                            <?php endif; ?>
+                            <button class="btn btn-sm btn-danger vk-btn-action"
+                                    onclick="confirmDelete(<?= $txn['entry_id'] ?>)" title="Delete">
+                                <i class="bi bi-trash3-fill"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+
             <?php else: ?>
                 <div class="text-center py-5">
                     <i class="bi bi-arrow-left-right" style="font-size: 4rem; color: #6c757d;"></i>
@@ -461,24 +532,36 @@ $(document).ready(function() {
     });
 });
 
+function filterTransactionCards(searchVal, statusVal) {
+    var s  = (searchVal  || '').toLowerCase().trim();
+    var st = (statusVal  || '').toLowerCase().trim();
+    $('#transactionCardsWrapper .vk-member-card').each(function() {
+        var cardSearch = ($(this).data('search') || '').toLowerCase();
+        var cardStatus = ($(this).data('status') || '').toLowerCase();
+        var matchSearch = !s  || cardSearch.indexOf(s)  !== -1;
+        var matchStatus = !st || cardStatus === st;
+        $(this).toggle(matchSearch && matchStatus);
+    });
+}
+
 function applyFilters() {
     const table = $('#transactionsTable').DataTable();
-    
+
     // Status filter
     const status = $('#statusFilter').val();
     table.column(4).search(status).draw();
-    
+
     // Date range filter
     const dateFrom = $('#dateFromFilter').val();
     const dateTo = $('#dateToFilter').val();
-    
+
     if (dateFrom || dateTo) {
         $.fn.dataTable.ext.search.push(
             function(settings, data, dataIndex) {
                 const date = new Date(data[0]);
                 const from = dateFrom ? new Date(dateFrom) : null;
                 const to = dateTo ? new Date(dateTo) : null;
-                
+
                 if ((from === null && to === null) ||
                     (from === null && date <= to) ||
                     (from <= date && to === null) ||
@@ -491,10 +574,13 @@ function applyFilters() {
         table.draw();
         $.fn.dataTable.ext.search.pop();
     }
-    
+
     // Search filter
     const search = $('#searchTransactions').val();
     table.search(search).draw();
+
+    // Sync card view
+    filterTransactionCards(search, status);
 }
 
 function clearFilters() {
@@ -502,9 +588,12 @@ function clearFilters() {
     $('#dateFromFilter').val('');
     $('#dateToFilter').val('');
     $('#searchTransactions').val('');
-    
+
     const table = $('#transactionsTable').DataTable();
     table.search('').columns().search('').draw();
+
+    // Sync card view
+    filterTransactionCards('', '');
 }
 
 function viewTransaction(entryId) {
