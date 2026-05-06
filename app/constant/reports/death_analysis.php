@@ -107,26 +107,10 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
         </div>
     </div>
 
-    <!-- Print-only summary table (replaces stat cards) -->
-    <div class="d-none d-print-block mb-3">
-        <table class="table table-bordered table-sm mb-0" style="font-size: 11px;">
-            <thead class="table-light"><tr>
-                <th><?= $is_sw ? 'Jumla ya Misaada' : 'Total Aid Paid' ?></th>
-                <th><?= $is_sw ? 'Jumla Michango' : 'Total Contributions' ?></th>
-                <th><?= $is_sw ? 'Impact ya Mfuko' : 'Fund Impact' ?></th>
-                <th><?= $is_sw ? 'Jumla ya Vifo' : 'Total Cases' ?></th>
-            </tr></thead>
-            <tbody><tr>
-                <td class="fw-bold text-primary">TZS <?= number_format($total_paid) ?></td>
-                <td class="fw-bold text-success">TZS <?= number_format($total_inbound) ?></td>
-                <td class="fw-bold text-danger">- TZS <?= number_format($net_fund_impact) ?></td>
-                <td class="fw-bold"><?= $case_count ?></td>
-            </tr></tbody>
-        </table>
-    </div>
 
-    <!-- Stats Review (screen only) -->
-    <div class="row g-4 mb-5 d-print-none">
+
+    <!-- Stats Review -->
+    <div class="row g-2 g-md-4 mb-4">
         <div class="col-6 col-md-3">
             <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
                 <div class="card-body p-4 bg-white border-bottom border-4 border-primary">
@@ -310,8 +294,10 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
 <style>
     @media print {
         @page { margin: 1cm; }
-        body { background: white !important; font-size: 11px; color: black; padding-bottom: 40px; }
-        .card { border: 1px solid #ddd !important; box-shadow: none !important; margin-bottom: 25px !important; page-break-inside: avoid; }
+        body { background: white !important; font-size: 10px; color: black; padding-bottom: 40px; }
+        .card { border: 1px solid #ddd !important; box-shadow: none !important; margin-bottom: 10px !important; page-break-inside: avoid; }
+        .card-body { padding: 10px !important; }
+        .fs-4 { font-size: 1rem !important; }
         .d-print-none, .btn, .dataTables_filter, .dataTables_length, .dataTables_info, .dataTables_paginate { display: none !important; }
         .col-6 { width: 50% !important; flex: 0 0 50% !important; }
         .row { display: flex !important; flex-wrap: wrap !important; }
