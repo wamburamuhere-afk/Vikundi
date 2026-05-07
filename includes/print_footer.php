@@ -19,7 +19,7 @@ $_pf_is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
         <strong><?= htmlspecialchars($username ?? 'User') ?></strong> -
         <strong><?= htmlspecialchars($user_role ?? 'Member') ?></strong>
         <?= $_pf_is_sw ? 'mnamo' : 'on' ?>
-        <strong><?= date('d M, Y') ?></strong>
+        <strong><?= date('d m, Y') ?></strong>
         <?= $_pf_is_sw ? 'saa' : 'at' ?>
         <strong><?= date('H:i:s') ?></strong>
     </p>
