@@ -71,7 +71,7 @@ $subtitle = $is_sw ? 'Rekodi na dhibiti misaada kwa wanachama waliofiwa' : 'Reco
                             <h3 class="fw-bold mb-1 text-primary"><i class="bi bi-heart-pulse-fill me-2"></i><?= $title ?></h3>
                             <p class="text-muted mb-0 small"><?= $subtitle ?></p>
                         </div>
-                        <div class="d-flex flex-wrap justify-content-center gap-2">
+                        <div class="d-flex flex-nowrap justify-content-center gap-2">
                             <a href="<?= getUrl('other_expenses') ?>" class="btn btn-outline-primary rounded-pill px-3 px-md-4 shadow-sm text-dark fw-bold border-0 btn-sm">
                                 <i class="bi bi-wallet2 me-2"></i> <?= $is_sw ? 'Matumizi Mengineyo' : 'Other Expenses' ?>
                             </a>
@@ -158,6 +158,17 @@ $subtitle = $is_sw ? 'Rekodi na dhibiti misaada kwa wanachama waliofiwa' : 'Reco
                 <i class="bi bi-heart-pulse fs-1 text-muted d-block mb-3"></i>
                 <p class="text-muted mb-0"><?= $is_sw ? 'Hakuna rekodi zilizopatikana.' : 'No records found.' ?></p>
             </div>
+        </div>
+
+        <!-- Mobile Prev / Next — after card view, mobile only -->
+        <div class="d-flex d-md-none justify-content-end align-items-center gap-2 px-3 py-2 border-top">
+            <button class="btn btn-sm btn-outline-secondary px-3 fw-semibold" id="deathPrevBtn" onclick="deathTablePage('previous')" disabled>
+                <i class="bi bi-chevron-left"></i> <?= $is_sw ? 'Nyuma' : 'Prev' ?>
+            </button>
+            <span class="text-muted small" id="deathPageInfo" style="min-width:48px;text-align:center;">1 / 1</span>
+            <button class="btn btn-sm btn-primary px-3 fw-semibold" id="deathNextBtn" onclick="deathTablePage('next')">
+                <?= $is_sw ? 'Mbele' : 'Next' ?> <i class="bi bi-chevron-right"></i>
+            </button>
         </div>
     </div>
 
@@ -412,9 +423,20 @@ $(document).ready(function() {
             lengthMenu: "_MENU_",
             zeroRecords: isSw ? "Hakuna data" : "No records found"
         },
-        drawCallback: function() { renderDeathCards(this.api()); },
-        initComplete: function() { $('.dataTables_length').appendTo('#lenContainer'); }
+        drawCallback: function() { renderDeathCards(this.api()); updateDeathPageInfo(); },
+        initComplete: function() { $('.dataTables_length').appendTo('#lenContainer'); updateDeathPageInfo(); }
     });
+
+    window.deathTablePage = function(dir) {
+        table.page(dir).draw('page');
+    };
+
+    function updateDeathPageInfo() {
+        var info = table.page.info();
+        $('#deathPageInfo').text((info.page + 1) + ' / ' + (info.pages || 1));
+        $('#deathPrevBtn').prop('disabled', info.page === 0);
+        $('#deathNextBtn').prop('disabled', info.page >= info.pages - 1);
+    }
 
     $('#add_attachment_btn').on('click', function() {
         const row = `<div class="attachment-row row g-2 mb-2 bg-light p-2 rounded-3" style="border: 1px dashed #dee2e6;">

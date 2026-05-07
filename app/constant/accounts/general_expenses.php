@@ -11,10 +11,50 @@ requireViewPermission('expenses');
 $can_create_expense = canCreate('expenses');
 $can_edit_expense = canEdit('expenses');
 $can_delete_expense = canDelete('expenses');
+
+// FETCH BRANDING (Standard System Logic)
+$gs_stmt = $pdo->prepare("SELECT setting_key, setting_value FROM group_settings");
+$gs_stmt->execute();
+$gs_data = $gs_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+$group_name = $gs_data['group_name'] ?? 'KIKUNDI';
+$group_logo = $gs_data['group_logo'] ?? 'logo1.png';
+
+$logo_path = ROOT_DIR . '/assets/images/' . $group_logo;
+$logo_base64 = '';
+if (file_exists($logo_path)) {
+    $logo_data = file_get_contents($logo_path);
+    $logo_base64 = 'data:image/' . pathinfo($logo_path, PATHINFO_EXTENSION) . ';base64,' . base64_encode($logo_data);
+}
+
+// FETCH USER DETAILS FOR FOOTER
+$u_id = $_SESSION['user_id'] ?? 0;
+$user_stmt = $pdo->prepare("SELECT u.username, u.first_name, u.last_name, r.role_name FROM users u JOIN roles r ON u.role_id = r.role_id WHERE u.user_id = ?");
+$user_stmt->execute([$u_id]);
+$u_data = $user_stmt->fetch(PDO::FETCH_ASSOC);
+$username = trim(($u_data['first_name'] ?? '') . ' ' . ($u_data['last_name'] ?? ''));
+if (empty($username)) $username = $u_data['username'] ?? 'User';
+$user_role = $u_data['role_name'] ?? 'Staff';
+
+$lang = $_SESSION['preferred_language'] ?? 'en';
+$is_sw = ($lang === 'sw');
 ?>
 
-<div class="container-fluid py-4" style="background-color: #f8f9fa; min-height: 90vh; overflow-x: hidden;">
-    <div class="row mb-4">
+<div class="container-fluid py-4" id="main-content" style="background-color: #f8f9fa; min-height: 90vh; overflow-x: hidden;">
+    <!-- PRINT HEADER (Visible only during print) -->
+    <div class="d-none d-print-block print-header mb-4 text-center">
+        <div class="border-bottom pb-4">
+            <div class="mb-3">
+                <img src="<?= !empty($logo_base64) ? $logo_base64 : getUrl('assets/images/') . $group_logo ?>" alt="Logo" style="height: 100px; width: auto; object-fit: contain;">
+            </div>
+            <h2 class="fw-bold mb-1" style="color: #0d6efd !important; text-transform: uppercase;">
+                <?= htmlspecialchars($group_name) ?>
+            </h2>
+            <h3 class="fw-bold mb-2 text-dark" style="text-transform: uppercase;"><?= $is_sw ? 'Ripoti ya Matumizi ya Jumla' : 'General Expenses Report' ?></h3>
+            <p class="mb-0 small text-muted text-uppercase"><?= $is_sw ? 'Ripoti Rasmi ya Mfumo' : 'Official System Report' ?></p>
+        </div>
+    </div>
+
+    <div class="row mb-4 no-print">
         <div class="col-12">
             <div class="card border-0 shadow-sm" style="border-left: 5px solid #0d6efd !important;">
                 <div class="card-body p-3 p-md-4 bg-white">
@@ -38,7 +78,7 @@ $can_delete_expense = canDelete('expenses');
     </div>
 
     <!-- Statistics Cards -->
-    <div class="row g-3 mb-4">
+    <div class="row g-3 mb-4 no-print">
         <div class="col-md-3 mb-3">
             <div class="card custom-stat-card border-0 shadow-sm">
                 <div class="card-body">
@@ -102,7 +142,7 @@ $can_delete_expense = canDelete('expenses');
     </div>
 
     <!-- Filters Card -->
-    <div class="card mb-4 border-0 shadow-sm">
+    <div class="card mb-4 border-0 shadow-sm no-print">
         <div class="card-header bg-white py-3">
             <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-funnel me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Vichujio na Utafutaji' : 'Filters & Search' ?></h6>
         </div>
@@ -138,8 +178,8 @@ $can_delete_expense = canDelete('expenses');
     </div>
 
     <!-- Expenses Table Card -->
-    <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white py-3 border-bottom border-light">
+    <div class="card border-0 shadow-sm overflow-hidden bg-white">
+        <div class="card-header bg-white py-3 border-bottom border-light no-print">
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
                 <div class="d-flex flex-wrap align-items-center justify-content-center gap-2">
                     <button type="button" class="btn btn-white border shadow-sm btn-sm rounded-pill px-3 fw-bold" onclick="window.print()">
@@ -161,21 +201,39 @@ $can_delete_expense = canDelete('expenses');
         <div class="card-body">
             <div id="form-message" class="mb-3"></div>
             
-            <div class="table-responsive">
+            <div class="table-responsive d-none d-md-block d-print-block">
                 <table id="expensesTable" class="table table-hover align-middle" style="width:100%">
-                    <thead class="bg-light text-muted small uppercase">
+                    <thead class="bg-light text-muted small uppercase text-center">
                         <tr>
                             <th style="width:50px"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nambari' : 'S/No' ?></th>
                             <th><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Tarehe' : 'Date' ?></th>
                             <th><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Maelezo' : 'Description' ?></th>
                             <th><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Kiasi' : 'Amount' ?></th>
                             <th><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Hali' : 'Status' ?></th>
-                            <th class="text-end"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Vitendo' : 'Actions' ?></th>
+                            <th class="text-end no-print"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Vitendo' : 'Actions' ?></th>
                         </tr>
                     </thead>
-                    <tbody class="small">
-                    </tbody>
+                    <tbody class="small"></tbody>
                 </table>
+            </div>
+
+            <!-- Mobile Card View -->
+            <div class="p-3 d-md-none vk-cards-wrapper" id="expensesCardsWrapper">
+                <div id="expensesCardsEmptyState" class="d-none text-center py-5">
+                    <i class="bi bi-wallet2 fs-1 text-muted d-block mb-3"></i>
+                    <p class="text-muted mb-0"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Hakuna rekodi zilizopatikana.' : 'No records found.' ?></p>
+                </div>
+            </div>
+
+            <!-- Mobile Prev / Next — after card view, mobile only -->
+            <div class="d-flex d-md-none justify-content-end align-items-center gap-2 px-3 py-2 border-top">
+                <button class="btn btn-sm btn-outline-secondary px-3 fw-semibold" id="expensePrevBtn" onclick="expenseTablePage('previous')" disabled>
+                    <i class="bi bi-chevron-left"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nyuma' : 'Prev' ?>
+                </button>
+                <span class="text-muted small" id="expensePageInfo" style="min-width:48px;text-align:center;">1 / 1</span>
+                <button class="btn btn-sm btn-primary px-3 fw-semibold" id="expenseNextBtn" onclick="expenseTablePage('next')">
+                    <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mbele' : 'Next' ?> <i class="bi bi-chevron-right"></i>
+                </button>
             </div>
         </div>
     </div>
@@ -245,8 +303,9 @@ $can_delete_expense = canDelete('expenses');
 </div>
 
 <script>
+const isSw = <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'true' : 'false' ?>;
+
 $(document).ready(function() {
-    var isSw = <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'true' : 'false' ?>;
     
     const table = $('#expensesTable').DataTable({
         responsive: true,
@@ -287,6 +346,7 @@ $(document).ready(function() {
                 `
             }
         ],
+        drawCallback: function() { renderExpenseCards(this.api()); updateExpensePageInfo(); },
         dom: 'lrtp',
         initComplete: function() {
             $('.dataTables_length').appendTo('#lenContainer');
@@ -366,6 +426,16 @@ $(document).ready(function() {
     });
 });
 
+window.expenseTablePage = function(dir) { $('#expensesTable').DataTable().page(dir).draw('page'); };
+
+function updateExpensePageInfo() {
+    var api = $('#expensesTable').DataTable();
+    var info = api.page.info();
+    $('#expensePageInfo').text((info.page + 1) + ' / ' + (info.pages || 1));
+    $('#expensePrevBtn').prop('disabled', info.page === 0);
+    $('#expenseNextBtn').prop('disabled', info.page >= info.pages - 1);
+}
+
 function applyFilters() { $('#expensesTable').DataTable().ajax.reload(); }
 function clearFilters() { $('#statusFilter').val(''); $('#dateFromFilter, #dateToFilter').val(''); applyFilters(); }
 function formatCurrency(v) { return parseFloat(v).toLocaleString('en-US', {minimumFractionDigits: 2}); }
@@ -401,6 +471,72 @@ function confirmDeleteGeneralExpense(id) {
         }
     });
 }
+
+function vkEscape(s) {
+    if (s === null || s === undefined) return '—';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderExpenseCards(api) {
+    var $wrapper = $('#expensesCardsWrapper');
+    var $empty   = $('#expensesCardsEmptyState');
+    
+    // Clear existing cards
+    $wrapper.find('.vk-member-card').remove();
+    
+    var rows = api.rows({ page: 'current' }).data();
+    if (rows.length === 0) { 
+        $empty.removeClass('d-none'); 
+        return; 
+    }
+    
+    $empty.addClass('d-none');
+    var html = '';
+    
+    rows.each(function(d) {
+        var status = d.status || 'pending';
+        var id     = parseInt(d.id);
+        var amount = formatCurrency(d.amount);
+        var badge  = getStatusBadgeClass(status);
+        var date   = d.expense_date ? new Date(d.expense_date).toLocaleDateString() : '—';
+        
+        var approveBtn = status === 'pending' ? `
+            <button class="btn btn-sm btn-outline-success vk-btn-action" onclick="approveGeneralExpense(${id})" title="${isSw ? 'Idhinisha' : 'Approve'}">
+                <i class="bi bi-check-circle-fill"></i>
+            </button>` : '';
+
+        html += `<div class="vk-member-card">
+            <div class="vk-card-header d-flex justify-content-between align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2" style="min-width:0;flex:1;overflow:hidden;">
+                    <div class="vk-card-avatar flex-shrink-0" style="background:linear-gradient(135deg,#6610f2,#6f42c1);"><i class="bi bi-cash-stack"></i></div>
+                    <div class="flex-grow-1" style="min-width:0;">
+                        <div class="fw-bold text-dark lh-sm text-truncate" style="font-size:13px;">${vkEscape(d.description)}</div>
+                        <small class="text-muted">${date}</small>
+                    </div>
+                </div>
+                <span class="badge bg-${badge} rounded-pill px-2 flex-shrink-0" style="font-size:10px;">${status.toUpperCase()}</span>
+            </div>
+            <div class="vk-card-body">
+                <div class="vk-card-row">
+                    <span class="vk-card-label">${isSw ? 'Kiasi' : 'Amount'}</span>
+                    <span class="vk-card-value fw-bold text-danger">Tsh ${amount}</span>
+                </div>
+                <div class="vk-card-row">
+                    <span class="vk-card-label">${isSw ? 'Hali' : 'Status'}</span>
+                    <span class="vk-card-value"><span class="badge bg-${badge}-subtle text-${badge} border border-${badge}-subtle rounded-pill px-2">${status}</span></span>
+                </div>
+            </div>
+            <div class="vk-card-actions">
+                ${approveBtn}
+                <button class="btn btn-sm btn-outline-danger vk-btn-action" onclick="confirmDeleteGeneralExpense(${id})" title="${isSw ? 'Futa' : 'Delete'}">
+                    <i class="bi bi-trash3-fill"></i>
+                </button>
+            </div>
+        </div>`;
+    });
+    
+    $wrapper.html(html);
+}
 </script>
 
 <style>
@@ -429,20 +565,51 @@ function confirmDeleteGeneralExpense(id) {
     border-radius: 20px !important;
     padding: 2px 8px !important;
 }
-@media (max-width: 768px) {
-    .container-fluid { padding: 10px !important; }
-    h3 { font-size: 1.4rem !important; }
-    .btn-md-base { font-size: 0.85rem !important; padding: 8px 15px !important; }
-    .card-header h6 { font-size: 0.9rem; }
-    .table thead th { font-size: 0.7rem !important; }
-    .table tbody td { font-size: 0.8rem !important; }
-}
+    @media (max-width: 768px) {
+        .container-fluid { padding: 10px !important; }
+        h3 { font-size: 1.4rem !important; }
+        .btn-md-base { font-size: 0.85rem !important; padding: 8px 15px !important; }
+        .card-header h6 { font-size: 0.9rem; }
+        .table-responsive { display: none !important; }
+        .table-responsive.d-print-block { display: none !important; }
+        .vk-cards-wrapper { display: block !important; }
+    }
+    
+    @media print {
+        .table-responsive.d-print-block { display: block !important; }
+        .vk-cards-wrapper { display: none !important; }
+    }
 
-@media print {
-    .no-print, .navbar, .card-header button, .dropdown, #lenContainer, .card-header .d-flex { display: none !important; }
-    .card { border: none !important; shadow: none !important; }
-    .card-header h5, .card-header h6 { display: block !important; }
-}
+    /* ═══ PRINT OPTIMIZATION (Standard System Logic) ═══ */
+    @media print {
+        @page { size: auto; margin: 10mm !important; }
+        .no-print, .navbar, .header-wrapper, .sidebar-wrapper, .main-footer, .dataTables_paginate, .dataTables_length, .dataTables_filter, .dataTables_info { display: none !important; }
+        body { background-color: white !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; }
+        .container-fluid { padding: 0 !important; width: 100% !important; overflow: visible !important; }
+        .card { border: none !important; box-shadow: none !important; }
+        .table-responsive.d-print-block { display: block !important; overflow: visible !important; }
+        .table { width: 100% !important; border-collapse: collapse !important; font-size: 10pt !important; }
+        .table th, .table td { border: 1px solid #dee2e6 !important; padding: 6px !important; }
+        .table .no-print, .table th:last-child, .table td:last-child { display: none !important; }
+        .vk-cards-wrapper { display: none !important; }
+        .print-header, .print-footer { display: block !important; }
+    }
 </style>
+
+<!-- PRINT FOOTER -->
+<div class="d-none d-print-block print-footer" style="position: fixed; bottom: 5mm; width: 100%; left: 0; background: white;">
+    <div class="container-fluid">
+        <div class="row pt-2 border-top text-center">
+            <div class="col-12">
+                <p class="mb-1 text-dark" style="font-size: 8.5pt;">
+                    <?= $is_sw ? 'Nyaraka hii imechapishwa na' : 'This document was printed by' ?> 
+                    <strong><?= htmlspecialchars($username) ?> - <?= htmlspecialchars($user_role) ?></strong> 
+                    <?= $is_sw ? 'mnamo' : 'on' ?> <strong><?= date('d M, Y') ?></strong> 
+                </p>
+                <h6 class="mb-0 fw-bold" style="color: #0d6efd !important; font-size: 9pt;">Powered By BJP Technologies &copy; <?= date('Y') ?>, All Rights Reserved</h6>
+            </div>
+        </div>
+    </div>
+</div>
 
 <?php includeFooter(); ob_end_flush(); ?>

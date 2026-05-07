@@ -52,21 +52,25 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
     <!-- Page Header -->
     <div class="row mb-4 g-3 d-print-none">
         <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center gap-2">
-                <div class="d-none d-md-block">
-                    <h2><i class="bi bi-people"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Usimamizi wa Wanachama (Members)' : 'Member Management' ?></h2>
-                    <p class="text-muted mb-0"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Orodha na taarifa za wanachama wote wa kikundi' : 'List and details of all group members' ?></p>
+            <div class="d-flex flex-column flex-md-row justify-content-md-between align-items-md-center gap-2">
+                <div>
+                    <!-- Mobile title -->
+                    <h5 class="d-block d-md-none fw-bold mb-0">
+                        <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Usimamizi wa Wanachama' : 'Member Management' ?>
+                    </h5>
+                    <!-- Desktop title -->
+                    <div class="d-none d-md-block">
+                        <h2><i class="bi bi-people"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Usimamizi wa Wanachama (Members)' : 'Member Management' ?></h2>
+                        <p class="text-muted mb-0"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Orodha na taarifa za wanachama wote wa kikundi' : 'List and details of all group members' ?></p>
+                    </div>
                 </div>
-                <div class="d-block d-md-none text-start">
-                    <h4 class="mb-0 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Wanachama' : 'Members' ?></h4>
-                </div>
-                <div class="d-flex flex-row gap-2 flex-grow-1 justify-content-end align-items-center">
+                <div class="d-flex gap-2">
                     <?php if ($can_create_members): ?>
-                    <button type="button" class="btn btn-white border shadow-sm px-2 px-md-3 py-2 fw-semibold btn-import-hover flex-fill flex-md-grow-0 text-nowrap responsive-btn-header" data-bs-toggle="modal" data-bs-target="#importMemberModal" style="background-color: #fff; color: #495057;">
-                        <i class="bi bi-file-earmark-excel"></i> <span class="d-none d-sm-inline"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mchakato wa Import' : 'Import Members' ?></span><span class="d-inline d-sm-none">Import</span>
+                    <button type="button" class="btn btn-white border shadow-sm px-3 py-2 fw-semibold btn-import-hover flex-fill flex-md-grow-0 text-nowrap" data-bs-toggle="modal" data-bs-target="#importMemberModal" style="background-color: #fff; color: #495057;">
+                        <i class="bi bi-file-earmark-excel"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Import' : 'Import' ?>
                     </button>
-                    <button type="button" class="btn btn-primary shadow-sm px-2 px-md-3 py-2 fw-semibold flex-fill flex-md-grow-0 text-nowrap responsive-btn-header" data-bs-toggle="modal" data-bs-target="#addMemberModal">
-                        <i class="bi bi-person-plus"></i> <span class="d-none d-sm-inline"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Sajili Mwanachama' : 'Register Member' ?></span><span class="d-inline d-sm-none"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Sajili' : 'Register' ?></span>
+                    <button type="button" class="btn btn-primary shadow-sm px-3 py-2 fw-semibold flex-fill flex-md-grow-0 text-nowrap" data-bs-toggle="modal" data-bs-target="#addMemberModal">
+                        <i class="bi bi-person-plus"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Sajili' : 'Register' ?>
                     </button>
                     <?php endif; ?>
                 </div>
@@ -75,68 +79,69 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
     </div>
 
     <!-- Statistics Cards -->
-    <div class="row mb-4 d-print-none">
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card shadow-sm border-0" style="background-color: #d1e7dd !important;">
-                <div class="card-body text-dark">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0 fw-bold"><?= $total_members ?></h4>
-                            <p class="mb-0 small fw-semibold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Wanachama Wote' : 'Total Members' ?></p>
+    <div class="row mb-3 d-print-none g-2">
+        <div class="col-6 col-md-6 col-xl-3">
+            <div class="card shadow-sm border-0 h-100 overflow-hidden" style="background-color: #d1e7dd !important;">
+                <div class="card-body text-dark p-2 p-md-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="overflow-hidden">
+                            <h5 class="mb-0 fw-bold"><?= $total_members ?></h5>
+                            <p class="mb-0 small fw-semibold text-truncate"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Wanachama Wote' : 'Total Members' ?></p>
                         </div>
-                        <div class="align-self-center opacity-75">
-                            <i class="bi bi-people-fill" style="font-size: 2rem;"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card shadow-sm border-0" style="background-color: #d1e7dd !important;">
-                <div class="card-body text-dark">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0 fw-bold"><?= count($active_members) ?></h4>
-                            <p class="mb-0 small fw-semibold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Walio Active' : 'Active Members' ?></p>
-                        </div>
-                        <div class="align-self-center opacity-75">
-                            <i class="bi bi-check-circle-fill" style="font-size: 2rem;"></i>
+                        <div class="opacity-75 ms-1 flex-shrink-0">
+                            <i class="bi bi-people-fill" style="font-size: 1.5rem;"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card shadow-sm border-0" style="background-color: #d1e7dd !important;">
-                <div class="card-body text-dark">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0 fw-bold"><?= count($inactive_members) ?></h4>
-                            <p class="mb-0 small fw-semibold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Wasio Active' : 'Inactive Members' ?></p>
+        <div class="col-6 col-md-6 col-xl-3">
+            <div class="card shadow-sm border-0 h-100 overflow-hidden" style="background-color: #d1e7dd !important;">
+                <div class="card-body text-dark p-2 p-md-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="overflow-hidden">
+                            <h5 class="mb-0 fw-bold"><?= count($active_members) ?></h5>
+                            <p class="mb-0 small fw-semibold text-truncate"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Walio Active' : 'Active Members' ?></p>
                         </div>
-                        <div class="align-self-center opacity-75">
-                            <i class="bi bi-pause-circle-fill" style="font-size: 2rem;"></i>
+                        <div class="opacity-75 ms-1 flex-shrink-0">
+                            <i class="bi bi-check-circle-fill" style="font-size: 1.5rem;"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card shadow-sm border-0" style="background-color: #d1e7dd !important;">
-                <div class="card-body text-dark">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0 fw-bold"><?= count($pending_members) ?></h4>
-                            <p class="mb-0 small fw-semibold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Maombi Mapya' : 'New Requests' ?></p>
+        <div class="col-6 col-md-6 col-xl-3">
+            <div class="card shadow-sm border-0 h-100 overflow-hidden" style="background-color: #d1e7dd !important;">
+                <div class="card-body text-dark p-2 p-md-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="overflow-hidden">
+                            <h5 class="mb-0 fw-bold"><?= count($inactive_members) ?></h5>
+                            <p class="mb-0 small fw-semibold text-truncate"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Wasio Active' : 'Inactive Members' ?></p>
                         </div>
-                        <div class="align-self-center opacity-75">
-                            <i class="bi bi-clock-fill" style="font-size: 2rem;"></i>
+                        <div class="opacity-75 ms-1 flex-shrink-0">
+                            <i class="bi bi-pause-circle-fill" style="font-size: 1.5rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-6 col-xl-3">
+            <div class="card shadow-sm border-0 h-100 overflow-hidden" style="background-color: #d1e7dd !important;">
+                <div class="card-body text-dark p-2 p-md-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="overflow-hidden">
+                            <h5 class="mb-0 fw-bold"><?= count($pending_members) ?></h5>
+                            <p class="mb-0 small fw-semibold text-truncate"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Maombi Mapya' : 'New Requests' ?></p>
+                        </div>
+                        <div class="opacity-75 ms-1 flex-shrink-0">
+                            <i class="bi bi-clock-fill" style="font-size: 1.5rem;"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
 
     <!-- Filters & Table -->
     <div class="card shadow-sm border-0 overflow-hidden" style="border-radius: 15px;">
@@ -160,12 +165,12 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
             
             <!-- Action Row (Buttons in one row) -->
             <div class="row align-items-center">
-                <div class="col-12 d-flex align-items-center flex-wrap gap-2 justify-content-center justify-content-md-start" id="action-tools">
-                    <button type="button" class="btn btn-sm btn-white border shadow-sm px-3 py-2 fw-semibold" onclick="window.print()" style="background-color: #fff; color: #495057;">
-                        <i class="bi bi-printer me-1 text-primary"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Printi' : 'Print List' ?>
+                <div class="col-12 d-flex align-items-center flex-nowrap gap-1 gap-md-2 justify-content-start overflow-x-auto" id="action-tools">
+                    <button type="button" class="btn btn-sm btn-white border shadow-sm px-3 py-2 fw-semibold" onclick="window.print()" title="<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Printi' : 'Print List' ?>" style="background-color: #fff; color: #495057;">
+                        <i class="bi bi-printer text-primary"></i>
                     </button>
-                    <button type="button" class="btn btn-sm btn-white border shadow-sm px-3 py-2 fw-semibold btn-import-hover" onclick="exportMembers()" style="background-color: #fff; color: #495057;">
-                        <i class="bi bi-file-earmark-excel me-1 text-success"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Pakua (Export)' : 'Export Excel' ?>
+                    <button type="button" class="btn btn-sm btn-white border shadow-sm px-3 py-2 fw-semibold btn-import-hover" onclick="exportMembers()" title="<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Pakua (Export)' : 'Export Excel' ?>" style="background-color: #fff; color: #495057;">
+                        <i class="bi bi-file-earmark-excel text-success"></i>
                     </button>
                     <div class="dropdown" id="custom-length-dropdown">
                         <button class="btn btn-sm btn-white border shadow-sm px-3 py-2 fw-semibold dropdown-toggle no-caret btn-import-hover" type="button" id="lengthMenuBtn" data-bs-toggle="dropdown" style="background-color: #fff; color: #495057;">
@@ -397,6 +402,17 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
             </div>
         </div>
         <!-- ═══ END CARD VIEW ═══ -->
+
+        <!-- Mobile Prev / Next — appears after card view, mobile only -->
+        <div class="d-flex d-md-none justify-content-end align-items-center gap-2 px-3 py-2 border-top">
+            <button class="btn btn-sm btn-outline-secondary px-3 fw-semibold" id="mobilePrevBtn" onclick="mobileTablePage('previous')" disabled>
+                <i class="bi bi-chevron-left"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nyuma' : 'Prev' ?>
+            </button>
+            <span class="text-muted small" id="mobilePageInfo" style="min-width:48px;text-align:center;">1 / 1</span>
+            <button class="btn btn-sm btn-primary px-3 fw-semibold" id="mobileNextBtn" onclick="mobileTablePage('next')">
+                <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mbele' : 'Next' ?> <i class="bi bi-chevron-right"></i>
+            </button>
+        </div>
 
     </div>
 </div>
@@ -912,8 +928,22 @@ $(document).ready(function() {
         "initComplete": function() {
             // Native length menu is hidden, we use our custom dropdown
             $('.dataTables_length').hide();
+            updateMobilePageInfo();
         }
     });
+
+    table.on('draw', function() { updateMobilePageInfo(); });
+
+    window.mobileTablePage = function(dir) {
+        table.page(dir).draw('page');
+    };
+
+    function updateMobilePageInfo() {
+        var info = table.page.info();
+        $('#mobilePageInfo').text((info.page + 1) + ' / ' + (info.pages || 1));
+        $('#mobilePrevBtn').prop('disabled', info.page === 0);
+        $('#mobileNextBtn').prop('disabled', info.page >= info.pages - 1);
+    }
 
     // Custom Length Changer Function
     window.changeTableLength = function(len) {

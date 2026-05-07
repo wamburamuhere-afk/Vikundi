@@ -132,7 +132,7 @@
         grid-template-columns: 1fr 1fr;
         gap: 12px;
     }
-    .vk-cards-wrapper .vk-member-card { margin-bottom: 0; }
+    .vk-cards-wrapper .vk-member-card { margin-bottom: 0; min-width: 0; overflow: hidden; }
 }
 
 /* Compact internals for narrower cards (both grid columns and any narrow context) */

@@ -153,14 +153,63 @@ if (isset($_GET['ajax'])) {
         echo renderActivityRow($a, $isSw, ($offset + $i + 1));
     }
     if (empty($activities)) {
-        echo '<tr><td colspan="5" class="text-center py-5 text-muted"><i class="bi bi-journal-x fs-3 d-block mb-2"></i>' 
+        echo '<tr><td colspan="6" class="text-center py-5 text-muted"><i class="bi bi-journal-x fs-3 d-block mb-2"></i>' 
            . ($isSw ? 'Hakuna shughuli zilizopatikana' : 'No activity records found') . '</td></tr>';
     }
     $rows = ob_get_clean();
+
+    // Render cards for AJAX too
+    ob_start();
+    foreach ($activities as $i => $a) {
+        $badge = getActionBadge($a['action'] ?? '', $isSw);
+        $fullname = trim($a['full_name'] ?? '') ?: ($a['username'] ?? ($isSw ? 'Mfumo' : 'System'));
+        $role = $a['role_name'] ?? 'System';
+        $user_str = "$role ($fullname)";
+        $time = date('d/m/y H:i', strtotime($a['created_at']));
+        $icon = getBadgeIcon($badge['label']);
+        $desc_raw = $a['description'] ?: '';
+        if (empty($desc_raw)) {
+            $action_str = strtolower($a['action'] ?? '');
+            $module_str = $a['module'] ?? '';
+            $desc_raw = match($action_str) {
+                'viewed'  => $isSw ? "Alitazama ukurasa wa: $module_str" : "Viewed: $module_str page",
+                'created' => $isSw ? "Aliunda rekodi mpya kwenye: $module_str" : "Created new record in: $module_str",
+                'updated' => $isSw ? "Alibadilisha rekodi kwenye: $module_str" : "Updated record in: $module_str",
+                'deleted' => $isSw ? "Alifuta rekodi kutoka: $module_str" : "Deleted record from: $module_str",
+                'login'   => $isSw ? "Ameingia kwenye mfumo" : "Logged into the system",
+                'logout'  => $isSw ? "Ametoka kwenye mfumo" : "Logged out of the system",
+                default   => $a['action'] ?? '-',
+            };
+        }
+        echo '
+        <div class="vk-log-card border-'.$badge['color'].'">
+            <div class="vk-card-meta">
+                <span class="vk-card-time"><i class="bi bi-clock me-1"></i>'.$time.'</span>
+                <span class="badge text-bg-'.$badge['color'].' rounded-pill px-2 py-1" style="font-size: 10px;">
+                    <i class="bi bi-'.$icon.' me-1"></i>'.$badge['label'].'
+                </span>
+            </div>
+            <div class="vk-card-user"><i class="bi bi-person-circle me-1 text-primary"></i>'.htmlspecialchars($user_str).'</div>
+            <div class="vk-card-desc">'.htmlspecialchars($desc_raw).'</div>
+            <div class="vk-card-footer">
+                <span class="vk-card-ref">REF: '.htmlspecialchars($a['reference'] ?: '-').'</span>
+                <span class="text-muted small">#'.($offset + $i + 1).'</span>
+            </div>
+        </div>';
+    }
+    if (empty($activities)) {
+        echo '<div class="text-center py-5 text-muted">
+                <i class="bi bi-journal-x fs-2 d-block mb-2"></i>
+                ' . ($isSw ? 'Hakuna shughuli zilizopatikana' : 'No activity records found') . '
+              </div>';
+    }
+    $cards = ob_get_clean();
+
     header('Content-Type: application/json');
     echo json_encode([
         'success' => true,
         'rows'    => $rows,
+        'cards'   => $cards,
         'info'    => ($total_items > 0 ? $offset + 1 : 0) . ' - '
                    . ($limit === -1 ? $total_items : min($offset + $limit, $total_items))
                    . ($isSw ? " ya $total_items" : " of $total_items"),
@@ -191,6 +240,42 @@ require_once ROOT_DIR . '/header.php';
     .col-action { width: 120px; }
     .col-ref { width: 150px; }
     .col-user { width: 220px; }
+
+    /* ═══ MOBILE CARD VIEW STYLES ═══ */
+    .vk-logs-card-wrapper { display: none; }
+    @media (max-width: 767.98px) {
+        .table-responsive { display: none !important; }
+        .table-responsive.d-print-block { display: none !important; }
+        .vk-logs-card-wrapper { display: block; }
+    }
+
+    @media print {
+        .table-responsive.d-print-block { display: block !important; }
+        .vk-logs-card-wrapper { display: none !important; }
+    }
+
+    .vk-log-card {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        margin-bottom: 12px;
+        padding: 15px;
+        border-left: 4px solid #dee2e6;
+        transition: transform 0.2s;
+    }
+    .vk-log-card:active { transform: scale(0.98); }
+    .vk-log-card.border-info { border-left-color: #0dcaf0 !important; }
+    .vk-log-card.border-success { border-left-color: #198754 !important; }
+    .vk-log-card.border-warning { border-left-color: #ffc107 !important; }
+    .vk-log-card.border-danger { border-left-color: #dc3545 !important; }
+    .vk-log-card.border-primary { border-left-color: #0d6efd !important; }
+
+    .vk-card-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .vk-card-time { font-size: 0.75rem; color: #6c757d; font-weight: 600; }
+    .vk-card-user { font-size: 0.85rem; font-weight: 700; color: #212529; margin-bottom: 6px; }
+    .vk-card-desc { font-size: 0.85rem; color: #495057; line-height: 1.4; margin-bottom: 10px; }
+    .vk-card-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f8f9fa; pt-2; mt-1; }
+    .vk-card-ref { font-size: 0.7rem; color: #adb5bd; text-transform: uppercase; letter-spacing: 0.5px; }
 </style>
 
 <div class="main-logs-content py-4">
@@ -275,7 +360,8 @@ require_once ROOT_DIR . '/header.php';
     <!-- Activity Table -->
     <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4 shadow">
         <div class="card-body p-0">
-            <div class="table-responsive">
+            <!-- Desktop Table View -->
+            <div class="table-responsive d-none d-md-block d-print-block">
                 <table class="table table-hover align-middle mb-0 w-100" id="activityTable">
                     <thead class="bg-light">
                         <tr class="text-uppercase small fw-bold text-muted">
@@ -293,7 +379,7 @@ require_once ROOT_DIR . '/header.php';
                         endforeach; ?>
                         <?php if (empty($activities)): ?>
                         <tr>
-                            <td colspan="5" class="text-center py-5 text-muted">
+                            <td colspan="6" class="text-center py-5 text-muted">
                                 <i class="bi bi-journal-x fs-2 d-block mb-2"></i>
                                 <?= $isSw ? 'Hakuna shughuli zilizopatikana' : 'No activity records found' ?>
                             </td>
@@ -301,6 +387,55 @@ require_once ROOT_DIR . '/header.php';
                         <?php endif; ?>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Mobile Card View -->
+            <div class="vk-logs-card-wrapper p-3 d-md-none" id="activityCards">
+                <?php foreach ($activities as $i => $a): 
+                    $badge = getActionBadge($a['action'] ?? '', $isSw);
+                    $fullname = trim($a['full_name'] ?? '') ?: ($a['username'] ?? ($isSw ? 'Mfumo' : 'System'));
+                    $role = $a['role_name'] ?? 'System';
+                    $user_str = "$role ($fullname)";
+                    $time = date('d/m/y H:i', strtotime($a['created_at']));
+                    $icon = getBadgeIcon($badge['label']);
+                    
+                    // Fallback description logic same as renderActivityRow
+                    $desc_raw = $a['description'] ?: '';
+                    if (empty($desc_raw)) {
+                        $action_str = strtolower($a['action'] ?? '');
+                        $module_str = $a['module'] ?? '';
+                        $desc_raw = match($action_str) {
+                            'viewed'  => $isSw ? "Alitazama ukurasa wa: $module_str" : "Viewed: $module_str page",
+                            'created' => $isSw ? "Aliunda rekodi mpya kwenye: $module_str" : "Created new record in: $module_str",
+                            'updated' => $isSw ? "Alibadilisha rekodi kwenye: $module_str" : "Updated record in: $module_str",
+                            'deleted' => $isSw ? "Alifuta rekodi kutoka: $module_str" : "Deleted record from: $module_str",
+                            'login'   => $isSw ? "Ameingia kwenye mfumo" : "Logged into the system",
+                            'logout'  => $isSw ? "Ametoka kwenye mfumo" : "Logged out of the system",
+                            default   => $a['action'] ?? '-',
+                        };
+                    }
+                ?>
+                <div class="vk-log-card border-<?= $badge['color'] ?>">
+                    <div class="vk-card-meta">
+                        <span class="vk-card-time"><i class="bi bi-clock me-1"></i><?= $time ?></span>
+                        <span class="badge text-bg-<?= $badge['color'] ?> rounded-pill px-2 py-1" style="font-size: 10px;">
+                            <i class="bi bi-<?= $icon ?> me-1"></i><?= $badge['label'] ?>
+                        </span>
+                    </div>
+                    <div class="vk-card-user"><i class="bi bi-person-circle me-1 text-primary"></i><?= htmlspecialchars($user_str) ?></div>
+                    <div class="vk-card-desc"><?= htmlspecialchars($desc_raw) ?></div>
+                    <div class="vk-card-footer">
+                        <span class="vk-card-ref">REF: <?= htmlspecialchars($a['reference'] ?: '-') ?></span>
+                        <span class="text-muted small">#<?= $offset + $i + 1 ?></span>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+                <?php if (empty($activities)): ?>
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-journal-x fs-2 d-block mb-2"></i>
+                        <?= $isSw ? 'Hakuna shughuli zilizopatikana' : 'No activity records found' ?>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -445,6 +580,12 @@ function loadPage(page) {
     $.get('<?= getUrl('activity-logs') ?>?ajax=1&page=' + page + '&' + fdata, function(res) {
         if (res.success) {
             $('#activityRows').html(res.rows);
+            // Also update mobile cards if we had an AJAX renderer for them
+            // For now, simple reload or custom card AJAX would be needed.
+            // If the user uses pagination, we should ideally refresh cards too.
+            if (res.cards) {
+                $('#activityCards').html(res.cards);
+            }
             $('#paginationInfo').text(res.info);
             $('#paginationNav li').removeClass('active');
             $('#paginationNav li').each(function(i) {
