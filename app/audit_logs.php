@@ -390,7 +390,7 @@ require_once ROOT_DIR . '/header.php';
             </div>
 
             <!-- Mobile Card View -->
-            <div class="vk-logs-card-wrapper p-3 d-md-none" id="activityCards">
+            <div class="vk-logs-card-wrapper p-3 d-md-none" id="activityCards" style="padding-bottom:0!important;">
                 <?php foreach ($activities as $i => $a): 
                     $badge = getActionBadge($a['action'] ?? '', $isSw);
                     $fullname = trim($a['full_name'] ?? '') ?: ($a['username'] ?? ($isSw ? 'Mfumo' : 'System'));
@@ -437,11 +437,21 @@ require_once ROOT_DIR . '/header.php';
                     </div>
                 <?php endif; ?>
             </div>
+            <!-- Mobile Prev/Next -->
+            <div class="d-flex d-md-none justify-content-end align-items-center gap-2 px-3 py-2 border-top">
+                <button class="btn btn-sm btn-outline-secondary px-3 py-1" id="auditPrevBtn" onclick="auditTablePage('previous')" <?= $page <= 1 ? 'disabled' : '' ?>>
+                    <i class="bi bi-chevron-left"></i>
+                </button>
+                <span id="auditPageInfo" class="small text-muted fw-semibold"><?= $page ?> / <?= $total_pages ?></span>
+                <button class="btn btn-sm btn-outline-secondary px-3 py-1" id="auditNextBtn" onclick="auditTablePage('next')" <?= $page >= $total_pages ? 'disabled' : '' ?>>
+                    <i class="bi bi-chevron-right"></i>
+                </button>
+            </div>
         </div>
     </div>
 
-    <!-- Modern Pagination -->
-    <div class="mt-4 no-print">
+    <!-- Modern Pagination — desktop only -->
+    <div class="mt-4 no-print d-none d-md-block">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
             <!-- Info -->
             <div id="paginationInfo" class="text-muted small fw-semibold px-1">
@@ -574,25 +584,40 @@ require_once ROOT_DIR . '/header.php';
 
 <script>
 var currentPage = <?= $page ?>;
+var auditTotalPages = <?= $total_pages ?>;
+
 function loadPage(page) {
     currentPage = page;
     const fdata = $('#filterForm').serialize();
     $.get('<?= getUrl('activity-logs') ?>?ajax=1&page=' + page + '&' + fdata, function(res) {
         if (res.success) {
             $('#activityRows').html(res.rows);
-            // Also update mobile cards if we had an AJAX renderer for them
-            // For now, simple reload or custom card AJAX would be needed.
-            // If the user uses pagination, we should ideally refresh cards too.
             if (res.cards) {
                 $('#activityCards').html(res.cards);
+            }
+            if (res.total_pages !== undefined) {
+                auditTotalPages = res.total_pages;
             }
             $('#paginationInfo').text(res.info);
             $('#paginationNav li').removeClass('active');
             $('#paginationNav li').each(function(i) {
                 if (i + 1 === page) $(this).addClass('active');
             });
+            updateAuditMobilePageInfo();
         }
     });
+}
+
+function auditTablePage(dir) {
+    var newPage = dir === 'previous' ? currentPage - 1 : currentPage + 1;
+    if (newPage < 1 || newPage > auditTotalPages) return;
+    loadPage(newPage);
+}
+
+function updateAuditMobilePageInfo() {
+    $('#auditPageInfo').text(currentPage + ' / ' + (auditTotalPages || 1));
+    $('#auditPrevBtn').prop('disabled', currentPage <= 1);
+    $('#auditNextBtn').prop('disabled', currentPage >= auditTotalPages);
 }
 $('#filterForm').submit(function(e) {
     e.preventDefault();
