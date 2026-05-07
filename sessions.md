@@ -31,6 +31,58 @@ Important context, decisions made, or follow-up items.
 
 ---
 
+## Session 11 — 2026-05-06
+**Branch:** `feat/mobile-expenses`
+**Developer:** mbosso khani / Claude Code
+**Summary:** Shared print footer created and deployed to all report pages; mobile card views added for audit-logs.php and general_expenses.php; professional print layout applied to general_expenses.php.
+
+### Changes
+
+#### Shared Print Footer — includes/print_footer.php
+- New reusable bilingual footer for all printable pages
+- Displays: printed-by username, role, date and time (live at print time)
+- BJP Technologies copyright branding
+- Only visible during print (`d-none d-print-block`), fixed to page bottom
+- Registered as `PRINT_FOOTER_FILE` constant in `roots.php`
+- Included in 6 report pages: `vicoba_reports.php`, `member_statement.php`, `expense_report.php`, `death_analysis.php`, `customer_analysis.php`, `financial_ledger.php`
+
+#### Mobile Card View — audit-logs.php
+- Added `d-none d-md-block d-print-block` to table wrapper
+- Server-side `drawCallback` renders `#auditCardsWrapper` from current DataTable page data
+- Cards show: action type badge (avatar), user, module, description, IP address, date
+- `vkEscU` / `vkEscL` XSS helpers used throughout
+
+#### Mobile Card View + Print Layout — general_expenses.php
+- Mobile cards (`#generalExpenseCardsWrapper`) rendered via PHP loop
+- Avatar colour: teal for General, red for Death benefit
+- Rows: Category, Note, Amount; status badge in card header
+- Professional print layout: actions column hidden on print, `@page { margin: 1cm }` applied
+- Fixed `isSw` variable scope — moved to global scope so it is accessible inside all JS functions
+- Fixed card rendering robustness and restored print visibility after earlier regression
+
+### Files Created
+- `includes/print_footer.php` — shared bilingual print footer (username, role, datetime, branding)
+
+### Files Modified
+- `roots.php` — registered `PRINT_FOOTER_FILE` constant
+- `app/constant/reports/vicoba_reports.php` — include print footer
+- `app/constant/reports/member_statement.php` — include print footer
+- `app/constant/reports/expense_report.php` — include print footer
+- `app/constant/reports/death_analysis.php` — include print footer
+- `app/constant/reports/customer_analysis.php` — include print footer
+- `app/bms/customer/financial_ledger.php` — include print footer
+- `app/constant/accounts/audit_logs.php` — mobile card view + drawCallback
+- `app/constant/accounts/general_expenses.php` — mobile card view + print layout fixes + isSw scope fix
+
+### Database Changes
+- None
+
+### Notes
+- Print footer relies on `$username` and `$user_role` globals set by `header.php` — must be included after header
+- All existing unit tests continue to pass
+
+---
+
 ## Session 10 — 2026-05-05
 **Branch:** `feat/responsive-print-ui-tier4`
 **Developer:** mbosso khani / Claude Code

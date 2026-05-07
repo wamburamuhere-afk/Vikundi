@@ -244,21 +244,36 @@ $flash_err = urldecode($_GET['delerr'] ?? '');
 </form>
 
 <div class="container-fluid px-4 mt-4">
-    <div class="row mb-4">
+    <div class="row mb-3 mb-md-4">
         <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
+            <!-- Desktop header -->
+            <div class="d-none d-md-flex justify-content-between align-items-center">
                 <div>
                     <h2><i class="bi bi-folder2-open"></i> <?= $is_sw ? 'Maktaba ya Nyaraka' : 'Document Library' ?></h2>
                     <p class="text-muted mb-0"><?= $is_sw ? 'Simamia na panga nyaraka za kikundi chako kwa usalama' : 'Manage and organize your group documents securely' ?></p>
                 </div>
-                <div>
+                <div class="d-flex gap-2">
                     <?php if (canCreate('documents')): ?>
-                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#uploadDocumentModal">
+                    <button type="button" class="btn btn-primary btn-sm export-doc-btn" data-export="upload" data-bs-toggle="modal" data-bs-target="#uploadDocumentModal">
                         <i class="bi bi-cloud-upload"></i> <?= $is_sw ? 'Pakia Hati' : 'Upload Document' ?>
                     </button>
                     <?php endif; ?>
-                    <button type="button" class="btn btn-success btn-sm" id="exportDocuments">
+                    <button type="button" class="btn btn-outline-primary btn-sm export-doc-btn" data-export="excel" id="exportDocuments">
                         <i class="bi bi-download"></i> <?= $is_sw ? 'Hamisha Orodha' : 'Export List' ?>
+                    </button>
+                </div>
+            </div>
+            <!-- Mobile header: title + buttons in one row -->
+            <div class="d-md-none">
+                <h5 class="fw-bold mb-2"><i class="bi bi-folder2-open me-1"></i><?= $is_sw ? 'Maktaba ya Nyaraka' : 'Document Library' ?></h5>
+                <div class="d-flex gap-2">
+                    <?php if (canCreate('documents')): ?>
+                    <button type="button" class="btn btn-primary btn-sm flex-fill" data-bs-toggle="modal" data-bs-target="#uploadDocumentModal">
+                        <i class="bi bi-cloud-upload me-1"></i><?= $is_sw ? 'Pakia Hati' : 'Upload Document' ?>
+                    </button>
+                    <?php endif; ?>
+                    <button type="button" class="btn btn-outline-primary btn-sm flex-fill" id="exportDocumentsMobile">
+                        <i class="bi bi-download me-1"></i><?= $is_sw ? 'Hamisha Orodha' : 'Export List' ?>
                     </button>
                 </div>
             </div>
@@ -266,61 +281,61 @@ $flash_err = urldecode($_GET['delerr'] ?? '');
     </div>
 
     <!-- Statistics Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3 mb-3">
-            <div class="card custom-stat-card">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
+    <div class="row g-2 g-md-3 mb-4" id="docStatsRow">
+        <div class="col-6 col-md-3">
+            <div class="card custom-stat-card h-100">
+                <div class="card-body p-2 p-md-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="min-w-0">
                             <h4 class="mb-0" id="stat-total-docs">0</h4>
-                            <p class="mb-0"><?= $is_sw ? 'Jumla ya Nyaraka' : 'Total Documents' ?></p>
+                            <p class="mb-0 stat-label"><?= $is_sw ? 'Jumla ya Nyaraka' : 'Total Documents' ?></p>
                         </div>
-                        <div class="align-self-center">
+                        <div class="align-self-center d-none d-md-block">
                             <i class="bi bi-files" style="font-size: 2rem;"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-3">
-            <div class="card custom-stat-card">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
+        <div class="col-6 col-md-3">
+            <div class="card custom-stat-card h-100">
+                <div class="card-body p-2 p-md-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="min-w-0">
                             <h4 class="mb-0" id="stat-total-size">0 KB</h4>
-                            <p class="mb-0"><?= $is_sw ? 'Nafasi Iliyotumika' : 'Storage Used' ?></p>
+                            <p class="mb-0 stat-label"><?= $is_sw ? 'Nafasi Iliyotumika' : 'Storage Used' ?></p>
                         </div>
-                        <div class="align-self-center">
+                        <div class="align-self-center d-none d-md-block">
                             <i class="bi bi-hdd-fill" style="font-size: 2rem;"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-3">
-            <div class="card custom-stat-card">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
+        <div class="col-6 col-md-3">
+            <div class="card custom-stat-card h-100">
+                <div class="card-body p-2 p-md-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="min-w-0">
                             <h4 class="mb-0" id="stat-recent-uploads">0</h4>
-                            <p class="mb-0"><?= $is_sw ? 'Zilizopakiwa Hivi Karibuni' : 'Recent Uploads' ?></p>
+                            <p class="mb-0 stat-label"><?= $is_sw ? 'Zilizopakiwa Hivi Karibuni' : 'Recent Uploads' ?></p>
                         </div>
-                        <div class="align-self-center">
+                        <div class="align-self-center d-none d-md-block">
                             <i class="bi bi-cloud-arrow-up" style="font-size: 2rem;"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-3">
-            <div class="card custom-stat-card">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
+        <div class="col-6 col-md-3">
+            <div class="card custom-stat-card h-100">
+                <div class="card-body p-2 p-md-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="min-w-0">
                             <h4 class="mb-0" id="stat-recent-downloads">0</h4>
-                            <p class="mb-0"><?= $is_sw ? 'Zilizopakuliwa Hivi Karibuni' : 'Recent Downloads' ?></p>
+                            <p class="mb-0 stat-label"><?= $is_sw ? 'Zilizopakuliwa Hivi Karibuni' : 'Recent Downloads' ?></p>
                         </div>
-                        <div class="align-self-center">
+                        <div class="align-self-center d-none d-md-block">
                             <i class="bi bi-download" style="font-size: 2rem;"></i>
                         </div>
                     </div>
@@ -387,7 +402,7 @@ $flash_err = urldecode($_GET['delerr'] ?? '');
             </div>
         </div>
         <div class="card-body">
-            <div class="table-responsive">
+            <div class="table-responsive d-none d-md-block d-print-block">
                 <table id="documentsTable" class="table table-hover align-middle" style="width:100%">
                     <thead class="bg-light text-muted small uppercase">
                         <tr>
@@ -406,6 +421,23 @@ $flash_err = urldecode($_GET['delerr'] ?? '');
                         <!-- Data loaded via AJAX -->
                     </tbody>
                 </table>
+            </div>
+            <!-- ═══ CARD VIEW — Mobile Only ═══ -->
+            <div class="d-md-none d-print-none vk-cards-wrapper mt-2" id="docCardsWrapper">
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-folder2-open fs-1 d-block mb-3"></i>
+                    <p><?= $is_sw ? 'Inapakia...' : 'Loading...' ?></p>
+                </div>
+            </div>
+            <!-- Mobile Prev/Next -->
+            <div class="d-flex d-md-none justify-content-end align-items-center gap-2 px-3 py-2 border-top">
+                <button class="btn btn-sm btn-outline-secondary px-3 py-1" id="docPrevBtn" onclick="docTablePage('previous')">
+                    <i class="bi bi-chevron-left"></i>
+                </button>
+                <span id="docPageInfo" class="small text-muted fw-semibold">1 / 1</span>
+                <button class="btn btn-sm btn-outline-secondary px-3 py-1" id="docNextBtn" onclick="docTablePage('next')">
+                    <i class="bi bi-chevron-right"></i>
+                </button>
             </div>
         </div>
     </div>
@@ -489,12 +521,13 @@ $base_path = trim(str_ireplace($doc_root, '', $proj_root), '/');
 $api_base = (!empty($base_path) ? '/' . $base_path : '') . '/api';
 ?>
 <script>
-$(document).ready(function() {
-    const userPermissions = {
-        canEdit: <?= canEdit('library') ? 'true' : 'false' ?>,
-        canDelete: <?= canDelete('library') ? 'true' : 'false' ?>
-    };
+const _sw = <?= ($is_sw ? 'true' : 'false') ?>;
+const userPermissions = {
+    canEdit: <?= canEdit('library') ? 'true' : 'false' ?>,
+    canDelete: <?= canDelete('library') ? 'true' : 'false' ?>
+};
 
+$(document).ready(function() {
     const table = $('#documentsTable').DataTable({
         dom: "<'row'<'col-12'tr>><'row mt-3'<'col-md-5'i><'col-md-7'p>>",
         responsive: true,
@@ -603,6 +636,10 @@ $(document).ready(function() {
                 }
             }
         ],
+        drawCallback: function() {
+            renderDocCards(this.api());
+            updateDocPageInfo();
+        },
         order: [[6, 'desc']],
         buttons: [
             {
@@ -618,8 +655,8 @@ $(document).ready(function() {
         ]
     });
 
-    // Handle the custom export button click
-    $('#exportDocuments').on('click', function() {
+    // Handle export button clicks (desktop + mobile)
+    $('#exportDocuments, #exportDocumentsMobile').on('click', function() {
         table.button('.buttons-excel').trigger();
     });
 
@@ -633,7 +670,6 @@ function clearFilters() {
     $('#documentsTable').DataTable().ajax.reload();
 }
 
-const _sw = <?= ($is_sw ? 'true' : 'false') ?>;
 function confirmDelete(id) {
     Swal.fire({
         icon: 'warning',
@@ -688,6 +724,53 @@ function escapeHtml(text) {
     return text ? $('<div>').text(text).html() : '';
 }
 
+function renderDocCards(api) {
+    var rows = api.rows({page: 'current'}).data();
+    var wrapper = $('#docCardsWrapper');
+    wrapper.empty();
+    if (rows.length === 0) {
+        wrapper.html('<div class="text-center py-5 text-muted"><i class="bi bi-folder2-open fs-1 d-block mb-3"></i><p>' + (_sw ? 'Hakuna nyaraka zilizopatikana' : 'No documents found') + '</p></div>');
+        return;
+    }
+    rows.each(function(row) {
+        var accessColor = row.access_level === 'public' ? 'success' : (row.access_level === 'restricted' ? 'warning' : 'secondary');
+        var dateStr = new Date(row.uploaded_at).toLocaleDateString(_sw ? 'sw-TZ' : 'en-US', {month: 'short', day: 'numeric', year: 'numeric'});
+        var actHtml = '<a href="document_library.php?action=download&document_id=' + row.id + '" class="btn vk-btn-action btn-outline-primary" title="' + (_sw ? 'Pakua' : 'Download') + '"><i class="bi bi-download"></i></a>'
+            + '<a href="' + escapeHtml(row.file_path) + '" target="_blank" class="btn vk-btn-action btn-outline-secondary" title="' + (_sw ? 'Angalia' : 'View Online') + '"><i class="bi bi-eye"></i></a>';
+        if (userPermissions.canDelete) {
+            actHtml += '<button onclick="confirmDelete(' + row.id + ')" class="btn vk-btn-action btn-outline-danger" title="' + (_sw ? 'Futa' : 'Delete') + '"><i class="bi bi-trash"></i></button>';
+        }
+        var card = '<div class="vk-member-card">'
+            + '<div class="vk-card-header d-flex align-items-center gap-2">'
+            + '<div class="vk-card-avatar" style="background:linear-gradient(135deg,#0d6efd,#0a58ca);flex-shrink:0;"><i class="bi ' + getFileIcon(row.file_type) + ' text-white" style="font-size:16px;"></i></div>'
+            + '<div style="min-width:0;flex:1;overflow:hidden;">'
+            + '<div class="fw-bold text-dark text-truncate" style="font-size:13px;">' + escapeHtml(row.document_name) + '</div>'
+            + '<small class="text-muted text-truncate d-block" style="font-size:11px;">' + escapeHtml(row.original_filename) + '</small>'
+            + '</div>'
+            + '<span class="badge bg-' + accessColor + ' text-capitalize" style="font-size:10px;flex-shrink:0;">' + escapeHtml(row.access_level) + '</span>'
+            + '</div>'
+            + '<div class="vk-card-body">'
+            + '<div class="vk-card-row"><span class="vk-card-label">' + (_sw ? 'Aina' : 'Category') + '</span><span class="vk-card-value">' + (row.category_name ? escapeHtml(row.category_name) : (_sw ? 'Jumla' : 'General')) + '</span></div>'
+            + '<div class="vk-card-row"><span class="vk-card-label">' + (_sw ? 'Ukubwa' : 'Size') + '</span><span class="vk-card-value">' + formatFileSize(row.file_size) + '</span></div>'
+            + '<div class="vk-card-row"><span class="vk-card-label">' + (_sw ? 'Vipakuliwa' : 'Downloads') + '</span><span class="vk-card-value">' + row.download_count + '</span></div>'
+            + '<div class="vk-card-row"><span class="vk-card-label">' + (_sw ? 'Aliyepakia' : 'By') + '</span><span class="vk-card-value">' + escapeHtml(row.uploaded_by_name) + '</span></div>'
+            + '<div class="vk-card-row"><span class="vk-card-label">' + (_sw ? 'Tarehe' : 'Date') + '</span><span class="vk-card-value">' + dateStr + '</span></div>'
+            + '</div>'
+            + '<div class="vk-card-actions">' + actHtml + '</div>'
+            + '</div>';
+        wrapper.append(card);
+    });
+}
+function docTablePage(dir) { $('#documentsTable').DataTable().page(dir).draw('page'); }
+function updateDocPageInfo() {
+    var api = $('#documentsTable').DataTable();
+    var info = api.page.info();
+    var cur = info.page + 1, tot = info.pages || 1;
+    $('#docPageInfo').text(cur + ' / ' + tot);
+    $('#docPrevBtn').prop('disabled', info.page === 0);
+    $('#docNextBtn').prop('disabled', info.page >= info.pages - 1);
+}
+
 function toggleCategoryInput(select) {
     if (select.value === 'other') {
         $('#category_select_wrapper').hide();
@@ -734,6 +817,19 @@ function resetCategorySelect() {
 /* FIX: Modal overlap with high z-index header */
 .modal { z-index: 100005 !important; }
 .modal-backdrop { z-index: 100004 !important; }
+
+/* Stats cards — equal size on mobile */
+@media (max-width: 767px) {
+    #docStatsRow {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        grid-auto-rows: 1fr;
+        gap: 8px;
+    }
+    #docStatsRow > div { width: auto !important; padding: 0 !important; }
+    .custom-stat-card h4 { font-size: 1.05rem; }
+    .stat-label { font-size: 0.63rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
 </style>
 
 <?php

@@ -25,13 +25,15 @@ class CustomersButtonsTest extends TestCase
     public function test_import_members_button_exists(): void
     {
         $this->assertStringContainsString('data-bs-target="#importMemberModal"', $this->src);
-        $this->assertStringContainsString('Import Members', $this->src);
+        // Button text simplified to 'Import' on mobile (was 'Import Members')
+        $this->assertStringContainsString("'Import'", $this->src);
     }
 
     public function test_register_member_button_exists(): void
     {
         $this->assertStringContainsString('data-bs-target="#addMemberModal"', $this->src);
-        $this->assertStringContainsString('Register Member', $this->src);
+        // Button text simplified to 'Register' on mobile (was 'Register Member')
+        $this->assertStringContainsString("'Register'", $this->src);
     }
 
     public function test_print_list_button_exists(): void

@@ -58,65 +58,65 @@ $is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
     </div>
 
     <!-- Statistics Cards -->
-    <div class="row mb-4">
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card custom-stat-card h-100 shadow-sm border-0">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0 fw-bold" id="total-notifications">0</h4>
-                            <p class="mb-0 small uppercase fw-bold"><?= $is_sw ? 'Arifa Zote' : 'Total Notifications' ?></p>
+    <div class="row mb-4 g-2">
+        <div class="col-6 col-md-6 col-xl-3">
+            <div class="card custom-stat-card h-100 shadow-sm border-0 overflow-hidden">
+                <div class="card-body p-2 p-md-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="overflow-hidden">
+                            <h5 class="mb-0 fw-bold" id="total-notifications">0</h5>
+                            <p class="mb-0 small fw-bold text-truncate"><?= $is_sw ? 'Arifa Zote' : 'Total Notifications' ?></p>
                         </div>
-                        <div class="align-self-center opacity-75">
-                            <i class="bi bi-bell" style="font-size: 2rem;"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card custom-stat-card h-100 shadow-sm border-0">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0 fw-bold" id="unread-count">0</h4>
-                            <p class="mb-0 small uppercase fw-bold"><?= $is_sw ? 'Zisizofunguliwa' : 'Unread Alerts' ?></p>
-                        </div>
-                        <div class="align-self-center opacity-75">
-                            <i class="bi bi-envelope-exclamation" style="font-size: 2rem;"></i>
+                        <div class="opacity-75 ms-1 flex-shrink-0">
+                            <i class="bi bi-bell" style="font-size: 1.5rem;"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card custom-stat-card h-100 shadow-sm border-0">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0 fw-bold" id="high-priority-unread">0</h4>
-                            <p class="mb-0 small uppercase fw-bold"><?= $is_sw ? 'Muhimu Zaidi' : 'High Priority' ?></p>
+        <div class="col-6 col-md-6 col-xl-3">
+            <div class="card custom-stat-card h-100 shadow-sm border-0 overflow-hidden">
+                <div class="card-body p-2 p-md-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="overflow-hidden">
+                            <h5 class="mb-0 fw-bold" id="unread-count">0</h5>
+                            <p class="mb-0 small fw-bold text-truncate"><?= $is_sw ? 'Zisizofunguliwa' : 'Unread Alerts' ?></p>
                         </div>
-                        <div class="align-self-center opacity-75">
-                            <i class="bi bi-exclamation-triangle" style="font-size: 2rem;"></i>
+                        <div class="opacity-75 ms-1 flex-shrink-0">
+                            <i class="bi bi-envelope-exclamation" style="font-size: 1.5rem;"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card custom-stat-card h-100 shadow-sm border-0">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0 fw-bold" id="today-count">0</h4>
-                            <p class="mb-0 small uppercase fw-bold"><?= $is_sw ? 'Za Leo' : "Today's Alerts" ?></p>
+        <div class="col-6 col-md-6 col-xl-3">
+            <div class="card custom-stat-card h-100 shadow-sm border-0 overflow-hidden">
+                <div class="card-body p-2 p-md-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="overflow-hidden">
+                            <h5 class="mb-0 fw-bold" id="high-priority-unread">0</h5>
+                            <p class="mb-0 small fw-bold text-truncate"><?= $is_sw ? 'Muhimu Zaidi' : 'High Priority' ?></p>
                         </div>
-                        <div class="align-self-center opacity-75">
-                            <i class="bi bi-calendar-check" style="font-size: 2rem;"></i>
+                        <div class="opacity-75 ms-1 flex-shrink-0">
+                            <i class="bi bi-exclamation-triangle" style="font-size: 1.5rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-6 col-xl-3">
+            <div class="card custom-stat-card h-100 shadow-sm border-0 overflow-hidden">
+                <div class="card-body p-2 p-md-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="overflow-hidden">
+                            <h5 class="mb-0 fw-bold" id="today-count">0</h5>
+                            <p class="mb-0 small fw-bold text-truncate"><?= $is_sw ? 'Za Leo' : "Today's Alerts" ?></p>
+                        </div>
+                        <div class="opacity-75 ms-1 flex-shrink-0">
+                            <i class="bi bi-calendar-check" style="font-size: 1.5rem;"></i>
                         </div>
                     </div>
                 </div>
@@ -131,16 +131,16 @@ $is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
                 <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
                     <h5 class="mb-0 fw-bold"><i class="bi bi-list-ul"></i> <?= $is_sw ? 'Kumbukumbu za Arifa' : 'Activity Log' ?></h5>
                     <div class="btn-group shadow-sm">
-                        <button type="button" class="btn btn-success btn-sm px-3" onclick="bulkAction('mark_all_read')">
-                            <i class="bi bi-check-all"></i> <?= $is_sw ? 'Soma Zote' : 'Mark All Read' ?>
+                        <button type="button" class="btn btn-success btn-sm px-2" onclick="bulkAction('mark_all_read')" title="<?= $is_sw ? 'Soma Zote' : 'Mark All Read' ?>">
+                            <i class="bi bi-check-all"></i> <span class="d-none d-md-inline"><?= $is_sw ? 'Soma Zote' : 'Mark All Read' ?></span>
                         </button>
-                        <button type="button" class="btn btn-outline-danger btn-sm px-3" onclick="bulkAction('clear_all_read')">
-                            <i class="bi bi-trash"></i> <?= $is_sw ? 'Futa Zilizosomwa' : 'Clear Read' ?>
+                        <button type="button" class="btn btn-outline-danger btn-sm px-2" onclick="bulkAction('clear_all_read')" title="<?= $is_sw ? 'Futa Zilizosomwa' : 'Clear Read' ?>">
+                            <i class="bi bi-trash"></i> <span class="d-none d-md-inline"><?= $is_sw ? 'Futa Zilizosomwa' : 'Clear Read' ?></span>
                         </button>
                     </div>
                 </div>
                 <div class="card-body p-0">
-                    <div class="table-responsive">
+                    <div class="table-responsive d-none d-md-block d-print-block">
                         <table id="notificationsTable" class="table table-hover align-middle mb-0" style="width:100%">
                             <thead class="bg-light text-muted small uppercase">
                                 <tr>
@@ -157,6 +157,25 @@ $is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
                                 <!-- Loaded via AJAX -->
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- ═══ CARD VIEW — Mobile Only ═══ -->
+                    <div class="p-3 d-md-none d-print-none vk-cards-wrapper" id="notifCardsWrapper">
+                        <div id="notifCardsEmptyState" class="d-none text-center py-5">
+                            <i class="bi bi-bell-slash fs-1 text-muted d-block mb-3"></i>
+                            <p class="text-muted mb-0"><?= $is_sw ? 'Hakuna arifa zilizopatikana.' : 'No notifications found.' ?></p>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Prev / Next — after card view, mobile only -->
+                    <div class="d-flex d-md-none justify-content-end align-items-center gap-2 px-3 py-2 border-top">
+                        <button class="btn btn-sm btn-outline-secondary px-3 fw-semibold" id="notifPrevBtn" onclick="notifTablePage('previous')" disabled>
+                            <i class="bi bi-chevron-left"></i> <?= $is_sw ? 'Nyuma' : 'Prev' ?>
+                        </button>
+                        <span class="text-muted small" id="notifPageInfo" style="min-width:48px;text-align:center;">1 / 1</span>
+                        <button class="btn btn-sm btn-primary px-3 fw-semibold" id="notifNextBtn" onclick="notifTablePage('next')">
+                            <?= $is_sw ? 'Mbele' : 'Next' ?> <i class="bi bi-chevron-right"></i>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -455,9 +474,83 @@ $(document).ready(function() {
             }
         },
         drawCallback: function() {
-            // No-op, managed by delegation below
+            renderNotifCards(this.api());
+            updateNotifPageInfo();
         }
     });
+
+    window.notifTablePage = function(dir) { table.page(dir).draw('page'); };
+
+    function updateNotifPageInfo() {
+        var info = table.page.info();
+        $('#notifPageInfo').text((info.page + 1) + ' / ' + (info.pages || 1));
+        $('#notifPrevBtn').prop('disabled', info.page === 0);
+        $('#notifNextBtn').prop('disabled', info.page >= info.pages - 1);
+    }
+
+    function renderNotifCards(api) {
+        var $wrapper = $('#notifCardsWrapper');
+        $wrapper.find('.vk-member-card').remove();
+        var rows = api.rows({page: 'current'}).data();
+        $('#notifCardsEmptyState').toggleClass('d-none', rows.length > 0);
+        var avatarBg = { high: '#dc3545', medium: '#fd7e14', low: '#0dcaf0' };
+        var avatarFg = { high: '#fff',     medium: '#fff',     low: '#000' };
+        var priorityLabel = {
+            high:   isSw ? 'Juu'     : 'High',
+            medium: isSw ? 'Wastani' : 'Medium',
+            low:    isSw ? 'Chini'   : 'Low'
+        };
+        var priorityColor = { high: 'danger', medium: 'warning', low: 'info' };
+        rows.each(function(row) {
+            var bg  = avatarBg[row.priority]  || '#6c757d';
+            var fg  = avatarFg[row.priority]  || '#fff';
+            var pc  = priorityColor[row.priority] || 'secondary';
+            var pl  = priorityLabel[row.priority] || row.priority;
+            var av  = escapeHtml((row.title || 'N').charAt(0).toUpperCase());
+            var ttl = escapeHtml(row.title || '');
+            var msg = escapeHtml((row.message || '').substring(0, 70)) + ((row.message || '').length > 70 ? '…' : '');
+            var dt  = new Date(row.created_at).toLocaleDateString(isSw ? 'sw-TZ' : 'en-US');
+            var statusBadge = row.is_read == 1
+                ? `<span class="badge bg-light text-muted border">${isSw ? 'Imesomwa' : 'Read'}</span>`
+                : `<span class="badge bg-primary-subtle text-primary border border-primary-subtle">${isSw ? 'Mpya' : 'New'}</span>`;
+            var html = `<div class="vk-member-card">
+                <div class="vk-card-header">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="vk-card-avatar" style="background:${bg};color:${fg};">${av}</div>
+                        <div class="flex-grow-1" style="min-width:0;">
+                            <div class="${row.is_read == 0 ? 'fw-bold' : 'text-muted'} lh-sm text-truncate">${ttl}</div>
+                            <small class="text-muted">${escapeHtml(row.type || '')}</small>
+                        </div>
+                        ${statusBadge}
+                    </div>
+                </div>
+                <div class="vk-card-body">
+                    <div class="vk-card-row">
+                        <span class="vk-card-label">${isSw ? 'Ujumbe' : 'Content'}</span>
+                        <span class="vk-card-value text-muted">${msg}</span>
+                    </div>
+                    <div class="vk-card-row">
+                        <span class="vk-card-label">${isSw ? 'Umuhimu' : 'Priority'}</span>
+                        <span class="vk-card-value"><span class="badge bg-${pc}-subtle text-${pc} border border-${pc}-subtle">${pl}</span></span>
+                    </div>
+                    <div class="vk-card-row">
+                        <span class="vk-card-label">${isSw ? 'Tarehe' : 'Date'}</span>
+                        <span class="vk-card-value">${dt}</span>
+                    </div>
+                </div>
+                <div class="vk-card-actions">`;
+            if (row.is_read == 0) {
+                html += `<button class="btn btn-sm btn-outline-success vk-btn-action" onclick="markRead(${row.notification_id})" title="${isSw ? 'Weka Isomwe' : 'Mark Read'}"><i class="bi bi-check2-circle"></i></button>`;
+            }
+            if (row.action_url) {
+                html += `<a href="${escapeHtml(row.action_url)}" class="btn btn-sm btn-outline-primary vk-btn-action" title="${isSw ? 'Fungua' : 'Open'}"><i class="bi bi-box-arrow-up-right"></i></a>`;
+            }
+            html += `<button class="btn btn-sm btn-outline-danger vk-btn-action" onclick="deleteNotification(${row.notification_id})" title="${isSw ? 'Futa' : 'Delete'}"><i class="bi bi-trash"></i></button>
+                </div>
+            </div>`;
+            $wrapper.append(html);
+        });
+    }
 
     // Delegated click listener for dropdowns in DataTables - Bulletproof Bootstrap 5 approach
     $('#notificationsTable').on('click', '[data-bs-toggle="dropdown"]', function(e) {
