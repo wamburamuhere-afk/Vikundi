@@ -245,7 +245,13 @@ require_once ROOT_DIR . '/header.php';
     .vk-logs-card-wrapper { display: none; }
     @media (max-width: 767.98px) {
         .table-responsive { display: none !important; }
+        .table-responsive.d-print-block { display: none !important; }
         .vk-logs-card-wrapper { display: block; }
+    }
+
+    @media print {
+        .table-responsive.d-print-block { display: block !important; }
+        .vk-logs-card-wrapper { display: none !important; }
     }
 
     .vk-log-card {
@@ -355,7 +361,7 @@ require_once ROOT_DIR . '/header.php';
     <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4 shadow">
         <div class="card-body p-0">
             <!-- Desktop Table View -->
-            <div class="table-responsive d-none d-md-block">
+            <div class="table-responsive d-none d-md-block d-print-block">
                 <table class="table table-hover align-middle mb-0 w-100" id="activityTable">
                     <thead class="bg-light">
                         <tr class="text-uppercase small fw-bold text-muted">

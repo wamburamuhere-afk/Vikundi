@@ -161,7 +161,7 @@ $can_delete_expense = canDelete('expenses');
         <div class="card-body">
             <div id="form-message" class="mb-3"></div>
             
-            <div class="table-responsive d-none d-md-block">
+            <div class="table-responsive d-none d-md-block d-print-block">
                 <table id="expensesTable" class="table table-hover align-middle" style="width:100%">
                     <thead class="bg-light text-muted small uppercase text-center">
                         <tr>
@@ -295,6 +295,7 @@ $(document).ready(function() {
             }
         ],
         drawCallback: function() { renderExpenseCards(this.api()); },
+        dom: 'lrtp',
         initComplete: function() {
             $('.dataTables_length').appendTo('#lenContainer');
             $('.dataTables_length select').addClass('form-select-sm border-0 shadow-sm bg-white').css('width', 'auto');
@@ -417,17 +418,25 @@ function vkEscape(s) {
 function renderExpenseCards(api) {
     var $wrapper = $('#expensesCardsWrapper');
     var $empty   = $('#expensesCardsEmptyState');
+    
+    // Clear existing cards
     $wrapper.find('.vk-member-card').remove();
+    
     var rows = api.rows({ page: 'current' }).data();
-    if (rows.length === 0) { $empty.removeClass('d-none'); return; }
+    if (rows.length === 0) { 
+        $empty.removeClass('d-none'); 
+        return; 
+    }
+    
     $empty.addClass('d-none');
     var html = '';
+    
     rows.each(function(d) {
         var status = d.status || 'pending';
         var id     = parseInt(d.id);
         var amount = formatCurrency(d.amount);
         var badge  = getStatusBadgeClass(status);
-        var date   = new Date(d.expense_date).toLocaleDateString();
+        var date   = d.expense_date ? new Date(d.expense_date).toLocaleDateString() : '—';
         
         var approveBtn = status === 'pending' ? `
             <button class="btn btn-sm btn-success vk-btn-action" onclick="approveGeneralExpense(${id})" title="${isSw ? 'Idhinisha' : 'Approve'}">
@@ -463,7 +472,8 @@ function renderExpenseCards(api) {
             </div>
         </div>`;
     });
-    $wrapper.prepend(html);
+    
+    $wrapper.html(html);
 }
 </script>
 
@@ -499,7 +509,13 @@ function renderExpenseCards(api) {
         .btn-md-base { font-size: 0.85rem !important; padding: 8px 15px !important; }
         .card-header h6 { font-size: 0.9rem; }
         .table-responsive { display: none !important; }
+        .table-responsive.d-print-block { display: none !important; }
         .vk-cards-wrapper { display: block !important; }
+    }
+    
+    @media print {
+        .table-responsive.d-print-block { display: block !important; }
+        .vk-cards-wrapper { display: none !important; }
     }
 
     /* ═══ CARD VIEW STYLES (Professional System Standard) ═══ */
