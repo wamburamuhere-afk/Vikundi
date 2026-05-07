@@ -587,7 +587,7 @@ function renderExpenseCards(api) {
 
     /* ═══ PRINT OPTIMIZATION (Standard System Logic) ═══ */
     @media print {
-        @page { size: auto; margin: 15mm !important; margin-bottom: 25mm !important; }
+        @page { size: auto; margin: 10mm !important; }
         .no-print, .navbar, .header-wrapper, .sidebar-wrapper, .main-footer, .dataTables_paginate, .dataTables_length, .dataTables_filter, .dataTables_info { display: none !important; }
         body { background-color: white !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; }
         .container-fluid { padding: 0 !important; width: 100% !important; overflow: visible !important; }
@@ -595,6 +595,7 @@ function renderExpenseCards(api) {
         .table-responsive.d-print-block { display: block !important; overflow: visible !important; }
         .table { width: 100% !important; border-collapse: collapse !important; font-size: 10pt !important; }
         .table th, .table td { border: 1px solid #dee2e6 !important; padding: 6px !important; }
+        .table .no-print, .table th:last-child, .table td:last-child { display: none !important; }
         .vk-cards-wrapper { display: none !important; }
         .print-header, .print-footer { display: block !important; }
     }
