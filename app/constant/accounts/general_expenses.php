@@ -252,8 +252,9 @@ $can_delete_expense = canDelete('expenses');
 </div>
 
 <script>
+const isSw = <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'true' : 'false' ?>;
+
 $(document).ready(function() {
-    var isSw = <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'true' : 'false' ?>;
     
     const table = $('#expensesTable').DataTable({
         responsive: true,
