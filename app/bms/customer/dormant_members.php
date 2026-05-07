@@ -48,22 +48,27 @@ $breadcrumbs = [
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center bg-white p-3 rounded-4 shadow-sm border-start border-primary border-5">
                 <div>
-                    <h2 class="mb-1 fw-bold text-dark"><i class="bi bi-person-x text-primary"></i> <?= $title ?></h2>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb mb-0">
-                            <?php foreach ($breadcrumbs as $bc): ?>
-                                <?php if ($bc['active'] ?? false): ?>
-                                    <li class="breadcrumb-item active" aria-current="page"><?= $bc['label'] ?></li>
-                                <?php else: ?>
-                                    <li class="breadcrumb-item"><a href="<?= $bc['url'] ?>"><?= $bc['label'] ?></a></li>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                        </ol>
-                    </nav>
+                    <!-- Mobile: compact one-line title -->
+                    <h5 class="d-md-none mb-0 fw-bold text-dark"><i class="bi bi-person-x text-primary"></i> <?= $title ?></h5>
+                    <!-- Desktop: full title + breadcrumb -->
+                    <div class="d-none d-md-block">
+                        <h2 class="mb-1 fw-bold text-dark"><i class="bi bi-person-x text-primary"></i> <?= $title ?></h2>
+                        <nav aria-label="breadcrumb">
+                            <ol class="breadcrumb mb-0">
+                                <?php foreach ($breadcrumbs as $bc): ?>
+                                    <?php if ($bc['active'] ?? false): ?>
+                                        <li class="breadcrumb-item active" aria-current="page"><?= $bc['label'] ?></li>
+                                    <?php else: ?>
+                                        <li class="breadcrumb-item"><a href="<?= $bc['url'] ?>"><?= $bc['label'] ?></a></li>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </ol>
+                        </nav>
+                    </div>
                 </div>
                 <div class="d-flex gap-2">
-                    <a href="<?= getUrl('customers') ?>" class="btn btn-primary rounded-pill px-4 shadow-sm">
-                        <i class="bi bi-people-fill me-2"></i> <?= $is_sw ? 'Wanachama Walio Hai' : 'Active Members' ?>
+                    <a href="<?= getUrl('customers') ?>" class="btn btn-primary btn-sm rounded px-3 shadow-sm">
+                        <i class="bi bi-people-fill me-1"></i> <?= $is_sw ? 'Wanachama Walio Hai' : 'Active Members' ?>
                     </a>
                 </div>
             </div>
@@ -272,16 +277,28 @@ $breadcrumbs = [
                         </div>
                     </div>
                     <div class="vk-card-actions">
-                        <a href="<?= getUrl('member_statement') ?>?id=<?= $m['customer_id'] ?>" class="btn vk-btn-action btn-primary" title="<?= $is_sw ? 'Taarifa' : 'Statement' ?>">
+                        <a href="<?= getUrl('member_statement') ?>?id=<?= $m['customer_id'] ?>" class="btn vk-btn-action btn-outline-primary" title="<?= $is_sw ? 'Taarifa' : 'Statement' ?>">
                             <i class="bi bi-file-earmark-person"></i>
                         </a>
-                        <button onclick="deleteDormant(<?= $m['user_id'] ?>)" class="btn vk-btn-action btn-danger" title="<?= $is_sw ? 'Mfute' : 'Delete' ?>">
+                        <button onclick="deleteDormant(<?= $m['user_id'] ?>)" class="btn vk-btn-action btn-outline-danger" title="<?= $is_sw ? 'Mfute' : 'Delete' ?>">
                             <i class="bi bi-trash3-fill"></i>
                         </button>
                     </div>
                 </div>
                 <?php endforeach; endif; ?>
             </div>
+
+            <!-- Mobile Prev / Next — after card view, mobile only -->
+            <div class="d-flex d-md-none justify-content-end align-items-center gap-2 px-3 py-2 border-top">
+                <button class="btn btn-sm btn-outline-secondary px-3 fw-semibold" id="dormantPrevBtn" onclick="dormantTablePage('previous')" disabled>
+                    <i class="bi bi-chevron-left"></i> <?= $is_sw ? 'Nyuma' : 'Prev' ?>
+                </button>
+                <span class="text-muted small" id="dormantPageInfo" style="min-width:48px;text-align:center;">1 / 1</span>
+                <button class="btn btn-sm btn-primary px-3 fw-semibold" id="dormantNextBtn" onclick="dormantTablePage('next')">
+                    <?= $is_sw ? 'Mbele' : 'Next' ?> <i class="bi bi-chevron-right"></i>
+                </button>
+            </div>
+
         </div>
     </div>
 </div>
@@ -383,8 +400,22 @@ $(document).ready(function() {
         },
         drawCallback: function() {
             filterDormantCards($('#dormantSearch').val());
+            updateDormantPageInfo();
         }
     });
+
+    updateDormantPageInfo();
+
+    window.dormantTablePage = function(dir) {
+        dormantTable.page(dir).draw('page');
+    };
+
+    function updateDormantPageInfo() {
+        var info = dormantTable.page.info();
+        $('#dormantPageInfo').text((info.page + 1) + ' / ' + (info.pages || 1));
+        $('#dormantPrevBtn').prop('disabled', info.page === 0);
+        $('#dormantNextBtn').prop('disabled', info.page >= info.pages - 1);
+    }
 
     // Custom Search
     $('#dormantSearch').on('keyup', function() {

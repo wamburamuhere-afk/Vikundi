@@ -224,6 +224,17 @@ $is_sw = ($lang === 'sw');
                     <p class="text-muted mb-0"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Hakuna rekodi zilizopatikana.' : 'No records found.' ?></p>
                 </div>
             </div>
+
+            <!-- Mobile Prev / Next — after card view, mobile only -->
+            <div class="d-flex d-md-none justify-content-end align-items-center gap-2 px-3 py-2 border-top">
+                <button class="btn btn-sm btn-outline-secondary px-3 fw-semibold" id="expensePrevBtn" onclick="expenseTablePage('previous')" disabled>
+                    <i class="bi bi-chevron-left"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nyuma' : 'Prev' ?>
+                </button>
+                <span class="text-muted small" id="expensePageInfo" style="min-width:48px;text-align:center;">1 / 1</span>
+                <button class="btn btn-sm btn-primary px-3 fw-semibold" id="expenseNextBtn" onclick="expenseTablePage('next')">
+                    <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mbele' : 'Next' ?> <i class="bi bi-chevron-right"></i>
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -335,7 +346,7 @@ $(document).ready(function() {
                 `
             }
         ],
-        drawCallback: function() { renderExpenseCards(this.api()); },
+        drawCallback: function() { renderExpenseCards(this.api()); updateExpensePageInfo(); },
         dom: 'lrtp',
         initComplete: function() {
             $('.dataTables_length').appendTo('#lenContainer');
@@ -415,6 +426,16 @@ $(document).ready(function() {
     });
 });
 
+window.expenseTablePage = function(dir) { $('#expensesTable').DataTable().page(dir).draw('page'); };
+
+function updateExpensePageInfo() {
+    var api = $('#expensesTable').DataTable();
+    var info = api.page.info();
+    $('#expensePageInfo').text((info.page + 1) + ' / ' + (info.pages || 1));
+    $('#expensePrevBtn').prop('disabled', info.page === 0);
+    $('#expenseNextBtn').prop('disabled', info.page >= info.pages - 1);
+}
+
 function applyFilters() { $('#expensesTable').DataTable().ajax.reload(); }
 function clearFilters() { $('#statusFilter').val(''); $('#dateFromFilter, #dateToFilter').val(''); applyFilters(); }
 function formatCurrency(v) { return parseFloat(v).toLocaleString('en-US', {minimumFractionDigits: 2}); }
@@ -480,20 +501,20 @@ function renderExpenseCards(api) {
         var date   = d.expense_date ? new Date(d.expense_date).toLocaleDateString() : '—';
         
         var approveBtn = status === 'pending' ? `
-            <button class="btn btn-sm btn-success vk-btn-action" onclick="approveGeneralExpense(${id})" title="${isSw ? 'Idhinisha' : 'Approve'}">
+            <button class="btn btn-sm btn-outline-success vk-btn-action" onclick="approveGeneralExpense(${id})" title="${isSw ? 'Idhinisha' : 'Approve'}">
                 <i class="bi bi-check-circle-fill"></i>
             </button>` : '';
 
         html += `<div class="vk-member-card">
             <div class="vk-card-header d-flex justify-content-between align-items-center gap-2">
-                <div class="d-flex align-items-center gap-2">
-                    <div class="vk-card-avatar" style="background:linear-gradient(135deg,#6610f2,#6f42c1);"><i class="bi bi-cash-stack"></i></div>
+                <div class="d-flex align-items-center gap-2" style="min-width:0;flex:1;overflow:hidden;">
+                    <div class="vk-card-avatar flex-shrink-0" style="background:linear-gradient(135deg,#6610f2,#6f42c1);"><i class="bi bi-cash-stack"></i></div>
                     <div class="flex-grow-1" style="min-width:0;">
-                        <div class="fw-bold text-dark lh-sm" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${vkEscape(d.description)}</div>
+                        <div class="fw-bold text-dark lh-sm text-truncate" style="font-size:13px;">${vkEscape(d.description)}</div>
                         <small class="text-muted">${date}</small>
                     </div>
                 </div>
-                <span class="badge bg-${badge} rounded-pill px-2" style="font-size:10px;">${status.toUpperCase()}</span>
+                <span class="badge bg-${badge} rounded-pill px-2 flex-shrink-0" style="font-size:10px;">${status.toUpperCase()}</span>
             </div>
             <div class="vk-card-body">
                 <div class="vk-card-row">
@@ -507,7 +528,7 @@ function renderExpenseCards(api) {
             </div>
             <div class="vk-card-actions">
                 ${approveBtn}
-                <button class="btn btn-sm btn-danger vk-btn-action" onclick="confirmDeleteGeneralExpense(${id})" title="${isSw ? 'Futa' : 'Delete'}">
+                <button class="btn btn-sm btn-outline-danger vk-btn-action" onclick="confirmDeleteGeneralExpense(${id})" title="${isSw ? 'Futa' : 'Delete'}">
                     <i class="bi bi-trash3-fill"></i>
                 </button>
             </div>
@@ -558,32 +579,6 @@ function renderExpenseCards(api) {
         .table-responsive.d-print-block { display: block !important; }
         .vk-cards-wrapper { display: none !important; }
     }
-
-    /* ═══ CARD VIEW STYLES (Professional System Standard) ═══ */
-    .vk-cards-wrapper { display: none; }
-    .vk-member-card {
-        background: #fff;
-        border-radius: 12px;
-        border-left: 4px solid #0d6efd;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        margin-bottom: 15px;
-        padding: 15px;
-        transition: all 0.2s;
-        border: 1px solid #f1f5f9;
-        border-left: 4px solid #0d6efd;
-    }
-    .vk-card-header { margin-bottom: 12px; border-bottom: 1px solid #f8f9fa; padding-bottom: 10px; }
-    .vk-card-avatar {
-        width: 35px; height: 35px; border-radius: 10px;
-        display: flex; align-items: center; justify-content: center;
-        color: #fff; font-weight: bold; font-size: 14px;
-    }
-    .vk-card-body { margin-bottom: 12px; }
-    .vk-card-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; }
-    .vk-card-label { color: #64748b; font-weight: 500; }
-    .vk-card-value { color: #1e293b; font-weight: 600; text-align: right; }
-    .vk-card-actions { display: flex; gap: 8px; border-top: 1px solid #f8f9fa; pt-10; margin-top: 10px; padding-top: 10px; }
-    .vk-btn-action { flex: 1; border-radius: 8px; padding: 6px; font-size: 14px; }
 
     /* ═══ PRINT OPTIMIZATION (Standard System Logic) ═══ */
     @media print {

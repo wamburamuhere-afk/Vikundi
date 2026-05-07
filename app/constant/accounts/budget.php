@@ -229,6 +229,26 @@ $performance_data = $performance_stmt->fetchAll(PDO::FETCH_ASSOC);
                     </tfoot>
                 </table>
             </div>
+            <!-- Mobile action row: Print / Export / Show — mobile only -->
+            <div class="d-flex d-md-none flex-nowrap gap-1 mb-2 align-items-center">
+                <button class="btn btn-outline-secondary btn-sm px-3 py-2" title="Print" onclick="$('#budgetTable').DataTable().button('.buttons-print').trigger()">
+                    <i class="bi bi-printer"></i>
+                </button>
+                <button class="btn btn-outline-secondary btn-sm px-3 py-2" title="Export Excel" onclick="$('#budgetTable').DataTable().button('.buttons-excel').trigger()">
+                    <i class="bi bi-file-excel"></i>
+                </button>
+                <div class="dropdown ms-auto">
+                    <button class="btn btn-outline-secondary btn-sm px-3 py-2 dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-list-ul me-1"></i> Show
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="#" onclick="changeBudgetLen(10);return false;">10</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="changeBudgetLen(25);return false;">25</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="changeBudgetLen(50);return false;">50</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="changeBudgetLen(-1);return false;">All</a></li>
+                    </ul>
+                </div>
+            </div>
             <!-- ═══ CARD VIEW — Mobile Only ═══ -->
             <div class="d-md-none d-print-none vk-cards-wrapper mt-3" id="budgetCardsWrapper">
                 <?php if (empty($performance_data)): ?>
@@ -263,23 +283,33 @@ $performance_data = $performance_stmt->fetchAll(PDO::FETCH_ASSOC);
                         </div>
                     </div>
                     <div class="vk-card-actions">
-                        <a href="/accounts/budget_details?id=<?= $item['budget_id'] ?>" class="btn vk-btn-action btn-primary" title="View">
+                        <a href="/accounts/budget_details?id=<?= $item['budget_id'] ?>" class="btn vk-btn-action btn-outline-primary" title="View">
                             <i class="bi bi-eye"></i>
                         </a>
                         <?php if ($can_edit_budget): ?>
-                        <button onclick="editBudget(<?= $item['budget_id'] ?>)" class="btn vk-btn-action" style="background:#ffc107;color:#000;" title="Edit">
+                        <button onclick="editBudget(<?= $item['budget_id'] ?>)" class="btn vk-btn-action btn-outline-warning" title="Edit">
                             <i class="bi bi-pencil"></i>
                         </button>
-                        <button onclick="confirmChangeStatus(<?= $item['budget_id'] ?>, '<?= $item['status'] ?>')" class="btn vk-btn-action btn-secondary" title="Status">
+                        <button onclick="confirmChangeStatus(<?= $item['budget_id'] ?>, '<?= $item['status'] ?>')" class="btn vk-btn-action btn-outline-secondary" title="Status">
                             <i class="bi bi-arrow-repeat"></i>
                         </button>
-                        <button onclick="confirmDeleteBudget(<?= $item['budget_id'] ?>)" class="btn vk-btn-action btn-danger" title="Delete">
+                        <button onclick="confirmDeleteBudget(<?= $item['budget_id'] ?>)" class="btn vk-btn-action btn-outline-danger" title="Delete">
                             <i class="bi bi-trash3"></i>
                         </button>
                         <?php endif; ?>
                     </div>
                 </div>
                 <?php endforeach; endif; ?>
+            </div>
+            <!-- Mobile Prev/Next -->
+            <div class="d-flex d-md-none justify-content-end align-items-center gap-2 px-3 py-2 border-top">
+                <button class="btn btn-sm btn-outline-secondary px-3 py-1" id="budgetPrevBtn" onclick="budgetTablePage('previous')">
+                    <i class="bi bi-chevron-left"></i>
+                </button>
+                <span id="budgetPageInfo" class="small text-muted fw-semibold">1 / 1</span>
+                <button class="btn btn-sm btn-outline-secondary px-3 py-1" id="budgetNextBtn" onclick="budgetTablePage('next')">
+                    <i class="bi bi-chevron-right"></i>
+                </button>
             </div>
         </div>
     </div>
@@ -328,11 +358,21 @@ $(document).ready(function() {
         dom: '<"d-flex flex-wrap align-items-center justify-content-between mb-3" <"d-flex align-items-center" B l > f >rtip',
         lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
         drawCallback: function() {
-            var term = (this.api().search() || '').toLowerCase().trim();
+            var api = this.api();
+            var term = (api.search() || '').toLowerCase().trim();
+            var info = api.page.info();
+            var start = info.start;
+            var end = info.end;
+            var matching = [];
             $('#budgetCardsWrapper .vk-member-card').each(function() {
                 var text = ($(this).data('search') || '').toLowerCase();
-                $(this).toggle(!term || text.includes(term));
+                if (!term || text.includes(term)) { matching.push(this); }
+                $(this).hide();
             });
+            for (var i = start; i < end && i < matching.length; i++) {
+                $(matching[i]).show();
+            }
+            updateBudgetPageInfo();
         },
         buttons: [
             { 
@@ -456,6 +496,16 @@ function confirmChangeStatus(id, currentStatus) {
 function confirmDeleteBudget(id) {
     Swal.fire({ title: 'Delete?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, Delete' }).then((result) => { if (result.isConfirmed) { $('#delete_id').val(id); $('#deleteForm').submit(); } });
 }
+function budgetTablePage(dir) { $('#budgetTable').DataTable().page(dir).draw('page'); }
+function updateBudgetPageInfo() {
+    var api = $('#budgetTable').DataTable();
+    var info = api.page.info();
+    var cur = info.page + 1, tot = info.pages || 1;
+    $('#budgetPageInfo').text(cur + ' / ' + tot);
+    $('#budgetPrevBtn').prop('disabled', info.page === 0);
+    $('#budgetNextBtn').prop('disabled', info.page >= info.pages - 1);
+}
+function changeBudgetLen(n) { $('#budgetTable').DataTable().page.len(n).draw(); }
 function exportBudget() { $('#budgetTable').DataTable().button('.buttons-print').trigger(); }
 </script>
 

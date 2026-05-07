@@ -233,6 +233,17 @@ $total_all = $stmt_total_all->fetchColumn() ?? 0;
             </div>
         </div>
         <!-- ═══ END CARD VIEW ═══ -->
+
+        <!-- Mobile Prev / Next — after card view, mobile only -->
+        <div class="d-flex d-md-none justify-content-end align-items-center gap-2 px-3 py-2 border-top">
+            <button class="btn btn-sm btn-outline-secondary px-3 fw-semibold" id="pettyCashPrevBtn" onclick="pettyCashTablePage('previous')" disabled>
+                <i class="bi bi-chevron-left"></i> <?= $isSwahili ? 'Nyuma' : 'Prev' ?>
+            </button>
+            <span class="text-muted small" id="pettyCashPageInfo" style="min-width:48px;text-align:center;">1 / 1</span>
+            <button class="btn btn-sm btn-primary px-3 fw-semibold" id="pettyCashNextBtn" onclick="pettyCashTablePage('next')">
+                <?= $isSwahili ? 'Mbele' : 'Next' ?> <i class="bi bi-chevron-right"></i>
+            </button>
+        </div>
     </div>
 
     <!-- 4. PRINT FOOTER (Persistent on every page during print) -->
@@ -453,7 +464,7 @@ $(document).ready(function() {
         },
         order: [[2, 'desc']],
         pageLength: 25,
-        drawCallback: function() { renderPettyCashCards(this.api()); },
+        drawCallback: function() { renderPettyCashCards(this.api()); updatePettyCashPageInfo(); },
         initComplete: function() {
             $('.dataTables_filter').appendTo('#custom-search');
             $('.dt-buttons').appendTo('#action-tools');
@@ -691,6 +702,15 @@ function viewVoucher(id) {
             Swal.fire('Error', r.message, 'error');
         }
     });
+}
+
+window.pettyCashTablePage = function(dir) { table.page(dir).draw('page'); };
+
+function updatePettyCashPageInfo() {
+    var info = table.page.info();
+    $('#pettyCashPageInfo').text((info.page + 1) + ' / ' + (info.pages || 1));
+    $('#pettyCashPrevBtn').prop('disabled', info.page === 0);
+    $('#pettyCashNextBtn').prop('disabled', info.page >= info.pages - 1);
 }
 
 // ── Mobile card rendering — called by DataTable drawCallback after every AJAX draw ──
