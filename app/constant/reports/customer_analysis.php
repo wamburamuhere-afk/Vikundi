@@ -112,26 +112,10 @@ $latest_members = $pdo->query("
         </div>
     </div>
 
-    <!-- Print-only summary table (replaces stat cards) -->
-    <div class="d-none d-print-block mb-3">
-        <table class="table table-bordered table-sm mb-0" style="font-size: 11px;">
-            <thead class="table-light"><tr>
-                <th><?= $is_sw ? 'Wanachama Wote' : 'Total Members' ?></th>
-                <th><?= $is_sw ? 'Walio Active' : 'Active Members' ?></th>
-                <th><?= $is_sw ? 'Wapya (Siku 30)' : 'New (Last 30 Days)' ?></th>
-                <th><?= $is_sw ? 'Waliofariki' : 'Deceased' ?></th>
-            </tr></thead>
-            <tbody><tr>
-                <td class="fw-bold text-primary"><?= number_format($total_members) ?></td>
-                <td class="fw-bold text-success"><?= number_format($active_members) ?></td>
-                <td class="fw-bold text-info">+ <?= number_format($new_last_30) ?></td>
-                <td class="fw-bold text-danger"><?= number_format($deceased_count) ?></td>
-            </tr></tbody>
-        </table>
-    </div>
 
-    <!-- Stats Row (screen only) -->
-    <div class="row g-4 mb-4 d-print-none">
+
+    <!-- Stats Row -->
+    <div class="row g-2 g-md-4 mb-4">
         <div class="col-6 col-md-3">
             <div class="card border-0 shadow-sm h-100 rounded-4 overflow-hidden border-start border-4 border-primary">
                 <div class="card-body p-4 bg-white">
@@ -249,8 +233,10 @@ $latest_members = $pdo->query("
 <style>
     @media print {
         @page { margin: 1cm; }
-        body { background: white !important; font-size: 11px; padding-bottom: 55px; }
-        .card { border: 1px solid #ddd !important; box-shadow: none !important; margin-bottom: 20px !important; page-break-inside: avoid; }
+        body { background: white !important; font-size: 10px; padding-bottom: 55px; }
+        .card { border: 1px solid #ddd !important; box-shadow: none !important; margin-bottom: 10px !important; page-break-inside: avoid; }
+        .card-body { padding: 10px !important; }
+        .fs-3 { font-size: 1.1rem !important; }
         .nav-pills, .btn, .d-print-none { display: none !important; }
         .col-6 { width: 50% !important; flex: 0 0 50% !important; }
         .row { display: flex !important; flex-wrap: wrap !important; }

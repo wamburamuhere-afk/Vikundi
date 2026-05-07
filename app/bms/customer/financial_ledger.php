@@ -95,7 +95,20 @@ function fmt($n) { return number_format($n, 0); }
 ?>
 
 
+    <!-- Standard Print Header (Visible ONLY on Print) -->
+    <div class="d-none d-print-block">
+        <div class="text-center mb-4">
+            <img src="/assets/images/<?= htmlspecialchars($group_logo ?? 'logo1.png') ?>" alt="Logo" style="height: 80px; width: auto; margin-bottom: 10px; object-fit: contain;">
+            <h2 class="fw-bold mb-1 text-uppercase" style="color: #0d6efd !important;"><?= htmlspecialchars($group_name ?? 'KIKUNDI') ?></h2>
+            <h4 class="fw-bold text-dark text-uppercase border-top border-bottom py-2 mt-2">
+                <?= $is_sw ? 'LEDGER YA FEDHA YA KIKUNDI' : 'GROUP FINANCIAL LEDGER' ?>
+            </h4>
+            <div class="small text-muted mt-1"><?= $is_sw ? 'Tarehe ya Printi:' : 'Print Date:' ?> <?= date('d m, Y H:i') ?></div>
+        </div>
+    </div>
+
     <div class="row mb-3 align-items-center">
+
         <div class="col-12">
             <h2 class="fw-bold text-dark mb-1"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i> <?= $is_sw ? 'Ledger ya Fedha ya Kikundi' : 'Group Financial Ledger' ?></h2>
             <p class="text-muted mb-3 small"><?= $is_sw ? 'Ripoti ya michango, makato, na ziada ya kila mwanachama.' : 'Report of contributions, deductions, and balance for each member.' ?></p>
@@ -411,6 +424,7 @@ function exportLedger(type) {
 </style>
 
 <?php
+include PRINT_FOOTER_FILE;
 require_once ROOT_DIR . '/footer.php';
 ob_end_flush();
 ?>

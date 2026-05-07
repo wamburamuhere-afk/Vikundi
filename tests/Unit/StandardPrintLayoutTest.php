@@ -15,11 +15,13 @@ use PHPUnit\Framework\TestCase;
 class StandardPrintLayoutTest extends TestCase
 {
     private string $footerPath;
+    private string $headerPath;
     private string $reportsDir;
 
     protected function setUp(): void
     {
         $this->footerPath  = __DIR__ . '/../../includes/print_footer.php';
+        $this->headerPath  = __DIR__ . '/../../header.php';
         $this->reportsDir  = __DIR__ . '/../../app/constant/reports';
         unset($_SESSION['preferred_language']);
     }
@@ -225,7 +227,7 @@ class StandardPrintLayoutTest extends TestCase
         $_SESSION['preferred_language'] = 'en';
         $username  = 'Test';
         $user_role = 'Admin';
-        $today     = date('d M, Y');
+        $today     = date('d m, Y');
 
         ob_start();
         include $this->footerPath;
@@ -281,6 +283,12 @@ class StandardPrintLayoutTest extends TestCase
         $this->assertStringContainsString('PRINT_FOOTER_FILE', $src);
     }
 
+    public function test_financial_ledger_includes_print_footer_file(): void
+    {
+        $src = file_get_contents(__DIR__ . '/../../app/bms/customer/financial_ledger.php');
+        $this->assertStringContainsString('PRINT_FOOTER_FILE', $src);
+    }
+
     // -------------------------------------------------------------------------
     // Report files — @page margin standardised at 1cm
     // -------------------------------------------------------------------------
@@ -297,16 +305,38 @@ class StandardPrintLayoutTest extends TestCase
         $this->assertStringContainsString('@page { margin: 1cm; }', $src);
     }
 
+    public function test_death_analysis_cards_visible_in_print(): void
+    {
+        $src = file_get_contents($this->reportsDir . '/death_analysis.php');
+        // Ensure d-print-none is NOT on the row containing the summary cards
+        $this->assertStringContainsString('<div class="row g-2 g-md-4 mb-4">', $src);
+        $this->assertStringNotContainsString('<div class="row g-4 mb-5 d-print-none">', $src);
+    }
+
     public function test_expense_report_has_1cm_page_margin(): void
     {
         $src = file_get_contents($this->reportsDir . '/expense_report.php');
         $this->assertStringContainsString('@page { margin: 1cm; }', $src);
     }
 
+    public function test_expense_report_cards_visible_in_print(): void
+    {
+        $src = file_get_contents($this->reportsDir . '/expense_report.php');
+        $this->assertStringContainsString('<div class="row g-2 g-md-4 mb-4">', $src);
+        $this->assertStringNotContainsString('<div class="row g-4 mb-4 d-print-none">', $src);
+    }
+
     public function test_customer_analysis_has_1cm_page_margin(): void
     {
         $src = file_get_contents($this->reportsDir . '/customer_analysis.php');
         $this->assertStringContainsString('@page { margin: 1cm; }', $src);
+    }
+
+    public function test_customer_analysis_cards_visible_in_print(): void
+    {
+        $src = file_get_contents($this->reportsDir . '/customer_analysis.php');
+        $this->assertStringContainsString('<div class="row g-2 g-md-4 mb-4">', $src);
+        $this->assertStringNotContainsString('<div class="row g-4 mb-4 d-print-none">', $src);
     }
 
     public function test_member_statement_has_uniform_1cm_page_margin(): void
@@ -339,5 +369,16 @@ class StandardPrintLayoutTest extends TestCase
     {
         $src = file_get_contents($this->reportsDir . '/customer_analysis.php');
         $this->assertStringContainsString('padding-bottom: 55px', $src);
+    }
+
+    // -------------------------------------------------------------------------
+    // Global Header — Hide wrapper in print
+    // -------------------------------------------------------------------------
+
+    public function test_header_php_hides_wrapper_in_print(): void
+    {
+        $src = file_get_contents($this->headerPath);
+        $this->assertStringContainsString('.header-wrapper, .navbar {', $src);
+        $this->assertStringContainsString('display: none !important;', $src);
     }
 }
