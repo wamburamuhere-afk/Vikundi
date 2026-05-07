@@ -583,7 +583,7 @@ function renderDeathCards(api) {
         var badge    = status === 'approved' ? 'bg-success text-white' : 'bg-warning text-dark';
         var badgeLbl = status === 'approved' ? (isSw ? 'Imeidhinishwa' : 'Approved') : (isSw ? 'Inasubiri' : 'Pending');
         var approveBtn = status === 'pending' ? `
-            <button class="btn btn-sm btn-success vk-btn-action" onclick="approveDeathExpense(${id})" title="${isSw ? 'Idhinisha' : 'Approve'}">
+            <button class="btn btn-sm btn-outline-success vk-btn-action" onclick="approveDeathExpense(${id})" title="${isSw ? 'Idhinisha' : 'Approve'}">
                 <i class="bi bi-check-circle-fill"></i>
             </button>` : '';
         html += `<div class="vk-member-card">
@@ -616,11 +616,11 @@ function renderDeathCards(api) {
                 </div>
             </div>
             <div class="vk-card-actions">
-                <button class="btn btn-sm btn-primary vk-btn-action" onclick="viewDeathDetails(${id},${memberId})" title="${isSw ? 'Tazama' : 'View'}">
+                <button class="btn btn-sm btn-outline-primary vk-btn-action" onclick="viewDeathDetails(${id},${memberId})" title="${isSw ? 'Tazama' : 'View'}">
                     <i class="bi bi-eye-fill"></i>
                 </button>
                 ${approveBtn}
-                <button class="btn btn-sm btn-danger vk-btn-action" onclick="deleteDeathExpense(${id})" title="${isSw ? 'Futa' : 'Delete'}">
+                <button class="btn btn-sm btn-outline-danger vk-btn-action" onclick="deleteDeathExpense(${id})" title="${isSw ? 'Futa' : 'Delete'}">
                     <i class="bi bi-trash3-fill"></i>
                 </button>
             </div>
