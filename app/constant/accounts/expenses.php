@@ -312,14 +312,14 @@ $subtitle = $is_sw ? 'Rekodi na dhibiti misaada kwa wanachama waliofiwa' : 'Reco
     @page { 
         size: auto; 
         margin: 15mm !important;
-        margin-bottom: 30mm !important; /* Professional margin for footer */
+        margin-bottom: 10mm !important; /* Professional margin for footer */
     }
 
     /* Visibility Controls */
     .no-print, .modal, .dataTables_length, .dataTables_filter, .dataTables_info, .dataTables_paginate, nav, header, .navbar, .header-wrapper, .sidebar-wrapper, .main-footer { display: none !important; }
     
     /* Layout Reset (CRITICAL: Overflow MUST be visible for print) */
-    body { background-color: white !important; margin: 0 !important; padding-bottom: 30mm !important; overflow: visible !important; }
+    body { background-color: white !important; margin: 0 !important; padding-bottom: 10mm !important; overflow: visible !important; }
     .container-fluid { padding: 0 !important; max-width: 100% !important; margin: 0 !important; width: 100% !important; overflow: visible !important; }
     .card, .table-responsive { page-break-inside: auto !important; border: none !important; box-shadow: none !important; overflow: visible !important; }
     
