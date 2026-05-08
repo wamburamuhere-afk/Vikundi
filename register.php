@@ -122,8 +122,8 @@ if (isset($_SESSION['user_id'])) {
                                 <input type="tel" name="phone" class="form-control" placeholder="07xxxxxxxx" required>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold">Gender *</label>
-                                <select name="gender" class="form-select" required>
+                                <label class="form-label fw-bold">Gender</label>
+                                <select name="gender" class="form-select">
                                     <option value="">Select...</option>
                                     <option value="Mwanaume">Male</option>
                                     <option value="Mwanamke">Female</option>
@@ -436,8 +436,8 @@ if (isset($_SESSION['user_id'])) {
                                             <input type="number" name="entrance_fee" class="form-control border-start-0" placeholder="e.g. 20,000">
                                         </div>
                                         <div class="mt-3">
-                                            <label class="form-label fw-bold small">Upload Payment Slip (Optional)</label>
-                                            <input type="file" name="kianzio_slip" class="form-control">
+                                            <label class="form-label fw-bold small">Upload Payment Slip *</label>
+                                            <input type="file" name="kianzio_slip" id="kianzio_slip" class="form-control" required accept="image/*,.pdf">
                                         </div>
                                     </div>
                                 </div>
@@ -667,6 +667,16 @@ if (isset($_SESSION['user_id'])) {
 
             if ($('#password').val() !== $('#confirm_password').val()) {
                 Swal.fire(m.passwordError, m.passwordMismatch, 'error');
+                return;
+            }
+
+            // PAYMENT SLIP VALIDATION
+            const slipInput = document.getElementById('kianzio_slip');
+            if (!slipInput.files || slipInput.files.length === 0) {
+                const slipMsg = lang === 'sw' ? 'Tafadhali pakia risiti ya malipo!' : 'Please upload the payment slip!';
+                const slipTitle = lang === 'sw' ? 'Risiti Inahitajika' : 'Receipt Required';
+                Swal.fire(slipTitle, slipMsg, 'warning');
+                switchTab('account');
                 return;
             }
             

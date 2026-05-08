@@ -1704,8 +1704,8 @@ function downloadTemplate() {
     <div class="d-none d-print-block print-footer">
         <div class="row pt-2">
             <div class="col-12 text-center">
-                <p class="mb-1 text-dark"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nyaraka hii imechapishwa na' : 'This document was printed by' ?> <strong><?= htmlspecialchars($username ?? $_SESSION['username']) ?></strong> - <strong><?= htmlspecialchars($user_role ?? 'Member') ?></strong> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'mnamo' : 'on' ?> <strong><?= date('d M, Y') ?></strong> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'saa' : 'at' ?> <strong><?= date('H:i:s') ?></strong></p>
-                <h6 class="mb-0 fw-bold" style="color: #0d6efd !important;">Powered By BJP Technologies &copy; <?= date('Y') ?>, All Rights Reserved</h6>
+                <p class="mb-1 text-dark" style="font-size: 10pt;" ><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nyaraka hii imechapishwa na' : 'This document was printed by' ?> <strong><?= htmlspecialchars($username ?? $_SESSION['username']) ?></strong> - <strong><?= htmlspecialchars($user_role ?? 'Member') ?></strong> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'mnamo' : 'on' ?> <strong><?= date('d M, Y') ?></strong> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'saa' : 'at' ?> <strong><?= date('H:i:s') ?></strong></p>
+                <h6 class="mb-0 fw-bold" style="color: #0d6efd !important; font-size: 10pt;">Powered By BJP Technologies &copy; <?= date('Y') ?>, All Rights Reserved</h6>
             </div>
         </div>
     </div>
