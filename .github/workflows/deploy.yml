@@ -19,3 +19,4 @@ jobs:
           script: |
             cd /var/www/vikundi.bjptechnologies.co.tz/public_html && git pull origin main
             echo "Vikundi deployed at $(date)"
+            echo "Deployment was successful!"
