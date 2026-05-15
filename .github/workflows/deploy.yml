@@ -1,165 +1,21 @@
-name: Deploy to Production (PHP Webhook)
+name: Deploy to Production
 
-# Triggers on every push to main (i.e. after a reviewed PR merges).
-# Job 1 re-runs the full test suite — if tests fail, deployment is blocked.
-# Job 2 calls the deploy-hook.php webhook on the live server via HTTPS.
-#
-# Why webhook: SSH (port 22) is blocked, cPanel UAPI tokens are blocked by
-# the hosting provider firewall, and FTP passive mode data ports are blocked.
-# HTTPS port 443 is always open. The webhook script runs `git pull` directly
-# on the server using the git repo already set up via cPanel Git Version Control.
-#
-# Required GitHub Secrets (Settings → Secrets → Actions):
-#   DEPLOY_HOOK_URL    — full URL to deploy-hook.php, e.g.:
-#                        https://vikundi.bjptechnologies.co.tz/deploy-hook.php
-#   DEPLOY_HOOK_SECRET — the secret token you saved in /home/bjptechn/.deploy-secret
 on:
   push:
     branches:
       - main
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # Job 1 — Re-run the full test suite on the exact commit that landed on main.
-  # ---------------------------------------------------------------------------
-  test:
-    name: Verify tests pass on main
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up PHP 8.2
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2'
-          extensions: pdo, pdo_mysql, mbstring, xml, ctype, fileinfo, intl
-          coverage: none
-          tools: composer:v2
-
-      - name: Get Composer cache directory
-        id: composer-cache-dir
-        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
-
-      - name: Cache Composer packages
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.composer-cache-dir.outputs.dir }}
-          key: ${{ runner.os }}-php8.2-composer-${{ hashFiles('**/composer.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-php8.2-composer-
-
-      - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-interaction
-
-      - name: Run Unit Tests
-        run: composer test-unit
-
-      - name: Run Feature Tests
-        run: composer test-feature
-
-  # ---------------------------------------------------------------------------
-  # Job 2 — Trigger deployment by calling the webhook on the live server.
-  # The server runs `git pull origin main` and reports back.
-  # ---------------------------------------------------------------------------
   deploy:
-    name: Deploy to cPanel — vikundi.bjptechnologies.co.tz
     runs-on: ubuntu-latest
-    needs: test
-
-    environment:
-      name: production
-      url: https://vikundi.bjptechnologies.co.tz
 
     steps:
-      - name: Check secrets are configured
-        run: |
-          if [ -z "${{ secrets.DEPLOY_HOOK_URL }}" ]; then
-            echo "❌ DEPLOY_HOOK_URL secret is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.DEPLOY_HOOK_SECRET }}" ]; then
-            echo "❌ DEPLOY_HOOK_SECRET secret is not set"
-            exit 1
-          fi
-          echo "✅ Secrets configured"
-
-      - name: Trigger deployment webhook
-        id: webhook
-        run: |
-          echo "→ Calling deploy webhook..."
-
-          RESPONSE=$(curl -sS \
-            --max-time 60 \
-            -X POST \
-            -H "Authorization: Bearer ${{ secrets.DEPLOY_HOOK_SECRET }}" \
-            -H "X-GitHub-SHA: ${{ github.sha }}" \
-            -H "X-GitHub-Actor: ${{ github.actor }}" \
-            -w "\n__HTTP_STATUS__%{http_code}" \
-            "${{ secrets.DEPLOY_HOOK_URL }}" 2>&1)
-
-          # Split response body and HTTP status
-          HTTP_STATUS=$(echo "$RESPONSE" | grep '__HTTP_STATUS__' | sed 's/__HTTP_STATUS__//')
-          BODY=$(echo "$RESPONSE" | grep -v '__HTTP_STATUS__')
-
-          echo "HTTP status: $HTTP_STATUS"
-          echo "Response:"
-          echo "$BODY"
-
-          # Save status for summary step
-          echo "http_status=$HTTP_STATUS" >> $GITHUB_OUTPUT
-          echo "body<<EOF" >> $GITHUB_OUTPUT
-          echo "$BODY" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-          # Fail the step if the webhook returned non-200
-          if [ "$HTTP_STATUS" != "200" ]; then
-            echo ""
-            echo "❌ Webhook returned HTTP $HTTP_STATUS — deployment failed"
-            exit 1
-          fi
-
-          echo ""
-          echo "✅ Deployment webhook succeeded"
-
-      - name: Verify site is up after deployment
-        run: |
-          echo "→ Waiting 5 seconds for changes to take effect..."
-          sleep 5
-
-          HTTP_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" \
-            --max-time 30 \
-            "https://vikundi.bjptechnologies.co.tz/login" 2>/dev/null || echo "000")
-
-          echo "HTTP status: $HTTP_STATUS"
-
-          if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "302" ]; then
-            echo "✅ Site is responding — deployment complete."
-          else
-            echo "⚠️  Site returned HTTP $HTTP_STATUS — check manually at:"
-            echo "   https://vikundi.bjptechnologies.co.tz"
-            exit 1
-          fi
-
-      - name: Deployment summary
-        if: always()
-        run: |
-          STATUS="${{ steps.webhook.outputs.http_status }}"
-          if [ "$STATUS" = "200" ]; then
-            ICON="✅"
-            RESULT="Success"
-          else
-            ICON="❌"
-            RESULT="Failed (HTTP $STATUS)"
-          fi
-
-          echo "### ${ICON} Deployment — ${RESULT}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| | |" >> $GITHUB_STEP_SUMMARY
-          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
-          echo "| **Commit** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Triggered by** | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Method** | HTTPS webhook → git pull |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Site** | https://vikundi.bjptechnologies.co.tz |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Time** | $(date -u '+%Y-%m-%d %H:%M UTC') |" >> $GITHUB_STEP_SUMMARY
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd /var/www/vikundi.bjptechnologies.co.tz/public_html && git pull origin main
+            echo "Vikundi deployed at $(date)"
