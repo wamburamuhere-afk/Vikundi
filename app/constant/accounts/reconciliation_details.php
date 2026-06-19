@@ -316,14 +316,16 @@ function deleteReconciliation() {
     .custom-stat-card .card-title { color: #0f5132; }
 
     @media print {
-        .col-lg-4, .breadcrumb, .btn-outline-secondary, .btn-outline-primary, .Quick-Actions { display: none !important; }
+        .col-lg-4, .breadcrumb, .btn-outline-secondary, .btn-outline-primary, .Quick-Actions,
+        .header-wrapper, nav, .navbar { display: none !important; }
         .col-lg-8 { width: 100% !important; }
         .card { box-shadow: none !important; border: 1px solid #eee !important; }
-        body { background: white !important; }
+        body { background: white !important; padding-top: 0 !important; }
     }
 </style>
 
-<?php 
-includeFooter(); 
+<?php include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE; ?>
+<?php
+includeFooter();
 ob_end_flush();
 ?>

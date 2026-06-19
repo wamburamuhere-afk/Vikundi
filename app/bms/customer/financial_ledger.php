@@ -424,7 +424,7 @@ function exportLedger(type) {
 </style>
 
 <?php
-include PRINT_FOOTER_FILE;
+include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE;
 require_once ROOT_DIR . '/footer.php';
 ob_end_flush();
 ?>

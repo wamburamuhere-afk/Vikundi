@@ -412,8 +412,7 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
     .tracking-wider { letter-spacing: 0.05em; }
 
     @media print {
-        @page { margin: 1cm; }
-        body { background: white !important; font-size: 11px; color: #000 !important; padding-bottom: 40px; }
+        body { background: white !important; font-size: 11px; color: #000 !important; }
         .no-print-bg, .container-fluid { background: white !important; padding: 0 !important; margin: 0 !important; }
         .row { display: flex !important; flex-wrap: wrap !important; }
         .col-6 { width: 50% !important; flex: 0 0 50% !important; max-width: 50% !important; }
@@ -498,7 +497,7 @@ $(document).ready(function() {
 });
 </script>
 
-<?php include PRINT_FOOTER_FILE; ?>
+<?php include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE; ?>
 
 <?php
 $content = ob_get_clean();

@@ -380,7 +380,8 @@ $(document).ready(function() {
 .list-group-item.active { border-color: #0d6efd !important; background-color: #0d6efd !important; color: white !important; }
 </style>
 
-<?php 
-includeFooter(); 
+<?php include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE; ?>
+<?php
+includeFooter();
 ob_end_flush();
 ?>

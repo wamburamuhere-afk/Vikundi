@@ -293,8 +293,7 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
 
 <style>
     @media print {
-        @page { margin: 1cm; }
-        body { background: white !important; font-size: 10px; color: black; padding-bottom: 40px; }
+        body { background: white !important; font-size: 10px; color: black; }
         .card { border: 1px solid #ddd !important; box-shadow: none !important; margin-bottom: 10px !important; page-break-inside: avoid; }
         .card-body { padding: 10px !important; }
         .fs-4 { font-size: 1rem !important; }
@@ -363,7 +362,7 @@ $(document).ready(function() {
 });
 </script>
 
-<?php include PRINT_FOOTER_FILE; ?>
+<?php include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE; ?>
 
 <?php
 $content = ob_get_clean();

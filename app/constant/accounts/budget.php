@@ -127,7 +127,7 @@ $performance_data = $performance_stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     @media print {
-        @page { size: auto; margin: 15mm !important; }
+        /* @page margin handled by includes/print_footer_css.php */
         .no-print, .btn, .dropdown, #action-tools, .dataTables_filter, .dataTables_length, .dataTables_paginate, .dataTables_info, .display-titles, .stat-card-green, .card-body form { display: none !important; }
         body { background: white !important; margin: 0 !important; }
         .table { border-collapse: collapse !important; width: 100% !important; margin-top: 20px !important; }
@@ -417,23 +417,41 @@ $(document).ready(function() {
             { 
                 extend: 'print', title: '', className: 'btn btn-sm btn-white-pure border shadow-sm px-3 me-2 text-dark d-none d-md-inline-block', text: '<i class="bi bi-printer"></i> Print', 
                 exportOptions: { columns: [0, 1, 2, 3, 4] },
-                customize: function(win) { 
-                    const now = new Date();
-                    const options = { day: '2-digit', month: 'short', year: 'numeric' };
-                    const datePart = now.toLocaleDateString('en-GB', options);
-                    const timePart = now.toLocaleTimeString('en-GB', { hour12: false });
-                    const printTime = datePart + ' at ' + timePart;
-                    $(win.document.body).css({ 'font-size': '10pt', 'padding': '20px' })
-                        .prepend('<div style="text-align:center; margin-bottom: 25px; border-bottom: 2px solid #eee; padding-bottom: 15px;"><img src="<?= !empty($logo_base64) ? $logo_base64 : getUrl('assets/images/') . $group_logo ?>" style="max-height: 80px; margin-bottom: 10px;" /><h2 style="color: #0d6efd; text-transform: uppercase; font-weight: 800; margin: 0;"><?= $group_name ?></h2><h3 style="font-weight: 900; text-transform: uppercase; margin-top: 5px; color: #000;">LIST OF BUDGETS</h3></div>');
-                    
-                    $(win.document.body).append('<div style="position: fixed; bottom: 0; left: 0; width: 100%; font-size: 8.5pt; border-top: 1px solid #dee2e6; padding: 10px 0; font-family: sans-serif; background: #fff; text-align: center;"><div>This document was <strong>Printed</strong> by <strong><?= $username ?> - <?= $user_role ?></strong> on <strong>' + printTime + '</strong></div><div style="color: #0d6efd; font-weight: bold; margin-top: 5px;">Powered By BJP Technologies @ ' + now.getFullYear() + ', All Rights Reserved</div></div>');
-                    
-                    $(win.document.body).find('table').addClass('compact')
-                        .css({ 'border-collapse': 'collapse', 'width': '100%', 'font-size': '10pt' })
-                        .find('th, td').css({ 'border': '1px solid #333', 'padding': '8px' });
+                customize: function(win) {
+                    // Canonical page margins + shared footer CSS
+                    $(win.document.head).append(`<style>
+                        @page { margin: 10mm 8mm 16mm 8mm; }
+                        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 10pt; color: #1a252f; line-height: 1.5; padding: 20px 20px 0 20px; }
+                        table { border-collapse: collapse; width: 100%; font-size: 10pt; }
+                        table th, table td { border: 1px solid #333; padding: 8px; }
+                        .print-footer { position: fixed; bottom: 0; left: 0; right: 0; height: 16px; background: #fff; border-top: 1px solid #dee2e6; padding: 0 22px; text-align: center; display: flex; flex-direction: column; justify-content: flex-end; }
+                        .print-footer p { margin: 0; font-size: 7px; color: #2c3e50; line-height: 1; }
+                        .print-footer .brand { font-size: 7px; color: #3498db; font-weight: 600; }
+                        tfoot.print-spacer { display: table-footer-group; }
+                        tfoot.print-spacer td { height: 12px !important; border: none !important; }
+                    </style>`);
 
-                    $(win.document.body).find('table').append('<tfoot class="d-print-table-footer"><tr><td colspan="6" style="height: 2.8cm; border: none !important;">&nbsp;</td></tr></tfoot>');
-                } 
+                    // Branded header
+                    $(win.document.body).prepend(`<div style="text-align:center;margin-bottom:20px;border-bottom:2px solid #eee;padding-bottom:15px;">
+                        <img src="<?= !empty($logo_base64) ? $logo_base64 : getUrl('assets/images/') . $group_logo ?>" style="max-height:80px;margin-bottom:10px;">
+                        <h2 style="color:#0d6efd;text-transform:uppercase;font-weight:800;margin:0;"><?= $group_name ?></h2>
+                        <h3 style="font-weight:900;text-transform:uppercase;margin-top:5px;color:#000;">LIST OF BUDGETS</h3>
+                    </div>`);
+
+                    // Shared-style footer
+                    const now = new Date();
+                    const _d = now.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+                    const _t = now.toLocaleTimeString('en-GB', { hour12: false });
+                    const _sw = <?= $is_sw ? 'true' : 'false' ?>;
+                    const _by = _sw ? 'Nyaraka hii imechapishwa na' : 'This document was Printed by';
+                    const _on = _sw ? 'mnamo' : 'on';
+                    $(win.document.body).append(`<div class="print-footer">
+                        <p>${_by} <strong><?= htmlspecialchars($username) ?></strong> &mdash; <strong><?= htmlspecialchars(ucfirst($user_role)) ?></strong> ${_on} ${_d} <?= $is_sw ? 'saa' : 'at' ?> ${_t}</p>
+                        <p class="brand">Powered By BJP Technologies &copy; <?= date('Y') ?>, All Rights Reserved</p>
+                    </div>`);
+
+                    $(win.document.body).find('table').append('<tfoot class="print-spacer"><tr><td colspan="6">&nbsp;</td></tr></tfoot>');
+                }
             }
         ]
     });
@@ -510,4 +528,5 @@ function exportBudget() { $('#budgetTable').DataTable().button('.buttons-print')
 </script>
 
 <form id="deleteForm" method="POST" style="display:none;"><input type="hidden" name="action" value="delete_budget"><input type="hidden" name="budget_id" id="delete_id"></form>
+<?php include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE; ?>
 <?php includeFooter(); ?>
