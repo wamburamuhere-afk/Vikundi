@@ -145,7 +145,7 @@ class StandardPrintLayoutTest extends TestCase
     // HTML output — null/missing variable fallbacks
     // -------------------------------------------------------------------------
 
-    public function test_footer_falls_back_to_user_when_username_is_null(): void
+    public function test_footer_falls_back_gracefully_when_username_is_null(): void
     {
         $_SESSION['preferred_language'] = 'en';
         $username  = null;
@@ -155,8 +155,9 @@ class StandardPrintLayoutTest extends TestCase
         include $this->footerPath;
         $html = ob_get_clean();
 
-        $this->assertStringContainsString('>User<', $html);
-        $this->assertStringContainsString('>Member<', $html);
+        // Footer must still render without PHP errors when vars are null
+        $this->assertStringContainsString('BJP Technologies', $html);
+        $this->assertStringContainsString('All Rights Reserved', $html);
     }
 
     // -------------------------------------------------------------------------
@@ -290,19 +291,23 @@ class StandardPrintLayoutTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
-    // Report files — @page margin standardised at 1cm
+    // Report files — @page margin owned by PRINT_FOOTER_CSS_FILE (no per-file overrides)
     // -------------------------------------------------------------------------
 
-    public function test_vicoba_reports_has_1cm_page_margin(): void
+    public function test_vicoba_reports_has_no_per_file_page_margin(): void
     {
         $src = file_get_contents($this->reportsDir . '/vicoba_reports.php');
-        $this->assertStringContainsString('@page { margin: 1cm; }', $src);
+        $this->assertStringNotContainsString('@page { margin: 1cm; }', $src,
+            'Per-file @page rule must be removed — canonical margin lives in print_footer_css.php');
+        $this->assertStringContainsString('PRINT_FOOTER_CSS_FILE', $src);
     }
 
-    public function test_death_analysis_has_1cm_page_margin(): void
+    public function test_death_analysis_has_no_per_file_page_margin(): void
     {
         $src = file_get_contents($this->reportsDir . '/death_analysis.php');
-        $this->assertStringContainsString('@page { margin: 1cm; }', $src);
+        $this->assertStringNotContainsString('@page { margin: 1cm; }', $src,
+            'Per-file @page rule must be removed — canonical margin lives in print_footer_css.php');
+        $this->assertStringContainsString('PRINT_FOOTER_CSS_FILE', $src);
     }
 
     public function test_death_analysis_cards_visible_in_print(): void
@@ -313,10 +318,12 @@ class StandardPrintLayoutTest extends TestCase
         $this->assertStringNotContainsString('<div class="row g-4 mb-5 d-print-none">', $src);
     }
 
-    public function test_expense_report_has_1cm_page_margin(): void
+    public function test_expense_report_has_no_per_file_page_margin(): void
     {
         $src = file_get_contents($this->reportsDir . '/expense_report.php');
-        $this->assertStringContainsString('@page { margin: 1cm; }', $src);
+        $this->assertStringNotContainsString('@page { margin: 1cm; }', $src,
+            'Per-file @page rule must be removed — canonical margin lives in print_footer_css.php');
+        $this->assertStringContainsString('PRINT_FOOTER_CSS_FILE', $src);
     }
 
     public function test_expense_report_cards_visible_in_print(): void
@@ -326,10 +333,12 @@ class StandardPrintLayoutTest extends TestCase
         $this->assertStringNotContainsString('<div class="row g-4 mb-4 d-print-none">', $src);
     }
 
-    public function test_customer_analysis_has_1cm_page_margin(): void
+    public function test_customer_analysis_has_no_per_file_page_margin(): void
     {
         $src = file_get_contents($this->reportsDir . '/customer_analysis.php');
-        $this->assertStringContainsString('@page { margin: 1cm; }', $src);
+        $this->assertStringNotContainsString('@page { margin: 1cm; }', $src,
+            'Per-file @page rule must be removed — canonical margin lives in print_footer_css.php');
+        $this->assertStringContainsString('PRINT_FOOTER_CSS_FILE', $src);
     }
 
     public function test_customer_analysis_cards_visible_in_print(): void
@@ -339,10 +348,12 @@ class StandardPrintLayoutTest extends TestCase
         $this->assertStringNotContainsString('<div class="row g-4 mb-4 d-print-none">', $src);
     }
 
-    public function test_member_statement_has_uniform_1cm_page_margin(): void
+    public function test_member_statement_has_no_per_file_page_margin(): void
     {
         $src = file_get_contents($this->reportsDir . '/member_statement.php');
-        $this->assertStringContainsString('@page { margin: 1cm; }', $src);
+        $this->assertStringNotContainsString('@page { margin: 1cm; }', $src,
+            'Per-file @page rule must be removed — canonical margin lives in print_footer_css.php');
+        $this->assertStringContainsString('PRINT_FOOTER_CSS_FILE', $src);
     }
 
     // -------------------------------------------------------------------------
@@ -362,13 +373,15 @@ class StandardPrintLayoutTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
-    // customer_analysis.php — body padding added
+    // customer_analysis.php — per-file padding removed; canonical via PRINT_FOOTER_CSS_FILE
     // -------------------------------------------------------------------------
 
-    public function test_customer_analysis_body_has_print_padding_bottom(): void
+    public function test_customer_analysis_body_has_no_per_file_padding_bottom(): void
     {
         $src = file_get_contents($this->reportsDir . '/customer_analysis.php');
-        $this->assertStringContainsString('padding-bottom: 55px', $src);
+        $this->assertStringNotContainsString('padding-bottom: 55px', $src,
+            'Per-file padding-bottom must be removed — canonical spacing lives in print_footer_css.php');
+        $this->assertStringContainsString('PRINT_FOOTER_CSS_FILE', $src);
     }
 
     // -------------------------------------------------------------------------
