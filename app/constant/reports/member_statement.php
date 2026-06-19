@@ -377,7 +377,7 @@ th { font-size: 0.65rem; letter-spacing: 0.02em; font-weight: 800; }
 }
 </style>
 
-<?php include PRINT_FOOTER_FILE; ?>
+<?php include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE; ?>
 
 <?php
 $content = ob_get_clean();

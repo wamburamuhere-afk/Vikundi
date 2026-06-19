@@ -63,7 +63,8 @@ define('COMING_SOON_FILE', ROOT_DIR . '/app/coming_soon.php');
 // ============================================================================
 define('HEADER_FILE', ROOT_DIR . '/header.php');
 define('FOOTER_FILE', ROOT_DIR . '/footer.php');
-define('PRINT_FOOTER_FILE', ROOT_DIR . '/includes/print_footer.php');
+define('PRINT_FOOTER_FILE',     ROOT_DIR . '/includes/print_footer_html.php');
+define('PRINT_FOOTER_CSS_FILE', ROOT_DIR . '/includes/print_footer_css.php');
 define('HELPERS_FILE', ROOT_DIR . '/helpers.php');
 define('CONFIG_FILE', ROOT_DIR . '/includes/config.php');
 define('INDEX_FILE', ROOT_DIR . '/index.php');

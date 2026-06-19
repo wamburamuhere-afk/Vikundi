@@ -109,8 +109,7 @@ $current_user_role = $isSwahili ? ($cu['role_name_sw'] ?: $cu['role_name']) : $c
         .group-name { color: #0d6efd; text-transform: uppercase; font-weight: 800; font-size: 22px; margin-bottom: 2px; }
         .report-title { color: #000; text-transform: uppercase; font-weight: 900; font-size: 18px; display: inline-block; }
         
-        .print-footer { border-top: 1px solid #dee2e6; padding: 10px 0; font-size: 11px; color: #6c757d; }
-        .powered-by { color: #0d6efd !important; font-weight: bold; }
+        /* print footer styles injected via includes/print_footer_css.php below */
     </style>
 </head>
 <body>
@@ -191,19 +190,13 @@ $current_user_role = $isSwahili ? ($cu['role_name_sw'] ?: $cu['role_name']) : $c
         </div>
     </div>
 
-    <!-- Print Footer (Visible only when printing) -->
-    <div class="d-none d-print-block w-100 mt-5 print-footer">
-        <div class="border-top pt-3" style="border-top: 1px solid #dee2e6 !important; text-align: center;">
-            <p class="mb-1">
-                <?= $isSwahili ? 'Nyaraka hii imechapishwa na' : 'This document was Printed by' ?> 
-                <strong><?= htmlspecialchars($current_user_display) ?></strong> - 
-                <span class="text-uppercase"><?= htmlspecialchars($current_user_role ?? 'Member') ?></span> 
-                <?= $isSwahili ? 'mnamo' : 'on' ?> 
-                <?= date('d M, Y') ?> <?= $isSwahili ? 'saa' : 'at' ?> <span id="print_time_js"><?= date('H:i:s') ?></span>
-            </p>
-            <p class="mb-0 powered-by">Powered By BJP Technologies @ 2026, All Rights Reserved</p>
-        </div>
-    </div>
+<?php
+    // Pre-set footer variables from the already-fetched user data
+    $printed_by   = $current_user_display;
+    $printed_role = $current_user_role ?? 'Member';
+    include __DIR__ . '/../../../includes/print_footer_css.php';
+    include __DIR__ . '/../../../includes/print_footer_html.php';
+?>
     <script>
         window.onbeforeprint = function() {
             const now = new Date();

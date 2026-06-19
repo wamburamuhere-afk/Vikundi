@@ -297,7 +297,7 @@ $(document).ready(function() {
 });
 </script>
 
-<?php include PRINT_FOOTER_FILE; ?>
+<?php include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE; ?>
 
 <?php
 $content = ob_get_clean();
