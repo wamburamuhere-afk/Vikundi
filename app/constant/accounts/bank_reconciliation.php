@@ -55,6 +55,9 @@ $bank_account_id = isset($_GET['bank_account_id']) ? (int)$_GET['bank_account_id
                     <button type="button" class="btn btn-info" onclick="exportReconciliation()">
                         <i class="bi bi-download"></i> Export Report
                     </button>
+                    <button type="button" class="btn btn-outline-secondary d-print-none" onclick="window.print()">
+                        <i class="bi bi-printer"></i> Print
+                    </button>
                 </div>
             </div>
         </div>
@@ -868,21 +871,13 @@ function deleteReconciliation(id) {
 
 /* Print styles */
 @media print {
-    .navbar, .card-header, .btn, .dropdown, .dataTables_length, 
-    .dataTables_filter, .dataTables_info, .dataTables_paginate, 
-    .dt-buttons, .modal {
-        display: none !important;
-    }
-    
-    .card {
-        border: none;
-        box-shadow: none;
-    }
-    
-    table {
-        width: 100% !important;
-        font-size: 12px;
-    }
+    .navbar, .card-header, .btn, .dropdown, .dataTables_length,
+    .dataTables_filter, .dataTables_info, .dataTables_paginate,
+    .dt-buttons, .modal, .header-wrapper, nav { display: none !important; }
+    .card { border: none; box-shadow: none; }
+    table { width: 100% !important; font-size: 12px; }
+    body { padding-top: 0 !important; }
+    /* @page margin handled by includes/print_footer_css.php */
 }
 
 /* Responsive adjustments */
@@ -917,10 +912,8 @@ function deleteReconciliation(id) {
 }
 </style>
 
+<?php include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE; ?>
 <?php
-// Include the footer
 include("footer.php");
-
-// Flush the buffer
 ob_end_flush();
 ?>

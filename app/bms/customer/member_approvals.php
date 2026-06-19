@@ -108,7 +108,44 @@ $(document).ready(function() {
         ],
         dom: 'Blfrtip',
         buttons: [
-            { extend: 'print', text: '<i class="bi bi-printer me-1"></i> <?= $isSwahili ? 'Printi' : 'Print' ?>', className: 'btn btn-sm btn-white' },
+            {
+                extend: 'print',
+                text: '<i class="bi bi-printer me-1"></i> <?= $isSwahili ? 'Printi' : 'Print' ?>',
+                className: 'btn btn-sm btn-white',
+                title: '',
+                exportOptions: { columns: ':not(:last-child)' },
+                customize: function(win) {
+                    $(win.document.head).append(`<style>
+                        @page { margin: 10mm 8mm 16mm 8mm; }
+                        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 11pt; color: #1a252f; line-height: 1.5; padding: 20px 20px 0 20px; }
+                        table { width: 100% !important; border-collapse: collapse !important; }
+                        table th, table td { border: 1px solid #000 !important; padding: 6px !important; }
+                        table th { background-color: #f2f2f2 !important; -webkit-print-color-adjust: exact; }
+                        .print-footer { position: fixed; bottom: 0; left: 0; right: 0; height: 16px; background: #fff; border-top: 1px solid #dee2e6; padding: 0 22px; text-align: center; display: flex; flex-direction: column; justify-content: flex-end; }
+                        .print-footer p { margin: 0; font-size: 7px; color: #2c3e50; line-height: 1; }
+                        .print-footer .brand { font-size: 7px; color: #3498db; font-weight: 600; }
+                        tfoot.print-spacer { display: table-footer-group; }
+                        tfoot.print-spacer td { height: 12px !important; border: none !important; }
+                    </style>`);
+                    $(win.document.body).find('h1').remove();
+                    $(win.document.body).prepend(`<div style="text-align:center;margin-bottom:16px;">
+                        <h2 style="font-weight:700;color:#0d6efd;text-transform:uppercase;margin:0;"><?= htmlspecialchars($group_name ?? '') ?></h2>
+                        <h4 style="font-weight:700;border-top:1px solid #000;border-bottom:1px solid #000;padding:6px 0;margin-top:8px;"><?= $isSwahili ? 'UHAKIKI WA WANACHAMA WAPYA' : 'NEW MEMBER VERIFICATION' ?></h4>
+                    </div>`);
+                    const now = new Date();
+                    const _d = now.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+                    const _t = now.toLocaleTimeString('en-GB', { hour12: false });
+                    const _sw = <?= $isSwahili ? 'true' : 'false' ?>;
+                    const _by = _sw ? 'Nyaraka hii imechapishwa na' : 'This document was Printed by';
+                    const _on = _sw ? 'mnamo' : 'on';
+                    const _at = _d + ' ' + (_sw ? 'saa' : 'at') + ' ' + _t;
+                    $(win.document.body).append(`<div class="print-footer">
+                        <p>${_by} <strong><?= htmlspecialchars(trim(($_SESSION['first_name'] ?? '') . ' ' . ($_SESSION['last_name'] ?? '')) ?: ($_SESSION['username'] ?? '')) ?></strong> &mdash; <strong><?= htmlspecialchars(ucfirst($user_role ?? 'User')) ?></strong> ${_on} ${_at}</p>
+                        <p class="brand">Powered By BJP Technologies &copy; <?= date('Y') ?>, All Rights Reserved</p>
+                    </div>`);
+                    $(win.document.body).find('table').append('<tfoot class="print-spacer"><tr><td colspan="20">&nbsp;</td></tr></tfoot>');
+                }
+            },
             { extend: 'excel', text: '<i class="bi bi-file-earmark-excel me-1"></i> Excel', className: 'btn btn-sm btn-white' }
         ],
         language: {
@@ -202,6 +239,7 @@ function rejectMember(userId) {
 }
 </script>
 
+<?php include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE; ?>
 <?php
 $content = ob_get_clean();
 echo $content;

@@ -1492,30 +1492,12 @@ function togglePasswordAdmin(fieldId) {
         background: transparent !important;
     }
 
-    /* Print Footer Positioning & Overlap Prevention */
-    .print-footer {
-        position: fixed;
-        bottom: 0.8cm;
-        left: 0;
-        right: 0;
-        width: 100%;
-        background: white !important;
-        font-size: 10px;
-        z-index: 9999;
-        text-align: center;
-        padding-top: 15px;
-        border-top: 1px solid #dee2e6;
-    }
-
     /* Print Footer Logic (using tfoot for perfect breaks) */
     .d-print-table-footer {
         display: table-footer-group !important;
     }
 
-    /* VERY GENEROUS BOTTOM MARGIN */
-    @page {
-        margin: 1.5cm 1.5cm 2.5cm 1.5cm; 
-    }
+    /* @page margin and .print-footer positioning handled by includes/print_footer_css.php */
     
     /* FLEXIBLE TABLE */
     .table-responsive {
@@ -1700,15 +1682,7 @@ function downloadTemplate() {
 </script>
 <?php endif; ?>
 
-    <!-- Print Footer (Visible ONLY on Print) -->
-    <div class="d-none d-print-block print-footer">
-        <div class="row pt-2">
-            <div class="col-12 text-center">
-                <p class="mb-1 text-dark" style="font-size: 10pt;" ><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nyaraka hii imechapishwa na' : 'This document was printed by' ?> <strong><?= htmlspecialchars($username ?? $_SESSION['username']) ?></strong> - <strong><?= htmlspecialchars($user_role ?? 'Member') ?></strong> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'mnamo' : 'on' ?> <strong><?= date('d M, Y') ?></strong> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'saa' : 'at' ?> <strong><?= date('H:i:s') ?></strong></p>
-                <h6 class="mb-0 fw-bold" style="color: #0d6efd !important; font-size: 10pt;">Powered By BJP Technologies &copy; <?= date('Y') ?>, All Rights Reserved</h6>
-            </div>
-        </div>
-    </div>
+<?php include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE; ?>
 
 <?php
 include("footer.php");

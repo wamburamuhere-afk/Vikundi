@@ -86,17 +86,20 @@ $labels = [
         </div>
         <div class="d-flex gap-2">
             <?php if (($customer['user_status'] ?? '') === 'pending'): ?>
-                <button onclick="approveMember(<?= $customer['user_id_ref'] ?>)" class="btn btn-success btn-sm">
+                <button onclick="approveMember(<?= $customer['user_id_ref'] ?>)" class="btn btn-success btn-sm d-print-none">
                     <i class="bi bi-check-circle"></i> <?= $isSw ? 'Mkubali (Approve)' : 'Approve' ?>
                 </button>
-                <button onclick="rejectMember(<?= $customer['user_id_ref'] ?>)" class="btn btn-danger btn-sm">
+                <button onclick="rejectMember(<?= $customer['user_id_ref'] ?>)" class="btn btn-danger btn-sm d-print-none">
                     <i class="bi bi-x-circle"></i> <?= $isSw ? 'Mkatae (Reject)' : 'Reject' ?>
                 </button>
             <?php endif; ?>
-            <a href="<?= getUrl('customers') ?>" class="btn btn-outline-secondary btn-sm">
+            <a href="<?= getUrl('customers') ?>" class="btn btn-outline-secondary btn-sm d-print-none">
                 <i class="bi bi-arrow-left"></i> <?= $labels['back_btn'] ?>
             </a>
-            <a href="<?= getUrl('customers/edit') ?>?id=<?= $customer_id ?>" class="btn btn-primary btn-sm">
+            <button onclick="window.print()" class="btn btn-outline-primary btn-sm d-print-none">
+                <i class="bi bi-printer"></i> <?= $isSw ? 'Chapisha' : 'Print' ?>
+            </button>
+            <a href="<?= getUrl('customers/edit') ?>?id=<?= $customer_id ?>" class="btn btn-primary btn-sm d-print-none">
                 <i class="bi bi-pencil"></i> <?= $labels['edit_btn'] ?>
             </a>
         </div>
@@ -450,3 +453,19 @@ function rejectMember(userId) {
     });
 }
 </script>
+
+<style>
+@media print {
+    .header-wrapper, .navbar, .top-header, .bottom-header,
+    .d-print-none, .alert, .modal { display: none !important; }
+    body { padding-top: 0 !important; margin: 0 !important; background: white !important; font-size: 10px; }
+    .container { width: 100% !important; max-width: none !important; padding: 0 10px !important; margin: 0 !important; }
+    .card { border: 1px solid #dee2e6 !important; box-shadow: none !important; margin-bottom: 8px !important; page-break-inside: avoid; }
+    .card-header { background: #f8f9fa !important; -webkit-print-color-adjust: exact; }
+    .badge { border: 1px solid #dee2e6 !important; }
+    img { max-height: 120px !important; }
+}
+</style>
+
+<?php include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE; ?>
+<?php require_once ROOT_DIR . '/footer.php'; ob_end_flush(); ?>

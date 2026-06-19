@@ -325,10 +325,13 @@ $statusClass = get_status_badge($journal['status']);
     .table thead th { font-size: 0.75rem; letter-spacing: 0.5px; }
     .avatar-sm { font-size: 1rem; }
     @media print {
-        .col-lg-4, .breadcrumb, .btn-outline-secondary, .Quick-Actions { display: none !important; }
+        .col-lg-4, .breadcrumb, .btn-outline-secondary, .Quick-Actions,
+        .header-wrapper, nav, .navbar { display: none !important; }
         .col-lg-8 { width: 100% !important; }
         .card { box-shadow: none !important; border: 1px solid #eee !important; }
+        body { padding-top: 0 !important; }
     }
 </style>
 
+<?php include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE; ?>
 <?php includeFooter(); ?>

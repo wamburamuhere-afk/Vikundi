@@ -288,6 +288,11 @@ function printAndLog() {
 .card { border-radius: 0.75rem; }
 .text-warning-dark { color: #f57f17 !important; }
 .text-primary-dark { color: #1565c0 !important; }
+@media print {
+    .header-wrapper, nav, .navbar, .btn, .d-print-none { display: none !important; }
+    body { padding-top: 0 !important; }
+}
 </style>
 
+<?php include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE; ?>
 <?php includeFooter(); ?>

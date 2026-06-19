@@ -202,12 +202,15 @@ function exportToExcel() {
 
 <style>
 @media print {
-    .btn, .card-header, form, .col-md-3 { display: none !important; }
+    .btn, .card-header, form, .col-md-3,
+    .header-wrapper, nav, .navbar { display: none !important; }
     .col-md-9 { width: 100% !important; }
     .table { width: 100% !important; }
+    body { padding-top: 0 !important; }
 }
 </style>
 
+<?php include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE; ?>
 <?php
 includeFooter();
 ob_end_flush();

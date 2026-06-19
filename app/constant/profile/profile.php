@@ -555,8 +555,7 @@ require_once 'header.php';
             .col-lg-4, .col-md-5 { width: 32% !important; flex: 0 0 32% !important; max-width: 32% !important; }
             .col-lg-8, .col-md-7 { width: 68% !important; flex: 0 0 68% !important; max-width: 68% !important; }
             
-            /* SAFETY ZONE FOR FOOTER - Prevents data overlap */
-            .container-fluid { padding-bottom: 2.2cm !important; } 
+            /* SAFETY ZONE FOR FOOTER - handled by @page 16mm bottom in print_footer_css.php */
             
             /* ALLOW MAIN CARDS TO SPLIT - Prevents the whole profile jumping to Page 2 */
             .card { border: 1px solid #ddd !important; box-shadow: none !important; margin-bottom: 12px !important; border-radius: 8px !important; background: transparent !important; page-break-inside: auto !important; }
@@ -575,17 +574,7 @@ require_once 'header.php';
                 display: block !important;
             }
             
-            /* Footer Positioning */
-            .print-footer {
-                position: fixed; bottom: 0.5cm; left: 0; right: 0; width: 100%;
-                background: white !important; font-size: 11px; z-index: 9999;
-                text-align: center; padding-top: 10px; border-top: 1px solid #aaa;
-                display: block !important;
-            }
-            @page { 
-                margin: 1.5cm 1.5cm 2.5cm 1.5cm;
-                size: auto;
-            }
+            /* Footer Positioning + @page handled by includes/print_footer_css.php */
             
             /* Ensure tabs content is visible */
             .tab-content > .tab-pane { display: block !important; opacity: 1 !important; visibility: visible !important; }
@@ -2078,12 +2067,4 @@ $(document).ready(function() {
     }
 </script>
 
-<!-- 4. PRINT FOOTER (Visible only during print) -->
-<div class="d-none d-print-block print-footer">
-    <div class="row pt-2 text-center">
-        <div class="col-12">
-            <p class="mb-1 text-dark"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nyaraka hii imechapishwa na' : 'This document was printed by' ?> <strong><?= htmlspecialchars($username ?? $_SESSION['username']) ?></strong> - <strong><?= htmlspecialchars($user_role ?? 'Member') ?></strong> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'mnamo' : 'on' ?> <strong><?= date('d M, Y') ?></strong> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'saa' : 'at' ?> <strong><?= date('H:i:s') ?></strong></p>
-            <h6 class="mb-0 fw-bold" style="color: #0d6efd !important;">Powered By BJP Technologies &copy; <?= date('Y') ?>, All Rights Reserved</h6>
-        </div>
-    </div>
-</div>
+<?php include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE; ?>

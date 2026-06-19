@@ -436,9 +436,18 @@ try {
     </div>
 </div>
 
+<?php include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE; ?>
 <?php includeFooter(); ?>
 
 <style>
+@media print {
+    .header-wrapper, nav, .navbar, .btn, .modal, .dataTables_length,
+    .dataTables_filter, .dataTables_paginate, .dataTables_info { display: none !important; }
+    body { padding-top: 0 !important; }
+    .card { box-shadow: none !important; border: 1px solid #dee2e6 !important; }
+    table { width: 100% !important; border-collapse: collapse !important; }
+    /* @page margin handled by includes/print_footer_css.php */
+}
 .categories-tree {
     max-height: 500px;
     overflow-y: auto;
