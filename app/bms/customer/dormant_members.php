@@ -335,7 +335,7 @@ $(document).ready(function() {
                     $(win.document.head).append(`
                         <style>
                             @page { margin: 10mm 8mm 16mm 8mm; }
-                            body { font-size: 11pt; padding: 20px 20px 0 20px; }
+                            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 11pt; color: #1a252f; line-height: 1.5; padding: 20px 20px 0 20px; }
                             table { width: 100% !important; border-collapse: collapse !important; margin-bottom: 10px !important; }
                             table th, table td { border: 1px solid #000 !important; padding: 8px !important; }
                             table th { text-align: center !important; background-color: #f2f2f2 !important; -webkit-print-color-adjust: exact; }
@@ -372,18 +372,18 @@ $(document).ready(function() {
 
                     // 3. Shared-style footer (bilingual — mirrors includes/print_footer_html.php)
                     let now = new Date();
-                    let timeStr = now.getHours().toString().padStart(2,'0') + ':' +
-                                  now.getMinutes().toString().padStart(2,'0') + ':' +
-                                  now.getSeconds().toString().padStart(2,'0');
-                    let dateStr = now.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
-                    let isSw   = <?= $is_sw ? 'true' : 'false' ?>;
-                    let byText = isSw ? 'Nyaraka hii imechapishwa na' : 'This document was Printed by';
-                    let onText = isSw ? 'mnamo' : 'on';
-                    let atText = isSw ? 'saa' : 'at';
+                    let _t = now.getHours().toString().padStart(2,'0') + ':' +
+                             now.getMinutes().toString().padStart(2,'0') + ':' +
+                             now.getSeconds().toString().padStart(2,'0');
+                    let _d = now.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+                    let _sw  = <?= $is_sw ? 'true' : 'false' ?>;
+                    let _by  = _sw ? 'Nyaraka hii imechapishwa na' : 'This document was Printed by';
+                    let _on  = _sw ? 'mnamo' : 'on';
+                    let _at  = _d + ' ' + (_sw ? 'saa' : 'at') + ' ' + _t;
 
                     $(win.document.body).append(`
                         <div class="print-footer">
-                            <p>${byText} <strong><?= htmlspecialchars($username) ?></strong> &mdash; <strong><?= htmlspecialchars(ucfirst($user_role)) ?></strong> ${onText} <strong>${dateStr}</strong> ${atText} <strong>${timeStr}</strong></p>
+                            <p>${_by} <strong><?= htmlspecialchars($username) ?></strong> &mdash; <strong><?= htmlspecialchars(ucfirst($user_role)) ?></strong> ${_on} ${_at}</p>
                             <p class="brand">Powered By BJP Technologies &copy; <?= date('Y') ?>, All Rights Reserved</p>
                         </div>
                     `);

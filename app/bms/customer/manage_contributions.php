@@ -548,7 +548,7 @@ $(document).ready(function() {
                             @page { margin: 10mm 8mm 16mm 8mm; }
                             * { box-sizing: border-box !important; }
                             html, body { width: 100% !important; margin: 0 !important; }
-                            body { padding: 20px 20px 0 20px !important; font-size: 11pt !important; background: white !important; }
+                            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important; font-size: 11pt !important; color: #1a252f !important; line-height: 1.5 !important; padding: 20px 20px 0 20px !important; background: white !important; }
                             table { width: 100% !important; border-collapse: collapse !important; margin: 0 !important; page-break-after: auto !important; }
                             table th, table td { border: 1px solid #000 !important; padding: 6px 4px !important; text-align: center !important; vertical-align: middle !important; font-size: 10.5pt !important; }
                             table th { background-color: #f2f2f2 !important; -webkit-print-color-adjust: exact; text-transform: uppercase; font-size: 11pt !important; }
@@ -590,18 +590,18 @@ $(document).ready(function() {
 
                     // 4. Shared-style footer (bilingual — mirrors includes/print_footer_html.php)
                     let mcNow = new Date();
-                    let mcTime = mcNow.getHours().toString().padStart(2,'0') + ':' +
-                                 mcNow.getMinutes().toString().padStart(2,'0') + ':' +
-                                 mcNow.getSeconds().toString().padStart(2,'0');
-                    let mcDate = mcNow.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
-                    let mcSw   = <?= $isSw ? 'true' : 'false' ?>;
-                    let mcBy   = mcSw ? 'Nyaraka hii imechapishwa na' : 'This document was Printed by';
-                    let mcOn   = mcSw ? 'mnamo' : 'on';
-                    let mcAt   = mcSw ? 'saa' : 'at';
+                    let _mcT = mcNow.getHours().toString().padStart(2,'0') + ':' +
+                               mcNow.getMinutes().toString().padStart(2,'0') + ':' +
+                               mcNow.getSeconds().toString().padStart(2,'0');
+                    let _mcD  = mcNow.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+                    let _mcSw = <?= $isSw ? 'true' : 'false' ?>;
+                    let _mcBy = _mcSw ? 'Nyaraka hii imechapishwa na' : 'This document was Printed by';
+                    let _mcOn = _mcSw ? 'mnamo' : 'on';
+                    let _mcAt = _mcD + ' ' + (_mcSw ? 'saa' : 'at') + ' ' + _mcT;
 
                     $(win.document.body).append(`
                         <div class="print-footer">
-                            <p>${mcBy} <strong><?= htmlspecialchars($username ?? $_SESSION['username']) ?></strong> &mdash; <strong><?= htmlspecialchars(ucfirst($user_role ?? 'Member')) ?></strong> ${mcOn} <strong>${mcDate}</strong> ${mcAt} <strong>${mcTime}</strong></p>
+                            <p>${_mcBy} <strong><?= htmlspecialchars($username ?? $_SESSION['username']) ?></strong> &mdash; <strong><?= htmlspecialchars(ucfirst($user_role ?? 'Member')) ?></strong> ${_mcOn} ${_mcAt}</p>
                             <p class="brand">Powered By BJP Technologies &copy; <?= date('Y') ?>, All Rights Reserved</p>
                         </div>
                     `);
