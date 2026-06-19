@@ -1492,27 +1492,12 @@ function togglePasswordAdmin(fieldId) {
         background: transparent !important;
     }
 
-    /* Print Footer Positioning & Overlap Prevention */
-    .print-footer {
-        position: fixed;
-        bottom: 0.8cm;
-        left: 0;
-        right: 0;
-        width: 100%;
-        background: white !important;
-        font-size: 10px;
-        z-index: 9999;
-        text-align: center;
-        padding-top: 15px;
-        border-top: 1px solid #dee2e6;
-    }
-
     /* Print Footer Logic (using tfoot for perfect breaks) */
     .d-print-table-footer {
         display: table-footer-group !important;
     }
 
-    /* @page margin controlled by includes/print_footer_css.php (canonical 10mm 8mm 16mm 8mm) */
+    /* @page margin and .print-footer positioning handled by includes/print_footer_css.php */
     
     /* FLEXIBLE TABLE */
     .table-responsive {

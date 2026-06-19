@@ -542,56 +542,36 @@ $(document).ready(function() {
                 },
                 customize: function (win) {
                     // 1. HIDDEN BROWSER HEADERS & CUSTOM VIRTUAL MARGINS
+                    // 1. Canonical page margins + shared footer CSS (mirrors includes/print_footer_css.php)
                     $(win.document.head).append(`
                         <style>
-                            /* Kill browser-auto headers (Title/URL) */
-                            @page { margin: 0 !important; size: auto; }
-                            
-                            /* Force absolute symmetry and full width */
+                            @page { margin: 10mm 8mm 16mm 8mm; }
                             * { box-sizing: border-box !important; }
-                            html, body { width: 100% !important; margin: 0 !important; padding: 0 !important; }
-                            
-                            body { 
-                                padding: 1.0cm 0.3cm 1.8cm 0.3cm !important; 
-                                font-size: 11pt !important;
-                                background: white !important;
-                                overflow: hidden !important;
-                            }
-                            
-                            /* Force Table to occupy 100% Symmetrically */
-                            table { 
-                                width: 100% !important; 
-                                border-collapse: collapse !important; 
-                                margin: 0 !important;
-                            }
-                            table th, table td { 
-                                border: 1px solid #000 !important; 
-                                padding: 6px 4px !important; 
-                                text-align: center !important; 
-                                vertical-align: middle !important;
-                                font-size: 10.5pt !important;
-                            }
+                            html, body { width: 100% !important; margin: 0 !important; }
+                            body { padding: 20px 20px 0 20px !important; font-size: 11pt !important; background: white !important; }
+                            table { width: 100% !important; border-collapse: collapse !important; margin: 0 !important; page-break-after: auto !important; }
+                            table th, table td { border: 1px solid #000 !important; padding: 6px 4px !important; text-align: center !important; vertical-align: middle !important; font-size: 10.5pt !important; }
                             table th { background-color: #f2f2f2 !important; -webkit-print-color-adjust: exact; text-transform: uppercase; font-size: 11pt !important; }
-                            table td { word-break: break-all !important; }
-
-                            /* Persistent Branded Footer */
+                            table td { word-break: break-word !important; }
                             .print-footer {
                                 position: fixed;
-                                bottom: 0.5cm; 
-                                left: 0.3cm;
-                                right: 0.3cm;
-                                text-align: center;
-                                background: white !important;
+                                bottom: 0; left: 0; right: 0;
+                                height: 16px;
+                                background: #fff;
                                 border-top: 1px solid #dee2e6;
-                                font-size: 8pt;
-                                page-break-after: avoid !important;
+                                padding: 0 22px;
+                                text-align: center;
+                                display: flex;
+                                flex-direction: column;
+                                justify-content: flex-end;
+                                print-color-adjust: exact;
+                                -webkit-print-color-adjust: exact;
                             }
-                            
+                            .print-footer p { margin: 0; font-size: 7px; color: #2c3e50; line-height: 1; }
+                            .print-footer .brand { font-size: 7px; color: #3498db; font-weight: 600; }
                             tfoot.print-spacer { display: table-footer-group; }
-                            tfoot.print-spacer td { height: 15px !important; border: none !important; }
-                            
+                            tfoot.print-spacer td { height: 12px !important; border: none !important; }
                             .no-print { display: none !important; }
-                            table { page-break-after: auto !important; margin-bottom: 0 !important; }
                         </style>
                     `);
 
@@ -608,15 +588,23 @@ $(document).ready(function() {
                         </div>
                     `);
 
-                   <!-- 4. PRINT FOOTER (Visible only during print) -->
-<div class="d-none d-print-block print-footer">
-    <div class="row pt-2 text-center">
-        <div class="col-12">
-            <p class="mb-1 text-dark"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nyaraka hii imechapishwa na' : 'This document was printed by' ?> <strong><?= htmlspecialchars($username ?? $_SESSION['username']) ?></strong> - <strong><?= htmlspecialchars($user_role ?? 'Member') ?></strong> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'mnamo' : 'on' ?> <strong><?= date('d M, Y') ?></strong> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'saa' : 'at' ?> <strong><?= date('H:i:s') ?></strong></p>
-            <h6 class="mb-0 fw-bold" style="color: #0d6efd !important;">Powered By BJP Technologies &copy; <?= date('Y') ?>, All Rights Reserved</h6>
-        </div>
-    </div>
-</div>
+                    // 4. Shared-style footer (bilingual — mirrors includes/print_footer_html.php)
+                    let mcNow = new Date();
+                    let mcTime = mcNow.getHours().toString().padStart(2,'0') + ':' +
+                                 mcNow.getMinutes().toString().padStart(2,'0') + ':' +
+                                 mcNow.getSeconds().toString().padStart(2,'0');
+                    let mcDate = mcNow.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+                    let mcSw   = <?= $isSw ? 'true' : 'false' ?>;
+                    let mcBy   = mcSw ? 'Nyaraka hii imechapishwa na' : 'This document was Printed by';
+                    let mcOn   = mcSw ? 'mnamo' : 'on';
+                    let mcAt   = mcSw ? 'saa' : 'at';
+
+                    $(win.document.body).append(`
+                        <div class="print-footer">
+                            <p>${mcBy} <strong><?= htmlspecialchars($username ?? $_SESSION['username']) ?></strong> &mdash; <strong><?= htmlspecialchars(ucfirst($user_role ?? 'Member')) ?></strong> ${mcOn} <strong>${mcDate}</strong> ${mcAt} <strong>${mcTime}</strong></p>
+                            <p class="brand">Powered By BJP Technologies &copy; <?= date('Y') ?>, All Rights Reserved</p>
+                        </div>
+                    `);
 
                     // 5. Spacer for multi-page data integrity
                     $(win.document.body).find('table').append('<tfoot class="print-spacer"><tr><td colspan="10">&nbsp;</td></tr></tfoot>');

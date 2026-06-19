@@ -331,66 +331,66 @@ $(document).ready(function() {
                 exportOptions: { columns: [0, 1, 2, 3, 4] },
                 title: '',
                 customize: function (win) {
-                    // 1. Add Custom Styles for Fixed Footer on Every Page
+                    // 1. Canonical page margins + shared footer CSS (mirrors includes/print_footer_css.php)
                     $(win.document.head).append(`
                         <style>
-                            @page { margin: 1cm 1cm 2.5cm 1cm; }
-                            body { font-size: 11pt; padding-bottom: 2cm; }
-                            
-                            /* Force Visible Borders on Table */
+                            @page { margin: 10mm 8mm 16mm 8mm; }
+                            body { font-size: 11pt; padding: 20px 20px 0 20px; }
                             table { width: 100% !important; border-collapse: collapse !important; margin-bottom: 10px !important; }
                             table th, table td { border: 1px solid #000 !important; padding: 8px !important; }
                             table th { text-align: center !important; background-color: #f2f2f2 !important; -webkit-print-color-adjust: exact; }
                             table td { text-align: left !important; }
-
-                            /* Persistent Footer Style */
                             .print-footer {
                                 position: fixed;
-                                bottom: 0;
-                                left: 0;
-                                right: 0;
-                                text-align: center;
-                                padding: 10px 0;
-                                background: white !important;
+                                bottom: 0; left: 0; right: 0;
+                                height: 16px;
+                                background: #fff;
                                 border-top: 1px solid #dee2e6;
-                                font-size: 10pt;
-                                z-index: 1000;
+                                padding: 0 22px;
+                                text-align: center;
+                                display: flex;
+                                flex-direction: column;
+                                justify-content: flex-end;
+                                print-color-adjust: exact;
+                                -webkit-print-color-adjust: exact;
                             }
-                            
-                            /* Table Foot Spacer to prevent overlap */
+                            .print-footer p { margin: 0; font-size: 7px; color: #2c3e50; line-height: 1; }
+                            .print-footer .brand { font-size: 7px; color: #3498db; font-weight: 600; }
                             tfoot.print-spacer { display: table-footer-group; }
-                            tfoot.print-spacer td { height: 60px; border: none !important; }
+                            tfoot.print-spacer td { height: 12px !important; border: none !important; }
                         </style>
                     `);
 
-                    // 2. Add Branded Header
+                    // 2. Branded header
                     $(win.document.body).prepend(`
-                        <div class="text-center mb-4">
-                            <img src="/assets/images/<?= $group_logo ?>" style="height: 80px; width: auto; margin-bottom: 10px;">
-                            <h2 class="fw-bold mb-1" style="color: #0d6efd !important; text-transform: uppercase;"><?= $group_name ?></h2>
-                            <h4 class="fw-bold text-dark border-top border-bottom py-2 mt-2"><?= $title ?></h4>
+                        <div style="text-align:center; margin-bottom:16px;">
+                            <img src="/assets/images/<?= $group_logo ?>" style="height:80px;width:auto;margin-bottom:10px;">
+                            <h2 style="font-weight:700;color:#0d6efd;text-transform:uppercase;margin:0;"><?= $group_name ?></h2>
+                            <h4 style="font-weight:700;border-top:1px solid #000;border-bottom:1px solid #000;padding:6px 0;margin-top:8px;"><?= $title ?></h4>
                         </div>
                     `);
 
-                    // 3. Add Persistent Footer (Div with fixed position)
+                    // 3. Shared-style footer (bilingual — mirrors includes/print_footer_html.php)
                     let now = new Date();
-                    let timeStr = now.getHours().toString().padStart(2, '0') + ':' + 
-                                  now.getMinutes().toString().padStart(2, '0') + ':' + 
-                                  now.getSeconds().toString().padStart(2, '0');
-                    let dateStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+                    let timeStr = now.getHours().toString().padStart(2,'0') + ':' +
+                                  now.getMinutes().toString().padStart(2,'0') + ':' +
+                                  now.getSeconds().toString().padStart(2,'0');
+                    let dateStr = now.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+                    let isSw   = <?= $is_sw ? 'true' : 'false' ?>;
+                    let byText = isSw ? 'Nyaraka hii imechapishwa na' : 'This document was Printed by';
+                    let onText = isSw ? 'mnamo' : 'on';
+                    let atText = isSw ? 'saa' : 'at';
 
                     $(win.document.body).append(`
                         <div class="print-footer">
-                            <p class="mb-1 text-dark">This document was printed by <strong><?= $username ?></strong> - <strong><?= $user_role ?></strong> on <strong>${dateStr}</strong> at <strong>${timeStr}</strong></p>
-                            <h6 class="mb-0 fw-bold" style="color: #0d6efd !important;">Powered By BJP Technologies &copy; <?= date('Y') ?>, All Rights Reserved</h6>
+                            <p>${byText} <strong><?= htmlspecialchars($username) ?></strong> &mdash; <strong><?= htmlspecialchars(ucfirst($user_role)) ?></strong> ${onText} <strong>${dateStr}</strong> ${atText} <strong>${timeStr}</strong></p>
+                            <p class="brand">Powered By BJP Technologies &copy; <?= date('Y') ?>, All Rights Reserved</p>
                         </div>
                     `);
 
-                    // 4. Inject TFOOT Spacer into the table to handle multiple pages
+                    // 4. TFOOT spacer so last row never sits behind the footer
                     $(win.document.body).find('table').append(`
-                        <tfoot class="print-spacer">
-                            <tr><td colspan="5">&nbsp;</td></tr>
-                        </tfoot>
+                        <tfoot class="print-spacer"><tr><td colspan="5">&nbsp;</td></tr></tfoot>
                     `);
                 }
             }
