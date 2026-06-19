@@ -113,8 +113,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $first_initial . $last_name_slug;
     $base_username = $username;
 
-    if (empty($email) || empty($password) || empty($first_name) || empty($last_name)) {
-        $response['message'] = 'Please fill in all required fields in Step 1 and Step 3.';
+    // Check for compulsory fields
+    $kianzio_uploaded = isset($_FILES['kianzio_slip']) && $_FILES['kianzio_slip']['error'] === 0;
+
+    if (empty($email) || empty($password) || empty($first_name) || empty($last_name) || empty($phone) || !$kianzio_uploaded) {
+        $response['message'] = ($preferred_language === 'sw') 
+            ? 'Tafadhali jaza maelezo yote muhimu: Jina, Email, Simu, Nywila na Risiti ya Malipo.' 
+            : 'Please fill in all required fields: Names, Email, Phone, Password, and Payment Slip.';
         echo json_encode($response);
         exit;
     }
