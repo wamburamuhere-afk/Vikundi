@@ -172,22 +172,6 @@ $subtitle = $is_sw ? 'Rekodi na dhibiti misaada kwa wanachama waliofiwa' : 'Reco
         </div>
     </div>
 
-    <!-- 4. PRINT FOOTER (Persistent on every page during print) -->
-    <div class="d-none d-print-block print-footer" style="position: fixed; bottom: 5mm; width: 100%; left: 0; background: white;">
-        <div class="container-fluid">
-            <div class="row pt-2 border-top text-center">
-                <div class="col-12">
-                    <p class="mb-1 text-dark" style="font-size: 8.5pt;">
-                        <?= $is_sw ? 'Nyaraka hii imechapishwa na' : 'This document was printed by' ?> 
-                        <strong><?= htmlspecialchars($username) ?> - <?= htmlspecialchars($user_role) ?></strong> 
-                        <?= $is_sw ? 'mnamo' : 'on' ?> <strong><?= date('d M, Y') ?></strong> 
-                        <?= $is_sw ? 'saa' : 'at' ?> <strong id="print_time_js"><?= date('H:i:s') ?></strong>
-                    </p>
-                    <h6 class="mb-0 fw-bold" style="color: #0d6efd !important; font-size: 9pt;">Powered By BJP Technologies &copy; <?= date('Y') ?>, All Rights Reserved</h6>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 <!-- Record Death Modal -->
@@ -308,18 +292,9 @@ $subtitle = $is_sw ? 'Rekodi na dhibiti misaada kwa wanachama waliofiwa' : 'Reco
 }
 
 @media print {
-    /* Page Configuration */
-    @page { 
-        size: auto; 
-        margin: 15mm !important;
-        margin-bottom: 30mm !important; /* Professional margin for footer */
-    }
-
-    /* Visibility Controls */
+    /* @page margin handled by includes/print_footer_css.php */
     .no-print, .modal, .dataTables_length, .dataTables_filter, .dataTables_info, .dataTables_paginate, nav, header, .navbar, .header-wrapper, .sidebar-wrapper, .main-footer { display: none !important; }
-    
-    /* Layout Reset (CRITICAL: Overflow MUST be visible for print) */
-    body { background-color: white !important; margin: 0 !important; padding-bottom: 30mm !important; overflow: visible !important; }
+    body { background-color: white !important; margin: 0 !important; overflow: visible !important; }
     .container-fluid { padding: 0 !important; max-width: 100% !important; margin: 0 !important; width: 100% !important; overflow: visible !important; }
     .card, .table-responsive { page-break-inside: auto !important; border: none !important; box-shadow: none !important; overflow: visible !important; }
     
@@ -673,4 +648,5 @@ function logAndExport() {
 }
 </script>
 
+<?php include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE; ?>
 <?php includeFooter(); ob_end_flush(); ?>

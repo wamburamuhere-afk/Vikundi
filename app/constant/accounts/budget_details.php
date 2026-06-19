@@ -74,7 +74,7 @@ $budget_items = $items_stmt->fetchAll(PDO::FETCH_ASSOC);
             <p class="text-muted mb-0 small"><?= date('F Y', mktime(0, 0, 0, $budget['budget_month'], 1, $budget['budget_year'])) ?></p>
         </div>
         <div class="col-4 text-end">
-            <button type="button" onclick="printBudget()" class="btn btn-white btn-print-custom rounded-pill px-4 shadow-sm border me-2">
+            <button type="button" onclick="window.print()" class="btn btn-white btn-print-custom rounded-pill px-4 shadow-sm border me-2 d-print-none">
                 <i class="bi bi-printer me-2"></i> <?= $labels['print'] ?>
             </button>
             <a href="/accounts/budget" class="btn btn-outline-secondary rounded-pill px-4 shadow-sm">
@@ -146,54 +146,19 @@ $budget_items = $items_stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
         <?php endif; ?>
 
-        <!-- CUSTOM PRINT FOOTER -->
-        <div class="text-center print-footer-box" style="display: none;">
-            <div style="border-top: 3px double #333; padding-top: 15px;">
-                <p style="color: #6c757d; font-size: 11pt; margin-bottom: 5px;">
-                    This document was Printed by <strong><?= htmlspecialchars((string)$username) ?></strong> - <strong><?= htmlspecialchars((string)$user_role) ?></strong> 
-                    on <strong><?= date('d M, Y') ?></strong> at <strong><?= date('H:i:s') ?></strong>
-                </p>
-                <p style="color: #0d6efd; font-weight: bold; font-size: 10pt; margin-top: 12px;">
-                    Powered By BJP Technologies @ 2026, All Rights Reserved
-                </p>
-            </div>
-        </div>
     </div>
 </div>
 
-<script>
-function printBudget() {
-    var printContents = document.getElementById('printableBudget').innerHTML;
-    var printWindow = window.open('', '', 'height=800,width=1000');
-    printWindow.document.write('<html><head><title>Budget Report</title>');
-    printWindow.document.write('<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">');
-    printWindow.document.write('<style>');
-    printWindow.document.write('body { padding: 30px; padding-bottom: 90px; background: white; font-family: sans-serif; }');
-    printWindow.document.write('.print-header-box { display: block !important; margin-bottom: 30px; }');
-    printWindow.document.write('.print-footer-box { display: block !important; position: fixed; bottom: 20px; left: 0; right: 0; width: 100%; text-align: center; background: white; border-top: 2px solid #eee; }');
-    printWindow.document.write('.table { border: 2.5px solid #000 !important; width: 100% !important; border-collapse: collapse; }');
-    printWindow.document.write('.table th, .table td { border: 1.2px solid #000 !important; padding: 10px !important; color: #000 !important; }');
-    printWindow.document.write('.print-no-shadow { box-shadow: none !important; border: 1px solid #ddd !important; }');
-    printWindow.document.write('h1 { text-transform: uppercase; }');
-    printWindow.document.write('.text-primary { color: #0d6efd !important; }');
-    printWindow.document.write('@page { margin: 1.5cm; }');
-    printWindow.document.write('</style></head><body>');
-    printWindow.document.write(printContents);
-    printWindow.document.write('</body></html>');
-    printWindow.document.close();
-    setTimeout(function() {
-        printWindow.print();
-        printWindow.close();
-    }, 700);
-}
-</script>
 
 <style>
 .btn-print-custom:hover { background: #0d6efd !important; color: #fff !important; }
 .text-gradient { background: linear-gradient(45deg, #0d6efd, #0b5ed7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-@media print { 
-    nav, header, footer, .sidebar, .no-print, .btn, .breadcrumb, .location-text, .header-date, .navbar, .marquee-text, .top-bar { display: none !important; }
+@media print {
+    nav, header, footer, .sidebar, .no-print, .btn, .breadcrumb, .location-text, .header-date, .navbar, .marquee-text, .top-bar, .header-wrapper { display: none !important; }
+    .print-header-box { display: block !important; }
+    .card { box-shadow: none !important; border: 1px solid #dee2e6 !important; }
 }
 </style>
 
+<?php include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE; ?>
 <?php includeFooter(); ?>
