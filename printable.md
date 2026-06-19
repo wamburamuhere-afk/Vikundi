@@ -1,13 +1,13 @@
 # Vikundi — Printable Pages Inventory
 
 All pages in the system that have print functionality, grouped by print method.
-Legend: ✅ = shared footer done | ❌ = still needs shared footer
+Legend: ✅ = shared footer done | ⏭ = skipped (disabled/no route) | 🔒 = skipped (loans — excluded by user)
 
 ---
 
-## window.print() Pages — 28 total
+## window.print() Pages
 
-| # | File | Shared Footer? |
+| # | File | Status |
 |---|---|---|
 | 1 | `app/bms/customer/customers.php` | ✅ Done |
 | 2 | `app/bms/customer/customer_details.php` | ✅ Done |
@@ -18,54 +18,54 @@ Legend: ✅ = shared footer done | ❌ = still needs shared footer
 | 7 | `app/constant/reports/expense_report.php` | ✅ Done |
 | 8 | `app/constant/reports/customer_analysis.php` | ✅ Done |
 | 9 | `app/constant/accounts/print_petty_cash.php` | ✅ Done |
-| 10 | `app/constant/accounts/petty_cash.php` | ❌ Inline |
-| 11 | `app/constant/accounts/expenses.php` | ❌ Inline |
-| 12 | `app/constant/accounts/death_expenses.php` | ❌ Inline |
-| 13 | `app/constant/accounts/general_expenses.php` | ❌ Inline |
-| 14 | `app/constant/accounts/budget.php` | ❌ Inline |
-| 15 | `app/constant/accounts/budget_details.php` | ❌ Inline |
-| 16 | `app/constant/accounts/transaction_details.php` | ❌ Inline |
-| 17 | `app/constant/accounts/expense_details.php` | ❌ Inline |
-| 18 | `app/constant/accounts/journal_details.php` | ❌ Inline |
-| 19 | `app/constant/accounts/trial_balance.php` | ❌ Inline |
-| 20 | `app/constant/accounts/reconciliation_details.php` | ❌ Inline |
-| 21 | `app/constant/accounts/bank_reconciliation.php` | ❌ Inline |
-| 22 | `app/bms/loans/loan_details.php` | ❌ Inline |
-| 23 | `app/bms/pos/attendance.php` | ❌ Inline |
-| 24 | `app/bms/sales/sales_order_create.php` | ❌ Inline |
-| 25 | `app/bms/grn/grn_create.php` | ❌ Inline |
-| 26 | `app/bms/invoice/income_statement.php` | ❌ Inline |
-| 27 | `app/constant/profile/profile.php` | ❌ Inline |
-| 28 | `app/audit_logs.php` | ❌ Inline |
+| 10 | `app/constant/accounts/petty_cash.php` | ✅ Done |
+| 11 | `app/constant/accounts/expenses.php` | ✅ Done |
+| 12 | `app/constant/accounts/death_expenses.php` | ✅ Done |
+| 13 | `app/constant/accounts/general_expenses.php` | ✅ Done |
+| 14 | `app/constant/accounts/budget.php` | ✅ Done |
+| 15 | `app/constant/accounts/budget_details.php` | ✅ Done |
+| 16 | `app/constant/accounts/transaction_details.php` | ✅ Done |
+| 17 | `app/constant/accounts/expense_details.php` | ✅ Done |
+| 18 | `app/constant/accounts/journal_details.php` | ✅ Done |
+| 19 | `app/constant/accounts/trial_balance.php` | ✅ Done |
+| 20 | `app/constant/accounts/reconciliation_details.php` | ✅ Done |
+| 21 | `app/constant/accounts/bank_reconciliation.php` | ✅ Done (+ print button added) |
+| 22 | `app/bms/loans/loan_details.php` | 🔒 Loans — skipped |
+| 23 | `app/bms/pos/attendance.php` | ⏭ Disabled (no route) |
+| 24 | `app/bms/sales/sales_order_create.php` | ⏭ Disabled (no route) |
+| 25 | `app/bms/grn/grn_create.php` | ⏭ Disabled (no route) |
+| 26 | `app/bms/invoice/income_statement.php` | ✅ Done |
+| 27 | `app/constant/profile/profile.php` | ✅ Done (removed custom @page + inline footer) |
+| 28 | `app/audit_logs.php` | ✅ Done |
 
 ---
 
-## DataTables Print Button Pages — 10 total
+## DataTables Print Button Pages
 
-| # | File | Shared Footer? |
+| # | File | Status |
 |---|---|---|
-| 1 | `app/bms/customer/dormant_members.php` | ✅ Done (injected) |
-| 2 | `app/bms/customer/manage_contributions.php` | ✅ Done (injected) |
-| 3 | `app/bms/customer/member_approvals.php` | ❌ Needs work |
-| 4 | `app/bms/loans/loans_list.php` | ❌ Inline |
-| 5 | `app/constant/accounts/transactions.php` | ❌ Needs work |
-| 6 | `app/constant/accounts/chart_of_accounts.php` | ❌ Needs work |
-| 7 | `app/bms/pos/leaves.php` | ❌ Needs work |
-| 8 | `app/bms/pos/employees.php` | ❌ Needs work |
-| 9 | `app/bms/pos/payroll.php` | ❌ Needs work |
-| 10 | `app/constant/settings/users.php` | ❌ Needs work |
+| 1 | `app/bms/customer/dormant_members.php` | ✅ Done (customize injected) |
+| 2 | `app/bms/customer/manage_contributions.php` | ✅ Done (customize injected) |
+| 3 | `app/bms/customer/member_approvals.php` | ✅ Done (customize added) |
+| 4 | `app/bms/loans/loans_list.php` | 🔒 Loans — skipped |
+| 5 | `app/constant/accounts/transactions.php` | ✅ Done (print button added + customize) |
+| 6 | `app/constant/accounts/chart_of_accounts.php` | ✅ Done (window.print + @media print) |
+| 7 | `app/bms/pos/leaves.php` | ⏭ Disabled (no route) |
+| 8 | `app/bms/pos/employees.php` | ⏭ Disabled (no route) |
+| 9 | `app/bms/pos/payroll.php` | ⏭ Disabled (no route) |
+| 10 | `app/constant/settings/users.php` | ✅ Done (print button added + @media print) |
 
 ---
 
-## Totals
+## Summary
 
 | Category | Count |
 |---|---|
 | Total printable files | 38 |
-| Already done ✅ | 11 |
-| Still pending ❌ | 27 |
-| Uses window.print() | 28 |
-| Uses DataTables print button | 10 |
+| ✅ Completed | 24 |
+| 🔒 Skipped (loans) | 2 |
+| ⏭ Skipped (disabled) | 5 |
+| Skipped (already done before this sprint) | 7 |
 
 ---
 
@@ -75,7 +75,6 @@ Legend: ✅ = shared footer done | ❌ = still needs shared footer
 |---|---|
 | `includes/print_footer_css.php` | Canonical CSS — @page margins (10mm 8mm 16mm 8mm), .print-footer styles |
 | `includes/print_footer_html.php` | Footer HTML — bilingual (EN/SW), prints name/role/datetime |
-| `includes/print_footer.php` | Legacy file — DO NOT USE in new implementations |
 
 ---
 
@@ -87,6 +86,7 @@ Add at the bottom of the file (before footer.php):
 <?php include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE; ?>
 ```
 Remove any inline footer HTML/CSS that already exists in the file.
+Remove any per-file `@page` rule — the shared CSS owns it.
 
 ### DataTables print button pages
 In the `customize: function(win)` block, inject CSS and HTML that mirrors the shared files exactly:
