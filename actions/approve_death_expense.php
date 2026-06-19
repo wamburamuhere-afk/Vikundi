@@ -1,22 +1,30 @@
 <?php
-require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../roots.php';
 global $pdo;
 
 header('Content-Type: application/json');
 
-$id = $_POST['id'] ?? 0;
+if (!isAuthenticated()) {
+    echo json_encode(['success' => false, 'message' => 'Unauthorized']); exit;
+}
+if (!canApprove('death_expenses')) {
+    echo json_encode(['success' => false, 'message' => 'You do not have permission to approve death expenses.']); exit;
+}
+
+$id = intval($_POST['id'] ?? 0);
 $user_id = $_SESSION['user_id'] ?? 0;
 
 try {
     $pdo->beginTransaction();
 
     // 1. Get the expense details
-    $stmt = $pdo->prepare("SELECT amount, status, member_id, deceased_type, deceased_id FROM death_expenses WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT amount, status, member_id, deceased_type, deceased_id FROM death_expenses WHERE id = ? FOR UPDATE");
     $stmt->execute([$id]);
     $expense = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$expense) throw new Exception("Gharama haikupatikana.");
-    if ($expense['status'] === 'approved') throw new Exception("Gharama hii imeshashidhinishwa tayari.");
+    // Must be reviewed before approving
+    assertApprovable($expense['status']);
 
     $amount = $expense['amount'];
     $member_id = $expense['member_id'];
@@ -36,10 +44,12 @@ try {
     $stmt = $pdo->prepare("UPDATE group_settings SET setting_value = ? WHERE setting_key = 'group_balance'");
     $stmt->execute([$new_balance]);
 
-    // 4. Update death expense status to 'approved'
-    $final_status = 'approved';
-    $stmt = $pdo->prepare("UPDATE death_expenses SET status = ?, approved_by = ?, approved_at = CURRENT_TIMESTAMP WHERE id = ?");
-    $stmt->execute([$final_status, $user_id, $id]);
+    // 4. Update death expense status to 'approved' + capture signature
+    $actor = workflowActorSnapshot();
+    $stmt = $pdo->prepare("UPDATE death_expenses SET status = 'approved', approved_by = ?, approved_at = CURRENT_TIMESTAMP WHERE id = ?");
+    $stmt->execute([$user_id, $id]);
+    workflowCaptureSignature($pdo, 'death_expense', $id, 'approved',
+        $user_id, $actor['name'], $actor['role']);
 
     // 5. REMOVE DECEASED FROM CUSTOMERS TABLE
     if ($deceased_type === 'mwanachama') {

@@ -69,6 +69,11 @@ $statusClass = get_status_badge($transaction['status']);
 ?>
 
 <div class="container-fluid mt-4">
+    <?php PrintHeader::css(); ?>
+    <!-- PRINT HEADER (Visible only during print) -->
+    <div class="d-none d-print-block">
+        <?php PrintHeader::render($pdo, 'TRANSACTION DETAILS', 'REF: ' . ($transaction['reference_number'] ?? '')); ?>
+    </div>
     <div class="row mb-4 align-items-center">
         <div class="col">
             <nav aria-label="breadcrumb">

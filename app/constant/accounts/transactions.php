@@ -501,11 +501,14 @@ $(document).ready(function() {
                         .print-footer .brand { font-size: 7px; color: #3498db; font-weight: 600; }
                         tfoot.print-spacer { display: table-footer-group; }
                         tfoot.print-spacer td { height: 12px !important; border: none !important; }
-                    </style>`);
+                    </style><?php echo PrintHeader::popupCss(); ?>`);
                     $(win.document.body).find('h1').remove();
-                    $(win.document.body).prepend(`<div style="text-align:center;margin-bottom:16px;">
-                        <h2 style="font-weight:700;color:#0d6efd;text-transform:uppercase;margin:0;"><?= htmlspecialchars($group_name ?? $_SESSION['group_name'] ?? '') ?></h2>
-                        <h4 style="font-weight:700;border-top:1px solid #000;border-bottom:1px solid #000;padding:6px 0;margin-top:8px;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'ORODHA YA MIAMALA' : 'TRANSACTIONS LIST' ?></h4>
+                    $(win.document.body).prepend(`<div class="vk-print-header">
+                        <img src="<?= !empty($logo_base64) ? $logo_base64 : '/assets/images/' . ($group_logo ?? 'logo1.png') ?>" alt="Logo" class="vk-ph-logo">
+                        <div class="vk-ph-org"><?= htmlspecialchars($group_name ?? '') ?></div>
+                        <div class="vk-ph-sys">VICOBA Group Management System</div>
+                        <div class="vk-ph-title"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'ORODHA YA MIAMALA' : 'TRANSACTIONS LIST' ?></div>
+                        <div class="vk-ph-rule"></div>
                     </div>`);
                     const now = new Date();
                     const _d = now.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });

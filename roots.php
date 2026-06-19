@@ -63,8 +63,11 @@ define('COMING_SOON_FILE', ROOT_DIR . '/app/coming_soon.php');
 // ============================================================================
 define('HEADER_FILE', ROOT_DIR . '/header.php');
 define('FOOTER_FILE', ROOT_DIR . '/footer.php');
-define('PRINT_FOOTER_FILE',     ROOT_DIR . '/includes/print_footer_html.php');
-define('PRINT_FOOTER_CSS_FILE', ROOT_DIR . '/includes/print_footer_css.php');
+define('PRINT_FOOTER_FILE',          ROOT_DIR . '/includes/print_footer_html.php');
+define('PRINT_FOOTER_CSS_FILE',      ROOT_DIR . '/includes/print_footer_css.php');
+define('PRINT_HEADER_FILE',          ROOT_DIR . '/includes/print_header.php');
+define('WORKFLOW_AUDIT_PANEL_FILE',  ROOT_DIR . '/includes/workflow_audit_panel.php');
+define('WORKFLOW_SIGNATURE_ROW_FILE',ROOT_DIR . '/includes/workflow_signature_row.php');
 define('HELPERS_FILE', ROOT_DIR . '/helpers.php');
 define('CONFIG_FILE', ROOT_DIR . '/includes/config.php');
 define('INDEX_FILE', ROOT_DIR . '/index.php');
@@ -76,6 +79,8 @@ require_once CONFIG_FILE;
 require_once HELPERS_FILE; // Load Helper Functions
 require_once ROOT_DIR . '/includes/activity_logger.php'; // Activity Logger
 require_once ROOT_DIR . '/core/permissions.php'; // Load permissions
+require_once ROOT_DIR . '/core/workflow.php';     // Three-approval workflow helpers
+require_once ROOT_DIR . '/includes/print_header.php'; // Print header class
 require_once ROOT_DIR . '/actions/check_auth.php';
 
 
@@ -116,8 +121,11 @@ $routes = [
     'accounts/bank_reconciliation.php' => ACCOUNTS_DIR . '/bank_reconciliation.php',
     'accounts/budget' => ACCOUNTS_DIR . '/budget.php',
     'accounts/budget.php' => ACCOUNTS_DIR . '/budget.php',
-    'accounts/budget_details' => ACCOUNTS_DIR . '/budget_details.php',
-    'accounts/budget_details.php' => ACCOUNTS_DIR . '/budget_details.php',
+    'accounts/budget_details'          => ACCOUNTS_DIR . '/budget_details.php',
+    'accounts/budget_details.php'      => ACCOUNTS_DIR . '/budget_details.php',
+    'print_budget'                     => ACCOUNTS_DIR . '/print_budget.php',
+    'api/account/review_budget.php'    => API_DIR . '/account/review_budget.php',
+    'api/account/approve_budget.php'   => API_DIR . '/account/approve_budget.php',
     'accounts/chart_of_accounts' => ACCOUNTS_DIR . '/chart_of_accounts.php',
     'accounts/chart_of_accounts.php' => ACCOUNTS_DIR . '/chart_of_accounts.php',
     'accounts/edit_expense' => ACCOUNTS_DIR . '/edit_expense.php',
@@ -140,10 +148,18 @@ $routes = [
     'accounts/transactions.php' => ACCOUNTS_DIR . '/transactions.php',
     'accounts/trial_balance' => ACCOUNTS_DIR . '/trial_balance.php',
     'accounts/trial_balance.php' => ACCOUNTS_DIR . '/trial_balance.php',
-    'accounts/death_expenses' => ACCOUNTS_DIR . '/death_expenses.php',
-    'accounts/death_expenses.php' => ACCOUNTS_DIR . '/death_expenses.php',
-    'accounts/other_expenses' => ACCOUNTS_DIR . '/general_expenses.php',
-    'accounts/other_expenses.php' => ACCOUNTS_DIR . '/general_expenses.php',
+    'accounts/death_expenses'        => ACCOUNTS_DIR . '/death_expenses.php',
+    'accounts/death_expenses.php'    => ACCOUNTS_DIR . '/death_expenses.php',
+    'death_expense_view'             => ACCOUNTS_DIR . '/death_expense_view.php',
+    'print_death_expense'            => ACCOUNTS_DIR . '/print_death_expense.php',
+    'accounts/other_expenses'        => ACCOUNTS_DIR . '/general_expenses.php',
+    'accounts/other_expenses.php'    => ACCOUNTS_DIR . '/general_expenses.php',
+    'general_expense_view'           => ACCOUNTS_DIR . '/general_expense_view.php',
+    'print_general_expense'          => ACCOUNTS_DIR . '/print_general_expense.php',
+    'api/review_death_expense'       => API_DIR . '/review_death_expense.php',
+    'api/review_death_expense.php'   => API_DIR . '/review_death_expense.php',
+    'api/review_general_expense'     => API_DIR . '/review_general_expense.php',
+    'api/review_general_expense.php' => API_DIR . '/review_general_expense.php',
 
     // Death & General Expenses APIs
     'api/log_action' => API_DIR . '/log_action.php',
@@ -198,7 +214,10 @@ $routes = [
     'actions/approve_petty_cash' => ROOT_DIR . '/actions/approve_petty_cash.php',
     'actions/delete_petty_cash' => ROOT_DIR . '/actions/delete_petty_cash.php',
     'actions/get_petty_cash' => ROOT_DIR . '/actions/get_petty_cash.php',
-    'print_petty_cash' => ACCOUNTS_DIR . '/print_petty_cash.php',
+    'print_petty_cash'           => ACCOUNTS_DIR . '/print_petty_cash.php',
+    'petty_cash_view'            => ACCOUNTS_DIR . '/petty_cash_view.php',
+    'api/review_petty_cash'      => API_DIR . '/review_petty_cash.php',
+    'api/review_petty_cash.php'  => API_DIR . '/review_petty_cash.php',
     'payment_vouchers' => ACCOUNTS_DIR . '/payment_vouchers.php',
 
     // ========================================================================
@@ -214,9 +233,15 @@ $routes = [
     'customers/groups' => CUSTOMERS_DIR . '/customer_groups.php',
     'customers/import' => CUSTOMERS_DIR . '/customer_import.php',
     'customers/documents' => CUSTOMERS_DIR . '/customer_documents.php',
-    'my_contributions' => CUSTOMERS_DIR . '/manage_contributions.php',
-    'submit_contribution' => CUSTOMERS_DIR . '/submit_contribution.php',
-    'manage_contributions' => CUSTOMERS_DIR . '/manage_contributions.php',
+    'my_contributions'           => CUSTOMERS_DIR . '/manage_contributions.php',
+    'submit_contribution'        => CUSTOMERS_DIR . '/submit_contribution.php',
+    'manage_contributions'       => CUSTOMERS_DIR . '/manage_contributions.php',
+    'contribution_view'          => CUSTOMERS_DIR . '/contribution_view.php',
+    'print_contribution'         => CUSTOMERS_DIR . '/print_contribution.php',
+    'api/review_contribution'    => API_DIR . '/review_contribution.php',
+    'api/review_contribution.php'=> API_DIR . '/review_contribution.php',
+    'api/approve_contribution'   => API_DIR . '/approve_contribution.php',
+    'api/approve_contribution.php'=> API_DIR . '/approve_contribution.php',
     'group_settings' => CUSTOMERS_DIR . '/group_settings.php',
     'dormant_members' => CUSTOMERS_DIR . '/dormant_members.php',
     'actions/add_member' => ROOT_DIR . '/actions/add_member.php',

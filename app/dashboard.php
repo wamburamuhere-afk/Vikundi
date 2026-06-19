@@ -23,8 +23,8 @@ $can_view_reports   = canView('vicoba_reports');
 $total_members = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE status != 'deleted' AND user_role != 'Admin'")->fetchColumn();
 $active_members = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE status = 'active' AND user_role != 'Admin'")->fetchColumn();
 $pending_members = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE status = 'pending'")->fetchColumn();
-$total_contributions = (float) $pdo->query("SELECT COALESCE(SUM(amount),0) FROM contributions WHERE status = 'confirmed'")->fetchColumn();
-$month_contributions = (float) $pdo->query("SELECT COALESCE(SUM(amount),0) FROM contributions WHERE status='confirmed' AND MONTH(contribution_date)=MONTH(NOW()) AND YEAR(contribution_date)=YEAR(NOW())")->fetchColumn();
+$total_contributions = (float) $pdo->query("SELECT COALESCE(SUM(amount),0) FROM contributions WHERE status IN ('confirmed', 'approved', '')")->fetchColumn();
+$month_contributions = (float) $pdo->query("SELECT COALESCE(SUM(amount),0) FROM contributions WHERE status IN ('confirmed', 'approved', '') AND MONTH(contribution_date)=MONTH(NOW()) AND YEAR(contribution_date)=YEAR(NOW())")->fetchColumn();
 $pending_contributions_global = (int) $pdo->query("SELECT COUNT(*) FROM contributions c JOIN customers cust ON c.member_id = cust.customer_id WHERE c.status = 'pending' AND cust.status = 'active'")->fetchColumn();
 
 // Specific pending for current user logic
@@ -49,7 +49,7 @@ $net_balance = $total_contributions - $total_all_expenses;
 // ── My own stats if Member ───────────────────────────────────────────────
 $my_total_contributions = 0; $my_pending_contributions = 0;
 if (!$is_viongozi) {
-    $stmt = $pdo->prepare("SELECT COALESCE(SUM(c.amount),0) FROM contributions c JOIN customers cu ON c.member_id=cu.customer_id WHERE cu.user_id=? AND c.status='confirmed'");
+    $stmt = $pdo->prepare("SELECT COALESCE(SUM(c.amount),0) FROM contributions c JOIN customers cu ON c.member_id=cu.customer_id WHERE cu.user_id=? AND c.status IN ('confirmed', 'approved', '')");
     $stmt->execute([$user_id]); $my_total_contributions = (float) $stmt->fetchColumn();
 }
 
@@ -58,7 +58,7 @@ $months_labels = []; $months_data = [];
 for ($i = 5; $i >= 0; $i--) {
     $months_labels[] = date('M Y', strtotime("-$i months"));
     $y = date('Y', strtotime("-$i months")); $m = date('m', strtotime("-$i months"));
-    $stmt = $pdo->prepare("SELECT COALESCE(SUM(amount),0) FROM contributions WHERE status='confirmed' AND YEAR(contribution_date)=? AND MONTH(contribution_date)=?");
+    $stmt = $pdo->prepare("SELECT COALESCE(SUM(amount),0) FROM contributions WHERE status IN ('confirmed', 'approved', '') AND YEAR(contribution_date)=? AND MONTH(contribution_date)=?");
     $stmt->execute([$y, $m]); $months_data[] = (float) $stmt->fetchColumn();
 }
 

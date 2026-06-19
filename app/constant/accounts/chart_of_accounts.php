@@ -61,6 +61,11 @@ try {
 ?>
 
 <div class="container-fluid py-4">
+    <?php PrintHeader::css(); ?>
+    <!-- PRINT HEADER (Visible only during print) -->
+    <div class="d-none d-print-block">
+        <?php PrintHeader::render($pdo, 'CHART OF ACCOUNTS'); ?>
+    </div>
     <div class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">

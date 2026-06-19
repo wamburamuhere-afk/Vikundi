@@ -100,16 +100,10 @@ $latest_members = $pdo->query("
         </div>
     </div>
 
-    <!-- Print Header (Visible ONLY on Print) -->
+    <?php PrintHeader::css(); ?>
+    <!-- PRINT HEADER (Visible only during print) -->
     <div class="d-none d-print-block">
-        <div class="text-center mb-4">
-            <img src="/assets/images/<?= htmlspecialchars($group_logo ?? 'logo1.png') ?>" alt="Logo" style="height: 80px; width: auto; margin-bottom: 10px; object-fit: contain;">
-            <h2 class="fw-bold mb-1 text-uppercase" style="color: #0d6efd !important;"><?= htmlspecialchars($group_name ?? 'KIKUNDI') ?></h2>
-            <h4 class="fw-bold text-dark text-uppercase border-top border-bottom py-2 mt-2">
-                <?= $is_sw ? 'RIPOTI YA UCHAMBUZI WA WANACHAMA' : 'MEMBER ANALYSIS REPORT' ?>
-            </h4>
-            <div class="small text-muted mt-1"><?= $is_sw ? 'Tarehe ya Printi:' : 'Print Date:' ?> <?= date('d M, Y H:i') ?></div>
-        </div>
+        <?php PrintHeader::render($pdo, $is_sw ? 'RIPOTI YA UCHAMBUZI WA WANACHAMA' : 'MEMBER ANALYSIS REPORT'); ?>
     </div>
 
 

@@ -80,7 +80,7 @@ foreach ($members as $m) {
     ];
     
     // Total Confirmed Pot
-    $stmt_p = $pdo->prepare("SELECT SUM(amount) FROM contributions WHERE member_id = ? AND status = 'confirmed'");
+    $stmt_p = $pdo->prepare("SELECT SUM(amount) FROM contributions WHERE member_id = ? AND status IN ('confirmed', 'approved', '')");
     $stmt_p->execute([$m['customer_id']]);
     $row['grand_total'] = floatval($stmt_p->fetchColumn());
 
