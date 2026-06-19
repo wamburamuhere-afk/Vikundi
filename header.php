@@ -143,9 +143,9 @@ try {
             padding-top: 20px;
         }
         
-        /* Smooth scrolling for anchor links */
+        /* Smooth scrolling for anchor links — overridden at runtime by JS */
         html {
-            scroll-padding-top: 80px;
+            scroll-padding-top: 110px;
         }
 
         /* Compact dropdowns */
@@ -237,7 +237,7 @@ try {
             left: 0;
             right: 0;
             width: 100%;
-            z-index: 2000;
+            z-index: 1030; /* Bootstrap modals are 1055–1060; header must be below them */
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
 
@@ -457,6 +457,8 @@ try {
                             <ul class="dropdown-menu shadow border-0 mt-0" aria-labelledby="documentsDropdown">
                                 <li><h6 class="dropdown-header"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Usimamizi wa Nyaraka' : 'Document Management' ?></h6></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('library') ?>"><i class="bi bi-folder"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Maktaba' : 'Library' ?></a></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('document-templates') ?>"><i class="bi bi-file-earmark-text"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Violezo' : 'Templates' ?></a></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('e_signatures') ?>"><i class="bi bi-pen"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Saini za Kielektroniki' : 'E-Sign' ?></a></li>
                             </ul>
                         </li>
 
@@ -523,6 +525,21 @@ try {
             </div>
         </nav>
     </div>
+
+    <script>
+    /* Runs synchronously — measures actual header height and offsets body */
+    (function() {
+        var h = document.querySelector('.header-wrapper');
+        if (!h) return;
+        var setpad = function() {
+            var height = h.offsetHeight;
+            document.body.style.setProperty('padding-top', height + 'px', 'important');
+            document.documentElement.style.scrollPaddingTop = (height + 8) + 'px';
+        };
+        setpad();
+        window.addEventListener('resize', setpad);
+    })();
+    </script>
 
     <!-- Main Content Area -->
     <div class="container-fluid px-4 mt-3">
