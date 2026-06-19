@@ -1,4 +1,6 @@
 <?php
+// UI: complies with .claude/ui-constants.md (§UI-0…§UI-8)
+// Stores an uploaded signature image into user_signatures for the current user.
 require_once __DIR__ . '/../roots.php';
 global $pdo;
 
@@ -35,9 +37,14 @@ try {
     $dbPath = '/uploads/signatures/' . $userId . '/' . $filename;
 
     if (move_uploaded_file($file['tmp_name'], $filepath)) {
-        // Save to database
-        $stmt = $pdo->prepare("INSERT INTO user_signatures (user_id, signature_type, file_path, status, created_at) VALUES (?, 'uploaded', ?, 'active', NOW())");
-        $stmt->execute([$userId, $dbPath]);
+        // thumbnail_path mirrors file_path so list previews can render the image directly.
+        $stmt = $pdo->prepare("INSERT INTO user_signatures (user_id, signature_type, file_path, thumbnail_path, status, created_at) VALUES (?, 'uploaded', ?, ?, 'active', NOW())");
+        $stmt->execute([$userId, $dbPath, $dbPath]);
+        $sigId = $pdo->lastInsertId();
+
+        if (function_exists('logActivity')) {
+            logActivity('Created', 'E-Signatures', 'Uploaded an electronic signature image', 'SIG#' . $sigId, $userId);
+        }
 
         echo json_encode(['success' => true, 'message' => 'Signature uploaded successfully']);
     } else {
