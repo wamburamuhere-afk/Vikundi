@@ -541,15 +541,6 @@ require_once ROOT_DIR . '/header.php';
         text-transform: uppercase;
         letter-spacing: 1px;
     }
-    .main-logs-content::after {
-        content: '<?= $isSw ? "Imechapishwa: " : "Printed: " ?><?= date("d/m/Y H:i") ?>';
-        display: block;
-        font-size: 10px;
-        text-align: right;
-        margin-bottom: 8px;
-        color: #666;
-    }
-
     /* ── Table styles ── */
     #activityTable {
         width: 100% !important;
@@ -665,4 +656,5 @@ window.exportTableToCSV = () => {
 
 </script>
 
+<?php include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE; ?>
 <?php require_once ROOT_DIR . '/footer.php'; ?>

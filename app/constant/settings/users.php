@@ -45,9 +45,14 @@ $lang = $_SESSION['preferred_language'] ?? 'en';
     <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
         <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
             <h5 class="mb-0 fw-bold text-dark"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Watumiaji Wote' : 'All Users' ?></h5>
-            <a href="add_user.php" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm">
-                <i class="bi bi-person-plus me-1"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Ongeza Mtumiaji' : 'Add New User' ?>
-            </a>
+            <div class="d-flex gap-2 d-print-none">
+                <button onclick="window.print()" class="btn btn-outline-secondary btn-sm rounded-pill px-3 shadow-sm">
+                    <i class="bi bi-printer me-1"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Printi' : 'Print' ?>
+                </button>
+                <a href="add_user.php" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm">
+                    <i class="bi bi-person-plus me-1"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Ongeza Mtumiaji' : 'Add New User' ?>
+                </a>
+            </div>
         </div>
         
         <div class="card-body p-0">
@@ -115,6 +120,7 @@ $lang = $_SESSION['preferred_language'] ?? 'en';
     </div>
 </div>
 
+<?php include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE; ?>
 <?php include("footer.php"); ?>
 
 
@@ -154,6 +160,15 @@ $lang = $_SESSION['preferred_language'] ?? 'en';
 /* Ensure action buttons stay on one line */
 .action-buttons {
     white-space: nowrap;
+}
+@media print {
+    .header-wrapper, nav, .navbar, .btn, .dropdown, .dataTables_length,
+    .dataTables_filter, .dataTables_info, .dataTables_paginate, .d-print-none { display: none !important; }
+    .d-none.d-md-block { display: block !important; }
+    body { padding-top: 0 !important; }
+    .card { box-shadow: none !important; border: 1px solid #dee2e6 !important; }
+    table { width: 100% !important; border-collapse: collapse !important; }
+    /* @page margin handled by includes/print_footer_css.php */
 }
 </style>
 
