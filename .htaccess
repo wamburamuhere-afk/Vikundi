@@ -7,18 +7,27 @@ Options -Indexes -MultiViews
 # Block direct access to internal files
 RewriteRule ^roots\.php$ - [F,L]
 
-# 1. Force Redirect .php to clean URL (only for public pages, ignore internal folders)
+# 1. Force Redirect .php to clean URL (page files only — NOT api/ajax/actions)
+# Use REQUEST_URI so the check works in subdirectory installs (e.g. /vikundi/api/...
+# still contains "/api/" even though %1 would start with "vikundi/").
 RewriteCond %{THE_REQUEST} ^[A-Z]{3,}\s/+([^?]+)\.php [NC]
-RewriteCond %1 !^(actions|ajax|api)/ [NC]
+RewriteCond %{REQUEST_URI} !/(actions|ajax|api)/ [NC]
 RewriteRule ^ /%1 [R=301,L]
 
-# 2. Allow existing non-PHP directories and files
+# 2. Serve api/ajax/actions PHP files directly so POST body (file uploads, form data)
+# is never lost to a redirect.  Without this, multipart uploads to api/ would be
+# silently converted to GET requests by the 301 above.
+RewriteCond %{REQUEST_URI} /(actions|ajax|api)/
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# 3. Allow existing non-PHP directories and static files
 RewriteCond %{REQUEST_FILENAME} -d [OR]
 RewriteCond %{REQUEST_FILENAME} -f
 RewriteCond %{REQUEST_FILENAME} !\.php$
 RewriteRule ^ - [L]
 
-# 3. Front Controller (all other requests through index.php)
+# 4. Front Controller (all other requests through index.php)
 RewriteRule ^ index.php [L,QSA]
 
 # PHP session cookie path

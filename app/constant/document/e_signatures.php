@@ -1,618 +1,561 @@
 <?php
-// Start the buffer
+// UI: complies with .claude/ui-constants.md (§UI-0…§UI-8)
 ob_start();
 
-// Include the header and authentication
+require_once __DIR__ . '/../../../roots.php';
+requireViewPermission('documents');
 require_once 'header.php';
 
-// Enforce permission (if applicable)
-if (function_exists('autoEnforcePermission')) {
-    autoEnforcePermission('documents');
-}
+$lang = $_SESSION['preferred_language'] ?? 'en';
+$sw   = ($lang === 'sw');
 
-// Fetch categories for filters (if needed)
-$signature_types = ['uploaded', 'drawn', 'typed'];
 ?>
 
-<div class="container mt-4">
-    <div class="row mb-4">
+<!-- Stat Cards -->
+<div class="container-fluid mt-4">
+    <div class="row mb-3">
         <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div>
-                    <h2><i class="bi bi-pen-fill"></i> Electronic Signatures</h2>
-                    <p class="text-muted mb-0">Manage your digital signatures and sign documents electronically</p>
+                    <h4 class="mb-0"><i class="bi bi-pen-fill"></i>
+                        <?= $sw ? 'Saini za Kielektroniki' : 'Electronic Signatures' ?>
+                    </h4>
+                    <p class="text-muted mb-0 small">
+                        <?= $sw
+                            ? 'Simamia saini zako za kidijitali na tia saini nyaraka kwa njia ya kielektroniki'
+                            : 'Manage your digital signatures and sign documents electronically' ?>
+                    </p>
                 </div>
-                <div>
+                <div class="d-flex gap-2 flex-wrap">
                     <?php if (canCreate('documents')): ?>
-                    <button type="button" class="btn btn-primary btn-sm" onclick="openUploadSignatureModal()">
-                        <i class="bi bi-cloud-upload"></i> Upload Signature
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="openUploadSignatureModal()">
+                        <i class="bi bi-cloud-upload"></i>
+                        <?= $sw ? 'Pakia Saini' : 'Upload Signature' ?>
                     </button>
-                    <button type="button" class="btn btn-success btn-sm" onclick="openDrawSignatureModal()">
-                        <i class="bi bi-pencil"></i> Draw Signature
+                    <button type="button" class="btn btn-sm btn-outline-success" onclick="openDrawSignatureModal()">
+                        <i class="bi bi-pencil"></i>
+                        <?= $sw ? 'Chora Saini' : 'Draw Signature' ?>
                     </button>
-                    <button type="button" class="btn btn-info btn-sm" onclick="location.href='select_document_add_esignature'">
-                        <i class="bi bi-file-earmark-check"></i> Sign Document
-                    </button>
+                    <a href="<?= getUrl('select_document_add_esignature') ?>"
+                       class="btn btn-sm btn-primary">
+                        <i class="bi bi-file-earmark-check"></i>
+                        <?= $sw ? 'Tia Saini Hati' : 'Sign Document' ?>
+                    </a>
                     <?php endif; ?>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Statistics Cards -->
+    <!-- §UI-1 Stat Cards -->
     <div class="row mb-4">
-        <div class="col-md-3 mb-3">
-            <div class="card custom-stat-card">
+        <div class="col-6 col-md-3 mb-3">
+            <div class="card vk-stat-card h-100">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h4 class="mb-0" id="stat-my-signatures">0</h4>
-                            <p class="mb-0">My Signatures</p>
+                            <div class="fs-3 fw-bold text-primary" id="stat-my-signatures">—</div>
+                            <div class="small text-muted"><?= $sw ? 'Saini Zangu' : 'My Signatures' ?></div>
                         </div>
-                        <div class="align-self-center">
-                            <i class="bi bi-signature" style="font-size: 2rem;"></i>
-                        </div>
+                        <i class="bi bi-vector-pen fs-2 text-primary opacity-50"></i>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-3">
-            <div class="card custom-stat-card">
+        <div class="col-6 col-md-3 mb-3">
+            <div class="card vk-stat-card h-100">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h4 class="mb-0" id="stat-pending-signatures">0</h4>
-                            <p class="mb-0">Pending Signatures</p>
+                            <div class="fs-3 fw-bold text-warning" id="stat-pending-signatures">—</div>
+                            <div class="small text-muted"><?= $sw ? 'Zinazosubiri' : 'Pending' ?></div>
                         </div>
-                        <div class="align-self-center">
-                            <i class="bi bi-clock-history" style="font-size: 2rem;"></i>
-                        </div>
+                        <i class="bi bi-clock-history fs-2 text-warning opacity-50"></i>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-3">
-            <div class="card custom-stat-card">
+        <div class="col-6 col-md-3 mb-3">
+            <div class="card vk-stat-card h-100">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h4 class="mb-0" id="stat-signed-documents">0</h4>
-                            <p class="mb-0">Signed Documents</p>
+                            <div class="fs-3 fw-bold text-success" id="stat-signed-documents">—</div>
+                            <div class="small text-muted"><?= $sw ? 'Nyaraka Zilizotiwa Saini' : 'Signed Documents' ?></div>
                         </div>
-                        <div class="align-self-center">
-                            <i class="bi bi-check-circle-fill" style="font-size: 2rem;"></i>
-                        </div>
+                        <i class="bi bi-check-circle-fill fs-2 text-success opacity-50"></i>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-3">
-            <div class="card custom-stat-card">
+        <div class="col-6 col-md-3 mb-3">
+            <div class="card vk-stat-card h-100">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h4 class="mb-0" id="stat-total-history">0</h4>
-                            <p class="mb-0">Total History</p>
+                            <div class="fs-3 fw-bold text-secondary" id="stat-total-history">—</div>
+                            <div class="small text-muted"><?= $sw ? 'Historia Yote' : 'Total History' ?></div>
                         </div>
-                        <div class="align-self-center">
-                            <i class="bi bi-archive" style="font-size: 2rem;"></i>
-                        </div>
+                        <i class="bi bi-archive fs-2 text-secondary opacity-50"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Tabs Navigation -->
-    <ul class="nav nav-tabs mb-4" id="signatureTabs" role="tablist">
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-3" id="signatureTabs" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="my-signatures-tab" data-bs-toggle="tab" data-bs-target="#my-signatures" type="button" role="tab">
-                <i class="bi bi-signature"></i> My Signatures
+            <button class="nav-link active" id="my-signatures-tab" data-bs-toggle="tab"
+                data-bs-target="#my-signatures" type="button" role="tab">
+                <i class="bi bi-vector-pen"></i>
+                <?= $sw ? 'Saini Zangu' : 'My Signatures' ?>
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending" type="button" role="tab">
-                <i class="bi bi-clock-history"></i> Pending Signatures <span class="badge bg-warning text-dark" id="pending-count">0</span>
+            <button class="nav-link" id="pending-tab" data-bs-toggle="tab"
+                data-bs-target="#pending" type="button" role="tab">
+                <i class="bi bi-clock-history"></i>
+                <?= $sw ? 'Zinazosubiri' : 'Pending' ?>
+                <span class="badge bg-warning text-dark ms-1" id="pending-count">0</span>
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab">
-                <i class="bi bi-archive"></i> Signature History
+            <button class="nav-link" id="history-tab" data-bs-toggle="tab"
+                data-bs-target="#history" type="button" role="tab">
+                <i class="bi bi-archive"></i>
+                <?= $sw ? 'Historia' : 'History' ?>
             </button>
         </li>
     </ul>
 
     <!-- Tab Content -->
     <div class="tab-content" id="signatureTabContent">
+
         <!-- My Signatures Tab -->
         <div class="tab-pane fade show active" id="my-signatures" role="tabpanel">
-            <div class="card">
-                <div class="card-header custom-table-header bg-light">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">My Saved Signatures</h5>
-                        <span class="badge bg-light text-dark" id="stat-signatures-count">0 signatures</span>
-                    </div>
+            <div class="card shadow-sm">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">
+                        <i class="bi bi-vector-pen me-1"></i>
+                        <?= $sw ? 'Saini Zilizohifadhiwa' : 'Saved Signatures' ?>
+                    </span>
+                    <span class="badge bg-light text-dark border" id="stat-signatures-count">
+                        0 <?= $sw ? 'saini' : 'signatures' ?>
+                    </span>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table id="signaturesTable" class="table table-hover align-middle" style="width:100%">
-                            <thead class="bg-light text-muted small uppercase">
+                        <table id="signaturesTable" class="table table-hover align-middle mb-0" style="width:100%">
+                            <thead class="table-light small text-uppercase">
                                 <tr>
-                                    <th>Preview</th>
-                                    <th>Type</th>
-                                    <th>Created At</th>
-                                    <th>Status</th>
-                                    <th class="text-end">Actions</th>
+                                    <th><?= $sw ? 'Picha' : 'Preview' ?></th>
+                                    <th><?= $sw ? 'Aina' : 'Type' ?></th>
+                                    <th><?= $sw ? 'Iliundwa' : 'Created' ?></th>
+                                    <th><?= $sw ? 'Hali' : 'Status' ?></th>
+                                    <th class="text-end"><?= $sw ? 'Vitendo' : 'Actions' ?></th>
                                 </tr>
                             </thead>
-                            <tbody class="small">
-                                <!-- Data loaded via AJAX -->
-                            </tbody>
+                            <tbody class="small"></tbody>
                         </table>
                     </div>
+                    <!-- Mobile card view (§UI-6) -->
+                    <div id="signaturesCards" class="d-md-none p-2"></div>
                 </div>
             </div>
         </div>
 
-        <!-- Pending Signatures Tab -->
+        <!-- Pending Tab -->
         <div class="tab-pane fade" id="pending" role="tabpanel">
-            <div class="card">
-                <div class="card-header custom-table-header bg-light">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Documents Awaiting Your Signature</h5>
-                        <span class="badge bg-light text-dark" id="stat-pending-count">0 documents</span>
-                    </div>
+            <div class="card shadow-sm">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">
+                        <i class="bi bi-clock-history me-1"></i>
+                        <?= $sw ? 'Nyaraka Zinazongoja Saini Yako' : 'Documents Awaiting Your Signature' ?>
+                    </span>
+                    <span class="badge bg-light text-dark border" id="stat-pending-count">
+                        0 <?= $sw ? 'nyaraka' : 'documents' ?>
+                    </span>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table id="pendingTable" class="table table-hover align-middle" style="width:100%">
-                            <thead class="bg-light text-muted small uppercase">
+                        <table id="pendingTable" class="table table-hover align-middle mb-0" style="width:100%">
+                            <thead class="table-light small text-uppercase">
                                 <tr>
-                                    <th>Document</th>
-                                    <th>Requested By</th>
-                                    <th>Customer</th>
-                                    <th>Due Date</th>
-                                    <th>Status</th>
-                                    <th class="text-end">Actions</th>
+                                    <th><?= $sw ? 'Hati' : 'Document' ?></th>
+                                    <th><?= $sw ? 'Aliyeomba' : 'Requested By' ?></th>
+                                    <th><?= $sw ? 'Mteja' : 'Customer' ?></th>
+                                    <th><?= $sw ? 'Tarehe ya Mwisho' : 'Due Date' ?></th>
+                                    <th><?= $sw ? 'Hali' : 'Status' ?></th>
+                                    <th class="text-end"><?= $sw ? 'Vitendo' : 'Actions' ?></th>
                                 </tr>
                             </thead>
-                            <tbody class="small">
-                                <!-- Data loaded via AJAX -->
-                            </tbody>
+                            <tbody class="small"></tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Signature History Tab -->
+        <!-- History Tab -->
         <div class="tab-pane fade" id="history" role="tabpanel">
-            <div class="card">
-                <div class="card-header custom-table-header bg-light">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Signature History</h5>
-                        <span class="badge bg-light text-dark" id="stat-history-count">0 records</span>
-                    </div>
+            <div class="card shadow-sm">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">
+                        <i class="bi bi-archive me-1"></i>
+                        <?= $sw ? 'Historia ya Saini' : 'Signature History' ?>
+                    </span>
+                    <span class="badge bg-light text-dark border" id="stat-history-count">
+                        0 <?= $sw ? 'rekodi' : 'records' ?>
+                    </span>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table id="historyTable" class="table table-hover align-middle" style="width:100%">
-                            <thead class="bg-light text-muted small uppercase">
+                        <table id="historyTable" class="table table-hover align-middle mb-0" style="width:100%">
+                            <thead class="table-light small text-uppercase">
                                 <tr>
-                                    <th>Document</th>
-                                    <th>Customer</th>
-                                    <th>Signed At</th>
-                                    <th>IP Address</th>
-                                    <th>Position</th>
-                                    <th class="text-end">Actions</th>
+                                    <th><?= $sw ? 'Hati' : 'Document' ?></th>
+                                    <th><?= $sw ? 'Mteja' : 'Customer' ?></th>
+                                    <th><?= $sw ? 'Ilisainiwa' : 'Signed At' ?></th>
+                                    <th><?= $sw ? 'Anwani ya IP' : 'IP Address' ?></th>
+                                    <th><?= $sw ? 'Nafasi' : 'Position' ?></th>
+                                    <th class="text-end"><?= $sw ? 'Vitendo' : 'Actions' ?></th>
                                 </tr>
                             </thead>
-                            <tbody class="small">
-                                <!-- Data loaded via AJAX -->
-                            </tbody>
+                            <tbody class="small"></tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-</div>
 
-<!-- Upload Signature Modal -->
-<div class="modal fade" id="uploadSignatureModal" tabindex="-1" aria-labelledby="uploadSignatureModalLabel">
+    </div><!-- /tab-content -->
+</div><!-- /container-fluid -->
+
+<!-- ===== Upload Signature Modal ===== -->
+<div class="modal fade" id="uploadSignatureModal" tabindex="-1"
+     aria-labelledby="uploadSignatureModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="uploadSignatureModalLabel"><i class="bi bi-cloud-upload"></i> Upload Signature</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title" id="uploadSignatureModalLabel">
+                    <i class="bi bi-cloud-upload me-1"></i>
+                    <?= $sw ? 'Pakia Saini' : 'Upload Signature' ?>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="uploadSignatureForm" enctype="multipart/form-data">
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="signature_file" class="form-label">Signature Image</label>
-                        <input type="file" class="form-control" id="signature_file" name="signature_file" 
-                               accept=".png,.jpg,.jpeg,.gif" required>
+                        <label for="signature_file" class="form-label">
+                            <?= $sw ? 'Picha ya Saini' : 'Signature Image' ?>
+                        </label>
+                        <input type="file" class="form-control" id="signature_file"
+                               name="signature_file" accept=".png,.jpg,.jpeg" required>
                         <div class="form-text">
-                            Upload a clear image of your signature. Supported formats: PNG, JPG, GIF. Max size: 2MB.
+                            <?= $sw
+                                ? 'Pakia picha wazi ya saini yako. Aina zinazoruhusiwa: PNG, JPG. Ukubwa wa juu: 2MB.'
+                                : 'Upload a clear image of your signature. Allowed formats: PNG, JPG. Max size: 2MB.' ?>
                         </div>
                     </div>
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i> 
-                        For best results, use a white background and black ink signature.
+                    <div class="alert alert-info small">
+                        <i class="bi bi-info-circle me-1"></i>
+                        <?= $sw
+                            ? 'Kwa matokeo bora, tumia mandhari nyeupe na wino mweusi.'
+                            : 'For best results, use a white background and black ink.' ?>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="btnUploadSignature">Upload Signature</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <?= $sw ? 'Ghairi' : 'Cancel' ?>
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="btnUploadSignature">
+                        <i class="bi bi-cloud-upload me-1"></i>
+                        <?= $sw ? 'Pakia' : 'Upload' ?>
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Draw Signature Modal -->
-<div class="modal fade" id="drawSignatureModal" tabindex="-1" aria-labelledby="drawSignatureModalLabel">
+<!-- ===== Draw Signature Modal ===== -->
+<div class="modal fade" id="drawSignatureModal" tabindex="-1"
+     aria-labelledby="drawSignatureModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="drawSignatureModalLabel"><i class="bi bi-pencil"></i> Draw Your Signature</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title" id="drawSignatureModalLabel">
+                    <i class="bi bi-pencil me-1"></i>
+                    <?= $sw ? 'Chora Saini Yako' : 'Draw Your Signature' ?>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="drawSignatureForm">
-                <input type="hidden" name="signature_data" id="signatureData">
                 <div class="modal-body">
-                    <div class="signature-pad-container mb-3">
-                        <canvas id="signaturePad" width="700" height="200" 
-                                style="border: 2px solid #0d6efd; border-radius: 8px; cursor: crosshair; width: 100%; height: 200px; min-height: 200px; background: repeating-linear-gradient(45deg, #f8f9fa, #f8f9fa 10px, #ffffff 10px, #ffffff 20px); display: block; margin: 0 auto;"></canvas>
+                    <div class="mb-3">
+                        <canvas id="signaturePad"
+                            style="border: 2px solid #0d6efd; border-radius: 8px; cursor: crosshair;
+                                   width: 100%; height: 200px; min-height: 200px; display: block;
+                                   background: repeating-linear-gradient(45deg,#f8f9fa,#f8f9fa 10px,#fff 10px,#fff 20px);
+                                   touch-action: none;">
+                        </canvas>
                     </div>
-                    <div class="d-flex justify-content-between mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
                         <button type="button" class="btn btn-outline-danger btn-sm" onclick="clearSignature()">
-                            <i class="bi bi-eraser"></i> Clear
+                            <i class="bi bi-eraser me-1"></i><?= $sw ? 'Futa' : 'Clear' ?>
                         </button>
-                        <div>
-                            <small class="text-muted">Draw your signature in the box above</small>
-                        </div>
+                        <small class="text-muted">
+                            <?= $sw ? 'Chora saini yako katika sanduku hapo juu' : 'Draw your signature in the box above' ?>
+                        </small>
                     </div>
-                    <div class="alert alert-warning">
-                        <i class="bi bi-exclamation-triangle"></i> 
-                        By saving this signature, you acknowledge it as your legally binding electronic signature.
+                    <div class="alert alert-warning small mb-0">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        <?= $sw
+                            ? 'Kwa kuhifadhi saini hii, unakubali kuwa ni saini yako ya kisheria ya kielektroniki.'
+                            : 'By saving this signature, you acknowledge it as your legally binding electronic signature.' ?>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-warning" onclick="clearSignature()">Clear</button>
-                    <button type="submit" class="btn btn-primary" id="saveSignatureBtn" disabled>Save Signature</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <?= $sw ? 'Ghairi' : 'Cancel' ?>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="clearSignature()">
+                        <i class="bi bi-eraser me-1"></i><?= $sw ? 'Futa' : 'Clear' ?>
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="saveSignatureBtn" disabled>
+                        <i class="bi bi-floppy me-1"></i><?= $sw ? 'Hifadhi Saini' : 'Save Signature' ?>
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Apply Signature Modal -->
-<div class="modal fade" id="applySignatureModal" tabindex="-1" aria-labelledby="applySignatureModalLabel">
+<!-- ===== Apply Signature Modal (from Pending tab) ===== -->
+<div class="modal fade" id="applySignatureModal" tabindex="-1"
+     aria-labelledby="applySignatureModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="applySignatureModalLabel"><i class="bi bi-pen"></i> Sign Document</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title" id="applySignatureModalLabel">
+                    <i class="bi bi-pen me-1"></i>
+                    <?= $sw ? 'Tia Saini Hati' : 'Sign Document' ?>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="applySignatureForm">
                 <input type="hidden" name="document_id" id="applyDocumentId">
                 <input type="hidden" name="signature_id" id="applySignatureId">
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">Select Your Signature</label>
-                        <div id="signatureSelection" class="row">
-                            <!-- Signatures will be loaded here -->
-                        </div>
+                        <label class="form-label fw-semibold">
+                            <?= $sw ? 'Chagua Saini Yako' : 'Select Your Signature' ?>
+                        </label>
+                        <div id="signatureSelection" class="row g-2"></div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Signature Position</label>
+                        <label class="form-label fw-semibold">
+                            <?= $sw ? 'Nafasi ya Saini' : 'Signature Position' ?>
+                        </label>
                         <select class="form-select" name="signature_position" id="signaturePosition">
-                            <option value="bottom_right">Bottom Right</option>
-                            <option value="bottom_left">Bottom Left</option>
-                            <option value="bottom_center">Bottom Center</option>
-                            <option value="custom">Custom Position</option>
+                            <option value="bottom_right"><?= $sw ? 'Chini Kulia' : 'Bottom Right' ?></option>
+                            <option value="bottom_left"><?= $sw ? 'Chini Kushoto' : 'Bottom Left' ?></option>
+                            <option value="bottom_center"><?= $sw ? 'Chini Katikati' : 'Bottom Center' ?></option>
+                            <option value="custom"><?= $sw ? 'Nafasi Maalum' : 'Custom Position' ?></option>
                         </select>
                     </div>
-                    <div class="alert alert-info">
-                        <i class="bi bi-shield-check"></i> 
-                        This action will apply your electronic signature to the document. This is legally binding.
+                    <div class="alert alert-info small">
+                        <i class="bi bi-shield-check me-1"></i>
+                        <?= $sw
+                            ? 'Kitendo hiki kitatia saini yako ya kielektroniki kwenye hati. Hii ni ya kisheria.'
+                            : 'This action will apply your electronic signature to the document. This is legally binding.' ?>
                     </div>
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="legalAgreement" required>
-                        <label class="form-check-label" for="legalAgreement">
-                            I agree that this electronic signature is legally binding and equivalent to my handwritten signature.
+                        <input class="form-check-input" type="checkbox" id="legalAgreement">
+                        <label class="form-check-label small" for="legalAgreement">
+                            <?= $sw
+                                ? 'Nakubali kwamba saini hii ya kielektroniki ina nguvu ya kisheria sawa na saini yangu ya mkono.'
+                                : 'I agree that this electronic signature is legally binding and equivalent to my handwritten signature.' ?>
                         </label>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="applySignatureBtn" disabled>Apply Signature</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <?= $sw ? 'Ghairi' : 'Cancel' ?>
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="applySignatureBtn" disabled>
+                        <i class="bi bi-pen me-1"></i>
+                        <?= $sw ? 'Tia Saini' : 'Apply Signature' ?>
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Sign Document Modal -->
-<div class="modal fade" id="signDocumentModal" tabindex="-1" aria-labelledby="signDocumentModalLabel">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="signDocumentModalLabel"><i class="bi bi-file-earmark-check"></i> Sign Document</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <!-- Step Indicator -->
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="step-item active" id="step1-indicator">
-                                <div class="step-circle">1</div>
-                                <div class="step-label">Select Document</div>
-                            </div>
-                            <div class="step-line"></div>
-                            <div class="step-item" id="step2-indicator">
-                                <div class="step-circle">2</div>
-                                <div class="step-label">Choose Signature</div>
-                            </div>
-                            <div class="step-line"></div>
-                            <div class="step-item" id="step3-indicator">
-                                <div class="step-circle">3</div>
-                                <div class="step-label">Download</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+<?php
+// Compute API/AJAX base URLs for JS (same pattern as document_library.php)
+$doc_root  = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT'] ?? '');
+$proj_root = str_replace('\\', '/', ROOT_DIR);
+$base_path = trim(str_ireplace($doc_root, '', $proj_root), '/');
+$api_base  = (!empty($base_path) ? '/' . $base_path : '') . '/api';
+$ajax_base = (!empty($base_path) ? '/' . $base_path : '') . '/ajax';
+?>
 
-                <!-- Step 1: Select Document -->
-                <div id="step1-content" class="step-content">
-                    <ul class="nav nav-tabs mb-3" id="documentSelectTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="existing-doc-tab" data-bs-toggle="tab" data-bs-target="#existing-doc" type="button" role="tab">
-                                <i class="bi bi-folder2-open"></i> Select Existing Document
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="upload-doc-tab" data-bs-toggle="tab" data-bs-target="#upload-doc" type="button" role="tab">
-                                <i class="bi bi-cloud-upload"></i> Upload New Document
-                            </button>
-                        </li>
-                    </ul>
+<style>
+/* §UI-1 — Stat Cards */
+.vk-stat-card {
+    background: #e7f0ff;
+    border: 1px solid #b6ccfe;
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(13,110,253,.08);
+    transition: transform .2s, box-shadow .2s;
+}
+.vk-stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(13,110,253,.14);
+}
 
-                    <div class="tab-content" id="documentSelectTabContent">
-                        <!-- Existing Documents Tab -->
-                        <div class="tab-pane fade show active" id="existing-doc" role="tabpanel">
-                            <div class="row mb-3">
-                                <div class="col-md-4">
-                                    <input type="text" class="form-control" id="docSearchInput" placeholder="Search documents...">
-                                </div>
-                                <div class="col-md-4">
-                                    <select class="form-select" id="docCategoryFilter">
-                                        <option value="">All Categories</option>
-                                        <?php 
-                                        $categories = $pdo->query("SELECT * FROM document_categories ORDER BY category_name ASC")->fetchAll(PDO::FETCH_ASSOC);
-                                        foreach ($categories as $cat): 
-                                        ?>
-                                            <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['category_name']) ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                <div class="col-md-4">
-                                    <button type="button" class="btn btn-primary w-100" onclick="loadDocuments()">
-                                        <i class="bi bi-search"></i> Search
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                                <table class="table table-hover" id="documentsSelectTable">
-                                    <thead class="bg-light sticky-top">
-                                        <tr>
-                                            <th width="50">Select</th>
-                                            <th>Document Name</th>
-                                            <th>Category</th>
-                                            <th>Size</th>
-                                            <th>Uploaded</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="documentsSelectBody">
-                                        <tr>
-                                            <td colspan="5" class="text-center text-muted">
-                                                <i class="bi bi-search"></i> Click search to load documents
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+/* Signature canvas */
+#signaturePad { touch-action: none; }
 
-                        <!-- Upload New Document Tab -->
-                        <div class="tab-pane fade" id="upload-doc" role="tabpanel">
-                            <form id="quickUploadForm">
-                                <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <label for="quick_document_name" class="form-label">Document Title *</label>
-                                        <input type="text" class="form-control" id="quick_document_name" name="document_name" required>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="quick_category_id" class="form-label">Category</label>
-                                        <select class="form-select" id="quick_category_id" name="category_id">
-                                            <option value="">Select Category</option>
-                                            <?php foreach ($categories as $cat): ?>
-                                                <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['category_name']) ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
-                                    <div class="col-12">
-                                        <label for="quick_description" class="form-label">Description</label>
-                                        <textarea class="form-control" id="quick_description" name="description" rows="2"></textarea>
-                                    </div>
-                                    <div class="col-12">
-                                        <label for="quick_document_file" class="form-label">File Selection *</label>
-                                        <input type="file" class="form-control" id="quick_document_file" name="document_file" required accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg">
-                                        <div class="form-text">PDF, Word, Excel, Images. Max size: 50MB</div>
-                                    </div>
-                                    <div class="col-12">
-                                        <button type="submit" class="btn btn-primary" id="btnQuickUpload">
-                                            <i class="bi bi-cloud-upload"></i> Upload & Continue
-                                        </button>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
+/* Signature picker card */
+.sig-card {
+    cursor: pointer;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    transition: border-color .15s, box-shadow .15s;
+}
+.sig-card:hover { border-color: #86b7fe; box-shadow: 0 2px 8px rgba(13,110,253,.12); }
+.sig-card.selected { border-color: #0d6efd !important; background: #f0f5ff; }
 
-                <!-- Step 2: Choose Signature -->
-                <div id="step2-content" class="step-content" style="display: none;">
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i> Selected Document: <strong id="selectedDocName">-</strong>
-                    </div>
-                    <h6 class="mb-3">Select Your Signature</h6>
-                    <div class="row" id="signatureSelectionGrid">
-                        <div class="col-12 text-center text-muted">
-                            <i class="bi bi-hourglass-split"></i> Loading signatures...
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <label class="form-label">Signature Position</label>
-                        <select class="form-select" id="finalSignaturePosition">
-                            <option value="bottom_right">Bottom Right</option>
-                            <option value="bottom_left">Bottom Left</option>
-                            <option value="bottom_center">Bottom Center</option>
-                        </select>
-                    </div>
-                    <div class="form-check mt-3">
-                        <input class="form-check-input" type="checkbox" id="finalLegalAgreement" required>
-                        <label class="form-check-label" for="finalLegalAgreement">
-                            I agree that this electronic signature is legally binding and equivalent to my handwritten signature.
-                        </label>
-                    </div>
-                </div>
-
-                <!-- Step 3: Download -->
-                <div id="step3-content" class="step-content" style="display: none;">
-                    <div class="text-center py-5">
-                        <div id="processingIndicator">
-                            <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
-                                <span class="visually-hidden">Processing...</span>
-                            </div>
-                            <h5>Processing your signed document...</h5>
-                            <p class="text-muted">Please wait while we apply your signature</p>
-                        </div>
-                        <div id="downloadReady" style="display: none;">
-                            <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
-                            <h5 class="mt-3">Document Signed Successfully!</h5>
-                            <p class="text-muted">Your document is ready for download</p>
-                            <button type="button" class="btn btn-success btn-lg mt-3" id="btnDownloadSigned">
-                                <i class="bi bi-download"></i> Download Signed Document
-                            </button>
-                            <div class="mt-3">
-                                <small class="text-muted">File: <span id="signedFileName">-</span></small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-outline-secondary" id="btnPrevStep" style="display: none;" onclick="previousStep()">
-                    <i class="bi bi-arrow-left"></i> Previous
-                </button>
-                <button type="button" class="btn btn-primary" id="btnNextStep" onclick="nextStep()" disabled>
-                    Next <i class="bi bi-arrow-right"></i>
-                </button>
-                <button type="button" class="btn btn-success" id="btnApplySignature" style="display: none;" onclick="applySignatureToDocument()" disabled>
-                    <i class="bi bi-pen"></i> Apply Signature
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Scripts Section -->
-<script src="/assets/js/jquery.dataTables.min.js"></script>
-<script src="/assets/js/dataTables.bootstrap5.min.js"></script>
-<script src="/assets/js/dataTables.responsive.min.js"></script>
-<script src="/assets/js/responsive.bootstrap5.min.js"></script>
+</style>
 
 <script>
-// Signature Pad functionality
-let signaturePad = null;
-let isDrawing = false;
-let selectedSignatureId = null;
+const _sw = <?= $sw ? 'true' : 'false' ?>;
+const _canCreate = <?= canCreate('documents') ? 'true' : 'false' ?>;
+const _canDelete = <?= canDelete('documents') ? 'true' : 'false' ?>;
 
+// — Bilingual strings —
+const T = {
+    selectFirst:   _sw ? 'Chagua saini kwanza kutoka kwenye kichupo cha "Saini Zangu".' : 'Please select a signature first from the "My Signatures" tab.',
+    sigSelected:   _sw ? 'Saini imechaguliwa!' : 'Signature selected!',
+    deleteConfirm: _sw ? 'Una uhakika unataka kufuta saini hii? Kitendo hiki hakiwezi kutenduliwa.' : 'Are you sure you want to delete this signature? This action cannot be undone.',
+    deleteTitle:   _sw ? 'Futa Saini' : 'Delete Signature',
+    deleteYes:     _sw ? 'Ndiyo, Futa' : 'Yes, Delete',
+    deleteNo:      _sw ? 'Hapana' : 'Cancel',
+    deletedOk:     _sw ? 'Saini imefutwa.' : 'Signature deleted.',
+    uploadOk:      _sw ? 'Saini imepakiwa kwa mafanikio!' : 'Signature uploaded successfully!',
+    drawOk:        _sw ? 'Saini imehifadhiwa kwa mafanikio!' : 'Signature drawn and saved!',
+    applyOk:       _sw ? 'Saini imetumika kwa mafanikio!' : 'Signature applied successfully!',
+    uploadFail:    _sw ? 'Imeshindwa kupakia saini.' : 'Failed to upload signature.',
+    drawFail:      _sw ? 'Imeshindwa kuhifadhi saini.' : 'Failed to save signature.',
+    applyFail:     _sw ? 'Imeshindwa kutia saini.' : 'Failed to apply signature.',
+    deleteFail:    _sw ? 'Imeshindwa kufuta saini.' : 'Failed to delete signature.',
+    noSigs:        _sw ? 'Huna saini zilizohifadhiwa. Chora au pakia saini kwanza.' : 'No saved signatures. Draw or upload one first.',
+    drawOne:       _sw ? 'Chora Saini' : 'Draw One Now',
+    signatures:    _sw ? 'saini' : 'signatures',
+    documents:     _sw ? 'nyaraka' : 'documents',
+    records:       _sw ? 'rekodi' : 'records',
+    signedOk:      _sw ? 'Umesaini kwa mafanikio!' : 'Signed successfully!',
+    error:         _sw ? 'Hitilafu' : 'Error',
+    success:       _sw ? 'Mafanikio' : 'Success',
+    confirm:       _sw ? 'Thibitisha' : 'Confirm',
+    uploading:     _sw ? 'Inapakia...' : 'Uploading...',
+    saving:        _sw ? 'Inahifadhi...' : 'Saving...',
+    applying:      _sw ? 'Inatumika...' : 'Applying...',
+    processing:    _sw ? 'Inashughulikia...' : 'Processing...',
+    noDocFound:    _sw ? 'Hakuna hati zilizopatikana' : 'No documents found',
+    searchFirst:   _sw ? 'Bonyeza tafuta kupakia hati' : 'Click search to load documents',
+};
+
+let selectedSignatureId = null; // selected from "My Signatures" tab (for Apply modal)
+
+/* ================================================================
+   DataTables
+================================================================ */
 $(document).ready(function() {
-    const userPermissions = {
-        canEdit: <?= canEdit('documents') ? 'true' : 'false' ?>,
-        canDelete: <?= canDelete('documents') ? 'true' : 'false' ?>
-    };
 
-    // Initialize My Signatures Table
+    // — My Signatures table —
     const signaturesTable = $('#signaturesTable').DataTable({
+        dom: "<'row'<'col-sm-6'l><'col-sm-6'f>><'row'<'col-12'tr>><'row mt-2'<'col-sm-5'i><'col-sm-7'p>>",
         responsive: true,
         serverSide: true,
         processing: true,
         ajax: {
-            url: '/api/get_user_signatures.php',
-            dataSrc: json => {
-                $('#stat-my-signatures').text(json.recordsTotal);
-                $('#stat-signatures-count').text(json.recordsTotal + ' signatures');
+            url: '<?= $api_base ?>/get_user_signatures.php',
+            dataSrc: function(json) {
+                const n = json.recordsTotal || 0;
+                $('#stat-my-signatures').text(n);
+                $('#stat-signatures-count').text(n + ' ' + T.signatures);
                 return json.data;
             }
         },
         columns: [
-            { 
-                data: null,
-                orderable: false,
-                render: (data, t, row) => {
+            {
+                data: null, orderable: false,
+                render: function(d, t, row) {
                     if (row.thumbnail_path) {
-                        return `<img src="${escapeHtml(row.thumbnail_path)}" class="signature-preview" style="max-height: 60px; max-width: 120px; border: 1px solid #dee2e6; border-radius: 4px; padding: 5px; background: #f8f9fa;">`;
+                        return '<img src="' + escHtml(row.thumbnail_path) + '" alt="sig" '
+                            + 'style="max-height:56px;max-width:110px;border:1px solid #dee2e6;'
+                            + 'border-radius:4px;padding:4px;background:#f8f9fa;object-fit:contain">';
                     }
-                    return `<div class="signature-placeholder" style="width: 120px; height: 60px; background: #f8f9fa; display: flex; align-items: center; justify-content: center; border-radius: 4px; border: 1px solid #dee2e6;">
-                        <i class="bi bi-${getSignatureTypeIcon(row.signature_type)} fs-3 text-muted"></i>
-                    </div>`;
+                    return '<div style="width:110px;height:56px;background:#f8f9fa;border:1px solid #dee2e6;'
+                        + 'border-radius:4px;display:flex;align-items:center;justify-content:center">'
+                        + '<i class="bi bi-' + sigTypeIcon(row.signature_type) + ' fs-3 text-muted"></i></div>';
                 }
-            },
-            { 
-                data: 'signature_type',
-                render: data => {
-                    let color = data === 'uploaded' ? 'primary' : (data === 'drawn' ? 'success' : 'info');
-                    return `<span class="badge bg-${color}-subtle text-${color} border border-${color}-subtle px-2 text-uppercase">
-                        <i class="bi bi-${getSignatureTypeIcon(data)}"></i> ${data}
-                    </span>`;
-                }
-            },
-            { 
-                data: 'created_at',
-                render: data => new Date(data).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit'})
-            },
-            { 
-                data: 'status',
-                render: data => data === 'active' ? 
-                    '<span class="badge bg-success-subtle text-success border border-success-subtle px-3"><i class="bi bi-check-circle"></i> Active</span>' : 
-                    '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3"><i class="bi bi-x-circle"></i> Inactive</span>'
             },
             {
-                data: null,
-                orderable: false,
-                className: 'text-end',
-                render: (data, t, row) => {
-                    let html = `<div class="dropdown action-dropdown">
-                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-gear"></i>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="#" onclick="selectSignature(${row.id})"><i class="bi bi-check"></i> Select</a></li>
-                            <li><a class="dropdown-item" href="${row.file_path}" target="_blank"><i class="bi bi-eye"></i> View Full Size</a></li>`;
-                    
-                    if (userPermissions.canDelete) {
-                        html += `<li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item text-danger" href="#" onclick="confirmDeleteSignature(${row.id})"><i class="bi bi-trash"></i> Delete</a></li>`;
+                data: 'signature_type',
+                render: function(d) {
+                    const map = { uploaded:'primary', drawn:'success', typed:'info' };
+                    const c   = map[d] || 'secondary';
+                    return '<span class="badge bg-' + c + '-subtle text-' + c + ' border border-' + c
+                        + '-subtle px-2 text-uppercase small"><i class="bi bi-'
+                        + sigTypeIcon(d) + ' me-1"></i>' + d + '</span>';
+                }
+            },
+            {
+                data: 'created_at',
+                render: function(d) {
+                    return d ? new Date(d).toLocaleDateString(
+                        _sw ? 'sw-TZ' : 'en-US',
+                        {month:'short', day:'numeric', year:'numeric'}
+                    ) : '—';
+                }
+            },
+            {
+                data: 'status',
+                render: function(d) {
+                    return d === 'active'
+                        ? '<span class="badge bg-success-subtle text-success border border-success-subtle px-2">'
+                          + '<i class="bi bi-check-circle me-1"></i>' + (_sw ? 'Amilifu' : 'Active') + '</span>'
+                        : '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2">'
+                          + '<i class="bi bi-x-circle me-1"></i>' + (_sw ? 'Imezimwa' : 'Inactive') + '</span>';
+                }
+            },
+            {
+                data: null, orderable: false, className: 'text-end',
+                render: function(d, t, row) {
+                    let html = '<div class="dropdown">'
+                        + '<button class="btn btn-sm btn-outline-secondary dropdown-toggle" '
+                        + 'type="button" data-bs-toggle="dropdown" aria-expanded="false">'
+                        + '<i class="bi bi-gear"></i></button>'
+                        + '<ul class="dropdown-menu dropdown-menu-end">'
+                        + '<li><a class="dropdown-item" href="#" onclick="selectSignature(' + row.id + ');return false">'
+                        + '<i class="bi bi-check2-circle me-1"></i>' + (_sw ? 'Chagua' : 'Select') + '</a></li>';
+                    if (row.file_path) {
+                        html += '<li><a class="dropdown-item" href="' + escHtml(row.file_path) + '" target="_blank">'
+                            + '<i class="bi bi-eye me-1"></i>' + (_sw ? 'Ona Ukubwa Kamili' : 'View Full Size') + '</a></li>';
                     }
-                    
-                    html += `</ul></div>`;
+                    if (_canDelete) {
+                        html += '<li><hr class="dropdown-divider"></li>'
+                            + '<li><a class="dropdown-item text-danger" href="#" '
+                            + 'onclick="confirmDeleteSignature(' + row.id + ');return false">'
+                            + '<i class="bi bi-trash me-1"></i>' + (_sw ? 'Futa' : 'Delete') + '</a></li>';
+                    }
+                    html += '</ul></div>';
                     return html;
                 }
             }
@@ -620,772 +563,445 @@ $(document).ready(function() {
         order: [[2, 'desc']]
     });
 
-    // Initialize Pending Signatures Table
+    // — Pending Signatures table —
     const pendingTable = $('#pendingTable').DataTable({
+        dom: "<'row'<'col-sm-6'l><'col-sm-6'f>><'row'<'col-12'tr>><'row mt-2'<'col-sm-5'i><'col-sm-7'p>>",
         responsive: true,
         serverSide: true,
         processing: true,
         ajax: {
-            url: '/api/get_pending_signatures.php',
-            dataSrc: json => {
-                $('#stat-pending-signatures').text(json.recordsTotal);
-                $('#pending-count').text(json.recordsTotal);
-                $('#stat-pending-count').text(json.recordsTotal + ' documents');
+            url: '<?= $api_base ?>/get_pending_signatures.php',
+            dataSrc: function(json) {
+                const n = json.recordsTotal || 0;
+                $('#stat-pending-signatures').text(n);
+                $('#pending-count').text(n);
+                $('#stat-pending-count').text(n + ' ' + T.documents);
                 return json.data;
             }
         },
         columns: [
-            { 
+            {
                 data: 'document_name',
-                render: (data, t, row) => `<strong>${escapeHtml(data)}</strong><br><small class="text-muted">${escapeHtml(row.document_type || 'N/A')}</small>`
-            },
-            { data: 'requested_by_name' },
-            { 
-                data: 'customer_name',
-                render: data => data ? escapeHtml(data) : '<span class="text-muted">N/A</span>'
-            },
-            { 
-                data: 'due_date',
-                render: data => {
-                    if (!data) return '<span class="text-muted">No due date</span>';
-                    const dueDate = new Date(data);
-                    const today = new Date();
-                    const isOverdue = dueDate < today;
-                    const color = isOverdue ? 'danger' : 'warning';
-                    return `<span class="badge bg-${color}-subtle text-${color}">${dueDate.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'})}</span>`;
+                render: function(d, t, row) {
+                    return '<strong>' + escHtml(d) + '</strong>'
+                        + '<br><small class="text-muted">' + escHtml(row.document_type || '—') + '</small>';
                 }
             },
-            { 
-                data: 'status',
-                render: data => {
-                    let color = data === 'pending' ? 'warning' : (data === 'signed' ? 'success' : 'danger');
-                    return `<span class="badge bg-${color}-subtle text-${color} border border-${color}-subtle px-3 text-uppercase">${data}</span>`;
+            { data: 'requested_by_name', render: function(d) { return escHtml(d || '—'); } },
+            { data: 'customer_name',     render: function(d) { return d ? escHtml(d) : '<span class="text-muted">N/A</span>'; } },
+            {
+                data: 'due_date',
+                render: function(d) {
+                    if (!d) return '<span class="text-muted">—</span>';
+                    const due = new Date(d), now = new Date();
+                    const col = due < now ? 'danger' : 'warning';
+                    return '<span class="badge bg-' + col + '-subtle text-' + col + ' border border-' + col + '-subtle">'
+                        + due.toLocaleDateString(_sw ? 'sw-TZ' : 'en-US', {month:'short', day:'numeric', year:'numeric'})
+                        + '</span>';
                 }
             },
             {
-                data: null,
-                orderable: false,
-                className: 'text-end',
-                render: (data, t, row) => `
-                    <button class="btn btn-sm btn-primary" onclick="signDocument(${row.document_id}, ${row.id})">
-                        <i class="bi bi-pen"></i> Sign
-                    </button>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="previewDocument(${row.document_id})">
-                        <i class="bi bi-eye"></i> Preview
-                    </button>
-                `
+                data: 'status',
+                render: function(d) {
+                    const map = { pending:'warning', signed:'success', rejected:'danger' };
+                    const c   = map[d] || 'secondary';
+                    return '<span class="badge bg-' + c + '-subtle text-' + c + ' border border-' + c
+                        + '-subtle px-2 text-uppercase small">' + d + '</span>';
+                }
+            },
+            {
+                data: null, orderable: false, className: 'text-end',
+                render: function(d, t, row) {
+                    return '<div class="dropdown">'
+                        + '<button class="btn btn-sm btn-outline-secondary dropdown-toggle" '
+                        + 'type="button" data-bs-toggle="dropdown" aria-expanded="false">'
+                        + '<i class="bi bi-gear"></i></button>'
+                        + '<ul class="dropdown-menu dropdown-menu-end">'
+                        + '<li><a class="dropdown-item" href="#" '
+                        + 'onclick="openApplySignatureModal(' + row.document_id + ');return false">'
+                        + '<i class="bi bi-pen me-1"></i>' + (_sw ? 'Tia Saini' : 'Sign') + '</a></li>'
+                        + '</ul></div>';
+                }
             }
         ],
         order: [[3, 'asc']]
     });
 
-    // Initialize Signature History Table
+    // — Signature History table —
     const historyTable = $('#historyTable').DataTable({
+        dom: "<'row'<'col-sm-6'l><'col-sm-6'f>><'row'<'col-12'tr>><'row mt-2'<'col-sm-5'i><'col-sm-7'p>>",
         responsive: true,
         serverSide: true,
         processing: true,
         ajax: {
-            url: '/api/get_signature_history.php',
-            dataSrc: json => {
-                $('#stat-signed-documents').text(json.stats?.signedDocuments || 0);
-                $('#stat-total-history').text(json.recordsTotal);
-                $('#stat-history-count').text(json.recordsTotal + ' records');
+            url: '<?= $api_base ?>/get_signature_history.php',
+            dataSrc: function(json) {
+                const n = json.recordsTotal || 0;
+                $('#stat-signed-documents').text(json.stats?.signedDocuments || n);
+                $('#stat-total-history').text(n);
+                $('#stat-history-count').text(n + ' ' + T.records);
                 return json.data;
             }
         },
         columns: [
-            { 
+            {
                 data: 'document_name',
-                render: (data, t, row) => `<strong>${escapeHtml(data)}</strong><br><small class="text-muted">${escapeHtml(row.document_type || 'N/A')}</small>`
+                render: function(d, t, row) {
+                    return '<strong>' + escHtml(d) + '</strong>'
+                        + '<br><small class="text-muted">' + escHtml(row.document_type || '—') + '</small>';
+                }
             },
-            { 
-                data: 'customer_name',
-                render: data => data ? escapeHtml(data) : '<span class="text-muted">N/A</span>'
-            },
-            { 
+            { data: 'customer_name', render: function(d) { return d ? escHtml(d) : '<span class="text-muted">N/A</span>'; } },
+            {
                 data: 'signed_at',
-                render: data => new Date(data).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit'})
+                render: function(d) {
+                    return d ? new Date(d).toLocaleString(_sw ? 'sw-TZ' : 'en-US',
+                        {month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '—';
+                }
             },
-            { 
-                data: 'ip_address',
-                render: data => `<code class="small">${escapeHtml(data)}</code>`
-            },
-            { 
+            { data: 'ip_address', render: function(d) { return '<code class="small">' + escHtml(d || '—') + '</code>'; } },
+            {
                 data: 'signature_position',
-                render: data => `<span class="badge bg-secondary-subtle text-secondary">${data.replace('_', ' ')}</span>`
+                render: function(d) {
+                    return '<span class="badge bg-secondary-subtle text-secondary small">'
+                        + (d || '—').replace(/_/g, ' ') + '</span>';
+                }
             },
             {
-                data: null,
-                orderable: false,
-                className: 'text-end',
-                render: (data, t, row) => `
-                    <button class="btn btn-sm btn-outline-secondary" onclick="viewSignedDocument(${row.document_id})">
-                        <i class="bi bi-file-earmark-check"></i> View
-                    </button>
-                `
+                data: null, orderable: false, className: 'text-end',
+                render: function(d, t, row) {
+                    return '<div class="dropdown">'
+                        + '<button class="btn btn-sm btn-outline-secondary dropdown-toggle" '
+                        + 'type="button" data-bs-toggle="dropdown">'
+                        + '<i class="bi bi-gear"></i></button>'
+                        + '<ul class="dropdown-menu dropdown-menu-end">'
+                        + '<li><a class="dropdown-item" href="'
+                        + '<?= htmlspecialchars(getUrl("document_library")) ?>?action=download&document_id=' + row.document_id + '">'
+                        + '<i class="bi bi-download me-1"></i>' + (_sw ? 'Pakua Hati' : 'Download Document') + '</a></li>'
+                        + '</ul></div>';
+                }
             }
         ],
         order: [[2, 'desc']]
     });
 
-    // Legal agreement checkbox
+    // Legal agreement toggle for Apply modal
     $('#legalAgreement').on('change', function() {
-        $('#applySignatureBtn').prop('disabled', !this.checked || !selectedSignatureId);
+        $('#applySignatureBtn').prop('disabled', !(this.checked && applySelectedSigId));
     });
 });
 
-// Signature Pad Initialization
-let canvas, ctx;
-let lastX = 0, lastY = 0;
+/* ================================================================
+   Signature Pad (Draw modal)
+================================================================ */
+let canvas, ctx, isDrawing = false, lastX = 0, lastY = 0;
 
 function initSignaturePad() {
-    canvas = document.getElementById('signaturePad');
-    if (!canvas) {
-        console.error('Signature canvas not found');
-        return;
-    }
-    
-    // Remove existing event listeners to prevent duplicates
-    const newCanvas = canvas.cloneNode(true);
-    canvas.parentNode.replaceChild(newCanvas, canvas);
-    canvas = newCanvas;
-    
-    ctx = canvas.getContext('2d');
-    
-    // Set up high-DPI canvas with proper dimensions
+    const orig = document.getElementById('signaturePad');
+    if (!orig) return;
+    // Clone to strip old listeners
+    const fresh = orig.cloneNode(true);
+    orig.parentNode.replaceChild(fresh, orig);
+    canvas = fresh;
+    ctx    = canvas.getContext('2d');
+
     const rect = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    
-    // Set actual canvas size (for drawing)
-    canvas.width = rect.width * dpr;
+    const dpr  = window.devicePixelRatio || 1;
+    canvas.width  = rect.width  * dpr;
     canvas.height = rect.height * dpr;
-    
-    // Scale context to match device pixel ratio
     ctx.scale(dpr, dpr);
-    
-    // Clear canvas with transparent background (NO WHITE FILL for transparency)
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Configure drawing style
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2.5;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    
-    // Mouse events
-    canvas.addEventListener('mousedown', startDrawing);
-    canvas.addEventListener('mousemove', draw);
-    canvas.addEventListener('mouseup', stopDrawing);
-    canvas.addEventListener('mouseleave', stopDrawing);
-    
-    // Touch events for mobile
-    canvas.addEventListener('touchstart', handleTouchStart);
-    canvas.addEventListener('touchmove', handleTouchMove);
-    canvas.addEventListener('touchend', stopDrawing);
-    
-    // Disable save button initially
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth   = 2.5;
+    ctx.lineCap     = 'round';
+    ctx.lineJoin    = 'round';
+
+    canvas.addEventListener('mousedown',  startDraw);
+    canvas.addEventListener('mousemove',  doDraw);
+    canvas.addEventListener('mouseup',    stopDraw);
+    canvas.addEventListener('mouseleave', stopDraw);
+    canvas.addEventListener('touchstart', function(e) { e.preventDefault(); startDraw(e); }, { passive:false });
+    canvas.addEventListener('touchmove',  function(e) { e.preventDefault(); doDraw(e);   }, { passive:false });
+    canvas.addEventListener('touchend',   stopDraw);
+
     $('#saveSignatureBtn').prop('disabled', true);
-    
-    console.log('Signature pad initialized successfully');
 }
 
-function getCoordinates(e) {
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    
-    if (e.touches && e.touches.length > 0) {
-        return {
-            x: (e.touches[0].clientX - rect.left) * scaleX / (window.devicePixelRatio || 1),
-            y: (e.touches[0].clientY - rect.top) * scaleY / (window.devicePixelRatio || 1)
-        };
+function coords(e) {
+    const r  = canvas.getBoundingClientRect();
+    const sx = canvas.width  / r.width;
+    const sy = canvas.height / r.height;
+    const dpr = window.devicePixelRatio || 1;
+    if (e.touches && e.touches.length) {
+        return { x: (e.touches[0].clientX - r.left) * sx / dpr,
+                 y: (e.touches[0].clientY - r.top)  * sy / dpr };
     }
-    
-    return {
-        x: (e.clientX - rect.left) * scaleX / (window.devicePixelRatio || 1),
-        y: (e.clientY - rect.top) * scaleY / (window.devicePixelRatio || 1)
-    };
+    return { x: (e.clientX - r.left) * sx / dpr,
+             y: (e.clientY - r.top)  * sy / dpr };
 }
 
-function startDrawing(e) {
-    e.preventDefault();
-    isDrawing = true;
-    
-    const coords = getCoordinates(e);
-    lastX = coords.x;
-    lastY = coords.y;
-    
-    ctx.beginPath();
-    ctx.moveTo(lastX, lastY);
-}
-
-function draw(e) {
+function startDraw(e) { e.preventDefault(); isDrawing = true; const p = coords(e); lastX = p.x; lastY = p.y; ctx.beginPath(); ctx.moveTo(lastX, lastY); }
+function doDraw(e) {
     if (!isDrawing) return;
     e.preventDefault();
-    
-    const coords = getCoordinates(e);
-    
-    ctx.beginPath();
-    ctx.moveTo(lastX, lastY);
-    ctx.lineTo(coords.x, coords.y);
-    ctx.stroke();
-    
-    lastX = coords.x;
-    lastY = coords.y;
-    
-    // Enable save button
+    const p = coords(e);
+    ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y); ctx.stroke();
+    lastX = p.x; lastY = p.y;
     $('#saveSignatureBtn').prop('disabled', false);
 }
-
-function stopDrawing(e) {
-    if (isDrawing) {
-        e.preventDefault();
-        isDrawing = false;
-        ctx.beginPath();
-    }
-}
-
-function handleTouchStart(e) {
-    e.preventDefault();
-    startDrawing(e);
-}
-
-function handleTouchMove(e) {
-    e.preventDefault();
-    draw(e);
-}
+function stopDraw(e) { if (isDrawing) { e.preventDefault(); isDrawing = false; ctx.beginPath(); } }
 
 function clearSignature() {
     if (!canvas || !ctx) return;
-    // Clear with transparency instead of white fill
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     $('#saveSignatureBtn').prop('disabled', true);
 }
 
+/* ================================================================
+   Modal openers
+================================================================ */
 function openUploadSignatureModal() {
-    const modal = new bootstrap.Modal(document.getElementById('uploadSignatureModal'));
-    modal.show();
+    new bootstrap.Modal(document.getElementById('uploadSignatureModal')).show();
 }
-
 function openDrawSignatureModal() {
-    const modal = new bootstrap.Modal(document.getElementById('drawSignatureModal'));
-    modal.show();
-    // Initialize signature pad after modal is fully shown
-    setTimeout(() => {
-        initSignaturePad();
-    }, 300);
+    new bootstrap.Modal(document.getElementById('drawSignatureModal')).show();
+    setTimeout(initSignaturePad, 320);
 }
 
-// Upload Signature Form
+function selectSignature(id) {
+    selectedSignatureId = id;
+    Swal.fire({
+        icon: 'success',
+        title: T.sigSelected,
+        text: _sw ? 'Unaweza sasa kutia saini hati.' : 'You can now use it to sign documents.',
+        timer: 2000,
+        showConfirmButton: false,
+        toast: true,
+        position: 'top-end'
+    });
+}
+
+function openApplySignatureModal(documentId) {
+    $('#applyDocumentId').val(documentId);
+    $('#applySignatureId').val('');
+    $('#legalAgreement').prop('checked', false);
+    $('#applySignatureBtn').prop('disabled', true);
+    applySelectedSigId = null;
+
+    loadSignaturePickerInto('#signatureSelection', function(id) {
+        applySelectedSigId = id;
+        $('#applySignatureId').val(id);
+        $('#applySignatureBtn').prop('disabled', !$('#legalAgreement').is(':checked'));
+    });
+
+    new bootstrap.Modal(document.getElementById('applySignatureModal')).show();
+}
+
+/* ================================================================
+   Upload Signature Form
+================================================================ */
 $('#uploadSignatureForm').on('submit', function(e) {
     e.preventDefault();
-    const formData = new FormData(this);
     const btn = $('#btnUploadSignature');
-    btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Uploading...');
-
+    btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>' + T.uploading);
     $.ajax({
-        url: '/upload_signature.php',
+        url: '<?= $api_base ?>/document/upload_signature.php',
         type: 'POST',
-        data: formData,
+        data: new FormData(this),
         processData: false,
         contentType: false,
         dataType: 'json',
         success: function(res) {
             if (res.success) {
-                const modal = bootstrap.Modal.getInstance(document.getElementById('uploadSignatureModal'));
-                if (modal) modal.hide();
+                bootstrap.Modal.getInstance(document.getElementById('uploadSignatureModal'))?.hide();
                 $('#signaturesTable').DataTable().ajax.reload();
-                showAlert('success', 'Signature uploaded successfully!');
                 $('#uploadSignatureForm')[0].reset();
+                swalToast('success', T.uploadOk);
             } else {
-                showAlert('error', res.message || 'Failed to upload signature');
+                swalToast('error', res.message || T.uploadFail);
             }
         },
-        error: function(xhr, status, error) {
-            console.error('Upload error:', xhr.responseText);
-            let errorMsg = 'Failed to upload signature';
-            try {
-                const res = JSON.parse(xhr.responseText);
-                errorMsg = res.message || errorMsg;
-            } catch(e) {}
-            showAlert('error', errorMsg);
-        },
-        complete: () => btn.prop('disabled', false).html('Upload Signature')
+        error: function() { swalToast('error', T.uploadFail); },
+        complete: function() {
+            btn.prop('disabled', false).html(
+                '<i class="bi bi-cloud-upload me-1"></i>' + (_sw ? 'Pakia' : 'Upload'));
+        }
     });
 });
 
-// Draw Signature Form
+/* ================================================================
+   Draw Signature Form
+================================================================ */
 $('#drawSignatureForm').on('submit', function(e) {
     e.preventDefault();
-    
-    const canvas = document.getElementById('signaturePad');
-    if (!canvas) {
-        showAlert('error', 'Signature canvas not found');
-        return;
-    }
-    
-    const signatureData = canvas.toDataURL('image/png');
-    
+    const cvs = document.getElementById('signaturePad');
+    if (!cvs) { swalToast('error', _sw ? 'Canvas haikupatikana.' : 'Canvas not found.'); return; }
     const btn = $('#saveSignatureBtn');
-    btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Saving...');
-
+    btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>' + T.saving);
     $.ajax({
-        url: '/ajax/save_drawn_signature.php',
+        url: '<?= $ajax_base ?>/save_drawn_signature.php',
         type: 'POST',
-        data: { signature_data: signatureData },
+        data: { signature_data: cvs.toDataURL('image/png') },
         dataType: 'json',
         success: function(res) {
             if (res.success) {
-                const modal = bootstrap.Modal.getInstance(document.getElementById('drawSignatureModal'));
-                if (modal) modal.hide();
+                bootstrap.Modal.getInstance(document.getElementById('drawSignatureModal'))?.hide();
                 $('#signaturesTable').DataTable().ajax.reload();
-                showAlert('success', 'Signature saved successfully!');
                 clearSignature();
+                swalToast('success', T.drawOk);
             } else {
-                showAlert('error', res.message || 'Failed to save signature');
+                swalToast('error', res.message || T.drawFail);
             }
         },
-        error: function(xhr, status, error) {
-            console.error('Save error:', xhr.responseText);
-            let errorMsg = 'Failed to save signature';
-            try {
-                const res = JSON.parse(xhr.responseText);
-                errorMsg = res.message || errorMsg;
-            } catch(e) {}
-            showAlert('error', errorMsg);
-        },
+        error: function() { swalToast('error', T.drawFail); },
         complete: function() {
-            btn.prop('disabled', false).html('Save Signature');
+            btn.prop('disabled', false).html(
+                '<i class="bi bi-floppy me-1"></i>' + (_sw ? 'Hifadhi Saini' : 'Save Signature'));
         }
     });
 });
 
-function selectSignature(signatureId) {
-    selectedSignatureId = signatureId;
-    showAlert('success', 'Signature selected! You can now use it to sign documents.');
-}
+/* ================================================================
+   Apply Signature Form (from Pending tab)
+================================================================ */
+let applySelectedSigId = null;
 
-function signDocument(documentId, signatureDocId) {
-    if (!selectedSignatureId) {
-        showAlert('warning', 'Please select a signature first from "My Signatures" tab.');
-        return;
-    }
-    
-    $('#applyDocumentId').val(documentId);
-    $('#applySignatureId').val(selectedSignatureId);
-    
-    // Load user signatures for selection
-    $.get('/ajax/get_user_signatures_list.php', function(signatures) {
-        let html = '';
-        signatures.forEach(sig => {
-            const selected = sig.id == selectedSignatureId ? 'border-primary' : '';
-            html += `<div class="col-md-4 mb-2">
-                <div class="card signature-select-card ${selected}" onclick="selectSignatureForDoc(${sig.id})" style="cursor: pointer;">
-                    <div class="card-body text-center p-2">
-                        ${sig.thumbnail_path ? 
-                            `<img src="${sig.thumbnail_path}" style="max-height: 50px; max-width: 100%;">` :
-                            `<i class="bi bi-signature fs-3"></i>`
-                        }
-                        <small class="d-block mt-1">${sig.signature_type}</small>
-                    </div>
-                </div>
-            </div>`;
-        });
-        $('#signatureSelection').html(html);
-    });
-    
-    $('#applySignatureModal').modal('show');
-}
-
-function selectSignatureForDoc(sigId) {
-    selectedSignatureId = sigId;
-    $('#applySignatureId').val(sigId);
-    $('.signature-select-card').removeClass('border-primary');
-    $(event.currentTarget).addClass('border-primary');
-    
-    if ($('#legalAgreement').is(':checked')) {
-        $('#applySignatureBtn').prop('disabled', false);
-    }
-}
-
-// Apply Signature Form
 $('#applySignatureForm').on('submit', function(e) {
     e.preventDefault();
-    const formData = $(this).serialize();
     const btn = $('#applySignatureBtn');
-    btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Applying...');
-
-    $.post('/ajax/apply_signature.php', formData, function(res) {
-        if (res.success) {
-            $('#applySignatureModal').modal('hide');
-            $('#pendingTable').DataTable().ajax.reload();
-            $('#historyTable').DataTable().ajax.reload();
-            showAlert('success', 'Signature applied successfully!');
-        } else {
-            showAlert('error', res.message);
-        }
-    }, 'json').fail(() => showAlert('error', 'Failed to apply signature'))
-    .always(() => btn.prop('disabled', false).html('Apply Signature'));
-});
-
-function confirmDeleteSignature(id) {
-    if (confirm('Are you sure you want to delete this signature? This action cannot be undone.')) {
-        $.post('/ajax/delete_signature.php', { id: id }, function(res) {
-            if (res.success) {
-                $('#signaturesTable').DataTable().ajax.reload();
-                showAlert('success', 'Signature deleted successfully');
-            } else {
-                showAlert('error', res.message);
-            }
-        }, 'json');
-    }
-}
-
-function previewDocument(docId) {
-    window.open('document_preview.php?id=' + docId, '_blank');
-}
-
-function viewSignedDocument(docId) {
-    window.open('signed_document.php?id=' + docId, '_blank');
-}
-
-function getSignatureTypeIcon(type) {
-    const icons = {
-        uploaded: 'upload',
-        drawn: 'pencil',
-        typed: 'fonts'
-    };
-    return icons[type] || 'signature';
-}
-
-function escapeHtml(text) {
-    return text ? $('<div>').text(text).html() : '';
-}
-
-function showAlert(type, message) {
-    const alertClass = type === 'success' ? 'alert-success' : (type === 'warning' ? 'alert-warning' : 'alert-danger');
-    const alertId = 'alert-' + Date.now();
-    const alert = `<div id="${alertId}" class="alert ${alertClass} alert-dismissible fade show" role="alert" style="position: fixed; top: 20px; right: 20px; z-index: 1060; min-width: 300px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-        <div class="d-flex align-items-center">
-            <i class="bi bi-${type === 'success' ? 'check-circle' : (type === 'warning' ? 'exclamation-triangle' : 'x-circle')} me-2"></i>
-            <div>${message}</div>
-        </div>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>`;
-    $('body').append(alert);
-    setTimeout(() => $(`#${alertId}`).fadeOut(() => $(`#${alertId}`).remove()), 5000);
-}
-
-// Sign Document Modal Logic
-let currentStep = 1;
-let selectedDocId = null;
-let selectedSignatureForSign = null;
-
-function openSignDocumentModal() {
-    currentStep = 1;
-    selectedDocId = null;
-    selectedSignatureForSign = null;
-    updateStepUI();
-    $('#signDocumentModal').modal('show');
-}
-
-function updateStepUI() {
-    $('.step-content').hide();
-    $(`#step${currentStep}-content`).show();
-    
-    $('.step-item').removeClass('active completed');
-    for(let i=1; i<currentStep; i++) $(`#step${i}-indicator`).addClass('completed');
-    $(`#step${currentStep}-indicator`).addClass('active');
-
-    // Button states
-    $('#btnPrevStep').toggle(currentStep > 1 && currentStep < 3);
-    $('#btnNextStep').toggle(currentStep < 2);
-    $('#btnApplySignature').toggle(currentStep === 2);
-    
-    $('#btnNextStep').prop('disabled', !selectedDocId);
-    $('#btnApplySignature').prop('disabled', !selectedSignatureForSign || !$('#finalLegalAgreement').is(':checked'));
-}
-
-function nextStep() {
-    if (currentStep < 3) {
-        currentStep++;
-        if (currentStep === 2) loadSignaturesForSelect();
-        updateStepUI();
-    }
-}
-
-function previousStep() {
-    if (currentStep > 1) {
-        currentStep--;
-        updateStepUI();
-    }
-}
-
-function loadDocuments() {
-    const search = $('#docSearchInput').val();
-    const category = $('#docCategoryFilter').val();
-    const tbody = $('#documentsSelectBody');
-    
-    tbody.html('<tr><td colspan="5" class="text-center"><div class="spinner-border spinner-border-sm text-primary"></div> Searching...</td></tr>');
-    
-    $.get('api/get_documents.php', { search: { value: search }, category_id: category, length: 100 }, function(res) {
-        if (!res.data || res.data.length === 0) {
-            tbody.html('<tr><td colspan="5" class="text-center text-muted">No documents found</td></tr>');
-            return;
-        }
-        
-        let html = '';
-        res.data.forEach(doc => {
-            html += `<tr onclick="selectDocument(${doc.id}, '${escapeHtml(doc.document_name)}')" style="cursor: pointer;">
-                <td>
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="docSelect" id="doc_${doc.id}" value="${doc.id}" ${selectedDocId == doc.id ? 'checked' : ''}>
-                    </div>
-                </td>
-                <td><strong>${escapeHtml(doc.document_name)}</strong></td>
-                <td>${escapeHtml(doc.category_name || 'General')}</td>
-                <td>${formatFileSize(doc.file_size)}</td>
-                <td>${new Date(doc.uploaded_at).toLocaleDateString()}</td>
-            </tr>`;
-        });
-        tbody.html(html);
-    });
-}
-
-function selectDocument(id, name) {
-    selectedDocId = id;
-    $(`#doc_${id}`).prop('checked', true);
-    $('#selectedDocName').text(name);
-    $('#btnNextStep').prop('disabled', false);
-}
-
-function loadSignaturesForSelect() {
-    const grid = $('#signatureSelectionGrid');
-    grid.html('<div class="col-12 text-center text-muted"><i class="bi bi-hourglass-split"></i> Loading signatures...</div>');
-    
-    $.get('/ajax/get_user_signatures_list.php', function(signatures) {
-        if (!signatures || signatures.length === 0) {
-            grid.html('<div class="col-12 text-center p-4"><p>No signatures found.</p><button class="btn btn-sm btn-outline-primary" onclick="$(\'#signDocumentModal\').modal(\'hide\'); openDrawSignatureModal();">Draw One Now</button></div>');
-            return;
-        }
-        
-        let html = '';
-        signatures.forEach(sig => {
-            const selected = sig.id == selectedSignatureForSign ? 'border-primary' : '';
-            html += `<div class="col-6 col-md-4 mb-3">
-                <div class="card h-100 signature-select-card ${selected}" onclick="finalSelectSignature(${sig.id})" style="cursor: pointer; border-width: 2px;">
-                    <div class="card-body text-center p-2">
-                        ${sig.thumbnail_path ? 
-                            `<img src="${sig.thumbnail_path}" style="max-height: 80px; max-width: 100%; object-fit: contain;">` :
-                            `<div class="py-3"><i class="bi bi-signature fs-1 text-muted"></i></div>`
-                        }
-                        <div class="mt-2 small text-uppercase fw-bold">${sig.signature_type}</div>
-                    </div>
-                </div>
-            </div>`;
-        });
-        grid.html(html);
-    });
-}
-
-function finalSelectSignature(id) {
-    selectedSignatureForSign = id;
-    $('.signature-select-card').removeClass('border-primary');
-    $(event.currentTarget).addClass('border-primary');
-    $('#btnApplySignature').prop('disabled', !$('#finalLegalAgreement').is(':checked'));
-}
-
-$('#finalLegalAgreement').on('change', function() {
-    $('#btnApplySignature').prop('disabled', !selectedSignatureForSign || !this.checked);
-});
-
-// Quick Upload Form
-$('#quickUploadForm').on('submit', function(e) {
-    e.preventDefault();
-    const formData = new FormData(this);
-    const btn = $('#btnQuickUpload');
-    btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Uploading...');
-
+    btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>' + T.applying);
     $.ajax({
-        url: '/ajax/quick_upload_document.php',
+        url: '<?= $api_base ?>/document/apply_signature.php',
         type: 'POST',
-        data: formData,
-        processData: false,
-        contentType: false,
+        data: $(this).serialize(),
+        dataType: 'json',
         success: function(res) {
             if (res.success) {
-                showAlert('success', 'Document uploaded successfully!');
-                selectDocument(res.document_id, res.document_name);
-                nextStep();
+                bootstrap.Modal.getInstance(document.getElementById('applySignatureModal'))?.hide();
+                $('#pendingTable').DataTable().ajax.reload();
+                $('#historyTable').DataTable().ajax.reload();
+                swalToast('success', T.applyOk);
             } else {
-                showAlert('error', res.message);
+                swalToast('error', res.message || T.applyFail);
             }
         },
-        error: () => showAlert('error', 'Upload failed'),
-        complete: () => btn.prop('disabled', false).html('<i class="bi bi-cloud-upload"></i> Upload & Continue')
+        error: function() { swalToast('error', T.applyFail); },
+        complete: function() {
+            btn.prop('disabled', false).html(
+                '<i class="bi bi-pen me-1"></i>' + (_sw ? 'Tia Saini' : 'Apply Signature'));
+        }
     });
 });
 
-function applySignatureToDocument() {
-    const position = $('#finalSignaturePosition').val();
-    
-    currentStep = 3;
-    updateStepUI();
-    $('#processingIndicator').show();
-    $('#downloadReady').hide();
-    
-    $.post('/ajax/apply_signature.php', {
-        document_id: selectedDocId,
-        signature_id: selectedSignatureForSign,
-        signature_position: position
-    }, function(res) {
-        if (res.success) {
-            setTimeout(() => {
-                $('#processingIndicator').hide();
-                $('#downloadReady').show();
-                $('#signedFileName').text($('#selectedDocName').text());
-                
-                // Set up download button
-                $('#btnDownloadSigned').off('click').on('click', function() {
-                    window.location.href = `document_library.php?action=download&document_id=${selectedDocId}`;
-                });
-                
-                showAlert('success', 'Signature applied successfully!');
-            }, 1500);
-        } else {
-            showAlert('error', res.message);
-            previousStep();
-        }
-    }, 'json').fail(() => {
-        showAlert('error', 'Failed to apply signature');
-        previousStep();
+/* ================================================================
+   Delete Signature (§UI-4 — SweetAlert2 confirm)
+================================================================ */
+function confirmDeleteSignature(id) {
+    Swal.fire({
+        icon: 'warning',
+        title: T.deleteTitle,
+        text: T.deleteConfirm,
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: T.deleteYes,
+        cancelButtonText: T.deleteNo
+    }).then(function(result) {
+        if (!result.isConfirmed) return;
+        $.ajax({
+            url: '<?= $api_base ?>/document/delete_signature.php',
+            type: 'POST',
+            data: { id: id },
+            dataType: 'json',
+            success: function(res) {
+                if (res.success) {
+                    $('#signaturesTable').DataTable().ajax.reload();
+                    swalToast('success', T.deletedOk);
+                } else {
+                    swalToast('error', res.message || T.deleteFail);
+                }
+            },
+            error: function() { swalToast('error', T.deleteFail); }
+        });
     });
 }
 
+/* ================================================================
+   Signature Picker (shared between Apply modal & Sign wizard)
+================================================================ */
+function loadSignaturePickerInto(containerSelector, onSelect) {
+    const $c = $(containerSelector);
+    $c.html('<div class="col-12 text-center text-muted py-3">'
+        + '<div class="spinner-border spinner-border-sm me-1" role="status"></div>'
+        + (_sw ? 'Inapakia saini...' : 'Loading signatures...') + '</div>');
+
+    $.getJSON('<?= $api_base ?>/document/get_user_signatures_list.php', function(sigs) {
+        if (!sigs || !sigs.length) {
+            $c.html('<div class="col-12 text-center p-4">'
+                + '<p class="text-muted">' + T.noSigs + '</p>'
+                + '<button class="btn btn-sm btn-outline-primary" '
+                + 'onclick="bootstrap.Modal.getInstance(document.querySelector(\'.modal.show\'))?.hide();'
+                + 'openDrawSignatureModal()">'
+                + '<i class="bi bi-pencil me-1"></i>' + T.drawOne + '</button></div>');
+            return;
+        }
+        let html = '';
+        sigs.forEach(function(sig) {
+            const img = sig.thumbnail_path || sig.file_path;
+            html += '<div class="col-6 col-md-4 col-lg-3 mb-2">'
+                + '<div class="card sig-card" onclick="pickSig(this,' + sig.id + ',\'' + containerSelector + '\')">'
+                + '<div class="card-body text-center p-2">'
+                + (img ? '<img src="' + escHtml(img) + '" style="max-height:70px;max-width:100%;object-fit:contain">'
+                       : '<div class="py-2"><i class="bi bi-' + sigTypeIcon(sig.signature_type) + ' fs-1 text-muted"></i></div>')
+                + '<div class="mt-1 small text-uppercase fw-semibold">' + escHtml(sig.signature_type) + '</div>'
+                + '</div></div></div>';
+        });
+        $c.html(html);
+        // Store callback reference on the container
+        $c.data('onselect', onSelect);
+    }).fail(function() {
+        $c.html('<div class="col-12 text-center text-danger p-3">'
+            + (_sw ? 'Imeshindwa kupakia saini.' : 'Failed to load signatures.') + '</div>');
+    });
+}
+
+function pickSig(el, id, containerSelector) {
+    $(containerSelector + ' .sig-card').removeClass('selected');
+    $(el).addClass('selected');
+    const cb = $(containerSelector).data('onselect');
+    if (cb) cb(id);
+}
+
+/* ================================================================
+   Helpers
+================================================================ */
+function sigTypeIcon(type) {
+    const m = { uploaded:'upload', drawn:'pencil', typed:'fonts' };
+    return m[type] || 'vector-pen';
+}
+function escHtml(s) {
+    return s ? $('<div>').text(String(s)).html() : '';
+}
+function fmtSize(bytes) {
+    if (!bytes) return '—';
+    if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
+    if (bytes >= 1024)    return (bytes / 1024).toFixed(1) + ' KB';
+    return bytes + ' B';
+}
+function swalToast(icon, msg) {
+    Swal.fire({
+        icon: icon,
+        title: msg,
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3500,
+        timerProgressBar: true
+    });
+}
 </script>
 
-<style>
-.custom-stat-card {
-    background-color: #d1e7dd !important;
-    border-color: #badbcc !important;
-    border-radius: 12px !important;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    transition: all 0.2s ease-in-out;
-}
-.custom-stat-card:hover { 
-    transform: translateY(-5px); 
-    box-shadow: 0 8px 15px rgba(0,0,0,0.1); 
-}
-
-.custom-stat-card h4, 
-.custom-stat-card p, 
-.custom-stat-card i {
-    color: black !important;
-    text-shadow: 1px 1px 3px rgba(255, 255, 255, 0.8);
-}
-
-.custom-table-header { 
-    border-bottom: 2px solid #e9ecef; 
-}
-
-.signature-preview {
-    object-fit: contain;
-}
-
-.signature-placeholder {
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
-}
-
-#signaturePad {
-    touch-action: none;
-}
-
-.signature-select-card {
-    transition: all 0.2s;
-    border: 2px solid transparent;
-}
-
-.signature-select-card:hover {
-    border-color: #0d6efd !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.signature-select-card.border-primary {
-    border-color: #0d6efd !important;
-    background-color: #e7f1ff;
-}
-
-@media (max-width: 768px) {
-    #signaturePad {
-        width: 100% !important;
-        height: 150px !important;
-    }
-}
-
-/* Step Wizard Styles */
-.step-item {
-    text-align: center;
-    position: relative;
-    z-index: 1;
-    flex: 1;
-}
-.step-circle {
-    width: 35px;
-    height: 35px;
-    border-radius: 50%;
-    background: #e9ecef;
-    color: #6c757d;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 8px;
-    font-weight: bold;
-    border: 2px solid #dee2e6;
-    transition: all 0.3s;
-}
-.step-label {
-    font-size: 0.85rem;
-    color: #6c757d;
-    font-weight: 500;
-}
-.step-line {
-    flex: 1;
-    height: 2px;
-    background: #e9ecef;
-    margin-top: -25px;
-}
-.step-item.active .step-circle {
-    background: #0d6efd;
-    color: white;
-    border-color: #0d6efd;
-    box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.25);
-}
-.step-item.active .step-label { color: #0d6efd; }
-.step-item.completed .step-circle {
-    background: #198754;
-    color: white;
-    border-color: #198754;
-}
-.step-item.completed .step-circle::after {
-    content: '\F633';
-    font-family: bi-bootstrap-icons;
-    font-size: 1.2rem;
-}
-.step-item.completed .step-circle { content: ''; } /* Hide number when completed */
-.step-item.completed .step-label { color: #198754; }
-
-.signature-select-card {
-    transition: transform 0.2s, border-color 0.2s;
-}
-.signature-select-card:hover { transform: scale(1.02); }
-.signature-select-card.border-primary { background-color: #f8fbff; }
-</style>
-
 <?php
-// Include the footer
-include("footer.php");
-
-// Flush the buffer
+include 'footer.php';
 ob_end_flush();
 ?>

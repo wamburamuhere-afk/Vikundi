@@ -16,9 +16,11 @@ echo '</footer>';
 <!-- Global Modal Close on Success (Only for ACTIONS, not for DATA FETCHING) -->
 <script>
 $(document).ajaxSuccess(function(event, xhr, settings, data) {
-    // Only close modals for POST success (usually saves/deletes) 
-    // AND NOT for search/fetch APIs like 'get_member_dependents'
-    if (settings.type === "POST" && data && data.success === true) {
+    // Close the open modal on POST success UNLESS the call opted out.
+    // Pages that handle modal progression internally (wizards, multi-step
+    // forms) pass skipModalClose: true in their $.ajax() options so the
+    // global handler leaves the modal alone.
+    if (settings.type === "POST" && data && data.success === true && !settings.skipModalClose) {
         if (!settings.url.includes('get_member_dependents') && !settings.url.includes('search_')) {
             const openModal = document.querySelector('.modal.show');
             if (openModal) {
