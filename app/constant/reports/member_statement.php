@@ -312,8 +312,7 @@ $total_expenses = array_sum(array_column($expenses, 'amount'));
         display: none !important;
     }
     
-    @page { margin: 1cm; }
-    body { padding-top: 0 !important; margin: 0 !important; background: white !important; font-size: 10px; color: black !important; padding-bottom: 55px; }
+    body { padding-top: 0 !important; margin: 0 !important; background: white !important; font-size: 10px; color: black !important; }
     .container-fluid, .container { width: 100% !important; max-width: none !important; padding: 0 15px !important; margin: 0 !important; }
 
     /* Safety Zone Logic */

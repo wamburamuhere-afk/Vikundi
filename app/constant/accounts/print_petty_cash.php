@@ -62,8 +62,8 @@ $current_user_role = $isSwahili ? ($cu['role_name_sw'] ?: $cu['role_name']) : $c
     <meta charset="UTF-8">
     <title>Voucher - <?= $v['voucher_no'] ?></title>
     <style>
-        @page { margin: 15mm; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #fff; padding: 0; color: #000; -webkit-print-color-adjust: exact; }
+        /* @page margin controlled by includes/print_footer_css.php (canonical 10mm 8mm 16mm 8mm) */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #fff; padding: 20px 20px 0 20px; color: #000; -webkit-print-color-adjust: exact; }
         .voucher-box { border: 1px solid #000; padding: 40px; margin: 0 auto; width: 100%; box-sizing: border-box; position: relative; display: flex; flex-direction: column; }
         .header { text-align: center; border-bottom: 3px double #000; padding-bottom: 20px; margin-bottom: 40px; }
         .header h1 { margin: 0; font-size: 32px; text-transform: uppercase; color: #000; }
@@ -80,12 +80,10 @@ $current_user_role = $isSwahili ? ($cu['role_name_sw'] ?: $cu['role_name']) : $c
         .sign-label { font-weight: bold; text-transform: uppercase; font-size: 13px; margin-bottom: 5px; }
         .sign-name { font-size: 14px; color: #444; }
         
-        @media print { 
-            .no-print { display: none !important; } 
+        @media print {
+            .no-print { display: none !important; }
             .voucher-box { border: 1px solid #000; padding: 15px; }
-            body { padding: 0; margin-bottom: 80px; }
-            .print-footer { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; z-index: 1000; }
-            .d-print-block { display: block !important; }
+            body { margin: 0 !important; }
         }
 
         @media print and (orientation: landscape) {
@@ -109,7 +107,6 @@ $current_user_role = $isSwahili ? ($cu['role_name_sw'] ?: $cu['role_name']) : $c
         .group-name { color: #0d6efd; text-transform: uppercase; font-weight: 800; font-size: 22px; margin-bottom: 2px; }
         .report-title { color: #000; text-transform: uppercase; font-weight: 900; font-size: 18px; display: inline-block; }
         
-        /* print footer styles injected via includes/print_footer_css.php below */
     </style>
 </head>
 <body>

@@ -246,8 +246,7 @@ $trend_values = array_column($trend_data, 'total');
 
 <style>
     @media print {
-        @page { margin: 1cm; }
-        body { background: white !important; font-size: 10px; padding-bottom: 40px; }
+        body { background: white !important; font-size: 10px; }
         .card { border: 1px solid #ddd !important; box-shadow: none !important; margin-bottom: 10px !important; page-break-inside: avoid; }
         .card-body { padding: 10px !important; }
         .fs-4 { font-size: 1rem !important; }

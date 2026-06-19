@@ -232,8 +232,7 @@ $latest_members = $pdo->query("
 
 <style>
     @media print {
-        @page { margin: 1cm; }
-        body { background: white !important; font-size: 10px; padding-bottom: 55px; }
+        body { background: white !important; font-size: 10px; }
         .card { border: 1px solid #ddd !important; box-shadow: none !important; margin-bottom: 10px !important; page-break-inside: avoid; }
         .card-body { padding: 10px !important; }
         .fs-3 { font-size: 1.1rem !important; }

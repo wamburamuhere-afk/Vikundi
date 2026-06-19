@@ -1512,10 +1512,7 @@ function togglePasswordAdmin(fieldId) {
         display: table-footer-group !important;
     }
 
-    /* VERY GENEROUS BOTTOM MARGIN */
-    @page {
-        margin: 1.5cm 1.5cm 2.5cm 1.5cm; 
-    }
+    /* @page margin controlled by includes/print_footer_css.php (canonical 10mm 8mm 16mm 8mm) */
     
     /* FLEXIBLE TABLE */
     .table-responsive {
