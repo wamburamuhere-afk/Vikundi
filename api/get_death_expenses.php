@@ -9,39 +9,72 @@ $start = $_GET['start'] ?? 0;
 $length = $_GET['length'] ?? 10;
 $search_value = $_GET['search']['value'] ?? '';
 
+// Filter inputs (from the filter form on expenses.php)
+$f_status = isset($_GET['f_status']) ? trim($_GET['f_status']) : '';
+$f_year   = (isset($_GET['f_year'])   && $_GET['f_year']   !== '') ? (int)$_GET['f_year']   : 0;
+$f_month  = (isset($_GET['f_month'])  && $_GET['f_month']  !== '') ? (int)$_GET['f_month']  : 0;
+$f_member = (isset($_GET['f_member']) && $_GET['f_member'] !== '') ? (int)$_GET['f_member'] : 0;
+
 try {
-    $where = "WHERE (c.first_name LIKE :q OR c.last_name LIKE :q OR d.deceased_name LIKE :q OR (d.phone_number IS NOT NULL AND d.phone_number LIKE :q))";
+    // Base text search (DataTables search box)
+    $conditions = ["(c.first_name LIKE :q OR c.last_name LIKE :q OR d.deceased_name LIKE :q OR (d.phone_number IS NOT NULL AND d.phone_number LIKE :q))"];
     $params = ['q' => "%$search_value%"];
 
-    // Count All (Total records in table that have valid members)
+    // Dropdown filters
+    $allowed_status = ['pending', 'reviewed', 'approved', 'rejected', 'inactive'];
+    if ($f_status !== '' && in_array($f_status, $allowed_status, true)) {
+        $conditions[] = "d.status = :f_status";
+        $params['f_status'] = $f_status;
+    }
+    if ($f_year > 0) {
+        $conditions[] = "YEAR(d.expense_date) = :f_year";
+        $params['f_year'] = $f_year;
+    }
+    if ($f_month > 0) {
+        $conditions[] = "MONTH(d.expense_date) = :f_month";
+        $params['f_month'] = $f_month;
+    }
+    if ($f_member > 0) {
+        $conditions[] = "d.member_id = :f_member";
+        $params['f_member'] = $f_member;
+    }
+
+    $where = "WHERE " . implode(" AND ", $conditions);
+
+    // Count All (total records in the table that have valid members)
     $stmt_total = $pdo->query("SELECT COUNT(*) FROM death_expenses d JOIN customers c ON d.member_id = c.customer_id");
     $recordsTotal = (int)$stmt_total->fetchColumn();
 
-    // Count Filtered (Records matching search)
+    // Count Filtered (records matching search + dropdown filters)
     $stmt_filtered = $pdo->prepare("SELECT COUNT(*) FROM death_expenses d JOIN customers c ON d.member_id = c.customer_id $where");
     $stmt_filtered->execute($params);
     $recordsFiltered = (int)$stmt_filtered->fetchColumn();
 
     // Data query
-    $sql = "SELECT d.*, CONCAT(c.first_name, ' ', c.last_name) as member_name 
-            FROM death_expenses d 
-            JOIN customers c ON d.member_id = c.customer_id 
-            $where 
-            ORDER BY d.created_at DESC 
+    $sql = "SELECT d.*, CONCAT(c.first_name, ' ', c.last_name) as member_name
+            FROM death_expenses d
+            JOIN customers c ON d.member_id = c.customer_id
+            $where
+            ORDER BY d.created_at DESC
             LIMIT :start, :length";
-            
+
     $stmt = $pdo->prepare($sql);
-    $stmt->bindValue(':q', "%$search_value%", PDO::PARAM_STR);
+    foreach ($params as $key => $value) {
+        $stmt->bindValue(':' . $key, $value);
+    }
     $stmt->bindValue(':start', (int)$start, PDO::PARAM_INT);
     $stmt->bindValue(':length', (int)$length === -1 ? 999999 : (int)$length, PDO::PARAM_INT);
     $stmt->execute();
     $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Totals
-    $stats_stmt = $pdo->query("SELECT SUM(amount) as totalAmount, COUNT(*) as count FROM death_expenses");
-    $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
+    // Filtered total amount — so the "Total Assistance" card matches the
+    // currently filtered rows (not the whole table).
+    $sum_stmt = $pdo->prepare("SELECT COALESCE(SUM(d.amount), 0) FROM death_expenses d JOIN customers c ON d.member_id = c.customer_id $where");
+    $sum_stmt->execute($params);
+    $totalAmount = $sum_stmt->fetchColumn() ?: 0;
 
-    $month_stmt = $pdo->query("SELECT SUM(amount) FROM death_expenses WHERE MONTH(expense_date) = MONTH(CURRENT_DATE) AND YEAR(expense_date) = YEAR(CURRENT_DATE)");
+    // "This month" total is always the current calendar month (independent of filters).
+    $month_stmt = $pdo->query("SELECT COALESCE(SUM(amount), 0) FROM death_expenses WHERE MONTH(expense_date) = MONTH(CURRENT_DATE) AND YEAR(expense_date) = YEAR(CURRENT_DATE)");
     $monthTotal = $month_stmt->fetchColumn() ?: 0;
 
     echo json_encode([
@@ -49,7 +82,7 @@ try {
         'recordsTotal' => intval($recordsTotal),
         'recordsFiltered' => intval($recordsFiltered),
         'data' => $data,
-        'totalAmount' => $stats['totalAmount'] ?: 0,
+        'totalAmount' => $totalAmount,
         'monthTotal' => $monthTotal
     ]);
 } catch (Exception $e) {
