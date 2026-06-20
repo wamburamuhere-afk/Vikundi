@@ -55,18 +55,10 @@ $total_all = $stmt_total_all->fetchColumn() ?? 0;
 ?>
 
 <div class="container-fluid px-0 px-md-3">
-    <!-- 1. PRINT HEADER (Visible only during print) -->
-    <div class="d-none d-print-block print-header mb-4 text-center">
-        <div class="border-bottom pb-4">
-            <div class="mb-3">
-                <img src="<?= !empty($logo_base64) ? $logo_base64 : getUrl('assets/images/') . $group_logo ?>" alt="Logo" style="height: 100px; width: auto; object-fit: contain;">
-            </div>
-            <h2 class="fw-bold mb-1" style="color: #0d6efd !important; text-transform: uppercase;">
-                <?= htmlspecialchars($group_name) ?>
-            </h2>
-            <h3 class="fw-bold mb-2 text-dark" style="text-transform: uppercase;"><?= $report_title ?></h3>
-            <p class="mb-0 small text-muted text-uppercase"><?= $is_sw ? 'Ripoti Rasmi ya Mfumo' : 'Official System Report' ?></p>
-        </div>
+    <?php PrintHeader::css(); ?>
+    <!-- PRINT HEADER (Visible only during print) -->
+    <div class="d-none d-print-block">
+        <?php PrintHeader::render($pdo, $report_title ?? ($isSwahili ? 'VOCHA ZA FEDHA' : 'PETTY CASH VOUCHERS')); ?>
     </div>
     <!-- Header Section -->
     <div class="py-3 border-bottom mb-4 px-3 px-md-0">
@@ -163,6 +155,7 @@ $total_all = $stmt_total_all->fetchColumn() ?? 0;
                 <select id="filter_status" class="form-select form-select-sm border-0 bg-light">
                     <option value=""><?= $isSwahili ? 'Zote' : 'All Status' ?></option>
                     <option value="pending"><?= $isSwahili ? 'Inasubiri' : 'Pending' ?></option>
+                    <option value="reviewed"><?= $isSwahili ? 'Imepitwa' : 'Reviewed' ?></option>
                     <option value="approved"><?= $isSwahili ? 'Imeidhinishwa' : 'Approved' ?></option>
                     <option value="rejected"><?= $isSwahili ? 'Imekataliwa' : 'Rejected' ?></option>
                 </select>
@@ -392,6 +385,8 @@ window.onbeforeprint = function() {
     if (timeSpan) timeSpan.innerText = timeStr;
 };
 
+var table; // global so updatePettyCashPageInfo, pettyCashTablePage, and _pvPost can access it
+
 $(document).ready(function() {
     // Auto-open modal if action is 'new'
     const urlParams = new URLSearchParams(window.location.search);
@@ -399,7 +394,7 @@ $(document).ready(function() {
         openNewVoucherModal();
     }
 
-    var table = $('#pettyCashTable').DataTable({
+    table = $('#pettyCashTable').DataTable({
         serverSide: true,
         processing: true,
         responsive: false,
@@ -515,6 +510,20 @@ $(document).ready(function() {
     });
 });
 
+function _pvPost(url, id, msg) {
+    Swal.fire({ title: msg, didOpen: () => Swal.showLoading() });
+    $.post(url, { id: id }, function(r) {
+        if (r.success) {
+            Swal.fire({ icon:'success', title: isSwahili?'Imekamilika':'Done', text:r.message, timer:1400, showConfirmButton:false })
+                .then(() => table.ajax.reload());
+        } else { Swal.fire('Error', r.message, 'error'); }
+    }, 'json').fail(() => Swal.fire('Error', 'Server error', 'error'));
+}
+function reviewVoucher(id) {
+    Swal.fire({ title: isSwahili?'Pitia vocha hii?':'Mark Voucher as Reviewed?', icon:'question', showCancelButton:true,
+        confirmButtonText: isSwahili?'Ndio':'Yes, Reviewed'
+    }).then(r => { if (r.isConfirmed) _pvPost('<?= getUrl('api/review_petty_cash') ?>', id, isSwahili?'Inatuma...':'Submitting...'); });
+}
 function approveVoucher(id) {
     Swal.fire({
         title: isSwahili ? 'Je, una uhakika?' : 'Are you sure?',
@@ -525,22 +534,7 @@ function approveVoucher(id) {
         confirmButtonText: isSwahili ? 'Ndiyo,idhinisha' : 'Yes, approve',
         cancelButtonText: isSwahili ? 'Ghairi' : 'Cancel'
     }).then(result => {
-        if (result.isConfirmed) {
-            $.ajax({
-                url: '<?= getUrl('actions/approve_petty_cash') ?>',
-                type: 'POST',
-                data: { id: id },
-                dataType: 'json',
-                success: function(r) {
-                    if(r.success) {
-                        Swal.fire(isSwahili ? 'Imethibitishwa!' : 'Approved!', r.message, 'success');
-                        table.ajax.reload();
-                    } else {
-                        Swal.fire('Error', r.message, 'error');
-                    }
-                }
-            });
-        }
+        if (result.isConfirmed) _pvPost('<?= getUrl('actions/approve_petty_cash') ?>', id, isSwahili?'Inaidhinisha...':'Approving...');
     });
 }
 
@@ -716,13 +710,16 @@ function renderPettyCashCards(api) {
         var avatar = vkEscape((d.raw_payee || 'P').charAt(0).toUpperCase());
         var amount = parseFloat(d.raw_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 });
 
-        var pendingActions = status === 'pending' ? `
-            <button class="btn btn-sm btn-outline-warning vk-btn-action" onclick="editVoucher(${id})" title="${isSwahili ? 'Hariri' : 'Edit'}">
-                <i class="bi bi-pencil-fill"></i>
-            </button>
-            <button class="btn btn-sm btn-outline-success vk-btn-action" onclick="approveVoucher(${id})" title="${isSwahili ? 'Idhinisha' : 'Approve'}">
-                <i class="bi bi-check-circle-fill"></i>
-            </button>` : '';
+        var canReviewPC  = <?= canReview('petty_cash')  ? 'true' : 'false' ?>;
+        var canApprovePC = <?= canApprove('petty_cash') ? 'true' : 'false' ?>;
+        var pendingActions = '';
+        if (status === 'pending') {
+            pendingActions += `<button class="btn btn-sm btn-outline-warning vk-btn-action" onclick="editVoucher(${id})" title="${isSwahili?'Hariri':'Edit'}"><i class="bi bi-pencil-fill"></i></button>`;
+            if (canReviewPC) pendingActions += `<button class="btn btn-sm btn-outline-primary vk-btn-action" onclick="reviewVoucher(${id})" title="${isSwahili?'Pitia':'Review'}"><i class="bi bi-clipboard-check"></i></button>`;
+        }
+        if (status === 'reviewed' && canApprovePC) {
+            pendingActions += `<button class="btn btn-sm btn-outline-success vk-btn-action" onclick="approveVoucher(${id})" title="${isSwahili?'Idhinisha':'Approve'}"><i class="bi bi-check-circle-fill"></i></button>`;
+        }
 
         html += `
         <div class="vk-member-card">

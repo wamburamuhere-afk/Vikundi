@@ -19,12 +19,14 @@ function loadUserPermissions($roleId)
 
     try {
         $stmt = $pdo->prepare("
-            SELECT 
+            SELECT
                 p.page_key,
                 rp.can_view,
                 rp.can_create,
                 rp.can_edit,
-                rp.can_delete
+                rp.can_delete,
+                rp.can_review,
+                rp.can_approve
             FROM role_permissions rp
             JOIN permissions p ON p.permission_id = rp.permission_id
             WHERE rp.role_id = ?
@@ -39,6 +41,8 @@ function loadUserPermissions($roleId)
                 'create' => (bool)$row['can_create'],
                 'edit'   => (bool)$row['can_edit'],
                 'delete' => (bool)$row['can_delete'],
+                'review' => (bool)$row['can_review'],
+                'approve'=> (bool)$row['can_approve'],
             ];
         }
 
@@ -118,8 +122,28 @@ function canDelete($pageKey)
 }
 
 /**
+ * Check if user can review a document on a page
+ */
+function canReview($pageKey)
+{
+    if (isAdmin()) return true;
+    if (!canView($pageKey)) return false;
+    return $_SESSION['permissions'][$pageKey]['review'] ?? false;
+}
+
+/**
+ * Check if user can approve a document on a page
+ */
+function canApprove($pageKey)
+{
+    if (isAdmin()) return true;
+    if (!canView($pageKey)) return false;
+    return $_SESSION['permissions'][$pageKey]['approve'] ?? false;
+}
+
+/**
  * Check if user has any permission for a page
- * 
+ *
  * @param string $pageKey Page identifier
  * @return bool True if user has any permission (view, edit, or delete)
  */

@@ -36,8 +36,10 @@ $user_role = $u_data['role_name'] ?? 'Staff';
 // Permission check
 requireViewPermission('death_expenses');
 $can_create_death = canCreate('death_expenses');
-$can_edit_death = canEdit('death_expenses');
+$can_edit_death   = canEdit('death_expenses');
 $can_delete_death = canDelete('death_expenses');
+$can_review_death = canReview('death_expenses');
+$can_approve_death= canApprove('death_expenses');
 
 $lang = $_SESSION['preferred_language'] ?? 'en';
 $is_sw = ($lang === 'sw');
@@ -47,18 +49,10 @@ $subtitle = $is_sw ? 'Rekodi na dhibiti misaada kwa wanachama waliofiwa' : 'Reco
 ?>
 
 <div class="container-fluid py-4" id="main-content" style="background-color: #f8f9fa; min-height: 90vh; overflow-x: hidden;">
-    <!-- 1. PRINT HEADER (Visible only during print) -->
-    <div class="d-none d-print-block print-header mb-4 text-center">
-        <div class="border-bottom pb-4">
-            <div class="mb-3">
-                <img src="<?= !empty($logo_base64) ? $logo_base64 : getUrl('assets/images/') . $group_logo ?>" alt="Logo" style="height: 100px; width: auto; object-fit: contain;">
-            </div>
-            <h2 class="fw-bold mb-1" style="color: #0d6efd !important; text-transform: uppercase;">
-                <?= htmlspecialchars($group_name) ?>
-            </h2>
-            <h3 class="fw-bold mb-2 text-dark" style="text-transform: uppercase;"><?= $title ?></h3>
-            <p class="mb-0 small text-muted text-uppercase"><?= $is_sw ? 'Ripoti Rasmi ya Mfumo' : 'Official System Report' ?></p>
-        </div>
+    <?php PrintHeader::css(); ?>
+    <!-- PRINT HEADER (Visible only during print) -->
+    <div class="d-none d-print-block">
+        <?php PrintHeader::render($pdo, $title ?? ($is_sw ? 'MATUMIZI YA MISIBA' : 'DEATH BENEFIT EXPENSES')); ?>
     </div>
 
     <!-- UI Heading (Hidden during print) -->
@@ -375,7 +369,12 @@ $(document).ready(function() {
             { data: 'deceased_name' },
             { data: 'deceased_relationship' },
             { data: 'amount', render: d => `<strong class="text-danger">${parseFloat(d).toLocaleString('en-US', {minimumFractionDigits: 2})}</strong>` },
-            { data: 'status', render: d => `<span class="badge bg-${d==='approved'?'success':'warning'}">${d==='approved'?(isSw?'Imeidhinishwa':'Approved'):(isSw?'Inasubiri':'Pending')}</span>` },
+            { data: 'status', render: d => {
+                const map = {pending:'warning',reviewed:'info',approved:'success',rejected:'danger',inactive:'secondary'};
+                const cls = map[d] || 'secondary';
+                const lbl = d ? d.charAt(0).toUpperCase()+d.slice(1) : 'Pending';
+                return `<span class="badge bg-${cls}">${lbl}</span>`;
+            }},
             {
                 data: null, className: 'text-end no-print',
                 render: (d, t, r) => `
@@ -384,9 +383,11 @@ $(document).ready(function() {
                             <i class="bi bi-gear-fill"></i>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end shadow border-0 p-2">
-                             <li><a class="dropdown-item py-2 fw-bold text-primary" href="javascript:void(0)" onclick="viewDeathDetails(${r.id}, ${r.member_id})"><i class="bi bi-eye-fill me-2"></i> View</a></li>
-                            ${r.status==='pending' ? `<li><a class="dropdown-item py-2 fw-bold text-success" href="javascript:void(0)" onclick="approveDeathExpense(${r.id})"><i class="bi bi-check-circle-fill me-2"></i> Approve</a></li>` : ''}
-                            <li><a class="dropdown-item py-2 text-danger" href="javascript:void(0)" onclick="deleteDeathExpense(${r.id})"><i class="bi bi-trash-fill me-2"></i> Delete</a></li>
+                            <li><a class="dropdown-item py-2 fw-bold text-primary" href="<?= getUrl('death_expense_view') ?>?id=${r.id}"><i class="bi bi-eye-fill me-2"></i> View Details</a></li>
+                            <li><a class="dropdown-item py-2" href="<?= getUrl('print_death_expense') ?>?id=${r.id}" target="_blank"><i class="bi bi-printer me-2"></i> Print</a></li>
+                            ${(r.status==='pending' && <?= $can_review_death ? 'true' : 'false' ?>) ? `<li><hr class="dropdown-divider my-1"><li><a class="dropdown-item py-2 fw-bold text-primary" href="javascript:void(0)" onclick="reviewDeathExpense(${r.id})"><i class="bi bi-clipboard-check me-2"></i> Mark Reviewed</a></li>` : ''}
+                            ${(r.status==='reviewed' && <?= $can_approve_death ? 'true' : 'false' ?>) ? `<li><a class="dropdown-item py-2 fw-bold text-success" href="javascript:void(0)" onclick="approveDeathExpense(${r.id})"><i class="bi bi-check-circle-fill me-2"></i> Approve</a></li>` : ''}
+                            <li><hr class="dropdown-divider my-1"></li><li><a class="dropdown-item py-2 text-danger" href="javascript:void(0)" onclick="deleteDeathExpense(${r.id})"><i class="bi bi-trash-fill me-2"></i> Delete</a></li>
                         </ul>
                     </div>
                 `
@@ -509,9 +510,27 @@ function viewDeathDetails(id, memberId) {
     });
 }
 
+function _dePost(url, id, msg) {
+    Swal.fire({ title: msg, didOpen: () => Swal.showLoading() });
+    $.post(url, { id: id }, function(r) {
+        if (r.success) {
+            Swal.fire({ icon:'success', title:'Done', text:r.message, timer:1400, showConfirmButton:false })
+                .then(() => $('#deathExpensesTable').DataTable().ajax.reload());
+        } else { Swal.fire('Error', r.message, 'error'); }
+    }, 'json').fail(() => Swal.fire('Error', 'Server error', 'error'));
+}
+function reviewDeathExpense(id) {
+    Swal.fire({ title: isSw?'Pitia gharama hii?':'Mark as Reviewed?', icon:'question', showCancelButton:true,
+        confirmButtonText: isSw?'Ndio':'Yes, Reviewed'
+    }).then(r => { if (r.isConfirmed) _dePost('<?= getUrl("api/review_death_expense") ?>', id, isSw?'Inatuma...':'Submitting...'); });
+}
 function approveDeathExpense(id) {
-    Swal.fire({ title: 'Approve?', icon: 'warning', showCancelButton: true }).then(result => {
-        if (result.isConfirmed) { $.post('<?= getUrl("actions/approve_death_expense") ?>', { id: id }, res => { if (res.success) { Swal.fire('Approved!', '', 'success'); $('#deathExpensesTable').DataTable().ajax.reload(); } }); }
+    Swal.fire({ title: isSw?'Idhinisha gharama hii?':'Approve?',
+        text: isSw?'Salio la kikundi litapunguzwa.':'Group balance will be deducted.',
+        icon:'warning', showCancelButton:true,
+        confirmButtonText: isSw?'Ndio, Idhinisha':'Yes, Approve', confirmButtonColor:'#198754'
+    }).then(result => {
+        if (result.isConfirmed) _dePost('<?= getUrl("actions/approve_death_expense") ?>', id, isSw?'Inaidhinisha...':'Approving...');
     });
 }
 function deleteDeathExpense(id) {

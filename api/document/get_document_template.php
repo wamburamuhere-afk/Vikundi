@@ -1,11 +1,10 @@
 <?php
-require_once __DIR__ . '/../roots.php';
-global $pdo, $pdo_accounts;
-
 header('Content-Type: application/json');
+require_once __DIR__ . '/../../roots.php';
 
 try {
-    $id = $_GET['id'] ?? 0;
+    if (!isAuthenticated()) throw new Exception('Unauthorized');
+    $id = intval($_GET['id'] ?? 0);
 
     if (!$id) {
         throw new Exception('Template ID is required');

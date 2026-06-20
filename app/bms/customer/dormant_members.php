@@ -358,17 +358,17 @@ $(document).ready(function() {
                             .print-footer .brand { font-size: 7px; color: #3498db; font-weight: 600; }
                             tfoot.print-spacer { display: table-footer-group; }
                             tfoot.print-spacer td { height: 12px !important; border: none !important; }
-                        </style>
+                        </style><?php echo PrintHeader::popupCss(); ?>
                     `);
 
                     // 2. Branded header
-                    $(win.document.body).prepend(`
-                        <div style="text-align:center; margin-bottom:16px;">
-                            <img src="/assets/images/<?= $group_logo ?>" style="height:80px;width:auto;margin-bottom:10px;">
-                            <h2 style="font-weight:700;color:#0d6efd;text-transform:uppercase;margin:0;"><?= $group_name ?></h2>
-                            <h4 style="font-weight:700;border-top:1px solid #000;border-bottom:1px solid #000;padding:6px 0;margin-top:8px;"><?= $title ?></h4>
-                        </div>
-                    `);
+                    $(win.document.body).prepend(`<div class="vk-print-header">
+                        <img src="<?= !empty($logo_base64) ? $logo_base64 : '/assets/images/' . $group_logo ?>" alt="Logo" class="vk-ph-logo">
+                        <div class="vk-ph-org"><?= htmlspecialchars($group_name) ?></div>
+                        <div class="vk-ph-sys">VICOBA Group Management System</div>
+                        <div class="vk-ph-title"><?= htmlspecialchars($title) ?></div>
+                        <div class="vk-ph-rule"></div>
+                    </div>`);
 
                     // 3. Shared-style footer (bilingual — mirrors includes/print_footer_html.php)
                     let now = new Date();

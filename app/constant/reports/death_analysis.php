@@ -57,7 +57,7 @@ $query = "
         c.customer_name,
         c.status as member_status,
         c.is_deceased,
-        (SELECT COALESCE(SUM(amount),0) FROM contributions WHERE member_id = d.member_id AND status = 'confirmed') as total_contributed
+        (SELECT COALESCE(SUM(amount),0) FROM contributions WHERE member_id = d.member_id AND status IN ('confirmed', 'approved', '')) as total_contributed
     FROM death_expenses d
     LEFT JOIN customers c ON d.member_id = c.customer_id
     WHERE d.status = 'approved'
@@ -95,16 +95,10 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
         </div>
     </div>
 
-    <!-- Print Header (Visible ONLY on Print) -->
+    <?php PrintHeader::css(); ?>
+    <!-- PRINT HEADER (Visible only during print) -->
     <div class="d-none d-print-block">
-        <div class="text-center mb-4">
-            <img src="/assets/images/<?= htmlspecialchars($group_logo ?? 'logo1.png') ?>" alt="Logo" style="height: 80px; width: auto; margin-bottom: 10px; object-fit: contain;">
-            <h2 class="fw-bold mb-1 text-uppercase" style="color: #0d6efd !important;"><?= htmlspecialchars($group_name ?? 'KIKUNDI') ?></h2>
-            <h4 class="fw-bold text-dark text-uppercase border-top border-bottom py-2 mt-2">
-                <?= $is_sw ? 'UCHAMBUZI WA KIFEDHA: MAFAO YA MISIBA' : 'FUNERAL AID SUSTAINABILITY ANALYSIS' ?>
-            </h4>
-            <div class="small text-muted mt-1"><?= $is_sw ? 'Tarehe ya Printi:' : 'Print Date:' ?> <?= date('d m, Y H:i') ?></div>
-        </div>
+        <?php PrintHeader::render($pdo, $is_sw ? 'UCHAMBUZI WA MAFAO YA MISIBA' : 'FUNERAL AID SUSTAINABILITY ANALYSIS'); ?>
     </div>
 
 

@@ -53,12 +53,10 @@ $ref = $loan['reference_number'] ?: 'LN-' . str_pad($loan_id, 4, '0', STR_PAD_LE
         </div>
     </div>
 
-    <!-- Printable Header Content (Hidden on Screen) -->
-    <div class="d-none d-print-block text-center mb-4">
-        <h3 class="fw-bold">MFUMO WA VICoBA</h3>
-        <h5>TAARIFA KAWAIDA YA MKOPO</h5>
-        <div class="small">Ref: <?= htmlspecialchars($ref) ?> | Mwanachama: <?= htmlspecialchars($loan['member_name'] ?? 'N/A') ?></div>
-        <hr>
+    <?php PrintHeader::css(); ?>
+    <!-- PRINT HEADER (Visible only during print) -->
+    <div class="d-none d-print-block">
+        <?php PrintHeader::render($pdo, 'LOAN STATEMENT', 'REF: ' . ($ref ?? '') . ' | ' . ($loan['member_name'] ?? '')); ?>
     </div>
 
     <div class="row g-4">

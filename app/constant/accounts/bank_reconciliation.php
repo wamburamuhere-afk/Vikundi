@@ -35,6 +35,11 @@ $bank_account_id = isset($_GET['bank_account_id']) ? (int)$_GET['bank_account_id
 ?>
 
 <div class="container-fluid mt-4">
+    <?php PrintHeader::css(); ?>
+    <!-- PRINT HEADER (Visible only during print) -->
+    <div class="d-none d-print-block">
+        <?php PrintHeader::render($pdo, 'BANK RECONCILIATION REPORT'); ?>
+    </div>
     <!-- Page Header -->
     <div class="row mb-4">
         <div class="col-12">

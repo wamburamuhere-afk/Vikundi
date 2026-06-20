@@ -63,8 +63,11 @@ define('COMING_SOON_FILE', ROOT_DIR . '/app/coming_soon.php');
 // ============================================================================
 define('HEADER_FILE', ROOT_DIR . '/header.php');
 define('FOOTER_FILE', ROOT_DIR . '/footer.php');
-define('PRINT_FOOTER_FILE',     ROOT_DIR . '/includes/print_footer_html.php');
-define('PRINT_FOOTER_CSS_FILE', ROOT_DIR . '/includes/print_footer_css.php');
+define('PRINT_FOOTER_FILE',          ROOT_DIR . '/includes/print_footer_html.php');
+define('PRINT_FOOTER_CSS_FILE',      ROOT_DIR . '/includes/print_footer_css.php');
+define('PRINT_HEADER_FILE',          ROOT_DIR . '/includes/print_header.php');
+define('WORKFLOW_AUDIT_PANEL_FILE',  ROOT_DIR . '/includes/workflow_audit_panel.php');
+define('WORKFLOW_SIGNATURE_ROW_FILE',ROOT_DIR . '/includes/workflow_signature_row.php');
 define('HELPERS_FILE', ROOT_DIR . '/helpers.php');
 define('CONFIG_FILE', ROOT_DIR . '/includes/config.php');
 define('INDEX_FILE', ROOT_DIR . '/index.php');
@@ -76,6 +79,8 @@ require_once CONFIG_FILE;
 require_once HELPERS_FILE; // Load Helper Functions
 require_once ROOT_DIR . '/includes/activity_logger.php'; // Activity Logger
 require_once ROOT_DIR . '/core/permissions.php'; // Load permissions
+require_once ROOT_DIR . '/core/workflow.php';     // Three-approval workflow helpers
+require_once ROOT_DIR . '/includes/print_header.php'; // Print header class
 require_once ROOT_DIR . '/actions/check_auth.php';
 
 
@@ -116,8 +121,11 @@ $routes = [
     'accounts/bank_reconciliation.php' => ACCOUNTS_DIR . '/bank_reconciliation.php',
     'accounts/budget' => ACCOUNTS_DIR . '/budget.php',
     'accounts/budget.php' => ACCOUNTS_DIR . '/budget.php',
-    'accounts/budget_details' => ACCOUNTS_DIR . '/budget_details.php',
-    'accounts/budget_details.php' => ACCOUNTS_DIR . '/budget_details.php',
+    'accounts/budget_details'          => ACCOUNTS_DIR . '/budget_details.php',
+    'accounts/budget_details.php'      => ACCOUNTS_DIR . '/budget_details.php',
+    'print_budget'                     => ACCOUNTS_DIR . '/print_budget.php',
+    'api/account/review_budget.php'    => API_DIR . '/account/review_budget.php',
+    'api/account/approve_budget.php'   => API_DIR . '/account/approve_budget.php',
     'accounts/chart_of_accounts' => ACCOUNTS_DIR . '/chart_of_accounts.php',
     'accounts/chart_of_accounts.php' => ACCOUNTS_DIR . '/chart_of_accounts.php',
     'accounts/edit_expense' => ACCOUNTS_DIR . '/edit_expense.php',
@@ -140,10 +148,18 @@ $routes = [
     'accounts/transactions.php' => ACCOUNTS_DIR . '/transactions.php',
     'accounts/trial_balance' => ACCOUNTS_DIR . '/trial_balance.php',
     'accounts/trial_balance.php' => ACCOUNTS_DIR . '/trial_balance.php',
-    'accounts/death_expenses' => ACCOUNTS_DIR . '/death_expenses.php',
-    'accounts/death_expenses.php' => ACCOUNTS_DIR . '/death_expenses.php',
-    'accounts/other_expenses' => ACCOUNTS_DIR . '/general_expenses.php',
-    'accounts/other_expenses.php' => ACCOUNTS_DIR . '/general_expenses.php',
+    'accounts/death_expenses'        => ACCOUNTS_DIR . '/death_expenses.php',
+    'accounts/death_expenses.php'    => ACCOUNTS_DIR . '/death_expenses.php',
+    'death_expense_view'             => ACCOUNTS_DIR . '/death_expense_view.php',
+    'print_death_expense'            => ACCOUNTS_DIR . '/print_death_expense.php',
+    'accounts/other_expenses'        => ACCOUNTS_DIR . '/general_expenses.php',
+    'accounts/other_expenses.php'    => ACCOUNTS_DIR . '/general_expenses.php',
+    'general_expense_view'           => ACCOUNTS_DIR . '/general_expense_view.php',
+    'print_general_expense'          => ACCOUNTS_DIR . '/print_general_expense.php',
+    'api/review_death_expense'       => API_DIR . '/review_death_expense.php',
+    'api/review_death_expense.php'   => API_DIR . '/review_death_expense.php',
+    'api/review_general_expense'     => API_DIR . '/review_general_expense.php',
+    'api/review_general_expense.php' => API_DIR . '/review_general_expense.php',
 
     // Death & General Expenses APIs
     'api/log_action' => API_DIR . '/log_action.php',
@@ -198,7 +214,10 @@ $routes = [
     'actions/approve_petty_cash' => ROOT_DIR . '/actions/approve_petty_cash.php',
     'actions/delete_petty_cash' => ROOT_DIR . '/actions/delete_petty_cash.php',
     'actions/get_petty_cash' => ROOT_DIR . '/actions/get_petty_cash.php',
-    'print_petty_cash' => ACCOUNTS_DIR . '/print_petty_cash.php',
+    'print_petty_cash'           => ACCOUNTS_DIR . '/print_petty_cash.php',
+    'petty_cash_view'            => ACCOUNTS_DIR . '/petty_cash_view.php',
+    'api/review_petty_cash'      => API_DIR . '/review_petty_cash.php',
+    'api/review_petty_cash.php'  => API_DIR . '/review_petty_cash.php',
     'payment_vouchers' => ACCOUNTS_DIR . '/payment_vouchers.php',
 
     // ========================================================================
@@ -214,9 +233,15 @@ $routes = [
     'customers/groups' => CUSTOMERS_DIR . '/customer_groups.php',
     'customers/import' => CUSTOMERS_DIR . '/customer_import.php',
     'customers/documents' => CUSTOMERS_DIR . '/customer_documents.php',
-    'my_contributions' => CUSTOMERS_DIR . '/manage_contributions.php',
-    'submit_contribution' => CUSTOMERS_DIR . '/submit_contribution.php',
-    'manage_contributions' => CUSTOMERS_DIR . '/manage_contributions.php',
+    'my_contributions'           => CUSTOMERS_DIR . '/manage_contributions.php',
+    'submit_contribution'        => CUSTOMERS_DIR . '/submit_contribution.php',
+    'manage_contributions'       => CUSTOMERS_DIR . '/manage_contributions.php',
+    'contribution_view'          => CUSTOMERS_DIR . '/contribution_view.php',
+    'print_contribution'         => CUSTOMERS_DIR . '/print_contribution.php',
+    'api/review_contribution'    => API_DIR . '/review_contribution.php',
+    'api/review_contribution.php'=> API_DIR . '/review_contribution.php',
+    'api/approve_contribution'   => API_DIR . '/approve_contribution.php',
+    'api/approve_contribution.php'=> API_DIR . '/approve_contribution.php',
     'group_settings' => CUSTOMERS_DIR . '/group_settings.php',
     'dormant_members' => CUSTOMERS_DIR . '/dormant_members.php',
     'actions/add_member' => ROOT_DIR . '/actions/add_member.php',
@@ -281,14 +306,14 @@ $routes = [
     'document-versions' => ROOT_DIR . '/app/constant/documents/document-versions.php',
     'document-tags' => ROOT_DIR . '/app/constant/documents/document-tags.php',
     'document-search' => ROOT_DIR . '/app/constant/documents/document-search.php',
-    'document-templates' => ROOT_DIR . '/app/constant/documents/document-templates.php',
+    'document-templates' => DOCUMENT_DIR . '/document_templates.php',
     'documents' => ROOT_DIR . '/app/constant/documents/document-list.php',
     'documents-view' => ROOT_DIR . '/app/constant/documents/document-view.php',
     'document-categories' => ROOT_DIR . '/app/constant/documents/document-categories.php',
     'document-versions' => ROOT_DIR . '/app/constant/documents/document-versions.php',
     'document-tags' => ROOT_DIR . '/app/constant/documents/document-tags.php',
     'document-search' => ROOT_DIR . '/app/constant/documents/document-search.php',
-    'document-templates' => ROOT_DIR . '/app/constant/documents/document-templates.php',
+    'document-templates' => DOCUMENT_DIR . '/document_templates.php',
     'e_signatures' => DOCUMENT_DIR . '/e_signatures.php',
     'e_signatures.php' => DOCUMENT_DIR . '/e_signatures.php',
     'leads' => ROOT_DIR . '/app/constant/lead_generation.php', // Check this!
@@ -429,6 +454,27 @@ $routes = [
     'users.php' => SETTINGS_DIR . '/users.php',
     'user_roles' => SETTINGS_DIR . '/user_roles.php',
     'user_roles.php' => SETTINGS_DIR . '/user_roles.php',
+
+    // AI Assistant
+    'ai-settings' => SETTINGS_DIR . '/ai_settings.php',
+    'ai_settings' => SETTINGS_DIR . '/ai_settings.php',
+    'ai_settings.php' => SETTINGS_DIR . '/ai_settings.php',
+    'ai-chat' => ROOT_DIR . '/app/constant/communication/ai_chat.php',
+    'ai_chat' => ROOT_DIR . '/app/constant/communication/ai_chat.php',
+    'ai_chat.php' => ROOT_DIR . '/app/constant/communication/ai_chat.php',
+    'ask-vikundi' => ROOT_DIR . '/app/constant/communication/ai_ask.php',
+    'ai_ask' => ROOT_DIR . '/app/constant/communication/ai_ask.php',
+    'ai_ask.php' => ROOT_DIR . '/app/constant/communication/ai_ask.php',
+    'api/ai/chat' => API_DIR . '/ai/chat.php',
+    'api/ai/chat.php' => API_DIR . '/ai/chat.php',
+    'api/ai/ask' => API_DIR . '/ai/ask.php',
+    'api/ai/ask.php' => API_DIR . '/ai/ask.php',
+    'api/ai/generate' => API_DIR . '/ai/generate.php',
+    'api/ai/generate.php' => API_DIR . '/ai/generate.php',
+    'api/ai/save_settings' => API_DIR . '/ai/save_settings.php',
+    'api/ai/save_settings.php' => API_DIR . '/ai/save_settings.php',
+    'api/ai/test_connection' => API_DIR . '/ai/test_connection.php',
+    'api/ai/test_connection.php' => API_DIR . '/ai/test_connection.php',
     'permissions' => SETTINGS_DIR . '/manage_permissions.php',
     'permissions.php' => SETTINGS_DIR . '/manage_permissions.php',
     'ajax/get_role' => SETTINGS_DIR . '/ajax/get_role.php',
@@ -947,6 +993,8 @@ $routes = [
     'api/get_compliance_documents.php' => API_DIR . '/document/get_compliance_documents.php',
     'api/get_document_template' => API_DIR . '/document/get_document_template.php',
     'api/get_document_template.php' => API_DIR . '/document/get_document_template.php',
+    'api/get_document_templates' => API_DIR . '/document/get_document_templates.php',
+    'api/get_document_templates.php' => API_DIR . '/document/get_document_templates.php',
     'api/get_documents' => API_DIR . '/document/get_documents.php',
     'api/get_documents.php' => API_DIR . '/document/get_documents.php',
     'api/get_loan_documents' => API_DIR . '/document/get_loan_documents.php',
@@ -976,8 +1024,8 @@ $routes = [
     'api/get_user_signatures.php' => API_DIR . '/get_user_signatures.php',
     'api/get_workflows' => API_DIR . '/get_workflows.php',
     'api/get_workflows.php' => API_DIR . '/get_workflows.php',
-    'api/save_document_template' => AJAX_DIR . '/save_document_template.php',
-    'api/save_document_template.php' => AJAX_DIR . '/save_document_template.php',
+    'api/save_document_template' => API_DIR . '/document/save_document_template.php',
+    'api/save_document_template.php' => API_DIR . '/document/save_document_template.php',
 
     // ========================================================================
     // API ENDPOINTS - USERS & SETTINGS

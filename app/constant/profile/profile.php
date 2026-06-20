@@ -59,7 +59,7 @@ if ($member) {
         $contribution_start_date = $settings_raw['contribution_start_date'] ?? ($settings_raw['group_founded_date'] ?? date('Y') . '-01-01');
 
         // 3. Fetch Confirmed Contributions
-        $stmt_c = $pdo->prepare("SELECT SUM(amount) FROM contributions WHERE member_id = ? AND status = 'confirmed' AND (contribution_type = 'monthly' OR contribution_type = 'entrance' OR contribution_type = 'other')");
+        $stmt_c = $pdo->prepare("SELECT SUM(amount) FROM contributions WHERE member_id = ? AND status IN ('confirmed', 'approved', '') AND (contribution_type = 'monthly' OR contribution_type = 'entrance' OR contribution_type = 'other' OR contribution_type = '')");
         $stmt_c->execute([$member_id]);
         $contributions_total = floatval($stmt_c->fetchColumn());
 

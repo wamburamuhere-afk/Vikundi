@@ -446,6 +446,15 @@ try {
                                 <li><h6 class="dropdown-header"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mawasiliano' : 'Communication' ?></h6></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('message_center') ?>"><i class="bi bi-chat-left"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Ujumbe' : 'Messages' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('notification_center') ?>"><i class="bi bi-bell"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Taarifa (Notifications)' : 'Notifications' ?></a></li>
+                                <?php if (canView('ai_assistant') || canView('ai_ask_data')): ?>
+                                <li><hr class="dropdown-divider"></li>
+                                <?php endif; ?>
+                                <?php if (canView('ai_assistant')): ?>
+                                <li><a class="dropdown-item" href="<?= getUrl('ai-chat') ?>"><i class="bi bi-robot text-primary"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Ongea na AI' : 'Chat with AI' ?></a></li>
+                                <?php endif; ?>
+                                <?php if (canView('ai_ask_data')): ?>
+                                <li><a class="dropdown-item" href="<?= getUrl('ask-vikundi') ?>"><i class="bi bi-graph-up-arrow text-success"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Uliza Vikundi' : 'Ask Vikundi' ?></a></li>
+                                <?php endif; ?>
                             </ul>
                         </li>
                         
@@ -495,6 +504,7 @@ try {
                                 <li><hr class="dropdown-divider"></li>
                                 <li><h6 class="dropdown-header"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mipangilio ya Mfumo' : 'System Settings' ?></h6></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('system_settings') ?>"><i class="bi bi-gear"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mipangilio ya Programu' : 'App Settings' ?></a></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('ai-settings') ?>"><i class="bi bi-robot text-primary"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Msaidizi wa AI' : 'AI Assistant' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('backup_restore') ?>"><i class="bi bi-database"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nakala Mkoba (Backup)' : 'Backup & Restore' ?></a></li>
                             </ul>
                         </li>

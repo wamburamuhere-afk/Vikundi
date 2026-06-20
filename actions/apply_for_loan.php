@@ -31,7 +31,7 @@ try {
     $multiplier = floatval($gs['loan_multiplier'] ?? 3);
 
     // Calculate savings
-    $savings_stmt = $pdo->prepare("SELECT COALESCE(SUM(amount),0) FROM contributions WHERE member_id=? AND status='confirmed'");
+    $savings_stmt = $pdo->prepare("SELECT COALESCE(SUM(amount),0) FROM contributions WHERE member_id=? AND status IN ('confirmed', 'approved', '')");
     $savings_stmt->execute([$customer_id]);
     $total_savings = floatval($savings_stmt->fetchColumn());
     $max_loan = $total_savings * $multiplier;
