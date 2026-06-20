@@ -1,5 +1,10 @@
 <?php
-session_start();
+// Guard session_start: when reached via the front controller (index.php ->
+// roots.php) a session is already active, and an unconditional session_start()
+// emits a notice BEFORE the file headers below — which corrupts the download.
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 if (!isset($_SESSION['user_id'])) {
     die('Unauthorized');
 }
