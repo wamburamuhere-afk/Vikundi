@@ -74,10 +74,17 @@ class EmailCenterPageTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/(?<![\w$.])alert\s*\(/', $this->page);
     }
 
-    public function test_page_uses_select2_for_recipients(): void
+    public function test_page_uses_ajax_select2_for_recipients(): void
     {
+        // §UI-3: DB-backed large dataset must use AJAX Select2 (search by
+        // typing), not a bulk-loaded static list.
         $this->assertStringContainsString(".select2(", $this->page);
         $this->assertStringContainsString("theme: 'bootstrap-5'", $this->page);
+        $this->assertStringContainsString('minimumInputLength: 1', $this->page);
+        $this->assertStringContainsString('ajax:', $this->page);
+        $this->assertStringContainsString("action: 'search_recipients'", $this->page);
+        // The old bulk-load approach must be gone.
+        $this->assertStringNotContainsString('function loadRecipients', $this->page);
     }
 
     public function test_page_is_bilingual(): void
@@ -148,9 +155,17 @@ class EmailCenterPageTest extends TestCase
 
     public function test_api_supports_core_actions(): void
     {
-        foreach (["case 'list'", "case 'get'", "case 'send'", "case 'resend'", "case 'delete'", "case 'recipients'"] as $action) {
+        foreach (["case 'list'", "case 'get'", "case 'send'", "case 'resend'", "case 'delete'", "case 'search_recipients'"] as $action) {
             $this->assertStringContainsString($action, $this->api);
         }
+    }
+
+    public function test_recipient_search_is_server_side_filtered(): void
+    {
+        // §UI-3: large dataset → filter server-side by the typed query.
+        $this->assertStringContainsString("\$q    = trim(\$_GET['q'] ?? '')", $this->api);
+        $this->assertStringContainsString('LIMIT 25', $this->api);
+        $this->assertStringContainsString("'children'", $this->api); // Select2 grouped results
     }
 
     // ----- Routing & menu ---------------------------------------------------

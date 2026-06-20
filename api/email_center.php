@@ -107,27 +107,54 @@ try {
             break;
 
         // -----------------------------------------------------------------
-        case 'recipients':
-            // Address book: members and system users that have an email.
-            $members = $pdo->query("
-                SELECT TRIM(CONCAT(COALESCE(first_name,''),' ',COALESCE(last_name,''))) AS name,
-                       email
+        case 'search_recipients':
+            // AJAX address book for the Select2 recipient picker (§UI-3:
+            // large dataset → search by typing, filtered server-side).
+            // Returns Select2 grouped results: { results: [{text, children:[{id,text}]}] }.
+            $q    = trim($_GET['q'] ?? '');
+            $like = '%' . $q . '%';
+
+            $members_stmt = $pdo->prepare("
+                SELECT TRIM(CONCAT(COALESCE(first_name,''),' ',COALESCE(last_name,''))) AS name, email
                 FROM customers
                 WHERE email IS NOT NULL AND email <> ''
+                  AND (? = '' OR first_name LIKE ? OR last_name LIKE ? OR email LIKE ?
+                       OR CONCAT(COALESCE(first_name,''),' ',COALESCE(last_name,'')) LIKE ?)
                 ORDER BY first_name, last_name
-                LIMIT 1000
-            ")->fetchAll(PDO::FETCH_ASSOC);
+                LIMIT 25
+            ");
+            $members_stmt->execute([$q, $like, $like, $like, $like]);
+            $members = $members_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            $staff = $pdo->query("
-                SELECT TRIM(CONCAT(COALESCE(first_name,''),' ',COALESCE(last_name,''))) AS name,
-                       email
+            $staff_stmt = $pdo->prepare("
+                SELECT TRIM(CONCAT(COALESCE(first_name,''),' ',COALESCE(last_name,''))) AS name, email
                 FROM users
                 WHERE email IS NOT NULL AND email <> '' AND is_active = 1
+                  AND (? = '' OR first_name LIKE ? OR last_name LIKE ? OR email LIKE ?
+                       OR CONCAT(COALESCE(first_name,''),' ',COALESCE(last_name,'')) LIKE ?)
                 ORDER BY first_name, last_name
-                LIMIT 1000
-            ")->fetchAll(PDO::FETCH_ASSOC);
+                LIMIT 25
+            ");
+            $staff_stmt->execute([$q, $like, $like, $like, $like]);
+            $staff = $staff_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            echo json_encode(['success' => true, 'data' => ['members' => $members, 'staff' => $staff]]);
+            $toChildren = function (array $rows) {
+                $out = [];
+                foreach ($rows as $r) {
+                    if (empty($r['email'])) continue;
+                    $name = trim($r['name'] ?? '');
+                    $out[] = ['id' => $r['email'], 'text' => $name !== '' ? "$name <{$r['email']}>" : $r['email']];
+                }
+                return $out;
+            };
+
+            $results = [];
+            $member_children = $toChildren($members);
+            $staff_children  = $toChildren($staff);
+            if ($member_children) $results[] = ['text' => ($is_sw ? 'Wanachama' : 'Members'), 'children' => $member_children];
+            if ($staff_children)  $results[] = ['text' => ($is_sw ? 'Wafanyakazi' : 'Staff'),   'children' => $staff_children];
+
+            echo json_encode(['results' => $results]);
             break;
 
         // -----------------------------------------------------------------

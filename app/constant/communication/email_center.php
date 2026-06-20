@@ -403,48 +403,35 @@ $API = getUrl('api/email_center');
 
     // --- Compose modal wiring ---
     <?php if ($can_create): ?>
+    // AJAX Select2 (§UI-3: large dataset → search by typing, filtered
+    // server-side). `tags:true` still lets the user enter an address that is
+    // not a member/staff and press Enter to add it.
     function initRecipientSelect() {
         const $sel = $('#recipients');
         if ($sel.hasClass('select2-hidden-accessible')) return;
         $sel.select2({
             theme: 'bootstrap-5',
             dropdownParent: $('#composeEmailModal'),
-            placeholder: t('Select or type an email...','Chagua au andika barua pepe...'),
+            placeholder: t('Type a name or email to search...','Andika jina au barua pepe kutafuta...'),
             allowClear: true,
             width: '100%',
             tags: true,
             tokenSeparators: [',', ';', ' '],
+            minimumInputLength: 1,
+            ajax: {
+                url: API,
+                dataType: 'json',
+                delay: 300,
+                data: params => ({ action: 'search_recipients', q: params.term }),
+                processResults: data => ({ results: data.results || [] }),
+                cache: true
+            },
             createTag: function (params) {
                 const term = $.trim(params.term);
                 if (term === '') return null;
                 return { id: term, text: term, newTag: true };
             }
         });
-    }
-
-    // Populate the address book once, then init Select2 when the modal opens.
-    let recipientsLoaded = false;
-    function loadRecipients() {
-        if (recipientsLoaded) { initRecipientSelect(); return; }
-        $.getJSON(API, { action:'recipients' }).done(res => {
-            if (res.success) {
-                const $sel = $('#recipients');
-                const addGroup = (label, rows) => {
-                    if (!rows || !rows.length) return;
-                    const $g = $('<optgroup>').attr('label', label);
-                    rows.forEach(r => {
-                        if (!r.email) return;
-                        const text = r.name ? `${r.name} <${r.email}>` : r.email;
-                        $g.append(new Option(text, r.email, false, false));
-                    });
-                    $sel.append($g);
-                };
-                addGroup(t('Members','Wanachama'), res.data.members);
-                addGroup(t('Staff','Wafanyakazi'), res.data.staff);
-                recipientsLoaded = true;
-            }
-            initRecipientSelect();
-        }).fail(initRecipientSelect);
     }
 
     // Load active email templates into the compose picker (once).
@@ -484,7 +471,7 @@ $API = getUrl('api/email_center');
     });
 
     $('#composeEmailModal').on('shown.bs.modal', function () {
-        loadRecipients();
+        initRecipientSelect();
         loadTemplates();
         $('#subject').trigger('focus');
     });
