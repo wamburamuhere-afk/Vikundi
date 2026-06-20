@@ -462,6 +462,11 @@ $routes = [
     'ai-settings' => SETTINGS_DIR . '/ai_settings.php',
     'ai_settings' => SETTINGS_DIR . '/ai_settings.php',
     'ai_settings.php' => SETTINGS_DIR . '/ai_settings.php',
+
+    // Email Settings
+    'email-settings' => SETTINGS_DIR . '/email_settings.php',
+    'email_settings' => SETTINGS_DIR . '/email_settings.php',
+    'email_settings.php' => SETTINGS_DIR . '/email_settings.php',
     'ai-chat' => ROOT_DIR . '/app/constant/communication/ai_chat.php',
     'ai_chat' => ROOT_DIR . '/app/constant/communication/ai_chat.php',
     'ai_chat.php' => ROOT_DIR . '/app/constant/communication/ai_chat.php',
@@ -936,6 +941,10 @@ $routes = [
     'api/delete_email_template.php' => API_DIR . '/delete_email_template.php',
     'api/email_center' => API_DIR . '/email_center.php',
     'api/email_center.php' => API_DIR . '/email_center.php',
+    'api/email/save_settings' => API_DIR . '/email/save_settings.php',
+    'api/email/save_settings.php' => API_DIR . '/email/save_settings.php',
+    'api/email/test_connection' => API_DIR . '/email/test_connection.php',
+    'api/email/test_connection.php' => API_DIR . '/email/test_connection.php',
     'api/delete_feedback' => API_DIR . '/delete_feedback.php',
     'api/delete_feedback.php' => API_DIR . '/delete_feedback.php',
     'api/delete_notification' => API_DIR . '/delete_notification.php',

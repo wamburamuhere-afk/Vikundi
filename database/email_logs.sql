@@ -31,3 +31,11 @@ WHERE NOT EXISTS (SELECT 1 FROM system_settings WHERE setting_key = 'mail_from_n
 INSERT INTO system_settings (setting_key, setting_value, setting_group, is_public, description)
 SELECT 'mail_from_email', '', 'communication', '0', 'From address on outbound email (falls back to company_email)'
 WHERE NOT EXISTS (SELECT 1 FROM system_settings WHERE setting_key = 'mail_from_email');
+
+-- SMTP delivery settings (managed from the Email Settings page, group 'email').
+-- smtp_password_enc is AES-256 encrypted (core/ai_crypto.php) — never stored plain.
+-- Rows are created on save; listed here for reference:
+--   email_provider   (gmail|outlook|yahoo|custom)
+--   smtp_host, smtp_port, smtp_encryption (tls|ssl|none)
+--   smtp_username, smtp_password_enc
+--   mail_from_name, email_enabled (1|0)

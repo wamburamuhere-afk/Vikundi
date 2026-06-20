@@ -510,6 +510,7 @@ try {
                                 <li><h6 class="dropdown-header"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mipangilio ya Mfumo' : 'System Settings' ?></h6></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('system_settings') ?>"><i class="bi bi-gear"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mipangilio ya Programu' : 'App Settings' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('ai-settings') ?>"><i class="bi bi-robot text-primary"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Msaidizi wa AI' : 'AI Assistant' ?></a></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('email-settings') ?>"><i class="bi bi-envelope-gear text-primary"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mipangilio ya Barua Pepe' : 'Email Settings' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('backup_restore') ?>"><i class="bi bi-database"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nakala Mkoba (Backup)' : 'Backup & Restore' ?></a></li>
                             </ul>
                         </li>
