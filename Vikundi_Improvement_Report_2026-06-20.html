@@ -1,0 +1,169 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Vikundi Improvement Report</title><style>
+@page { size: A4; margin: 18mm 16mm 18mm 16mm; }
+* { box-sizing: border-box; }
+body { font-family: "Segoe UI", Tahoma, Arial, sans-serif; color: #1f2d3d; line-height: 1.55; font-size: 11.5pt; }
+h1 { color: #0d6efd; font-size: 23pt; margin: 0 0 4px; border-bottom: 3px solid #0d6efd; padding-bottom: 8px; }
+h2 { color: #0a58ca; font-size: 15pt; margin: 22px 0 8px; border-left: 5px solid #198754; padding-left: 10px; }
+h3 { color: #145c3a; font-size: 12.5pt; margin: 16px 0 4px; }
+p  { margin: 7px 0; }
+ul, ol { margin: 6px 0 10px 4px; padding-left: 22px; }
+li { margin: 3px 0; }
+strong { color: #11202e; }
+hr { border: none; border-top: 1px solid #dbe2ea; margin: 16px 0; }
+table { width: 100%; border-collapse: collapse; margin: 12px 0 16px; font-size: 10.5pt; }
+th { background: #0d6efd; color: #fff; text-align: left; padding: 7px 9px; }
+td { border: 1px solid #d7dee6; padding: 6px 9px; vertical-align: top; }
+tbody tr:nth-child(even) { background: #f4f8ff; }
+h2, h3 { page-break-after: avoid; }
+table, ul, ol { page-break-inside: avoid; }
+</style></head><body>
+<h1>Vikundi System — Improvement &amp; Stabilisation Report</h1>
+<p><strong>Reporting period:</strong> 19 – 20 June 2026</p>
+<p><strong>Prepared for:</strong> Vikundi VICOBA Management System stakeholders</p>
+<p><strong>Status:</strong> All changes completed, tested, and live on the production system</p>
+<hr>
+<h2>1. Executive Summary</h2>
+<p>Over the past two days, the Vikundi system received a major round of improvements covering six areas:</p>
+<ol>
+<li><strong>A brand-new Artificial Intelligence (AI) Assistant</strong> that helps members and leaders write messages, translate between English and Swahili, and get instant answers from the group&#039;s own data.</li>
+<li><strong>A new Electronic Signatures (e-signature) capability</strong> that lets documents be signed and approved digitally — no more printing, signing by hand, and scanning — with a verifiable record of who signed and when.</li>
+<li><strong>Corrected financial figures</strong> — several screens that were showing zero or incomplete savings totals now display the correct numbers.</li>
+<li><strong>Cleaner, more professional printed reports</strong>, including the removal of stray text that was appearing on printouts.</li>
+<li><strong>A new Document Templates library</strong> for managing standard group documents.</li>
+<li><strong>A major behind-the-scenes rescue of the live system</strong> — we discovered and fixed the reason the live website was failing to update, and built a permanent safeguard so the same problems cannot return.</li>
+</ol>
+<p>Every change has been verified by an automated quality-check process and is now running on the live system. The result is a system that is <strong>more capable, more accurate, more professional, and far more reliable</strong> than it was two days ago.</p>
+<hr>
+<h2>2. New Capability: The Vikundi AI Assistant</h2>
+<p>The single biggest addition is a built-in AI Assistant. It was designed specifically for a community savings group, is fully <strong>bilingual (English and Swahili)</strong>, and — importantly — it always replies in whichever language the user writes in.</p>
+<p>It has three distinct tools:</p>
+<h3>a) &quot;Write with AI&quot; — help drafting messages</h3>
+<p>When composing a message to members, a small <strong>&quot;Write with AI&quot;</strong> button now appears. A user can describe what they want to say (for example, &quot;remind members the monthly contribution is due on the 5th&quot;), choose a tone and language, and the assistant produces a polished draft. The user can pick from a few versions and insert the best one — they always stay in full control and can edit before sending.</p>
+<p>It can also <strong>improve</strong>, <strong>shorten</strong>, or <strong>translate</strong> existing text between English and Swahili — a real time-saver for a bilingual group.</p>
+<h3>b) &quot;Chat with AI&quot; — a general assistant</h3>
+<p>A dedicated conversation page lets permitted users chat freely with the assistant for help with writing, translation, and general advice on running a savings group. For privacy, this general chat <strong>cannot see the group&#039;s data</strong> and <strong>cannot make any changes</strong> — it only provides writing help.</p>
+<h3>c) &quot;Ask Vikundi&quot; — answers from your real data</h3>
+<p>The most powerful tool. Users can ask plain-language questions such as:</p>
+<ul>
+<li>&quot;What is our total savings?&quot;</li>
+<li>&quot;Who are the top contributors this year?&quot;</li>
+<li>&quot;How many members do we have?&quot;</li>
+<li>&quot;What is awaiting approval?&quot;</li>
+<li>&quot;How much is the monthly contribution?&quot;</li>
+</ul>
+<p>The assistant answers using the group&#039;s <strong>actual, live figures</strong>. To keep this completely safe, it can <strong>only read a fixed set of pre-approved summaries</strong> — it can never change records, move money, approve anything, or see private details it shouldn&#039;t. Every answer even shows which figures it used, so the numbers are transparent and trustworthy.</p>
+<h3>Safety, control, and cost</h3>
+<ul>
+<li><strong>Who can use it</strong> is fully controlled in the existing Roles &amp; Permissions area. Leaders decide which roles get access to writing help and which can ask data questions — they appear automatically alongside all other permissions.</li>
+<li>The connection to the AI provider uses the group&#039;s <strong>own account</strong>, so the group controls the model and the cost. A <strong>monthly spending cap</strong> and usage tracking are built in to prevent surprises.</li>
+<li>The AI provider key is <strong>stored in encrypted form</strong> and never displayed again.</li>
+<li>Administrators can choose between leading AI providers and test the connection with one click.</li>
+<li>If the assistant is switched off, every AI button disappears instantly.</li>
+</ul>
+<hr>
+<h2>3. New Capability: Electronic Signatures (e-Signatures)</h2>
+<p>The system now supports signing documents <strong>electronically</strong>, removing the old need to print a document, sign it by hand, and scan it back in. This makes the group&#039;s approvals faster, paperless, and easier to do from anywhere.</p>
+<h3>Your personal signature</h3>
+<p>Every user can create their own digital signature in one of two ways:</p>
+<ul>
+<li><strong>Upload</strong> an image of their existing signature, or</li>
+<li><strong>Draw</strong> their signature directly on screen — using a mouse, a laptop touchpad, or a finger on a phone or tablet.</li>
+</ul>
+<p>Once saved, that signature can be reused to sign any document they are authorised to sign.</p>
+<h3>Signing documents</h3>
+<p>A user can select a document and <strong>apply their signature</strong> in the correct place. For approvals, every document carries a clear <strong>Created By / Reviewed By / Approved By</strong> block. When someone signs electronically, their signature appears in the right column, clearly marked <strong>&quot;Digitally signed&quot;</strong> together with the exact <strong>date and time</strong> — giving a tamper-evident record of exactly who authorised what, and when. <em>(At your request, the decorative line that used to sit above this block was removed for a cleaner look.)</em></p>
+<h3>Staying organised and accountable</h3>
+<ul>
+<li>A personal overview shows <strong>how many signatures you have</strong> and <strong>which documents are waiting for your signature</strong>, so nothing is missed.</li>
+<li>A complete <strong>signature history</strong> records every signing action as part of the group&#039;s audit trail.</li>
+<li>Everything is <strong>bilingual (English / Swahili)</strong> and protected by the standard permission system, so only authorised roles can sign.</li>
+</ul>
+<p><strong>In short:</strong> the group now has a proper, verifiable, paperless signing process — leaders can review and approve documents digitally, with a clear record that stands up to scrutiny.</p>
+<hr>
+<h2>4. Corrected Financial Figures</h2>
+<p>Several screens were displaying wrong or missing savings figures. The root cause was a mismatch in how contribution records were being counted — the system was looking for a status label that the records did not actually use, so it counted many genuine, confirmed contributions as if they were zero.</p>
+<p>This has been corrected everywhere it appeared, including:</p>
+<ul>
+<li><strong>The Monthly Contribution Analysis</strong> (previously showing rows of zeros) now shows real monthly totals.</li>
+<li><strong>The Contribution Ledger / Analysis Grid</strong>, which was displaying the wrong set of members (and therefore empty totals), now lists the correct members together with their true contribution history and grand totals.</li>
+<li><strong>Member statements, the dashboard, member profiles, savings-based loan checks, and bereavement (death) analysis</strong> all now reflect accurate, consistent contribution totals.</li>
+</ul>
+<p>In short, the savings numbers shown across the system are now <strong>correct and consistent</strong> with the money that has actually been contributed.</p>
+<hr>
+<h2>5. Cleaner, More Professional Printing</h2>
+<ul>
+<li><strong>Removed &quot;dirty&quot; text from printouts.</strong> On some printed reports, raw formatting instructions were accidentally appearing as readable text inside the page (for example within the Monthly Contribution Analysis area). This has been eliminated, so printed reports now look clean and professional.</li>
+<li><strong>Consistent, branded print headers</strong> across the many report and detail pages, giving every printout a uniform, professional appearance.</li>
+<li><strong>Removed the line above the signature block.</strong> At your request, the horizontal line that appeared above the &quot;Created By / Reviewed By / Approved By&quot; signatures has been removed across all printed and viewed documents.</li>
+</ul>
+<hr>
+<h2>6. New Document Templates Library</h2>
+<p>A new area for managing the group&#039;s standard documents was added, mirroring best-practice design:</p>
+<ul>
+<li>Upload existing template files <strong>or</strong> create simple templates directly in the system.</li>
+<li>Organise templates by <strong>category</strong>, filter by <strong>type</strong> and <strong>status</strong>, and <strong>search</strong> the full list.</li>
+<li>A clean, professional actions menu for each template (generate a document, preview, edit details, delete).</li>
+<li><strong>Mobile-friendly</strong> layout and <strong>bilingual</strong> labels throughout.</li>
+<li>Access is governed by the standard permission system, so only authorised roles can manage templates.</li>
+</ul>
+<p>This gives the group a tidy, central place to keep and reuse its common forms and letters.</p>
+<hr>
+<h2>7. The Big One: Rescuing and Future-Proofing the Live System</h2>
+<p>This was the most important — and most involved — part of the work. Members reported that several live pages were crashing, especially when trying to <strong>review and approve</strong> contributions, budgets, and expenses.</p>
+<p>After careful investigation, we found <strong>three separate underlying problems</strong>, and fixed all of them:</p>
+<h3>Problem 1 — The live update process itself was broken</h3>
+<p>The automated process responsible for publishing updates to the live website contained a small formatting error that made it <strong>fail silently</strong>. This meant that even when improvements were prepared, <strong>the live system was never actually receiving them</strong>. This single hidden fault explained why earlier fixes did not appear to take effect online. It has been corrected, and the live update process now runs successfully.</p>
+<h3>Problem 2 — The live database was &quot;behind&quot; the system</h3>
+<p>Newer features expected certain pieces of information to exist in the database (for example, who reviewed and who approved each record). On the live system these pieces were <strong>missing</strong>, which caused pages to crash with errors. In some cases, <strong>entire data areas were missing</strong> altogether. We:</p>
+<ul>
+<li>Added the missing information fields wherever they were needed, and</li>
+<li><strong>Recreated every missing data area</strong> so the live database now matches what the system expects.</li>
+</ul>
+<p>This restored the ability to <strong>review and approve</strong> across all relevant modules — contributions, budgets, general expenses, petty cash, and bereavement (death) benefits.</p>
+<h3>Problem 3 — Records could not move through the approval steps</h3>
+<p>A subtle settings issue on the live database was blocking records from being marked as &quot;reviewed&quot;. This was also resolved, so the full review-and-approve workflow now functions correctly.</p>
+<h3>A permanent safeguard so this never happens again</h3>
+<p>Most importantly, we did not just fix today&#039;s symptoms — we built a <strong>self-healing update system</strong>. From now on, <strong>every time the system is updated, it automatically checks the live database and quietly brings it into line with the latest version</strong>, creating anything that is missing. This means the group should no longer experience the &quot;page suddenly crashes after an update&quot; problem. The system now keeps itself consistent, safely and automatically.</p>
+<hr>
+<h2>8. Quality Assurance &amp; Security</h2>
+<ul>
+<li><strong>Extensive automated testing</strong> was added throughout this work. The system is now backed by <strong>several hundred automatic checks</strong> that run before any change is accepted. This is how we can be confident the improvements work and that older features were not broken in the process. Every change in this report passed these checks.</li>
+<li><strong>Security was treated as a priority:</strong> AI access is permission-controlled, the AI provider key is encrypted, the data assistant is strictly read-only, and sensitive settings are limited to administrators.</li>
+<li><strong>Bilingual integrity</strong> (English / Swahili) was respected in every new screen and message, in line with the group&#039;s needs.</li>
+</ul>
+<hr>
+<h2>9. Impact at a Glance</h2>
+<table>
+<thead><tr><th>Area</th><th>Before</th><th>After</th></tr></thead>
+<tbody>
+<tr><td>AI assistance</td><td>None</td><td>Writing help, translation, and live data Q&amp;A — bilingual</td></tr>
+<tr><td>Document signing</td><td>Print, sign by hand, scan back</td><td>Electronic signatures (upload or draw), with &quot;who signed and when&quot; recorded</td></tr>
+<tr><td>Savings figures</td><td>Some screens showed zeros / wrong members</td><td>Accurate, consistent totals everywhere</td></tr>
+<tr><td>Printed reports</td><td>Stray text; inconsistent headers; extra signature line</td><td>Clean, branded, professional printouts</td></tr>
+<tr><td>Document templates</td><td>No central library</td><td>Full templates library with categories, search, and roles</td></tr>
+<tr><td>Live website updates</td><td>Silently failing — updates never applied</td><td>Reliable, automatic, and self-correcting</td></tr>
+<tr><td>Review &amp; approve (live)</td><td>Crashing on several pages</td><td>Working across all modules</td></tr>
+<tr><td>Confidence in changes</td><td>Manual checking only</td><td>Hundreds of automatic quality checks</td></tr>
+</tbody></table>
+<hr>
+<h2>10. What This Means for the Group</h2>
+<ul>
+<li>Leaders and members can now <strong>draft, translate, and polish communications in seconds</strong>, in both languages.</li>
+<li>Anyone permitted can <strong>ask the system questions about the group&#039;s money and membership</strong> and get instant, trustworthy answers.</li>
+<li>Documents can be <strong>signed and approved electronically</strong> from anywhere, paperlessly, with a clear record of who signed and when.</li>
+<li>The <strong>financial figures members rely on are now correct</strong>.</li>
+<li><strong>Printouts look professional</strong> and reflect the group&#039;s branding.</li>
+<li>The <strong>live system is stable</strong>, the approval workflow works, and future updates will apply smoothly and safely on their own.</li>
+</ul>
+<hr>
+<h2>11. Suggested Next Steps</h2>
+<ol>
+<li><strong>Switch on the AI Assistant</strong> by entering the group&#039;s AI provider details in the AI settings, then assign access to the appropriate roles.</li>
+<li><strong>Spot-check the live pages</strong> that were previously failing (reviewing/approving a contribution, a budget, and an expense) to confirm everything is working as expected on your end.</li>
+<li><strong>Decide which roles</strong> should have writing help versus the ability to ask data questions, and set them in Roles &amp; Permissions.</li>
+<li>Continue using the normal update process — the new safeguards will keep the live database in step automatically.</li>
+</ol>
+<hr>
+<p><em>This report summarises improvements delivered to the Vikundi VICOBA Management System on 19–20 June 2026. All changes are complete, tested, and live.</em></p>
+
+</body></html>

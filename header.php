@@ -445,6 +445,8 @@ try {
                             <ul class="dropdown-menu shadow border-0 mt-0" aria-labelledby="communicationDropdown">
                                 <li><h6 class="dropdown-header"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mawasiliano' : 'Communication' ?></h6></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('message_center') ?>"><i class="bi bi-chat-left"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Ujumbe' : 'Messages' ?></a></li>
+                                <li><a class="dropdown-item" href="#"><i class="bi bi-envelope"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Barua Pepe' : 'Email' ?></a></li>
+                                <li><a class="dropdown-item" href="#"><i class="bi bi-phone"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'SMS' : 'SMS' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('notification_center') ?>"><i class="bi bi-bell"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Taarifa (Notifications)' : 'Notifications' ?></a></li>
                                 <?php if (canView('ai_assistant') || canView('ai_ask_data')): ?>
                                 <li><hr class="dropdown-divider"></li>
