@@ -107,6 +107,54 @@ $subtitle = $is_sw ? 'Rekodi na dhibiti misaada kwa wanachama waliofiwa' : 'Reco
         </div>
     </div>
 
+    <!-- Filter Bar -->
+    <?php
+        $f_months = [1=>'January',2=>'February',3=>'March',4=>'April',5=>'May',6=>'June',7=>'July',8=>'August',9=>'September',10=>'October',11=>'November',12=>'December'];
+        $f_months_sw = [1=>'Januari',2=>'Februari',3=>'Machi',4=>'Aprili',5=>'Mei',6=>'Juni',7=>'Julai',8=>'Agosti',9=>'Septemba',10=>'Oktoba',11=>'Novemba',12=>'Desemba'];
+        $f_cy = (int)date('Y');
+        $f_statuses = [
+            'pending'  => $is_sw ? 'Inasubiri' : 'Pending',
+            'reviewed' => $is_sw ? 'Imepitiwa' : 'Reviewed',
+            'approved' => $is_sw ? 'Imeidhinishwa' : 'Approved',
+            'rejected' => $is_sw ? 'Imekataliwa' : 'Rejected',
+        ];
+    ?>
+    <div class="card border-0 shadow-sm rounded-4 mb-3 no-print">
+        <div class="card-body p-3">
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-md-4">
+                    <label class="small fw-bold text-muted ps-1"><?= $is_sw ? 'Mwanachama' : 'Member' ?></label>
+                    <select class="form-select shadow-none" id="filterMember" data-placeholder="<?= $is_sw ? 'Tafuta mwanachama...' : 'Search member...' ?>"></select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="small fw-bold text-muted ps-1"><?= $is_sw ? 'Hali' : 'Status' ?></label>
+                    <select class="form-select shadow-none vk-filter-static" id="filterStatus" data-placeholder="<?= $is_sw ? 'Tafuta hali...' : 'Search status...' ?>">
+                        <option value=""><?= $is_sw ? 'Hali Zote' : 'All Status' ?></option>
+                        <?php foreach ($f_statuses as $sk => $sl): ?><option value="<?= $sk ?>"><?= $sl ?></option><?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="small fw-bold text-muted ps-1"><?= $is_sw ? 'Mwaka' : 'Year' ?></label>
+                    <select class="form-select shadow-none vk-filter-static" id="filterYear" data-placeholder="<?= $is_sw ? 'Tafuta mwaka...' : 'Search year...' ?>">
+                        <option value=""><?= $is_sw ? 'Miaka Yote' : 'All Years' ?></option>
+                        <?php for ($yy = $f_cy + 1; $yy >= $f_cy - 6; $yy--): ?><option value="<?= $yy ?>"><?= $yy ?></option><?php endfor; ?>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="small fw-bold text-muted ps-1"><?= $is_sw ? 'Mwezi' : 'Month' ?></label>
+                    <select class="form-select shadow-none vk-filter-static" id="filterMonth" data-placeholder="<?= $is_sw ? 'Tafuta mwezi...' : 'Search month...' ?>">
+                        <option value=""><?= $is_sw ? 'Miezi Yote' : 'All Months' ?></option>
+                        <?php foreach ($f_months as $mn => $ml): ?><option value="<?= $mn ?>"><?= $is_sw ? $f_months_sw[$mn] : $ml ?></option><?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2 d-flex gap-2">
+                    <button type="button" id="btnApplyFilter" class="btn btn-primary w-100 shadow-sm"><i class="bi bi-funnel me-1"></i> <?= $is_sw ? 'Chuja' : 'Filter' ?></button>
+                    <button type="button" id="btnClearFilter" class="btn btn-secondary w-100 shadow-sm"><i class="bi bi-x-circle me-1"></i> <?= $is_sw ? 'Futa' : 'Clear' ?></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Records Table -->
     <div class="card border-0 shadow-sm overflow-hidden bg-white">
         <div class="card-header py-3 border-bottom border-light d-flex flex-row justify-content-between align-items-center gap-2 bg-white no-print">
@@ -332,6 +380,48 @@ $(document).ready(function() {
         }
     });
 
+    // ---- Filter bar ----
+    // Member: AJAX Select2 (large dataset — search as you type). Uses a
+    // filter-specific endpoint that lists members WHO APPEAR in the log
+    // (the modal's endpoint excludes them, so it cannot be reused here).
+    $('#filterMember').select2({
+        theme: 'bootstrap-5',
+        placeholder: $('#filterMember').data('placeholder') || 'Search member...',
+        allowClear: true,
+        width: '100%',
+        minimumInputLength: 0,
+        ajax: {
+            url: '<?= getUrl("api/search_expense_members") ?>',
+            dataType: 'json',
+            delay: 300,
+            data: params => ({ q: params.term }),
+            processResults: data => ({ results: data.results }),
+            cache: true
+        }
+    });
+    // Status / Year / Month: searchable static Select2 (small fixed lists).
+    $('.vk-filter-static').each(function () {
+        $(this).select2({
+            theme: 'bootstrap-5',
+            placeholder: $(this).data('placeholder') || 'Search...',
+            allowClear: true,
+            width: '100%'
+        });
+    });
+
+    // Apply = reload the server-side table with the current filter values.
+    $('#btnApplyFilter').on('click', function () {
+        $('#deathExpensesTable').DataTable().ajax.reload();
+    });
+    // Clear = reset all four filters, then reload.
+    $('#btnClearFilter').on('click', function () {
+        $('#filterMember').val(null).trigger('change');
+        $('#filterStatus').val('').trigger('change');
+        $('#filterYear').val('').trigger('change');
+        $('#filterMonth').val('').trigger('change');
+        $('#deathExpensesTable').DataTable().ajax.reload();
+    });
+
     $('.select2-member').on('change', function() {
         const memberId = $(this).val();
         if (!memberId) return;
@@ -354,9 +444,16 @@ $(document).ready(function() {
         responsive: true, serverSide: true, processing: true,
         ajax: {
             url: '<?= getUrl("api/get_death_expenses") ?>',
+            data: function (d) {
+                // Send the active filter values with every DataTables request.
+                d.f_member = $('#filterMember').val() || '';
+                d.f_status = $('#filterStatus').val() || '';
+                d.f_year   = $('#filterYear').val() || '';
+                d.f_month  = $('#filterMonth').val() || '';
+            },
             dataSrc: json => {
                 $('#total_payouts').text(parseFloat(json.totalAmount).toLocaleString('en-US', {minimumFractionDigits: 2}));
-                $('#death_count').text(json.recordsTotal);
+                $('#death_count').text(json.recordsFiltered);
                 $('#month_payouts').text(json.monthTotal);
                 return json.data;
             }
