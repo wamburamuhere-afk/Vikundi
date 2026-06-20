@@ -506,8 +506,8 @@ $routes = [
     'activity_logs' => ROOT_DIR . '/app/audit_logs.php',
     'company_profile' => COMING_SOON_FILE,
     'company_profile.php' => COMING_SOON_FILE,
-    'backup_restore' => COMING_SOON_FILE,
-    'backup_restore.php' => COMING_SOON_FILE,
+    'backup_restore' => SETTINGS_DIR . '/backup_restore.php',
+    'backup_restore.php' => SETTINGS_DIR . '/backup_restore.php',
     'tax_settings' => COMING_SOON_FILE,
     'tax_settings.php' => COMING_SOON_FILE,
     'payment_settings' => COMING_SOON_FILE,
@@ -1137,6 +1137,12 @@ $routes = [
     'api/delete_backup.php' => API_DIR . '/delete_backup.php',
     'api/download_backup' => API_DIR . '/download_backup.php',
     'api/download_backup.php' => API_DIR . '/download_backup.php',
+    // Single dispatcher used by app/constant/settings/backup_restore.php
+    'api/backup_actions' => API_DIR . '/backup_actions.php',
+    'api/backup_actions.php' => API_DIR . '/backup_actions.php',
+    // Friendly alias for the download link in the backups table
+    'download_backup' => API_DIR . '/download_backup.php',
+    'download_backup.php' => API_DIR . '/download_backup.php',
 ];
 
 /**

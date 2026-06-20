@@ -1,0 +1,11 @@
+# Block all direct HTTP access to database backups.
+# Backups contain the full database (including password hashes) and must never
+# be downloadable directly. Downloads are served only through the gated PHP
+# route api/download_backup.php, which checks the session before readfile().
+Require all denied
+
+# Fallback for older Apache (2.2-style), harmless on 2.4.
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>
