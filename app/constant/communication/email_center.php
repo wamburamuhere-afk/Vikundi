@@ -117,7 +117,7 @@ $API = getUrl('api/email_center');
 <!-- Compose Email Modal -->
 <?php if ($can_create): ?>
 <div class="modal fade" id="composeEmailModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-lg my-4">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title"><i class="bi bi-pencil-square me-1"></i> <?= $is_sw ? 'Andika Barua Pepe' : 'Compose Email' ?></h5>
@@ -186,7 +186,7 @@ $API = getUrl('api/email_center');
 
 <!-- View Email Modal -->
 <div class="modal fade" id="viewEmailModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-lg my-4">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title"><i class="bi bi-envelope-open me-1"></i> <?= $is_sw ? 'Maelezo ya Barua Pepe' : 'Email Details' ?></h5>
@@ -209,8 +209,46 @@ $API = getUrl('api/email_center');
 #emailTable thead th { font-weight:600; border-bottom:none; }
 .dropdown-toggle::after { display:none; }
 .vk-badge { display:inline-block; padding:.2rem .6rem; border-radius:.35rem; font-size:.75rem; font-weight:600; }
+
+/* Professional, readable recipient picker (Select2 — §UI-3) */
+#composeEmailModal .select2-container { width: 100% !important; }
+#composeEmailModal .select2-container--bootstrap-5 .select2-selection {
+    min-height: 48px;
+    padding: .35rem .55rem;
+    border-color: #b6ccfe;
+}
+/* Roomy, clearly visible typing area inside the multi-select */
+.select2-container--bootstrap-5 .select2-search--inline .select2-search__field {
+    font-size: .95rem;
+    min-width: 14rem !important;
+    height: 1.9rem;
+    margin-top: .2rem;
+}
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
+    font-size: .85rem;
+    padding: .2rem .5rem;
+    margin-top: .25rem;
+}
+/* Comfortable, easy-to-scan dropdown */
+.select2-container--bootstrap-5 .select2-dropdown { border-color: #b6ccfe; }
+.select2-container--bootstrap-5 .select2-results__option { padding: .5rem .75rem; font-size: .9rem; }
+.select2-container--bootstrap-5 .select2-results__group {
+    font-weight: 600; color: #0d6efd; padding: .4rem .6rem;
+}
+.select2-container--bootstrap-5 .select2-results > .select2-results__options { max-height: 320px; }
+
+/* Flexible, fully scrollable modals: the whole dialog scrolls so every field,
+   the Select2 dropdown options and the footer buttons stay reachable. The body
+   must NOT clip overflow, otherwise the recipient dropdown gets cut off. */
+.modal { overflow-y: auto; }
+#composeEmailModal .modal-body,
+#viewEmailModal .modal-body { overflow: visible; }
+#composeEmailModal .modal-content,
+#viewEmailModal .modal-content { max-height: none; }
+
 @media (max-width: 767px) {
     .container-fluid > .row:first-child { position:sticky; top:0; z-index:1020; background:#fff; }
+    .modal-dialog.my-4 { margin: 0.75rem !important; }
 }
 </style>
 
@@ -412,12 +450,12 @@ $API = getUrl('api/email_center');
         $sel.select2({
             theme: 'bootstrap-5',
             dropdownParent: $('#composeEmailModal'),
-            placeholder: t('Type a name or email to search...','Andika jina au barua pepe kutafuta...'),
+            placeholder: t('Search a name or email, or type a new address...','Tafuta jina au barua pepe, au andika anwani mpya...'),
             allowClear: true,
             width: '100%',
             tags: true,
             tokenSeparators: [',', ';', ' '],
-            minimumInputLength: 1,
+            minimumInputLength: 0,   // show a short preview before typing (§UI-3)
             ajax: {
                 url: API,
                 dataType: 'json',
