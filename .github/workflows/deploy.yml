@@ -1,22 +1,25 @@
 name: Deploy to Production
 
-on:
-  push:
-    branches:
-      - main
+  on:
+    push:
+      branches:
+        - main
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
+  jobs:
+    deploy:
+      runs-on: ubuntu-latest
 
-    steps:
-      - name: Deploy to server
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          script: |
-            cd /var/www/vikundi.bjptechnologies.co.tz/public_html && git pull origin main
-            echo "Vikundi deployed at $(date)"
-            echo "Deployment was successful!"
+      steps:
+        - name: Deploy to server
+          uses: appleboy/ssh-action@v1.0.3
+          with:
+            host: ${{ secrets.SERVER_HOST }}
+            username: ${{ secrets.SERVER_USER }}
+            key: ${{ secrets.SERVER_SSH_KEY }}
+            script: |
+              cd /var/www/vikundi.bjptechnologies.co.tz/public_html
+              git pull origin main
+              echo "Running database migrations..."
+              php database/migrate.php
+              echo "Vikundi deployed at $(date)"
+              echo "Deployment was successful!"
