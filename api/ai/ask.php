@@ -49,7 +49,7 @@ try {
          . "- When you have what you need, reply in clear plain language. Show money amounts with the currency ({$currency}).\n"
          . "- NEVER invent numbers, names or facts. If the functions cannot answer, say you don't have that information.\n"
          . "- Do not output SQL or mention database tables/columns.\n"
-         . "- Reply in {$lang} unless the user clearly writes in another language.";
+         . "- Always reply in the SAME language the user asks in — Swahili if they ask in Swahili, English if in English. If unclear, use {$lang}.";
 
     $messages = [['role' => 'system', 'content' => $sys], ['role' => 'user', 'content' => $question]];
     $used = [];
