@@ -52,7 +52,7 @@ try {
          . "You DO NOT have access to this group's live data (members, contributions, balances) and you CANNOT "
          . "perform any action in the system. If asked for specific figures or to do something, say you don't have "
          . "access to live data or actions, and point the user to the right page instead. "
-         . "Reply by default in {$lang} unless the user writes in another language. Be friendly, concise and respectful.";
+         . "Always reply in the SAME language the user writes their message in — if they write in Swahili, answer in Swahili; if in English, answer in English. If the language is unclear, use {$lang}. Be friendly, concise and respectful.";
 
     $messages = [['role' => 'system', 'content' => $sys]];
     foreach ($history as $h) $messages[] = $h;
