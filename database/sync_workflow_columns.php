@@ -55,14 +55,21 @@ foreach ($map as $table => $cols) {
     }
 }
 
-/* Widen the contributions status enum to support the review step (idempotent). */
+/* Widen the contributions status enum to support the review step (idempotent).
+   Include '' so legacy empty-status rows are NOT truncated under strict SQL mode
+   (production has historical contributions with an empty status). Wrapped so a
+   failure here can never abort the rest of the migration. */
 $enumFixed = false;
 $ct = $pdo->prepare("SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME='contributions' AND COLUMN_NAME='status'");
 $ct->execute();
 $type = (string)$ct->fetchColumn();
 if ($type !== '' && strpos($type, "'reviewed'") === false) {
-    $pdo->exec("ALTER TABLE contributions MODIFY COLUMN status ENUM('pending','reviewed','approved','cancelled') NOT NULL DEFAULT 'pending'");
-    $enumFixed = true;
+    try {
+        $pdo->exec("ALTER TABLE contributions MODIFY COLUMN status ENUM('','pending','reviewed','approved','cancelled') NOT NULL DEFAULT 'pending'");
+        $enumFixed = true;
+    } catch (Throwable $e) {
+        echo "  (status enum widen skipped: " . $e->getMessage() . ")\n";
+    }
 }
 
 echo "Workflow column sync complete.\n";
