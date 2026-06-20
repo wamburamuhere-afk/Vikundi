@@ -81,4 +81,21 @@ class EmailHelperTest extends TestCase
         $tpl = 'No {{tokens}} here change';
         $this->assertSame($tpl, email_render_template($tpl, []));
     }
+
+    // ----- email_template_types --------------------------------------------
+
+    public function test_template_types_default_english(): void
+    {
+        $types = email_template_types(false);
+        $this->assertSame(['general', 'loan', 'payment', 'security'], array_keys($types));
+        $this->assertSame('General', $types['general']);
+    }
+
+    public function test_template_types_swahili_labels(): void
+    {
+        $types = email_template_types(true);
+        $this->assertSame(['general', 'loan', 'payment', 'security'], array_keys($types));
+        $this->assertSame('Mkopo', $types['loan']);
+        $this->assertNotSame('General', $types['general']); // localised
+    }
 }

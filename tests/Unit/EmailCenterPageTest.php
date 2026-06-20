@@ -92,6 +92,30 @@ class EmailCenterPageTest extends TestCase
         $this->assertStringNotContainsString('fa-', $this->page);
     }
 
+    // ----- Review-finding regressions --------------------------------------
+
+    public function test_email_body_rendered_in_sandboxed_iframe_not_raw(): void
+    {
+        // Stored-XSS fix: body goes through a sandboxed iframe srcdoc, never
+        // interpolated raw into .html().
+        $this->assertStringContainsString('sandbox', $this->page);
+        $this->assertStringContainsString('viewEmailFrame', $this->page);
+        $this->assertStringContainsString('.srcdoc = e.body', $this->page);
+        $this->assertStringNotContainsString('bg-light">${e.body', $this->page);
+    }
+
+    public function test_date_column_sorts_on_raw_timestamp(): void
+    {
+        // Orthogonal data: sort/type uses raw created_at, not the formatted string.
+        $this->assertStringContainsString("render: (d, type) => type === 'display'", $this->page);
+    }
+
+    public function test_compose_has_template_picker_linking_to_templates(): void
+    {
+        $this->assertStringContainsString('templatePick', $this->page);
+        $this->assertStringContainsString("getUrl('api/get_email_templates')", $this->page);
+    }
+
     // ----- API compliance ---------------------------------------------------
 
     public function test_api_checks_authentication(): void

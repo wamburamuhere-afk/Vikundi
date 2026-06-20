@@ -126,6 +126,20 @@ $API = getUrl('api/email_center');
             <form id="composeEmailForm">
                 <div class="modal-body">
                     <div class="mb-3">
+                        <label for="templatePick" class="form-label">
+                            <i class="bi bi-files text-primary me-1"></i><?= $is_sw ? 'Tumia Kiolezo (hiari)' : 'Use a Template (optional)' ?>
+                        </label>
+                        <select class="form-select" id="templatePick">
+                            <option value=""><?= $is_sw ? '— Hakuna kiolezo —' : '— No template —' ?></option>
+                        </select>
+                        <div class="form-text small">
+                            <?= $is_sw
+                                ? 'Kuchagua kiolezo kutajaza mada na maudhui. Unaweza kuhariri baadaye.'
+                                : 'Choosing a template fills in the subject and message. You can still edit them.' ?>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
                         <label for="recipients" class="form-label"><?= $is_sw ? 'Wapokeaji *' : 'Recipients *' ?></label>
                         <select class="form-select" id="recipients" name="recipients_select[]" multiple></select>
                         <div class="form-text small">
@@ -272,7 +286,7 @@ $API = getUrl('api/email_center');
             { data: 'subject', render: d => safeOutput(d) },
             { data: 'status', render: d => statusBadge(d) },
             { data: 'sender_name', render: d => safeOutput(d) || '<span class="text-muted">—</span>' },
-            { data: 'created_at', render: d => `<span class="small">${fmtDate(d)}</span>` },
+            { data: 'created_at', render: (d, type) => type === 'display' ? `<span class="small">${fmtDate(d)}</span>` : (d || '') },
             { data: null, orderable: false, className: 'text-end', render: r => actionMenu(r) }
         ],
         drawCallback: function () {
@@ -329,6 +343,9 @@ $API = getUrl('api/email_center');
             if (!res.success) { Swal.fire({ icon:'error', title:t('Error','Hitilafu'), text:res.message }); return; }
             const e = res.data;
             const err = e.error_message ? `<div class="alert alert-danger py-2 small mb-3"><i class="bi bi-exclamation-triangle me-1"></i>${safeOutput(e.error_message)}</div>` : '';
+            // The body is user-authored HTML. Render it in a sandboxed iframe
+            // (no allow-scripts) so stored markup can never execute script in
+            // the viewer's session — prevents stored XSS from the compose form.
             $('#viewEmailBody').html(`
                 <dl class="row mb-2 small">
                     <dt class="col-sm-3">${t('To','Kwa')}</dt><dd class="col-sm-9">${safeOutput(e.recipient_name ? e.recipient_name + ' <' + e.recipient_email + '>' : e.recipient_email)}</dd>
@@ -337,8 +354,11 @@ $API = getUrl('api/email_center');
                     <dt class="col-sm-3">${t('Sent','Imetumwa')}</dt><dd class="col-sm-9">${fmtDate(e.sent_at) || '<span class="text-muted">—</span>'}</dd>
                 </dl>
                 ${err}
-                <div class="border rounded p-3 bg-light">${e.body || ''}</div>
+                <iframe id="viewEmailFrame" sandbox class="w-100 border rounded bg-white" style="min-height:260px"></iframe>
             `);
+            // srcdoc is assigned (not concatenated into markup) so the HTML is
+            // parsed only inside the sandboxed document.
+            document.getElementById('viewEmailFrame').srcdoc = e.body || '';
             new bootstrap.Modal(document.getElementById('viewEmailModal')).show();
         });
     };
@@ -427,8 +447,45 @@ $API = getUrl('api/email_center');
         }).fail(initRecipientSelect);
     }
 
+    // Load active email templates into the compose picker (once).
+    let templatesLoaded = false;
+    let TEMPLATES = {};
+    function loadTemplates() {
+        if (templatesLoaded) return;
+        $.getJSON('<?= getUrl('api/get_email_templates') ?>', { active_only: 1 }).done(res => {
+            if (res.success) {
+                const $pick = $('#templatePick');
+                (res.data || []).forEach(tpl => {
+                    TEMPLATES[tpl.id] = tpl;
+                    $pick.append(new Option(tpl.template_name, tpl.id, false, false));
+                });
+                templatesLoaded = true;
+            }
+        });
+    }
+
+    // Applying a template prefills subject + body (only overwrites when empty
+    // or the user confirms, to avoid clobbering work in progress).
+    $('#templatePick').on('change', function () {
+        const tpl = TEMPLATES[$(this).val()];
+        if (!tpl) return;
+        const apply = () => { $('#subject').val(tpl.subject); $('#body').val(tpl.content); };
+        if (($('#subject').val().trim() === '') && ($('#body').val().trim() === '')) {
+            apply();
+        } else {
+            Swal.fire({
+                title: t('Replace current content?','Badilisha maudhui yaliyopo?'),
+                text: t('This will overwrite the subject and message.','Hii itafuta mada na maudhui yaliyopo.'),
+                icon: 'question', showCancelButton: true,
+                confirmButtonColor: '#0d6efd',
+                confirmButtonText: t('Yes, use template','Ndiyo, tumia kiolezo')
+            }).then(r => { if (r.isConfirmed) apply(); else $('#templatePick').val(''); });
+        }
+    });
+
     $('#composeEmailModal').on('shown.bs.modal', function () {
         loadRecipients();
+        loadTemplates();
         $('#subject').trigger('focus');
     });
 
@@ -451,6 +508,7 @@ $API = getUrl('api/email_center');
                     bootstrap.Modal.getInstance(document.getElementById('composeEmailModal')).hide();
                     $('#composeEmailForm')[0].reset();
                     $('#recipients').val(null).trigger('change');
+                    $('#templatePick').val('');
                     loadData();
                     Swal.fire({ icon:'success', title:t('Sent!','Imetumwa!'), text:res.message, timer:2200, showConfirmButton:false });
                 } else {

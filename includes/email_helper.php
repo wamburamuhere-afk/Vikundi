@@ -110,6 +110,54 @@ if (!function_exists('email_ensure_logs_table')) {
     }
 }
 
+if (!function_exists('email_ensure_templates_table')) {
+    /**
+     * Create the email_templates table if it does not yet exist. Idempotent.
+     * Backs the Email Templates page and the Email Center compose picker.
+     *
+     * @param PDO $pdo
+     * @return void
+     */
+    function email_ensure_templates_table(PDO $pdo): void
+    {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS email_templates (
+                id            INT AUTO_INCREMENT PRIMARY KEY,
+                template_name VARCHAR(150) NOT NULL,
+                template_type ENUM('general','loan','payment','security') NOT NULL DEFAULT 'general',
+                subject       VARCHAR(255) NOT NULL,
+                content       MEDIUMTEXT NOT NULL,
+                is_active     TINYINT(1) NOT NULL DEFAULT 1,
+                created_by    INT DEFAULT NULL,
+                created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_email_templates_active (is_active),
+                INDEX idx_email_templates_type (template_type)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+    }
+}
+
+if (!function_exists('email_template_types')) {
+    /**
+     * Canonical template type vocabulary with bilingual labels. Keeping it
+     * here means the Templates page and the Email Center share one source of
+     * truth for the type list.
+     *
+     * @param bool $is_sw
+     * @return array<string,string> type-key => label
+     */
+    function email_template_types(bool $is_sw = false): array
+    {
+        return [
+            'general'  => $is_sw ? 'Kawaida' : 'General',
+            'loan'     => $is_sw ? 'Mkopo' : 'Loan Related',
+            'payment'  => $is_sw ? 'Malipo' : 'Payment/Collection',
+            'security' => $is_sw ? 'Usalama' : 'Security/Auth',
+        ];
+    }
+}
+
 if (!function_exists('email_get_settings')) {
     /**
      * Read email configuration from system_settings, with sensible

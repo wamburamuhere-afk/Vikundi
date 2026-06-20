@@ -31,6 +31,42 @@ Important context, decisions made, or follow-up items.
 
 ---
 
+## Session 13 — 2026-06-20
+**Branch:** `feat/comms-email-center`
+**Developer:** Wambura Muhere / Claude Code
+**Summary:** Completed the email module to a professional standard — fixed the Email Center code-review findings, and finished the half-built **Email Templates** page (it was non-functional: stub list API, missing save/delete/test endpoints, no DB table, zero Swahili, native alerts, green cards). Rebuilt it fully bilingual + ui-constants compliant, gave it a real backend, and linked it to the Email Center.
+
+### Changes
+- **Email Center review fixes** (`email_center.php`): the View modal now renders the email body in a **sandboxed `<iframe srcdoc>`** instead of raw `.html()` — closes a stored-XSS hole. The Date column now sorts on the **raw timestamp** (orthogonal `render(d,type)`) instead of the localized string, so the log is in correct chronological order.
+- **Select2 Bootstrap-5 theme** now loaded globally in `header.php` (ui-constants §UI-3 prescribes `theme:'bootstrap-5'`, but the theme CSS was never included — the option was a silent no-op everywhere).
+- **Email Templates backend (was missing/stub):** real `get_email_templates.php` (data + stats), new `save_email_template.php` (create/update) and `delete_email_template.php`. All session + RBAC gated (shared `message_center` key), prepared statements, audit logging, bilingual.
+- **Email Templates page rebuilt** (`email_templates.php`): fully bilingual (language picked once, server-side `$is_sw`), blue stat cards, SweetAlert2 (no more `alert()`/`confirm()`), gear-dropdown actions, mobile cards, Select2 type picker, client-side DataTable. Preview renders template HTML in a sandboxed iframe; "Send Test" reuses the Email Center send+log path.
+- **Linking:** the Email Center compose modal gained a **"Use a Template"** picker that prefills subject/body from active templates (with overwrite confirmation). **Email Templates** added to the Communication menu.
+
+### Files Created
+- `api/save_email_template.php`, `api/delete_email_template.php` — template create/update + delete endpoints.
+- `database/email_templates.sql` — canonical `email_templates` schema.
+- `tests/Unit/EmailTemplatesApiTest.php` (9), `tests/Unit/EmailTemplatesPageTest.php` (12).
+
+### Files Modified
+- `includes/email_helper.php` — added `email_ensure_templates_table()` and bilingual `email_template_types()`.
+- `api/get_email_templates.php` — replaced the 10-line empty stub with a real `{success,data,stats}` query (`active_only` filter for the picker).
+- `app/constant/communication/email_center.php` — XSS + sort fixes, template picker.
+- `app/constant/communication/email_templates.php` — full professional rebuild.
+- `header.php` — Select2 BS5 theme; Email Templates menu item.
+- `tests/Unit/EmailHelperTest.php`, `EmailCenterPageTest.php` — added coverage for the new helper, the XSS/sort fixes and the template picker.
+
+### Database Changes
+- New table `email_templates` (self-healing via `email_ensure_templates_table()`; also `database/email_templates.sql`).
+
+### Notes
+- Full suite green: **450 tests, 713 assertions** (was 424). All files `php -l` clean. Both pages render with **zero warnings in EN and SW**; language is picked once (no mixing).
+- Verified end-to-end: template create / edit / delete with audit entries (Created/Updated/Deleted); list + stats; permission + auth gates; compose template picker feed.
+- Deliberate call: kept the **blue** scale (ui-constants §UI-1 is binding) rather than the demo's green stat cards.
+- The orphaned `test_email_config.php` / `setup_email_templates.php` routes are now unused (the rebuilt page tests via the Email Center send path); left as-is, no UI references them.
+
+---
+
 ## Session 12 — 2026-06-20
 **Branch:** `fix-deploy-yml`
 **Developer:** Wambura Muhere / Claude Code
