@@ -31,6 +31,77 @@ Important context, decisions made, or follow-up items.
 
 ---
 
+## Session 15 — 2026-06-20
+**Branch:** `feat/comms-email-center`
+**Developer:** Wambura Muhere / Claude Code
+**Summary:** Wired up the **SMS** placeholder (comms > SMS) into a real, working SMS module — mirroring the email module — with actual gateway delivery (Beem Africa / Africa's Talking / Twilio / custom). Ideal for phone-only members.
+
+### Why / verification-first
+The old `send_sms()` only **simulated** success (its cURL call was commented out, and it inserted columns that don't exist in the loan-coupled `sms_alerts` table). Before relying on a gateway I probed reachability: apisms.beem.africa, api.africastalking.com, api.twilio.com all **reachable on :443**, and cURL is loaded — so **no new dependency** (SMS is HTTP, unlike email's PHPMailer).
+
+### Changes
+- **`includes/sms_helper.php`** rewritten into a provider-agnostic REAL sender: `sms_normalize_phone()` (TZ 255 default), `sms_segments()`, `sms_gateways()` presets (Beem/Africa's Talking/Twilio/Custom + bilingual help + required fields), `sms_ensure_logs_table()` (new `sms_logs` table, separate from the loan-centric `sms_alerts`), `sms_get_config()` (group 'sms', decrypts secrets via `core/ai_crypto.php`), `sms_send_via_gateway()` (per-provider cURL requests), `sms_send()` (real + honest log), and `send_sms()` kept as a backward-compatible wrapper. Removed the top-level `config.php` require so pure helpers are unit-testable.
+- **SMS Settings page** `app/constant/settings/sms_settings.php` (admin-only): gateway preset dropdown that shows only the fields each gateway needs, encrypted API key/secret (masked + show/hide), Sender ID, enable switch, Save + **Send Test SMS**, status badge. Bilingual, ui-constants compliant.
+- **Endpoints** `api/sms/save_settings.php` (encrypts key+secret, skips masked, admin-gated, audit) and `api/sms/test_connection.php` (sends a real test SMS).
+- **SMS Center** `app/constant/communication/sms_center.php` + `api/sms_center.php`: compose/send/log mirroring the Email Center — AJAX recipient search by phone (members), 160-char/segment counter, status log DataTable, mobile cards, gear dropdown, bilingual. Actions: list/get/send/resend/delete/search_recipients.
+- **Linking**: SMS menu placeholder now → SMS Center; SMS Settings in the Settings menu; admin Settings shortcut + a "set up SMS" prompt in the SMS Center.
+
+### Files Created
+- `includes/sms_helper.php` (rewrite), `app/constant/settings/sms_settings.php`, `app/constant/communication/sms_center.php`
+- `api/sms/save_settings.php`, `api/sms/test_connection.php`, `api/sms_center.php`
+- `tests/Unit/SmsHelperTest.php` (12), `tests/Unit/SmsSettingsTest.php` (15)
+
+### Files Modified
+- `roots.php` (page + 5 API/settings routes), `header.php` (SMS menu link + SMS Settings menu link)
+
+### Database Changes
+- New table `sms_logs` (self-healing via `sms_ensure_logs_table()`).
+- New `system_settings` keys, group `'sms'`: `sms_provider, sms_api_key_enc (encrypted), sms_api_secret_enc (encrypted), sms_username, sms_sender_id, sms_base_url, sms_enabled`.
+
+### Notes
+- Full suite green: **507 tests, 867 assertions** (+27). All files `php -l` clean; both SMS pages render with zero warnings in EN + SW.
+- Verified end-to-end: settings save (key+secret encrypted, no plaintext leak; decrypt round-trips), and `sms_send()` reaching **Beem's real API** returning *"Gateway HTTP 401: Invalid Authentication Parameters"* with dummy creds — proving the transport engages and will deliver with valid credentials. Honest failure logged to `sms_logs`. Dummy creds cleaned from the DB.
+- No new Composer dependency (cURL + HTTPS already available).
+
+---
+
+## Session 14 — 2026-06-20
+**Branch:** `feat/comms-email-center`
+**Developer:** Wambura Muhere / Claude Code
+**Summary:** Made email actually deliver. Researched how this system already does provider integrations (AI assistant: encrypted key, provider presets, Save + Test; SMS gateway table) and built a matching **Email Settings** page with real SMTP delivery via PHPMailer. Designed for low-tech, phone-only users: one admin sets it up once with provider presets, everyone else just composes.
+
+### Why
+"Sent to 0 recipient(s), N failed" was PHP `mail()` failing because WAMP has no MTA on localhost:25. Before installing anything I probed the environment: PHP 8.2 + openssl/mbstring/ctype/filter/curl present; **smtp.gmail.com:587 and :465 reachable (~130ms)**; localhost:25 refused. So SMTP via PHPMailer is viable here — install justified by evidence.
+
+### Changes
+- **PHPMailer** (`composer require phpmailer/phpmailer` → v7.1.1). App doesn't bootstrap Composer, so the autoloader is required explicitly and guarded with `class_exists` (graceful fallback to `mail()`).
+- **`includes/email_helper.php`**: added `email_smtp_providers()` (Gmail/Outlook/Yahoo/Custom presets with host/port/encryption + bilingual help), `email_get_config()` (reads group `'email'`; decrypts SMTP password via existing `core/ai_crypto.php`), `email_send_smtp()` (PHPMailer transport), `email_save_setting()`. `email_send()` now uses SMTP when fully configured, else falls back to `mail()` with an honest "ask an admin to configure Email Settings" message.
+- **Email Settings page** `app/constant/settings/email_settings.php`: admin-only; provider preset dropdown that auto-fills host/port/encryption (custom exposes advanced fields); email + masked password (show/hide); From name; enable switch; **Save** + **Send Test Email**; status badge (Active / Disabled / Not set up). Bilingual, blue/ui-constants compliant, mobile-friendly.
+- **Endpoints**: `api/email/save_settings.php` (admin-gated; encrypts password with `aiEncryptSecret`; skips masked placeholder; audit) and `api/email/test_connection.php` (sends a real test email via `email_send`). Mirror the AI settings endpoints.
+- **Linking**: Email Settings in the Settings menu (after AI Assistant); an admin "Settings" shortcut in the Email Center header; "Back to Email Center" on the settings page.
+
+### Files Created
+- `app/constant/settings/email_settings.php`, `api/email/save_settings.php`, `api/email/test_connection.php`
+- `tests/Unit/EmailSettingsTest.php` (23)
+
+### Files Modified
+- `includes/email_helper.php` (SMTP transport + config + presets + save helper)
+- `roots.php` (page + 2 API routes), `header.php` (Settings menu link), `app/constant/communication/email_center.php` (admin Settings shortcut)
+- `composer.json` / `composer.lock` (phpmailer/phpmailer ^7.1)
+- `database/email_logs.sql` (documents the SMTP setting keys)
+- `tests/Unit/EmailHelperTest.php` (provider-preset tests)
+
+### Database Changes
+- New `system_settings` keys, group `'email'`: `email_provider, smtp_host, smtp_port, smtp_encryption, smtp_username, smtp_password_enc (encrypted), mail_from_name, email_enabled`. Created on save; no migration required.
+
+### Notes
+- Full suite green: **480 tests, 801 assertions** (+23). All files `php -l` clean; settings page renders with zero warnings in EN + SW.
+- Verified end-to-end: save (password stored encrypted, no plaintext leak; Gmail preset auto-fills host/port/tls; decrypt round-trips), and `email_send()` reaching Gmail and returning a real *"SMTP Error: Could not authenticate"* with dummy creds — proving the transport engages and will deliver with a valid App Password. Dummy creds cleaned from the DB after testing.
+- `vendor/` is gitignored, so only `composer.json`/`composer.lock` are committed; deploy runs `composer install`.
+- Low-tech note for users: Gmail needs a one-time App Password (the page explains this bilingually). Suggestion for later: WhatsApp/SMS as the primary channel for phone-only members.
+
+---
+
 ## Session 13 — 2026-06-20
 **Branch:** `feat/comms-email-center`
 **Developer:** Wambura Muhere / Claude Code
