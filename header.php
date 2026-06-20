@@ -449,7 +449,7 @@ try {
                                 <li><a class="dropdown-item" href="<?= getUrl('message_center') ?>"><i class="bi bi-chat-left"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Ujumbe' : 'Messages' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('email_center') ?>"><i class="bi bi-envelope"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Barua Pepe' : 'Email' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('email_templates') ?>"><i class="bi bi-envelope-paper"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Violezo vya Barua Pepe' : 'Email Templates' ?></a></li>
-                                <li><a class="dropdown-item" href="#"><i class="bi bi-phone"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'SMS' : 'SMS' ?></a></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('sms_center') ?>"><i class="bi bi-phone"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'SMS' : 'SMS' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('notification_center') ?>"><i class="bi bi-bell"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Taarifa (Notifications)' : 'Notifications' ?></a></li>
                                 <?php if (canView('ai_assistant') || canView('ai_ask_data')): ?>
                                 <li><hr class="dropdown-divider"></li>
@@ -510,6 +510,8 @@ try {
                                 <li><h6 class="dropdown-header"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mipangilio ya Mfumo' : 'System Settings' ?></h6></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('system_settings') ?>"><i class="bi bi-gear"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mipangilio ya Programu' : 'App Settings' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('ai-settings') ?>"><i class="bi bi-robot text-primary"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Msaidizi wa AI' : 'AI Assistant' ?></a></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('email-settings') ?>"><i class="bi bi-envelope-gear text-primary"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mipangilio ya Barua Pepe' : 'Email Settings' ?></a></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('sms-settings') ?>"><i class="bi bi-phone-vibrate text-primary"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mipangilio ya SMS' : 'SMS Settings' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('backup_restore') ?>"><i class="bi bi-database"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nakala Mkoba (Backup)' : 'Backup & Restore' ?></a></li>
                             </ul>
                         </li>

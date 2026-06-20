@@ -98,4 +98,35 @@ class EmailHelperTest extends TestCase
         $this->assertSame('Mkopo', $types['loan']);
         $this->assertNotSame('General', $types['general']); // localised
     }
+
+    // ----- email_smtp_providers (presets for low-tech setup) ---------------
+
+    public function test_smtp_providers_include_common_presets(): void
+    {
+        $p = email_smtp_providers(false);
+        foreach (['gmail', 'outlook', 'yahoo', 'custom'] as $key) {
+            $this->assertArrayHasKey($key, $p, "missing provider preset: $key");
+        }
+    }
+
+    public function test_gmail_preset_has_correct_host_and_port(): void
+    {
+        $p = email_smtp_providers(false)['gmail'];
+        $this->assertSame('smtp.gmail.com', $p['host']);
+        $this->assertSame(587, $p['port']);
+        $this->assertSame('tls', $p['encryption']);
+    }
+
+    public function test_custom_preset_has_no_prefilled_host(): void
+    {
+        $this->assertSame('', email_smtp_providers(false)['custom']['host']);
+    }
+
+    public function test_provider_help_is_localised(): void
+    {
+        $this->assertNotSame(
+            email_smtp_providers(false)['gmail']['help'],
+            email_smtp_providers(true)['gmail']['help']
+        );
+    }
 }

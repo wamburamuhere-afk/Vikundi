@@ -27,11 +27,18 @@ $API = getUrl('api/email_center');
                 <h2 class="mb-1"><i class="bi bi-envelope text-primary"></i> <?= $is_sw ? 'Kituo cha Barua Pepe' : 'Email Center' ?></h2>
                 <p class="text-muted mb-0"><?= $is_sw ? 'Tuma na fuatilia barua pepe kwa wanachama na watumiaji' : 'Send and track emails to members and users' ?></p>
             </div>
-            <?php if ($can_create): ?>
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#composeEmailModal">
-                <i class="bi bi-pencil-square me-1"></i> <?= $is_sw ? 'Andika Barua Pepe' : 'Compose Email' ?>
-            </button>
-            <?php endif; ?>
+            <div class="d-flex gap-2">
+                <?php if (isAdmin() || canEdit('system_settings')): ?>
+                <a href="<?= getUrl('email-settings') ?>" class="btn btn-outline-secondary" title="<?= $is_sw ? 'Mipangilio ya Barua Pepe' : 'Email Settings' ?>">
+                    <i class="bi bi-envelope-gear"></i><span class="d-none d-sm-inline ms-1"><?= $is_sw ? 'Mipangilio' : 'Settings' ?></span>
+                </a>
+                <?php endif; ?>
+                <?php if ($can_create): ?>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#composeEmailModal">
+                    <i class="bi bi-pencil-square me-1"></i> <?= $is_sw ? 'Andika Barua Pepe' : 'Compose Email' ?>
+                </button>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
 
