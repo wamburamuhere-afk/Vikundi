@@ -118,6 +118,9 @@ $subtitle = $is_sw ? 'Rekodi na dhibiti misaada kwa wanachama waliofiwa' : 'Reco
             'approved' => $is_sw ? 'Imeidhinishwa' : 'Approved',
             'rejected' => $is_sw ? 'Imekataliwa' : 'Rejected',
         ];
+        // Pre-select the Status filter from the URL (?status=pending) so the
+        // dashboard "Funeral Supports" chip lands showing ONLY the pending.
+        $preselect_status = (isset($_GET['status']) && isset($f_statuses[$_GET['status']])) ? $_GET['status'] : '';
     ?>
     <div class="card border-0 shadow-sm rounded-4 mb-3 no-print">
         <div class="card-body p-3">
@@ -130,7 +133,7 @@ $subtitle = $is_sw ? 'Rekodi na dhibiti misaada kwa wanachama waliofiwa' : 'Reco
                     <label class="small fw-bold text-muted ps-1"><?= $is_sw ? 'Hali' : 'Status' ?></label>
                     <select class="form-select shadow-none vk-filter-static" id="filterStatus" data-placeholder="<?= $is_sw ? 'Tafuta hali...' : 'Search status...' ?>">
                         <option value=""><?= $is_sw ? 'Hali Zote' : 'All Status' ?></option>
-                        <?php foreach ($f_statuses as $sk => $sl): ?><option value="<?= $sk ?>"><?= $sl ?></option><?php endforeach; ?>
+                        <?php foreach ($f_statuses as $sk => $sl): ?><option value="<?= $sk ?>" <?= $sk === $preselect_status ? 'selected' : '' ?>><?= $sl ?></option><?php endforeach; ?>
                     </select>
                 </div>
                 <div class="col-6 col-md-2">

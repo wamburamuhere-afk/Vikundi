@@ -39,6 +39,11 @@ $user_role = $u_data['role_name'] ?? 'Staff';
 
 $lang = $_SESSION['preferred_language'] ?? 'en';
 $is_sw = ($lang === 'sw');
+
+// Pre-select the Status filter from the URL (?status=pending) so the dashboard
+// "Action Required" chip lands here showing ONLY the pending expenses.
+$valid_statuses = ['pending', 'reviewed', 'approved', 'rejected'];
+$preselect_status = (isset($_GET['status']) && in_array($_GET['status'], $valid_statuses, true)) ? $_GET['status'] : '';
 ?>
 
 <div class="container-fluid py-4" id="main-content" style="background-color: #f8f9fa; min-height: 90vh; overflow-x: hidden;">
@@ -144,11 +149,12 @@ $is_sw = ($lang === 'sw');
             <div class="row g-3">
                 <div class="col-md-3">
                     <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Hali (Status)' : 'Status' ?></label>
-                    <select class="form-select" id="statusFilter">
+                    <select class="form-select vk-filter-select" id="statusFilter" data-placeholder="<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Tafuta hali...' : 'Search status...' ?>">
                         <option value=""><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Hali Zote' : 'All Status' ?></option>
-                        <option value="pending"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Inasubiri' : 'Pending' ?></option>
-                        <option value="approved"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Imeidhinishwa' : 'Approved' ?></option>
-                        <option value="rejected"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Imekataliwa' : 'Rejected' ?></option>
+                        <option value="pending" <?= $preselect_status === 'pending' ? 'selected' : '' ?>><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Inasubiri' : 'Pending' ?></option>
+                        <option value="reviewed" <?= $preselect_status === 'reviewed' ? 'selected' : '' ?>><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Imepitiwa' : 'Reviewed' ?></option>
+                        <option value="approved" <?= $preselect_status === 'approved' ? 'selected' : '' ?>><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Imeidhinishwa' : 'Approved' ?></option>
+                        <option value="rejected" <?= $preselect_status === 'rejected' ? 'selected' : '' ?>><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Imekataliwa' : 'Rejected' ?></option>
                     </select>
                 </div>
                 <div class="col-md-3">
@@ -300,7 +306,22 @@ $is_sw = ($lang === 'sw');
 const isSw = <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'true' : 'false' ?>;
 
 $(document).ready(function() {
-    
+
+    // Searchable Status filter: click to open, type to search the options.
+    if ($.fn.select2) {
+        $('.vk-filter-select').each(function () {
+            $(this).select2({
+                width: '100%',
+                placeholder: $(this).data('placeholder') || 'Search...',
+                allowClear: true
+            });
+        });
+        // Auto-apply (reload the server-side table) as soon as a status is chosen/cleared.
+        $('.vk-filter-select').on('select2:select select2:clear', function () {
+            if (typeof applyFilters === 'function') applyFilters();
+        });
+    }
+
     const table = $('#expensesTable').DataTable({
         responsive: true,
         serverSide: true,
@@ -434,7 +455,7 @@ function updateExpensePageInfo() {
 }
 
 function applyFilters() { $('#expensesTable').DataTable().ajax.reload(); }
-function clearFilters() { $('#statusFilter').val(''); $('#dateFromFilter, #dateToFilter').val(''); applyFilters(); }
+function clearFilters() { $('#statusFilter').val('').trigger('change.select2'); $('#dateFromFilter, #dateToFilter').val(''); applyFilters(); }
 function formatCurrency(v) { return parseFloat(v).toLocaleString('en-US', {minimumFractionDigits: 2}); }
 function getStatusBadgeClass(s) {
     return s === 'approved' ? 'success' : s === 'pending' ? 'warning' : s === 'rejected' ? 'danger' : 'secondary';
@@ -603,6 +624,24 @@ function renderExpenseCards(api) {
         .vk-cards-wrapper { display: none !important; }
         .print-header, .print-footer { display: block !important; }
     }
+
+    /* Searchable filter dropdown (Select2) sized to match Bootstrap form-select */
+    .vk-filter-select + .select2-container { width: 100% !important; }
+    .select2-container--default .select2-selection--single {
+        height: calc(2.5rem + 2px);
+        border: 1px solid #dee2e6;
+        border-radius: .375rem;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: calc(2.5rem); padding-left: .75rem;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow { height: 100%; }
+    .select2-container--default.select2-container--focus .select2-selection--single,
+    .select2-container--default.select2-container--open .select2-selection--single {
+        border-color: #86b7fe; box-shadow: 0 0 0 .25rem rgba(13,110,253,.25);
+    }
+    .select2-dropdown { border-color: #86b7fe; }
+    .select2-container--default .select2-results__option--highlighted[aria-selected] { background-color: #0d6efd; }
 </style>
 
 <?php include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE; ?>
