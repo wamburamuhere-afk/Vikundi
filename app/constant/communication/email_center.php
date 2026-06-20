@@ -117,7 +117,7 @@ $API = getUrl('api/email_center');
 <!-- Compose Email Modal -->
 <?php if ($can_create): ?>
 <div class="modal fade" id="composeEmailModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-lg my-4">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title"><i class="bi bi-pencil-square me-1"></i> <?= $is_sw ? 'Andika Barua Pepe' : 'Compose Email' ?></h5>
@@ -186,7 +186,7 @@ $API = getUrl('api/email_center');
 
 <!-- View Email Modal -->
 <div class="modal fade" id="viewEmailModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-lg my-4">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title"><i class="bi bi-envelope-open me-1"></i> <?= $is_sw ? 'Maelezo ya Barua Pepe' : 'Email Details' ?></h5>
@@ -237,8 +237,18 @@ $API = getUrl('api/email_center');
 }
 .select2-container--bootstrap-5 .select2-results > .select2-results__options { max-height: 320px; }
 
+/* Flexible, fully scrollable modals: the whole dialog scrolls so every field,
+   the Select2 dropdown options and the footer buttons stay reachable. The body
+   must NOT clip overflow, otherwise the recipient dropdown gets cut off. */
+.modal { overflow-y: auto; }
+#composeEmailModal .modal-body,
+#viewEmailModal .modal-body { overflow: visible; }
+#composeEmailModal .modal-content,
+#viewEmailModal .modal-content { max-height: none; }
+
 @media (max-width: 767px) {
     .container-fluid > .row:first-child { position:sticky; top:0; z-index:1020; background:#fff; }
+    .modal-dialog.my-4 { margin: 0.75rem !important; }
 }
 </style>
 

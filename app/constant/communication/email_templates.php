@@ -106,7 +106,7 @@ $SEND_URL   = getUrl('api/email_center'); // reuse the real send+log path for te
 <!-- Create/Edit Template Modal -->
 <?php if ($can_create || $can_edit): ?>
 <div class="modal fade" id="templateModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-lg my-4">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title" id="tplModalTitle"><i class="bi bi-pencil-square me-1"></i> <?= $is_sw ? 'Unda Kiolezo' : 'Create Template' ?></h5>
@@ -172,7 +172,7 @@ $SEND_URL   = getUrl('api/email_center'); // reuse the real send+log path for te
 
 <!-- Preview / Send Test Modal -->
 <div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-lg my-4">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title"><i class="bi bi-eye me-1"></i> <span id="previewTitle"><?= $is_sw ? 'Hakiki Kiolezo' : 'Preview Template' ?></span></h5>
@@ -208,8 +208,22 @@ $SEND_URL   = getUrl('api/email_center'); // reuse the real send+log path for te
 #tplTable thead th { font-weight:600; border-bottom:none; }
 .dropdown-toggle::after { display:none; }
 .vk-badge { display:inline-block; padding:.2rem .6rem; border-radius:.35rem; font-size:.75rem; font-weight:600; }
+
+/* Comfortable, readable Select2 (type picker) */
+.select2-container--bootstrap-5 .select2-selection { min-height: 44px; border-color:#b6ccfe; }
+.select2-container--bootstrap-5 .select2-results__option { padding:.5rem .75rem; font-size:.9rem; }
+
+/* Flexible, fully scrollable modals: the whole dialog scrolls so every field
+   and the footer buttons stay reachable; the body must not clip overflow. */
+.modal { overflow-y: auto; }
+#templateModal .modal-body,
+#previewModal .modal-body { overflow: visible; }
+#templateModal .modal-content,
+#previewModal .modal-content { max-height: none; }
+
 @media (max-width: 767px) {
     .container-fluid > .row:first-child { position:sticky; top:0; z-index:1020; background:#fff; }
+    .modal-dialog.my-4 { margin: 0.75rem !important; }
 }
 </style>
 
