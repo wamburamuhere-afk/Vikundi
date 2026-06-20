@@ -14,7 +14,8 @@
 require_once __DIR__ . '/../includes/config.php'; // provides $pdo for the included migrations
 
 $migrations = [
-    'sync_workflow_columns.php', // add review/approve columns where missing
+    'sync_schema.php',           // create any base tables missing on the target DB
+    'sync_workflow_columns.php', // add review/approve columns + widen status enums
     'ai_assistant_setup.php',    // AI tables, prompts and permissions
 ];
 
