@@ -55,31 +55,37 @@ foreach ($map as $table => $cols) {
     }
 }
 
-/* Widen the contributions status enum to support the review step (idempotent).
-   Include '' so legacy empty-status rows are NOT truncated under strict SQL mode
-   (production has historical contributions with an empty status). Wrapped so a
-   failure here can never abort the rest of the migration. */
-$enumFixed = false;
-$ct = $pdo->prepare("SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME='contributions' AND COLUMN_NAME='status'");
-$ct->execute();
-$type = (string)$ct->fetchColumn();
-if ($type !== '' && strpos($type, "'reviewed'") === false) {
+/* Widen the status enum on EVERY review/approve workflow table so the 'reviewed'
+   step works (idempotent). Production runs strict SQL mode and may hold legacy /
+   empty status values, so relax strict mode for THIS connection first; then each
+   MODIFY completes without a 1265 truncation error. Wrapped per-table so one
+   failure can never abort the rest of the migration. */
+try { $pdo->exec("SET SESSION sql_mode = REPLACE(REPLACE(@@SESSION.sql_mode,'STRICT_TRANS_TABLES',''),'STRICT_ALL_TABLES','')"); } catch (Throwable $e) {}
+
+$enumTargets = [
+    'contributions'       => "ENUM('pending','reviewed','approved','cancelled') NOT NULL DEFAULT 'pending'",
+    'budgets'             => "ENUM('draft','pending','reviewed','approved','rejected') DEFAULT 'draft'",
+    'general_expenses'    => "ENUM('pending','reviewed','approved','rejected') NOT NULL DEFAULT 'pending'",
+    'death_expenses'      => "ENUM('pending','reviewed','approved','rejected','inactive') NOT NULL DEFAULT 'pending'",
+    'petty_cash_vouchers' => "ENUM('pending','reviewed','approved','rejected') NOT NULL DEFAULT 'pending'",
+];
+$enumsFixed = [];
+$stq = $pdo->prepare("SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME='status'");
+foreach ($enumTargets as $tbl => $def) {
+    $tableExists->execute([$tbl]);
+    if ((int)$tableExists->fetchColumn() === 0) continue;
+    $stq->execute([$tbl]);
+    $stype = (string)$stq->fetchColumn();
+    if ($stype === '' || strpos($stype, "'reviewed'") !== false) continue; // no status col, or already widened
     try {
-        // Production runs strict SQL mode and has legacy contributions with an empty /
-        // invalid status, which makes redefining the enum fail (warning 1265 promoted
-        // to an error). Relax strict mode for THIS connection only, normalize those
-        // rows to 'approved' (they are confirmed contributions), then widen the enum to
-        // add the 'reviewed' step. Wrapped so it can never abort the migration.
-        $pdo->exec("SET SESSION sql_mode = REPLACE(REPLACE(@@SESSION.sql_mode,'STRICT_TRANS_TABLES',''),'STRICT_ALL_TABLES','')");
-        $pdo->exec("UPDATE contributions SET status = 'approved' WHERE status IS NULL OR status NOT IN ('pending','approved','cancelled')");
-        $pdo->exec("ALTER TABLE contributions MODIFY COLUMN status ENUM('pending','reviewed','approved','cancelled') NOT NULL DEFAULT 'pending'");
-        $enumFixed = true;
+        $pdo->exec("ALTER TABLE `$tbl` MODIFY COLUMN status $def");
+        $enumsFixed[] = $tbl;
     } catch (Throwable $e) {
-        echo "  (status enum widen skipped: " . $e->getMessage() . ")\n";
+        echo "  (status enum widen skipped for $tbl: " . $e->getMessage() . ")\n";
     }
 }
 
 echo "Workflow column sync complete.\n";
 echo $added ? ("  Added " . count($added) . " column(s): " . implode(', ', $added) . "\n") : "  No missing columns — schema already in sync.\n";
 if ($skippedTables) echo "  Skipped (table not present here): " . implode(', ', $skippedTables) . "\n";
-echo $enumFixed ? "  contributions.status enum widened to include 'reviewed'.\n" : "  contributions.status enum already up to date.\n";
+echo $enumsFixed ? ("  status enum widened on: " . implode(', ', $enumsFixed) . "\n") : "  status enums already up to date.\n";
