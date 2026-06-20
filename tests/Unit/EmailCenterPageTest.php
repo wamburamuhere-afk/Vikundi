@@ -80,7 +80,8 @@ class EmailCenterPageTest extends TestCase
         // typing), not a bulk-loaded static list.
         $this->assertStringContainsString(".select2(", $this->page);
         $this->assertStringContainsString("theme: 'bootstrap-5'", $this->page);
-        $this->assertStringContainsString('minimumInputLength: 1', $this->page);
+        // 0 = show a short preview before typing, then filter on input.
+        $this->assertStringContainsString('minimumInputLength: 0', $this->page);
         $this->assertStringContainsString('ajax:', $this->page);
         $this->assertStringContainsString("action: 'search_recipients'", $this->page);
         // The old bulk-load approach must be gone.
@@ -164,7 +165,9 @@ class EmailCenterPageTest extends TestCase
     {
         // §UI-3: large dataset → filter server-side by the typed query.
         $this->assertStringContainsString("\$q    = trim(\$_GET['q'] ?? '')", $this->api);
-        $this->assertStringContainsString('LIMIT 25', $this->api);
+        // Short preview before typing, fuller list once filtering.
+        $this->assertStringContainsString("\$limit = \$q === '' ? 5 : 25", $this->api);
+        $this->assertStringContainsString('LIMIT $limit', $this->api);
         $this->assertStringContainsString("'children'", $this->api); // Select2 grouped results
     }
 

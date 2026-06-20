@@ -113,6 +113,9 @@ try {
             // Returns Select2 grouped results: { results: [{text, children:[{id,text}]}] }.
             $q    = trim($_GET['q'] ?? '');
             $like = '%' . $q . '%';
+            // Show a short preview before the user types (5 per group), then a
+            // fuller filtered list once they start typing.
+            $limit = $q === '' ? 5 : 25;
 
             $members_stmt = $pdo->prepare("
                 SELECT TRIM(CONCAT(COALESCE(first_name,''),' ',COALESCE(last_name,''))) AS name, email
@@ -121,7 +124,7 @@ try {
                   AND (? = '' OR first_name LIKE ? OR last_name LIKE ? OR email LIKE ?
                        OR CONCAT(COALESCE(first_name,''),' ',COALESCE(last_name,'')) LIKE ?)
                 ORDER BY first_name, last_name
-                LIMIT 25
+                LIMIT $limit
             ");
             $members_stmt->execute([$q, $like, $like, $like, $like]);
             $members = $members_stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -133,7 +136,7 @@ try {
                   AND (? = '' OR first_name LIKE ? OR last_name LIKE ? OR email LIKE ?
                        OR CONCAT(COALESCE(first_name,''),' ',COALESCE(last_name,'')) LIKE ?)
                 ORDER BY first_name, last_name
-                LIMIT 25
+                LIMIT $limit
             ");
             $staff_stmt->execute([$q, $like, $like, $like, $like]);
             $staff = $staff_stmt->fetchAll(PDO::FETCH_ASSOC);
