@@ -120,6 +120,7 @@ if (isset($_SESSION['user_id'])) {
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Phone Number *</label>
                                 <input type="tel" name="phone" class="form-control" placeholder="07xxxxxxxx" required>
+                                <div class="form-text small">Format: 0712345678 or +255712345678</div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Gender</label>
@@ -438,6 +439,7 @@ if (isset($_SESSION['user_id'])) {
                                         <div class="mt-3">
                                             <label class="form-label fw-bold small">Upload Payment Slip *</label>
                                             <input type="file" name="kianzio_slip" id="kianzio_slip" class="form-control" required accept="image/*,.pdf">
+                                            <div class="form-text small opacity-75">Accepted formats: JPG, PNG, or PDF</div>
                                         </div>
                                     </div>
                                 </div>
@@ -643,6 +645,12 @@ if (isset($_SESSION['user_id'])) {
         $('#publicRegisterForm').on('submit', function(e) {
             e.preventDefault();
 
+            // Real-time format validation gate: shows the exact problem inline
+            // and jumps to the offending field instead of failing silently/late.
+            if (typeof validateRegistrationForm === 'function' && !validateRegistrationForm()) {
+                return;
+            }
+
             // Detect selected language at submit time
             const lang = $('#preferred_language').val();
             const messages = {
@@ -739,6 +747,203 @@ if (isset($_SESSION['user_id'])) {
             inputs.forEach(i => i.disabled = true);
         }
     }
+</script>
+
+<!--
+    Real-time format guidance for registration.
+    Every field that requires a specific format reports the exact problem the
+    moment it happens (on blur / change / typing) and again on submit, instead of
+    failing silently or only after the server rejects it. Nothing is removed or
+    made newly mandatory here — this only surfaces problems early and clearly.
+-->
+<script>
+(function () {
+    'use strict';
+
+    var REG_MESSAGES = {
+        en: {
+            email:        'Please enter a valid email address, e.g. john@example.com',
+            phone:        'Please enter a valid phone number, e.g. 0712345678 or +255712345678',
+            passMatch:    'Passwords do not match.',
+            slipRequired: 'Please upload your payment slip before submitting.',
+            slipType:     'The payment slip must be a JPG, PNG, or PDF file.',
+            photoType:    'The passport photo must be a JPG or PNG image.',
+            photoSize:    'The passport photo must be smaller than 2MB.',
+            fixTitle:     'Please check the form',
+            fixText:      'Some fields need your attention — please review the highlighted messages below.'
+        },
+        sw: {
+            email:        'Tafadhali weka barua pepe sahihi, mfano john@example.com',
+            phone:        'Tafadhali weka namba sahihi ya simu, mfano 0712345678 au +255712345678',
+            passMatch:    'Nywila hazifanani.',
+            slipRequired: 'Tafadhali pakia risiti yako ya malipo kabla ya kutuma.',
+            slipType:     'Risiti ya malipo lazima iwe faili la JPG, PNG, au PDF.',
+            photoType:    'Picha ya pasipoti lazima iwe JPG au PNG.',
+            photoSize:    'Picha ya pasipoti lazima iwe chini ya 2MB.',
+            fixTitle:     'Tafadhali kagua fomu',
+            fixText:      'Kuna sehemu zinazohitaji marekebisho — tafadhali angalia ujumbe ulioonyeshwa hapa chini.'
+        }
+    };
+
+    function regLang() {
+        var el = document.getElementById('preferred_language');
+        var lang = el ? el.value : 'en';
+        return REG_MESSAGES[lang] ? lang : 'en';
+    }
+    function msg(key) { return REG_MESSAGES[regLang()][key]; }
+
+    function fieldByName(name) { return document.querySelector('[name="' + name + '"]'); }
+
+    function isUsable(input) {
+        // visible and enabled (skip disabled/hidden conditional fields, e.g. spouse when Single)
+        return !!(input && input.offsetParent !== null && !input.disabled);
+    }
+
+    function showError(input, message) {
+        if (!input) return;
+        input.classList.add('is-invalid');
+        var anchor = input.closest('.input-group') || input;
+        var fb = anchor.parentNode.querySelector('.reg-feedback[data-for="' + input.name + '"]');
+        if (!fb) {
+            fb = document.createElement('div');
+            fb.className = 'reg-feedback text-danger small mt-1';
+            fb.setAttribute('data-for', input.name);
+            anchor.parentNode.insertBefore(fb, anchor.nextSibling);
+        }
+        fb.innerHTML = '<i class="bi bi-exclamation-circle-fill me-1"></i>' + message;
+        fb.style.display = 'block';
+    }
+
+    function clearError(input) {
+        if (!input) return;
+        input.classList.remove('is-invalid');
+        var anchor = input.closest('.input-group') || input;
+        var fb = anchor.parentNode.querySelector('.reg-feedback[data-for="' + input.name + '"]');
+        if (fb) fb.style.display = 'none';
+    }
+
+    var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    function validEmail(v) { return EMAIL_RE.test(v.trim()); }
+    function validPhone(v) {
+        var digits = v.replace(/[\s\-()]/g, '');
+        return /^\+?\d{9,13}$/.test(digits);
+    }
+
+    // ---- individual validators (return true when OK) ----
+    function checkEmail(input) {
+        var v = input.value.trim();
+        if (v === '') { clearError(input); return true; } // emptiness handled by native "required"
+        if (!validEmail(v)) { showError(input, msg('email')); return false; }
+        clearError(input); return true;
+    }
+    function checkPhone(input) {
+        var v = input.value.trim();
+        if (v === '') { clearError(input); return true; }
+        if (!validPhone(v)) { showError(input, msg('phone')); return false; }
+        clearError(input); return true;
+    }
+    function checkPasswordMatch() {
+        var p = document.getElementById('password');
+        var c = document.getElementById('confirm_password');
+        if (!p || !c) return true;
+        if (c.value === '') { clearError(c); return true; }
+        if (p.value !== c.value) { showError(c, msg('passMatch')); return false; }
+        clearError(c); return true;
+    }
+    function checkSlip(requireFile) {
+        var input = document.getElementById('kianzio_slip');
+        if (!input) return true;
+        var f = input.files && input.files[0];
+        if (!f) {
+            if (requireFile) { showError(input, msg('slipRequired')); return false; }
+            clearError(input); return true;
+        }
+        var name = f.name.toLowerCase();
+        var ok = f.type.indexOf('image/') === 0 || f.type === 'application/pdf' ||
+                 /\.(jpe?g|png|gif|webp|pdf)$/.test(name);
+        if (!ok) { showError(input, msg('slipType')); return false; }
+        clearError(input); return true;
+    }
+    function checkPhoto() {
+        var input = fieldByName('passport_photo');
+        if (!input) return true;
+        var f = input.files && input.files[0];
+        if (!f) { clearError(input); return true; }
+        var name = f.name.toLowerCase();
+        var typeOk = f.type === 'image/jpeg' || f.type === 'image/png' || /\.(jpe?g|png)$/.test(name);
+        if (!typeOk) { showError(input, msg('photoType')); return false; }
+        if (f.size > 2 * 1024 * 1024) { showError(input, msg('photoSize')); return false; }
+        clearError(input); return true;
+    }
+
+    // ---- full-form gate (called on submit) ----
+    function validateRegistrationForm() {
+        var ok = true, firstInvalid = null;
+        function fail(input) { ok = false; if (!firstInvalid && input) firstInvalid = input; }
+
+        var email = fieldByName('email');
+        if (email && !checkEmail(email)) fail(email);
+
+        var phone = fieldByName('phone');
+        if (phone && !checkPhone(phone)) fail(phone);
+
+        if (!checkPasswordMatch()) fail(document.getElementById('confirm_password'));
+        if (!checkSlip(true))      fail(document.getElementById('kianzio_slip'));
+        if (!checkPhoto())         fail(fieldByName('passport_photo'));
+
+        var spEmail = fieldByName('spouse_email');
+        if (spEmail && isUsable(spEmail) && !checkEmail(spEmail)) fail(spEmail);
+
+        ['father_phone', 'mother_phone', 'spouse_phone', 'guarantor_phone'].forEach(function (n) {
+            var el = fieldByName(n);
+            if (el && isUsable(el) && !checkPhone(el)) fail(el);
+        });
+
+        if (!ok && firstInvalid) {
+            var pane = firstInvalid.closest('.tab-pane');
+            if (pane && typeof switchTab === 'function') switchTab(pane.id);
+            setTimeout(function () { try { firstInvalid.focus(); } catch (e) {} }, 150);
+            if (window.Swal) { Swal.fire(msg('fixTitle'), msg('fixText'), 'warning'); }
+        }
+        return ok;
+    }
+    window.validateRegistrationForm = validateRegistrationForm;
+
+    // ---- live wiring: report the moment the format is wrong ----
+    function attach(input, validator) {
+        if (!input) return;
+        input.addEventListener('blur', function () { validator(input); });
+        input.addEventListener('input', function () {
+            if (input.classList.contains('is-invalid')) validator(input);
+        });
+    }
+
+    function setup() {
+        attach(fieldByName('email'), checkEmail);
+        attach(fieldByName('spouse_email'), checkEmail);
+        attach(fieldByName('phone'), checkPhone);
+        ['father_phone', 'mother_phone', 'spouse_phone', 'guarantor_phone'].forEach(function (n) {
+            attach(fieldByName(n), checkPhone);
+        });
+
+        var p = document.getElementById('password');
+        var c = document.getElementById('confirm_password');
+        if (p) p.addEventListener('input', checkPasswordMatch);
+        if (c) { c.addEventListener('input', checkPasswordMatch); c.addEventListener('blur', checkPasswordMatch); }
+
+        var slip = document.getElementById('kianzio_slip');
+        if (slip) slip.addEventListener('change', function () { checkSlip(false); });
+
+        var photo = fieldByName('passport_photo');
+        if (photo) photo.addEventListener('change', function () { checkPhoto(); });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setup);
+    } else {
+        setup();
+    }
+})();
 </script>
 
 </body>
