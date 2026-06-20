@@ -65,11 +65,13 @@ $ct->execute();
 $type = (string)$ct->fetchColumn();
 if ($type !== '' && strpos($type, "'reviewed'") === false) {
     try {
-        // Legacy/imported rows may carry an empty or invalid status. Normalize them to
-        // 'approved' (they are confirmed contributions) FIRST, so changing the enum
-        // cannot truncate any row even under strict SQL mode, then widen the enum to
+        // Production runs strict SQL mode and has legacy contributions with an empty /
+        // invalid status, which makes redefining the enum fail (warning 1265 promoted
+        // to an error). Relax strict mode for THIS connection only, normalize those
+        // rows to 'approved' (they are confirmed contributions), then widen the enum to
         // add the 'reviewed' step. Wrapped so it can never abort the migration.
-        $pdo->exec("UPDATE contributions SET status = 'approved' WHERE status NOT IN ('pending','approved','cancelled')");
+        $pdo->exec("SET SESSION sql_mode = REPLACE(REPLACE(@@SESSION.sql_mode,'STRICT_TRANS_TABLES',''),'STRICT_ALL_TABLES','')");
+        $pdo->exec("UPDATE contributions SET status = 'approved' WHERE status IS NULL OR status NOT IN ('pending','approved','cancelled')");
         $pdo->exec("ALTER TABLE contributions MODIFY COLUMN status ENUM('pending','reviewed','approved','cancelled') NOT NULL DEFAULT 'pending'");
         $enumFixed = true;
     } catch (Throwable $e) {
