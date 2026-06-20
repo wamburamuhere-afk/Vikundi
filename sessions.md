@@ -31,6 +31,40 @@ Important context, decisions made, or follow-up items.
 
 ---
 
+## Session 15 — 2026-06-20
+**Branch:** `feat/comms-email-center`
+**Developer:** Wambura Muhere / Claude Code
+**Summary:** Wired up the **SMS** placeholder (comms > SMS) into a real, working SMS module — mirroring the email module — with actual gateway delivery (Beem Africa / Africa's Talking / Twilio / custom). Ideal for phone-only members.
+
+### Why / verification-first
+The old `send_sms()` only **simulated** success (its cURL call was commented out, and it inserted columns that don't exist in the loan-coupled `sms_alerts` table). Before relying on a gateway I probed reachability: apisms.beem.africa, api.africastalking.com, api.twilio.com all **reachable on :443**, and cURL is loaded — so **no new dependency** (SMS is HTTP, unlike email's PHPMailer).
+
+### Changes
+- **`includes/sms_helper.php`** rewritten into a provider-agnostic REAL sender: `sms_normalize_phone()` (TZ 255 default), `sms_segments()`, `sms_gateways()` presets (Beem/Africa's Talking/Twilio/Custom + bilingual help + required fields), `sms_ensure_logs_table()` (new `sms_logs` table, separate from the loan-centric `sms_alerts`), `sms_get_config()` (group 'sms', decrypts secrets via `core/ai_crypto.php`), `sms_send_via_gateway()` (per-provider cURL requests), `sms_send()` (real + honest log), and `send_sms()` kept as a backward-compatible wrapper. Removed the top-level `config.php` require so pure helpers are unit-testable.
+- **SMS Settings page** `app/constant/settings/sms_settings.php` (admin-only): gateway preset dropdown that shows only the fields each gateway needs, encrypted API key/secret (masked + show/hide), Sender ID, enable switch, Save + **Send Test SMS**, status badge. Bilingual, ui-constants compliant.
+- **Endpoints** `api/sms/save_settings.php` (encrypts key+secret, skips masked, admin-gated, audit) and `api/sms/test_connection.php` (sends a real test SMS).
+- **SMS Center** `app/constant/communication/sms_center.php` + `api/sms_center.php`: compose/send/log mirroring the Email Center — AJAX recipient search by phone (members), 160-char/segment counter, status log DataTable, mobile cards, gear dropdown, bilingual. Actions: list/get/send/resend/delete/search_recipients.
+- **Linking**: SMS menu placeholder now → SMS Center; SMS Settings in the Settings menu; admin Settings shortcut + a "set up SMS" prompt in the SMS Center.
+
+### Files Created
+- `includes/sms_helper.php` (rewrite), `app/constant/settings/sms_settings.php`, `app/constant/communication/sms_center.php`
+- `api/sms/save_settings.php`, `api/sms/test_connection.php`, `api/sms_center.php`
+- `tests/Unit/SmsHelperTest.php` (12), `tests/Unit/SmsSettingsTest.php` (15)
+
+### Files Modified
+- `roots.php` (page + 5 API/settings routes), `header.php` (SMS menu link + SMS Settings menu link)
+
+### Database Changes
+- New table `sms_logs` (self-healing via `sms_ensure_logs_table()`).
+- New `system_settings` keys, group `'sms'`: `sms_provider, sms_api_key_enc (encrypted), sms_api_secret_enc (encrypted), sms_username, sms_sender_id, sms_base_url, sms_enabled`.
+
+### Notes
+- Full suite green: **507 tests, 867 assertions** (+27). All files `php -l` clean; both SMS pages render with zero warnings in EN + SW.
+- Verified end-to-end: settings save (key+secret encrypted, no plaintext leak; decrypt round-trips), and `sms_send()` reaching **Beem's real API** returning *"Gateway HTTP 401: Invalid Authentication Parameters"* with dummy creds — proving the transport engages and will deliver with valid credentials. Honest failure logged to `sms_logs`. Dummy creds cleaned from the DB.
+- No new Composer dependency (cURL + HTTPS already available).
+
+---
+
 ## Session 14 — 2026-06-20
 **Branch:** `feat/comms-email-center`
 **Developer:** Wambura Muhere / Claude Code
