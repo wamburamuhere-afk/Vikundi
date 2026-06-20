@@ -10,8 +10,8 @@ echo '<p>' . $footer_text . '</p>';
 echo '</footer>';
 ?>
 
-<!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Bootstrap JS (self-hosted so navbar dropdowns work even if the CDN is blocked/flaky) -->
+<script src="<?= function_exists('getUrl') ? getUrl('assets/js/bootstrap.bundle.min.js') : '/assets/js/bootstrap.bundle.min.js' ?>"></script>
 
 <!-- Global Modal Close on Success (Only for ACTIONS, not for DATA FETCHING) -->
 <script>
