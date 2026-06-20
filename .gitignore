@@ -42,3 +42,6 @@ desktop.ini
 .env
 .env.local
 .env.*.local
+
+# AI Assistant encryption key (do not commit)
+includes/ai_secret.key

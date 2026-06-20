@@ -31,35 +31,36 @@ $draw = intval($_GET['draw'] ?? 1);
 $search = $_GET['search']['value'] ?? '';
 
 // 4. Base Query & Totals
-$where = "status = 'active'";
+$where = "u.status IN ('active', '') AND c.is_deceased = 0";
 $params = [];
 
 if (str_contains($user_role_lower, 'member') || str_contains($user_role_lower, 'mwanachama') || str_contains($user_role_lower, 'mjumbe')) {
-    $where .= " AND user_id = ?";
+    $where .= " AND c.user_id = ?";
     $params[] = $user_id;
 }
 
 // Global Search Filter
 if (!empty($search)) {
-    $where .= " AND (customer_name LIKE ? OR first_name LIKE ? OR last_name LIKE ? OR phone LIKE ?)";
+    $where .= " AND (c.customer_name LIKE ? OR c.first_name LIKE ? OR c.last_name LIKE ? OR c.phone LIKE ?)";
     $search_val = "%$search%";
     $params = array_merge($params, [$search_val, $search_val, $search_val, $search_val]);
 }
 
+$base_join = "FROM customers c JOIN users u ON c.user_id = u.user_id WHERE $where";
+
 // Count Total Records (Unfiltered)
-$total_count = $pdo->query("SELECT COUNT(*) FROM customers WHERE status = 'active'")->fetchColumn();
+$total_count = $pdo->query("SELECT COUNT(*) FROM customers c JOIN users u ON c.user_id = u.user_id WHERE u.status IN ('active', '') AND c.is_deceased = 0")->fetchColumn();
 
 // Count Filtered Records
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM customers WHERE $where");
+$stmt = $pdo->prepare("SELECT COUNT(*) $base_join");
 $stmt->execute($params);
 $filtered_count = $stmt->fetchColumn();
 
 // Fetch Paginated Members
 $limit_sql = ($length == -1) ? "" : " LIMIT $start, $length";
-$query = "SELECT customer_id, customer_name, first_name, last_name, phone 
-          FROM customers 
-          WHERE $where 
-          ORDER BY first_name ASC $limit_sql";
+$query = "SELECT c.customer_id, c.customer_name, c.first_name, c.last_name, c.phone
+          $base_join
+          ORDER BY c.first_name ASC $limit_sql";
 
 $stmt = $pdo->prepare($query);
 $stmt->execute($params);
