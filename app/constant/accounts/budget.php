@@ -49,8 +49,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_budget_details' && isset(
 includeHeader();
 autoEnforcePermission('budget');
 
-$can_view_budget = canView('budget');
-$can_edit_budget = canEdit('budget');
+$can_view_budget   = canView('budget');
+$can_edit_budget   = canEdit('budget');
+$can_review_budget = canReview('budget');
+$can_approve_budget= canApprove('budget');
 if (!$can_view_budget) { redirectTo('dashboard'); }
 
 $current_year = date('Y');
@@ -144,6 +146,11 @@ $performance_data = $performance_stmt->fetchAll(PDO::FETCH_ASSOC);
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
 
 <div class="container-fluid px-3 px-md-4 py-4">
+    <?php PrintHeader::css(); ?>
+    <!-- PRINT HEADER (Visible only during print) -->
+    <div class="d-none d-print-block">
+        <?php PrintHeader::render($pdo, $is_sw ? 'RIPOTI YA BAJETI' : 'BUDGET REPORT'); ?>
+    </div>
     <div class="row align-items-center mb-4 g-3">
         <div class="col-12 col-md-8 display-titles">
             <h2 class="fw-bold mb-1" style="color: #0d6efd;"><i class="bi bi-wallet2 me-2"></i><?= $labels['title'] ?></h2>
@@ -207,14 +214,26 @@ $performance_data = $performance_stmt->fetchAll(PDO::FETCH_ASSOC);
                             <td class="fw-bold"><?= htmlspecialchars($item['category_name']) ?></td>
                             <td><?= number_format($item['allocated_amount'], 2) ?></td>
                             <td class="small fw-semibold text-muted"><?= $months[$item['budget_month']] . ', ' . $item['budget_year'] ?></td>
-                            <td><span class="badge rounded-pill bg-<?= ($item['status'] == 'approved' ? 'success' : 'warning') ?> bg-opacity-10 text-<?= ($item['status'] == 'approved' ? 'success' : 'warning') ?>"><?= ucfirst($item['status']) ?></span></td>
+                            <?php
+                            $bs = $item['status'];
+                            $bc = $bs === 'approved' ? 'success' : ($bs === 'reviewed' ? 'info' : ($bs === 'rejected' ? 'danger' : 'warning'));
+                            ?>
+                            <td><span class="badge rounded-pill bg-<?= $bc ?> bg-opacity-10 text-<?= $bc ?>"><?= ucfirst($bs) ?></span></td>
                             <td class="text-end">
                                 <div class="dropdown">
                                     <button class="btn btn-white btn-sm border shadow-sm dropdown-toggle" type="button" data-bs-toggle="dropdown"><i class="bi bi-gear"></i></button>
                                     <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0">
-                                        <li><a class="dropdown-item py-2" href="/accounts/budget_details?id=<?= $item['budget_id'] ?>"><i class="bi bi-eye text-primary me-2"></i> View</a></li>
-                                        <li><a class="dropdown-item py-2" href="#" onclick="editBudget(<?= $item['budget_id'] ?>)"><i class="bi bi-pencil text-info me-2"></i> Edit</a></li>
-                                        <li><a class="dropdown-item py-2" href="#" onclick="confirmChangeStatus(<?= $item['budget_id'] ?>, '<?= $item['status'] ?>')"><i class="bi bi-arrow-repeat text-warning me-2"></i> Change Status</a></li>
+                                        <li><a class="dropdown-item py-2" href="<?= getUrl('accounts/budget_details') ?>?id=<?= $item['budget_id'] ?>"><i class="bi bi-eye text-primary me-2"></i> View Details</a></li>
+                                        <li><a class="dropdown-item py-2" href="<?= getUrl('print_budget') ?>?id=<?= $item['budget_id'] ?>" target="_blank"><i class="bi bi-printer me-2"></i> Print</a></li>
+                                        <?php if ($can_edit_budget): ?><li><a class="dropdown-item py-2" href="#" onclick="editBudget(<?= $item['budget_id'] ?>)"><i class="bi bi-pencil text-info me-2"></i> Edit</a></li><?php endif; ?>
+                                        <?php if ($bs === 'pending' && $can_review_budget): ?>
+                                        <li><hr class="dropdown-divider my-1"></li>
+                                        <li><a class="dropdown-item py-2 fw-bold text-primary" href="#" onclick="reviewBudget(<?= $item['budget_id'] ?>)"><i class="bi bi-clipboard-check me-2"></i> Mark Reviewed</a></li>
+                                        <?php endif; ?>
+                                        <?php if ($bs === 'reviewed' && $can_approve_budget): ?>
+                                        <li><a class="dropdown-item py-2 fw-bold text-success" href="#" onclick="approveBudget(<?= $item['budget_id'] ?>)"><i class="bi bi-check-circle-fill me-2"></i> Approve</a></li>
+                                        <?php endif; ?>
+                                        <li><hr class="dropdown-divider my-1"></li>
                                         <li><a class="dropdown-item py-2 text-danger" href="#" onclick="confirmDeleteBudget(<?= $item['budget_id'] ?>)"><i class="bi bi-trash3 me-2"></i> Delete</a></li>
                                     </ul>
                                 </div>
@@ -429,13 +448,14 @@ $(document).ready(function() {
                         .print-footer .brand { font-size: 7px; color: #3498db; font-weight: 600; }
                         tfoot.print-spacer { display: table-footer-group; }
                         tfoot.print-spacer td { height: 12px !important; border: none !important; }
-                    </style>`);
+                    </style><?php echo PrintHeader::popupCss(); ?>`);
 
-                    // Branded header
-                    $(win.document.body).prepend(`<div style="text-align:center;margin-bottom:20px;border-bottom:2px solid #eee;padding-bottom:15px;">
-                        <img src="<?= !empty($logo_base64) ? $logo_base64 : getUrl('assets/images/') . $group_logo ?>" style="max-height:80px;margin-bottom:10px;">
-                        <h2 style="color:#0d6efd;text-transform:uppercase;font-weight:800;margin:0;"><?= $group_name ?></h2>
-                        <h3 style="font-weight:900;text-transform:uppercase;margin-top:5px;color:#000;">LIST OF BUDGETS</h3>
+                    $(win.document.body).prepend(`<div class="vk-print-header">
+                        <img src="<?= !empty($logo_base64) ? $logo_base64 : getUrl('assets/images/') . $group_logo ?>" alt="Logo" class="vk-ph-logo">
+                        <div class="vk-ph-org"><?= htmlspecialchars($group_name) ?></div>
+                        <div class="vk-ph-sys">VICOBA Group Management System</div>
+                        <div class="vk-ph-title"><?= $is_sw ? 'ORODHA YA BAJETI' : 'LIST OF BUDGETS' ?></div>
+                        <div class="vk-ph-rule"></div>
                     </div>`);
 
                     // Shared-style footer
@@ -506,8 +526,27 @@ function editBudget(id) {
         } else { Swal.fire('Error', 'Could not fetch properties', 'error'); }
     }, 'json');
 }
+function _budgetPost(url, id, msg) {
+    Swal.fire({ title: msg, didOpen: () => Swal.showLoading() });
+    $.post(url, { budget_id: id }, function(r) {
+        if (r.success) {
+            Swal.fire({ icon:'success', title:'Done', text:r.message, timer:1400, showConfirmButton:false })
+                .then(() => window.location.reload());
+        } else { Swal.fire('Error', r.message, 'error'); }
+    }, 'json').fail(() => Swal.fire('Error', 'Server error', 'error'));
+}
+function reviewBudget(id) {
+    Swal.fire({ title: '<?= $is_sw?"Pitia bajeti hii?":"Mark Budget as Reviewed?" ?>', icon:'question', showCancelButton:true,
+        confirmButtonText: '<?= $is_sw?"Ndio":"Yes, Reviewed" ?>'
+    }).then(r => { if (r.isConfirmed) _budgetPost('<?= getUrl('api/account/review_budget.php') ?>', id, '<?= $is_sw?"Inatuma...":"Submitting..." ?>'); });
+}
+function approveBudget(id) {
+    Swal.fire({ title: '<?= $is_sw?"Idhinisha bajeti hii?":"Approve this Budget?" ?>', icon:'question', showCancelButton:true,
+        confirmButtonText: '<?= $is_sw?"Ndio, Idhinisha":"Yes, Approve" ?>', confirmButtonColor:'#198754'
+    }).then(r => { if (r.isConfirmed) _budgetPost('<?= getUrl('api/account/approve_budget.php') ?>', id, '<?= $is_sw?"Inaidhinisha...":"Approving..." ?>'); });
+}
 function confirmChangeStatus(id, currentStatus) {
-    Swal.fire({ title: 'Change Status', input: 'select', inputOptions: {'pending': 'Pending', 'approved': 'Approved', 'rejected': 'Rejected'}, inputValue: currentStatus, showCancelButton: true, confirmButtonText: 'Update' }).then((result) => {
+    Swal.fire({ title: 'Change Status', input: 'select', inputOptions: {'pending': 'Pending', 'reviewed': 'Reviewed', 'approved': 'Approved', 'rejected': 'Rejected'}, inputValue: currentStatus, showCancelButton: true, confirmButtonText: 'Update' }).then((result) => {
         if (result.isConfirmed) { $.post('<?= getUrl('api/account/update_budget_status.php') ?>', { budget_id: id, status: result.value }, function(res) { if (res.success) { window.location.reload(); } }, 'json'); }
     });
 }

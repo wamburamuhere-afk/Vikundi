@@ -1,4 +1,6 @@
-PassengerEnabled off
+<IfModule mod_passenger.c>
+    PassengerEnabled off
+</IfModule>
 RewriteEngine On
 RewriteBase /
 

@@ -10,8 +10,10 @@ if (!isset($_SESSION['user_id'])) {
 }
 // Permission check
 requireViewPermission('manage_contributions');
-$is_leader = isAdmin() || canEdit('manage_contributions');
-$is_admin = isAdmin() || canDelete('manage_contributions');
+$is_leader   = isAdmin() || canEdit('manage_contributions');
+$is_admin    = isAdmin() || canDelete('manage_contributions');
+$can_review  = canReview('manage_contributions');
+$can_approve = canApprove('manage_contributions');
 
 // 1. Fetch Basic Group Settings
 $settings_raw = $pdo->query("SELECT setting_key, setting_value FROM group_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -91,7 +93,7 @@ foreach ($members as $m) {
     ];
     
     // Total Confirmed Pot for this member
-    $stmt = $pdo->prepare("SELECT SUM(amount) FROM contributions WHERE member_id = ? AND status = 'confirmed'");
+    $stmt = $pdo->prepare("SELECT SUM(amount) FROM contributions WHERE member_id = ? AND status IN ('confirmed', 'approved', '')");
     $stmt->execute([$m['customer_id']]);
     $row['grand_total'] = floatval($stmt->fetchColumn());
 
@@ -202,6 +204,7 @@ foreach ($members as $m) {
                         <th>Member (Phone)</th>
                         <th>Amount</th>
                         <th>Type</th>
+                        <th>Status</th>
                         <th class="text-end pe-4">Actions</th>
                     </tr>
                 </thead>
@@ -219,19 +222,33 @@ foreach ($members as $m) {
                         </td>
                         <td class="fw-bold text-primary"><?= number_format($p['amount'], 0) ?></td>
                         <td><span class="badge bg-light text-primary border border-primary-subtle"><?= strtoupper($p['contribution_type']) ?></span></td>
+                        <td>
+                            <?php
+                            $p_status = $p['status'] ?? 'pending';
+                            $p_badge  = ['pending'=>'warning','reviewed'=>'info','approved'=>'success','cancelled'=>'secondary'][$p_status] ?? 'secondary';
+                            ?>
+                            <span class="badge bg-<?= $p_badge ?>"><?= ucfirst($p_status) ?></span>
+                        </td>
                         <td class="text-end pe-4">
                             <div class="dropdown">
                                 <button class="btn btn-primary btn-sm rounded-1 dropdown-toggle px-3 shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="bi bi-gear-fill me-1"></i> Action
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end shadow border-0 p-2" style="z-index: 1050 !important;">
-                                    <?php if ($is_leader): ?>
-                                    <li><a class="dropdown-item py-2 fw-bold text-primary rounded mb-1" href="javascript:void(0)" onclick="approveContribution(<?= $p['contribution_id'] ?>)"><i class="bi bi-check-circle-fill me-2"></i> Approve Now</a></li>
+                                    <li><a class="dropdown-item py-2 rounded mb-1" href="<?= getUrl('contribution_view') ?>?id=<?= $p['contribution_id'] ?>"><i class="bi bi-eye me-2 text-secondary"></i> View Details</a></li>
+                                    <li><a class="dropdown-item py-2 rounded mb-1" href="<?= getUrl('print_contribution') ?>?id=<?= $p['contribution_id'] ?>" target="_blank"><i class="bi bi-printer me-2 text-secondary"></i> Print</a></li>
+                                    <?php if ($p_status === 'pending' && $can_review): ?>
+                                    <li><hr class="dropdown-divider opacity-10"></li>
+                                    <li><a class="dropdown-item py-2 fw-bold text-primary rounded mb-1" href="javascript:void(0)" onclick="reviewContribution(<?= $p['contribution_id'] ?>)"><i class="bi bi-clipboard-check me-2"></i> Mark Reviewed</a></li>
+                                    <?php endif; ?>
+                                    <?php if ($p_status === 'reviewed' && $can_approve): ?>
+                                    <li><hr class="dropdown-divider opacity-10"></li>
+                                    <li><a class="dropdown-item py-2 fw-bold text-success rounded mb-1" href="javascript:void(0)" onclick="approveContribution(<?= $p['contribution_id'] ?>)"><i class="bi bi-check2-all me-2"></i> Approve</a></li>
                                     <?php endif; ?>
                                     <?php if (!empty($p['evidence_path'])): ?>
                                     <li><a class="dropdown-item py-2 rounded mb-1" href="<?= getUrl($p['evidence_path']) ?>" target="_blank"><i class="bi bi-receipt me-2 text-primary"></i> View Receipt</a></li>
                                     <?php endif; ?>
-                                    <?php if ($is_leader): ?>
+                                    <?php if ($is_leader && $p_status !== 'approved'): ?>
                                     <li><hr class="dropdown-divider opacity-10"></li>
                                     <li><a class="dropdown-item py-2 rounded text-secondary" href="javascript:void(0)" onclick="rejectContribution(<?= $p['contribution_id'] ?>)"><i class="bi bi-x-circle me-2"></i> Reject Entry</a></li>
                                     <?php endif; ?>
@@ -272,7 +289,15 @@ foreach ($members as $m) {
                     </div>
                 </div>
                 <div class="vk-card-actions">
-                    <?php if ($is_leader): ?>
+                    <a href="<?= getUrl('contribution_view') ?>?id=<?= $p['contribution_id'] ?>" class="btn vk-btn-action btn-secondary" title="View">
+                        <i class="bi bi-eye"></i>
+                    </a>
+                    <?php if (($p['status']??'pending') === 'pending' && $can_review): ?>
+                    <button onclick="reviewContribution(<?= $p['contribution_id'] ?>)" class="btn vk-btn-action btn-primary" title="Review">
+                        <i class="bi bi-clipboard-check"></i>
+                    </button>
+                    <?php endif; ?>
+                    <?php if (($p['status']??'pending') === 'reviewed' && $can_approve): ?>
                     <button onclick="approveContribution(<?= $p['contribution_id'] ?>)" class="btn vk-btn-action btn-success" title="Approve">
                         <i class="bi bi-check-circle-fill"></i>
                     </button>
@@ -572,21 +597,21 @@ $(document).ready(function() {
                             tfoot.print-spacer { display: table-footer-group; }
                             tfoot.print-spacer td { height: 12px !important; border: none !important; }
                             .no-print { display: none !important; }
-                        </style>
+                        </style><?php echo PrintHeader::popupCss(); ?>
                     `);
 
                     // 2. Clear out any browser-injected title
                     $(win.document.body).find('h1').remove();
 
-                    // 3. Branded Header (Positioned within manual margins)
-                    $(win.document.body).prepend(`
-                        <div class="text-center mb-5">
-                            <img src="/assets/images/<?= $group_logo ?>" style="height: 85px; width: auto; margin-bottom: 12px;">
-                            <h2 class="fw-bold mb-1" style="color: #0d6efd !important; text-transform: uppercase; font-family: sans-serif;"><?= $group_name ?></h2>
-                            <h4 class="fw-bold text-dark border-top border-bottom py-2 mt-2" style="font-family: sans-serif;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'MCHANGANUO WA MICHANGO (LEDGER)' : 'CONTRIBUTION ANALYSIS LEDGER' ?></h4>
-                             <p class="small text-muted mt-2"><b>Block Period:</b> <?= $columns[0]['label'] ?> — <?= $columns[3]['label'] ?></p>
-                        </div>
-                    `);
+                    // 3. Branded Header
+                    $(win.document.body).prepend(`<div class="vk-print-header">
+                        <img src="<?= !empty($logo_base64) ? $logo_base64 : '/assets/images/' . $group_logo ?>" alt="Logo" class="vk-ph-logo">
+                        <div class="vk-ph-org"><?= htmlspecialchars($group_name) ?></div>
+                        <div class="vk-ph-sys">VICOBA Group Management System</div>
+                        <div class="vk-ph-title"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'MCHANGANUO WA MICHANGO' : 'CONTRIBUTION ANALYSIS LEDGER' ?></div>
+                        <div class="vk-ph-ref">Block Period: <?= $columns[0]['label'] ?> — <?= $columns[3]['label'] ?></div>
+                        <div class="vk-ph-rule"></div>
+                    </div>`);
 
                     // 4. Shared-style footer (bilingual — mirrors includes/print_footer_html.php)
                     let mcNow = new Date();
@@ -718,24 +743,37 @@ $('#manualAddForm').on('submit', function(e) {
     });
 });
 
-function approveContribution(id) {
-    Swal.fire({
-        title: 'Approve Payment?',
-        text: 'This will move the payment to confirmed status.',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#0d6efd'
-    }).then((res) => {
-        if (res.isConfirmed) {
-            $.ajax({
-                url: '<?= getUrl("actions/update_contribution") ?>',
-                type: 'POST',
-                data: { id: id, status: 'confirmed' },
-                dataType: 'json',
-                success: function(r) { location.reload(); }
-            });
+function _wfPost(url, id, loadingMsg) {
+    Swal.fire({ title: loadingMsg, didOpen: () => Swal.showLoading() });
+    $.post(url, { id: id }, function(r) {
+        if (r.success) {
+            Swal.fire({ icon:'success', title:'Done', text: r.message, timer:1500, showConfirmButton:false })
+                .then(() => location.reload());
+        } else {
+            Swal.fire('Error', r.message, 'error');
         }
-    });
+    }, 'json').fail(() => Swal.fire('Error', 'Server error', 'error'));
+}
+
+function reviewContribution(id) {
+    const isSw = (<?= json_encode($_SESSION['preferred_language'] ?? 'en') ?> === 'sw');
+    Swal.fire({
+        title: isSw ? 'Pitia mchango huu?' : 'Mark as Reviewed?',
+        text:  isSw ? 'Thibitisha umepitia mchango huu.' : 'Confirm you have reviewed this contribution.',
+        icon: 'question', showCancelButton: true,
+        confirmButtonText: isSw ? 'Ndio, Pitia' : 'Yes, Reviewed'
+    }).then(r => { if (r.isConfirmed) _wfPost('<?= getUrl("api/review_contribution") ?>', id, isSw?'Inatuma...':'Submitting...'); });
+}
+
+function approveContribution(id) {
+    const isSw = (<?= json_encode($_SESSION['preferred_language'] ?? 'en') ?> === 'sw');
+    Swal.fire({
+        title: isSw ? 'Idhinisha mchango huu?' : 'Approve Contribution?',
+        text:  isSw ? 'Mchango utahamia hali ya "Imeidhinishwa".' : 'This will move the contribution to Approved status.',
+        icon: 'question', showCancelButton: true,
+        confirmButtonText: isSw ? 'Ndio, Idhinisha' : 'Yes, Approve',
+        confirmButtonColor: '#198754'
+    }).then(r => { if (r.isConfirmed) _wfPost('<?= getUrl("api/approve_contribution") ?>', id, isSw?'Inaidhinisha...':'Approving...'); });
 }
 
 function rejectContribution(id) {

@@ -43,7 +43,7 @@ $dependant_count = $spouse_active + $active_children;
 
 // 4. Fetch All Confirmed Contributions (Total Pot)
 // IMPORTANT: We must include the 'initial_savings' from the registration as part of the total paid pot.
-$stmt = $pdo->prepare("SELECT SUM(amount) FROM contributions WHERE member_id = ? AND status = 'confirmed' AND (contribution_type = 'monthly' OR contribution_type = 'entrance' OR contribution_type = 'other')");
+$stmt = $pdo->prepare("SELECT SUM(amount) FROM contributions WHERE member_id = ? AND status IN ('confirmed', 'approved', '') AND (contribution_type = 'monthly' OR contribution_type = 'entrance' OR contribution_type = 'other' OR contribution_type = '')");
 $stmt->execute([$member_id]);
 $contributions_total = floatval($stmt->fetchColumn());
 
@@ -103,17 +103,15 @@ $expenses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $total_expenses = array_sum(array_column($expenses, 'amount'));
 
 ?>
-<!-- 1. PRINT HEADER (Visible only during print) -->
+<?php PrintHeader::css(); ?>
+<!-- PRINT HEADER (Visible only during print) -->
 <div class="d-none d-print-block">
-    <div class="text-center mb-4">
-        <img src="/assets/images/<?= htmlspecialchars($group_logo ?? 'logo1.png') ?>" alt="Logo" style="height: 80px; width: auto; margin-bottom: 10px; object-fit: contain;">
-        <h2 class="fw-bold mb-1 text-uppercase" style="color: #0d6efd !important;"><?= htmlspecialchars($group_name ?? 'KIKUNDI') ?></h2>
-        <h4 class="fw-bold text-dark text-uppercase border-top border-bottom py-2 mt-2">
-            <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'HALI YA KIFEDHA YA MWANACHAMA' : 'MEMBER FINANCIAL STATEMENT' ?>
-        </h4>
-        <div class="small text-muted mt-1"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mwanachama:' : 'Member:' ?> <?= htmlspecialchars($member['first_name'] . ' ' . $member['last_name']) ?> | #<?= $member['customer_id'] ?></div>
-        <div class="small text-muted mt-1"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Tarehe ya Printi:' : 'Print Date:' ?> <?= date('d M, Y H:i') ?></div>
-    </div>
+    <?php
+    $is_sw_ms = (($_SESSION['preferred_language'] ?? 'en') === 'sw');
+    PrintHeader::render($pdo,
+        $is_sw_ms ? 'HALI YA KIFEDHA YA MWANACHAMA' : 'MEMBER FINANCIAL STATEMENT',
+        trim($member['first_name'] . ' ' . $member['last_name']) . ' | #' . $member['customer_id']
+    ); ?>
 </div>
 
 <div class="no-print mb-4">

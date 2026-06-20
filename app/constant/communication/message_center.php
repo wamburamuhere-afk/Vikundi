@@ -646,7 +646,15 @@ if ($message_id) {
                     </div>
                     
                     <div class="mb-3">
-                        <label for="message" class="form-label"><?= $is_sw ? 'Ujumbe *' : 'Message *' ?></label>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label for="message" class="form-label mb-0"><?= $is_sw ? 'Ujumbe *' : 'Message *' ?></label>
+                            <?php if (canCreate('ai_assistant')): ?>
+                            <button type="button" class="ai-assist-btn" data-target="#message"
+                                    data-module="communication" data-submodule="message" data-field-type="message">
+                                <i class="bi bi-stars ai-spark"></i> <?= $is_sw ? 'Andika kwa AI' : 'Write with AI' ?>
+                            </button>
+                            <?php endif; ?>
+                        </div>
                         <textarea class="form-control" id="message" name="message" rows="8" required></textarea>
                     </div>
                 </div>
@@ -779,6 +787,11 @@ if ($message_id) {
     box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15) !important;
 }
 </style>
+
+<?php if (canCreate('ai_assistant')): ?>
+<script>window.AI_ASSIST_CONFIG = { generateUrl: '<?= getUrl('api/ai/generate') ?>', isSw: <?= $is_sw ? 'true' : 'false' ?> };</script>
+<script src="/assets/js/ai-assistant.js"></script>
+<?php endif; ?>
 
 <script>
 const isSw = <?= $is_sw ? 'true' : 'false' ?>;

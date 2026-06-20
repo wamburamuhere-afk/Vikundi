@@ -78,6 +78,11 @@ $labels = [
 ?>
 
 <div class="container mt-4">
+    <?php PrintHeader::css(); ?>
+    <!-- PRINT HEADER (Visible only during print) -->
+    <div class="d-none d-print-block">
+        <?php PrintHeader::render($pdo, $isSw ? 'TAARIFA YA MWANACHAMA' : 'MEMBER PROFILE', '#' . ($customer['customer_id'] ?? '')); ?>
+    </div>
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>

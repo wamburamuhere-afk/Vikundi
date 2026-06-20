@@ -8,9 +8,11 @@ includeHeader();
 
 // Permission check
 requireViewPermission('expenses');
-$can_create_expense = canCreate('expenses');
-$can_edit_expense = canEdit('expenses');
-$can_delete_expense = canDelete('expenses');
+$can_create_expense  = canCreate('expenses');
+$can_edit_expense    = canEdit('expenses');
+$can_delete_expense  = canDelete('expenses');
+$can_review_expense  = canReview('expenses');
+$can_approve_expense = canApprove('expenses');
 
 // FETCH BRANDING (Standard System Logic)
 $gs_stmt = $pdo->prepare("SELECT setting_key, setting_value FROM group_settings");
@@ -40,18 +42,10 @@ $is_sw = ($lang === 'sw');
 ?>
 
 <div class="container-fluid py-4" id="main-content" style="background-color: #f8f9fa; min-height: 90vh; overflow-x: hidden;">
+    <?php PrintHeader::css(); ?>
     <!-- PRINT HEADER (Visible only during print) -->
-    <div class="d-none d-print-block print-header mb-4 text-center">
-        <div class="border-bottom pb-4">
-            <div class="mb-3">
-                <img src="<?= !empty($logo_base64) ? $logo_base64 : getUrl('assets/images/') . $group_logo ?>" alt="Logo" style="height: 100px; width: auto; object-fit: contain;">
-            </div>
-            <h2 class="fw-bold mb-1" style="color: #0d6efd !important; text-transform: uppercase;">
-                <?= htmlspecialchars($group_name) ?>
-            </h2>
-            <h3 class="fw-bold mb-2 text-dark" style="text-transform: uppercase;"><?= $is_sw ? 'Ripoti ya Matumizi ya Jumla' : 'General Expenses Report' ?></h3>
-            <p class="mb-0 small text-muted text-uppercase"><?= $is_sw ? 'Ripoti Rasmi ya Mfumo' : 'Official System Report' ?></p>
-        </div>
+    <div class="d-none d-print-block">
+        <?php PrintHeader::render($pdo, $is_sw ? 'RIPOTI YA MATUMIZI YA JUMLA' : 'GENERAL EXPENSES REPORT'); ?>
     </div>
 
     <div class="row mb-4 no-print">
@@ -332,15 +326,18 @@ $(document).ready(function() {
             { data: 'expense_date', render: d => `<strong>${new Date(d).toLocaleDateString()}</strong>` },
             { data: 'description' },
             { data: 'amount', render: d => `<strong class="text-danger">${formatCurrency(d)}</strong>` },
-            { data: 'status', render: d => `<span class="badge bg-${getStatusBadgeClass(d)}">${d.toUpperCase()}</span>` },
+            { data: 'status', render: d => `<span class="badge bg-${getStatusBadgeClass(d)}">${d ? d.charAt(0).toUpperCase()+d.slice(1) : 'Pending'}</span>` },
             {
                 data: null, className: 'text-end',
                 render: (d, t, r) => `
                     <div class="dropdown">
                         <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown"><i class="bi bi-gear"></i></button>
                         <ul class="dropdown-menu dropdown-menu-end shadow border-0">
-                            ${r.status==='pending'?`<li><a class="dropdown-item" href="javascript:void(0)" onclick="approveGeneralExpense(${r.id})"><i class="bi bi-check-circle text-success"></i> ${isSw?'Idhinisha':'Approve'}</a></li>`:''}
-                            <li><a class="dropdown-item text-danger" href="javascript:void(0)" onclick="confirmDeleteGeneralExpense(${r.id})"><i class="bi bi-trash"></i> ${isSw?'Futa':'Delete'}</a></li>
+                            <li><a class="dropdown-item fw-bold text-primary" href="<?= getUrl('general_expense_view') ?>?id=${r.id}"><i class="bi bi-eye-fill me-1"></i> ${isSw?'Maelezo':'View Details'}</a></li>
+                            <li><a class="dropdown-item" href="<?= getUrl('print_general_expense') ?>?id=${r.id}" target="_blank"><i class="bi bi-printer me-1"></i> ${isSw?'Chapa':'Print'}</a></li>
+                            ${(r.status==='pending' && <?= $can_review_expense ? 'true' : 'false' ?>) ? `<li><hr class="dropdown-divider my-1"></li><li><a class="dropdown-item fw-bold text-primary" href="javascript:void(0)" onclick="reviewGeneralExpense(${r.id})"><i class="bi bi-clipboard-check me-1"></i> ${isSw?'Pitia':'Mark Reviewed'}</a></li>` : ''}
+                            ${(r.status==='reviewed' && <?= $can_approve_expense ? 'true' : 'false' ?>) ? `<li><a class="dropdown-item fw-bold text-success" href="javascript:void(0)" onclick="approveGeneralExpense(${r.id})"><i class="bi bi-check-circle me-1"></i> ${isSw?'Idhinisha':'Approve'}</a></li>` : ''}
+                            <li><hr class="dropdown-divider my-1"></li><li><a class="dropdown-item text-danger" href="javascript:void(0)" onclick="confirmDeleteGeneralExpense(${r.id})"><i class="bi bi-trash me-1"></i> ${isSw?'Futa':'Delete'}</a></li>
                         </ul>
                     </div>
                 `
@@ -442,14 +439,27 @@ function formatCurrency(v) { return parseFloat(v).toLocaleString('en-US', {minim
 function getStatusBadgeClass(s) {
     return s === 'approved' ? 'success' : s === 'pending' ? 'warning' : s === 'rejected' ? 'danger' : 'secondary';
 }
+function _geListPost(url, id, msg) {
+    Swal.fire({ title: msg, didOpen: () => Swal.showLoading() });
+    $.post(url, { id: id }, function(r) {
+        if (r.success) {
+            Swal.fire({ icon:'success', title:'Done', text:r.message, timer:1400, showConfirmButton:false })
+                .then(() => $('#expensesTable').DataTable().ajax.reload());
+        } else { Swal.fire('Error', r.message, 'error'); }
+    }, 'json').fail(() => Swal.fire('Error', 'Server error', 'error'));
+}
+function reviewGeneralExpense(id) {
+    Swal.fire({ title: isSw?'Pitia gharama hii?':'Mark as Reviewed?', icon:'question', showCancelButton:true,
+        confirmButtonText: isSw?'Ndio':'Yes, Reviewed'
+    }).then(r => { if (r.isConfirmed) _geListPost('<?= getUrl("api/review_general_expense") ?>', id, isSw?'Inatuma...':'Submitting...'); });
+}
 function approveGeneralExpense(id) {
-    $.post('/api/approve_general_expense', { id: id }, function(res) {
-        if (res.success) {
-            Swal.fire({ icon: 'success', title: isSw ? 'Imekamilika' : 'Success', text: res.message, timer: 2000 });
-            $('#expensesTable').DataTable().ajax.reload();
-        } else {
-            Swal.fire('Error', res.message, 'error');
-        }
+    Swal.fire({ title: isSw?'Idhinisha gharama hii?':'Approve Expense?',
+        text: isSw?'Salio la kikundi litapunguzwa.':'Group balance will be deducted.',
+        icon: 'warning', showCancelButton: true,
+        confirmButtonText: isSw?'Ndio, Idhinisha':'Yes, Approve', confirmButtonColor:'#198754'
+    }).then(r => {
+        if (r.isConfirmed) _geListPost('<?= getUrl("api/approve_general_expense") ?>', id, isSw?'Inaidhinisha...':'Approving...');
     });
 }
 function confirmDeleteGeneralExpense(id) {
@@ -500,10 +510,8 @@ function renderExpenseCards(api) {
         var badge  = getStatusBadgeClass(status);
         var date   = d.expense_date ? new Date(d.expense_date).toLocaleDateString() : '—';
         
-        var approveBtn = status === 'pending' ? `
-            <button class="btn btn-sm btn-outline-success vk-btn-action" onclick="approveGeneralExpense(${id})" title="${isSw ? 'Idhinisha' : 'Approve'}">
-                <i class="bi bi-check-circle-fill"></i>
-            </button>` : '';
+        var reviewBtn  = (status==='pending'  && <?= $can_review_expense  ? 'true':'false' ?>) ? `<button class="btn btn-sm btn-outline-primary vk-btn-action" onclick="reviewGeneralExpense(${id})" title="${isSw?'Pitia':'Mark Reviewed'}"><i class="bi bi-clipboard-check"></i></button>` : '';
+        var approveBtn = (status==='reviewed' && <?= $can_approve_expense ? 'true':'false' ?>) ? `<button class="btn btn-sm btn-outline-success vk-btn-action" onclick="approveGeneralExpense(${id})" title="${isSw?'Idhinisha':'Approve'}"><i class="bi bi-check-circle-fill"></i></button>` : '';
 
         html += `<div class="vk-member-card">
             <div class="vk-card-header d-flex justify-content-between align-items-center gap-2">
@@ -527,7 +535,8 @@ function renderExpenseCards(api) {
                 </div>
             </div>
             <div class="vk-card-actions">
-                ${approveBtn}
+                <a href="<?= getUrl('general_expense_view') ?>?id=${id}" class="btn btn-sm btn-outline-primary vk-btn-action" title="${isSw?'Maelezo':'View'}"><i class="bi bi-eye-fill"></i></a>
+                ${reviewBtn}${approveBtn}
                 <button class="btn btn-sm btn-outline-danger vk-btn-action" onclick="confirmDeleteGeneralExpense(${id})" title="${isSw ? 'Futa' : 'Delete'}">
                     <i class="bi bi-trash3-fill"></i>
                 </button>
