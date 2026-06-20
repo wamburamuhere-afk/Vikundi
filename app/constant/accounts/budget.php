@@ -60,6 +60,10 @@ $current_month = date('n');
 $selected_year = (isset($_GET['year']) && $_GET['year'] !== '') ? intval($_GET['year']) : null;
 $selected_month = (isset($_GET['month']) && $_GET['month'] !== '') ? intval($_GET['month']) : null;
 
+// Budget status filter (enum: draft, pending, reviewed, approved, rejected)
+$budget_statuses = ['draft' => 'Draft', 'pending' => 'Pending', 'reviewed' => 'Reviewed', 'approved' => 'Approved', 'rejected' => 'Rejected'];
+$selected_status = (isset($_GET['status']) && isset($budget_statuses[$_GET['status']])) ? $_GET['status'] : null;
+
 $months = [1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April', 5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August', 9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'];
 $years = []; for ($year = $current_year - 5; $year <= $current_year + 10; $year++) { $years[$year] = $year; }
 
@@ -87,17 +91,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 // BUILD FILTERED QUERY
 $where_clauses = [];
 $params = [];
-if ($selected_year) { $where_clauses[] = "budget_year = ?"; $params[] = $selected_year; }
-if ($selected_month) { $where_clauses[] = "budget_month = ?"; $params[] = $selected_month; }
+if ($selected_year) { $where_clauses[] = "b.budget_year = ?"; $params[] = $selected_year; }
+if ($selected_month) { $where_clauses[] = "b.budget_month = ?"; $params[] = $selected_month; }
+if ($selected_status) { $where_clauses[] = "b.status = ?"; $params[] = $selected_status; }
 $where_sql = !empty($where_clauses) ? "WHERE " . implode(" AND ", $where_clauses) : "";
 
 // Stats
-$summary_stmt = $pdo->prepare("SELECT 
-    SUM(allocated_amount) as total_allocated, 
+$summary_stmt = $pdo->prepare("SELECT
+    SUM(allocated_amount) as total_allocated,
     SUM(CASE WHEN status = 'approved' THEN allocated_amount ELSE 0 END) as approved_amount,
     SUM(CASE WHEN status != 'approved' THEN allocated_amount ELSE 0 END) as pending_amount,
-    COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved_count 
-    FROM budgets $where_sql");
+    COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved_count
+    FROM budgets b $where_sql");
 $summary_stmt->execute($params);
 $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -139,6 +144,24 @@ $performance_data = $performance_stmt->fetchAll(PDO::FETCH_ASSOC);
         tr { page-break-inside: avoid !important; }
         .card { border: none !important; box-shadow: none !important; }
     }
+
+    /* Searchable filter dropdowns (Select2) sized to match Bootstrap form-select */
+    .vk-filter-select + .select2-container { width: 100% !important; }
+    .select2-container--default .select2-selection--single {
+        height: calc(2.5rem + 2px);
+        border: 1px solid #dee2e6;
+        border-radius: .375rem;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: calc(2.5rem); padding-left: .75rem;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow { height: 100%; }
+    .select2-container--default.select2-container--focus .select2-selection--single,
+    .select2-container--default.select2-container--open .select2-selection--single {
+        border-color: #86b7fe; box-shadow: 0 0 0 .25rem rgba(13,110,253,.25);
+    }
+    .select2-dropdown { border-color: #86b7fe; }
+    .select2-container--default .select2-results__option--highlighted[aria-selected] { background-color: #0d6efd; }
 </style>
 
 <!-- PDF LIBRARIES (CRITICAL) -->
@@ -182,9 +205,10 @@ $performance_data = $performance_stmt->fetchAll(PDO::FETCH_ASSOC);
     <div class="card border-0 shadow-sm rounded-4 mb-4">
         <div class="card-body p-3">
             <form method="GET" action="" class="row g-2 align-items-end">
-                <div class="col-6 col-md-4"><label class="small fw-bold text-muted ps-1">Year</label><select class="form-select shadow-none" name="year"><option value="">Show All Years</option><?php foreach ($years as $y): ?><option value="<?= $y ?>" <?= $y === $selected_year ? 'selected' : '' ?>><?= $y ?></option><?php endforeach; ?></select></div>
-                <div class="col-6 col-md-4"><label class="small fw-bold text-muted ps-1">Month</label><select class="form-select shadow-none" name="month"><option value="">Show All Months</option><?php foreach ($months as $num => $name): ?><option value="<?= $num ?>" <?= $num === $selected_month ? 'selected' : '' ?>><?= $name ?></option><?php endforeach; ?></select></div>
-                <div class="col-12 col-md-4 d-flex gap-2">
+                <div class="col-6 col-md-3"><label class="small fw-bold text-muted ps-1">Year</label><select class="form-select shadow-none vk-filter-select" data-placeholder="Search year..." name="year"><option value="">Show All Years</option><?php foreach ($years as $y): ?><option value="<?= $y ?>" <?= $y === $selected_year ? 'selected' : '' ?>><?= $y ?></option><?php endforeach; ?></select></div>
+                <div class="col-6 col-md-3"><label class="small fw-bold text-muted ps-1">Status</label><select class="form-select shadow-none vk-filter-select" data-placeholder="Search status..." name="status"><option value="">Show All Status</option><?php foreach ($budget_statuses as $sk => $sl): ?><option value="<?= $sk ?>" <?= $sk === $selected_status ? 'selected' : '' ?>><?= $sl ?></option><?php endforeach; ?></select></div>
+                <div class="col-6 col-md-3"><label class="small fw-bold text-muted ps-1">Month</label><select class="form-select shadow-none vk-filter-select" data-placeholder="Search month..." name="month"><option value="">Show All Months</option><?php foreach ($months as $num => $name): ?><option value="<?= $num ?>" <?= $num === $selected_month ? 'selected' : '' ?>><?= $name ?></option><?php endforeach; ?></select></div>
+                <div class="col-6 col-md-3 d-flex gap-2">
                     <button type="submit" class="btn btn-primary w-100 shadow-sm"><i class="bi bi-funnel me-1"></i> Filter</button>
                     <a href="/accounts/budget" class="btn btn-secondary w-100 shadow-sm text-decoration-none d-flex align-items-center justify-content-center"><i class="bi bi-x-circle me-1"></i> Clear</a>
                 </div>
@@ -372,6 +396,22 @@ $performance_data = $performance_stmt->fetchAll(PDO::FETCH_ASSOC);
 <script>
 $(document).ready(function() {
     var groupLogo = '<?= $logo_base64 ?>';
+
+    // Searchable Year/Status/Month filters: click to open, type to search.
+    if ($.fn.select2) {
+        $('.vk-filter-select').each(function () {
+            $(this).select2({
+                width: '100%',
+                placeholder: $(this).data('placeholder') || 'Search...',
+                allowClear: false
+            });
+        });
+        // Auto-apply the filter as soon as a value is chosen.
+        $('.vk-filter-select').on('select2:select select2:clear', function () {
+            $(this).closest('form').trigger('submit');
+        });
+    }
+
     $('#budgetTable').DataTable({
         responsive: true,
         dom: '<"d-flex flex-wrap align-items-center justify-content-between mb-3" <"d-flex align-items-center" B l > f >rtip',
