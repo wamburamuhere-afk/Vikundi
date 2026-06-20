@@ -138,7 +138,7 @@ $display_month = $is_sw ? $sw_months[date('n')] : $en_months[date('n')];
                     <?php endif; ?>
 
                     <?php if ($is_viongozi && $pending_death_expenses > 0): ?>
-                    <a href="<?= getUrl('death_expenses') ?>" class="vk-alert-chip vk-chip-red">
+                    <a href="<?= getUrl('expenses') ?>?status=pending" class="vk-alert-chip vk-chip-red">
                         <i class="bi bi-heart-pulse"></i> <?= $pending_death_expenses ?> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Misaada ya Misiba' : 'Funeral Supports' ?>
                     </a>
                     <?php endif; ?>
@@ -150,7 +150,7 @@ $display_month = $is_sw ? $sw_months[date('n')] : $en_months[date('n')];
                     <?php endif; ?>
 
                     <?php if ($is_viongozi && $pending_budgets > 0): ?>
-                    <a href="<?= getUrl('budget') ?>" class="vk-alert-chip vk-chip-teal">
+                    <a href="<?= getUrl('budget') ?>?status=pending" class="vk-alert-chip vk-chip-teal">
                         <i class="bi bi-pie-chart"></i> <?= $pending_budgets ?> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Bajeti Inayosubiri' : 'Pending Budgets' ?>
                     </a>
                     <?php endif; ?>
