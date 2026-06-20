@@ -37,7 +37,9 @@ $total_pending_fines = (float) $pdo->query("SELECT COALESCE(SUM(amount),0) FROM 
 
 // ── Pending Expenses (General & Death) ───────────────────────────────────
 $pending_death_expenses = (int) $pdo->query("SELECT COUNT(*) FROM death_expenses WHERE status = 'pending'")->fetchColumn();
-$pending_general_expenses = (int) $pdo->query("SELECT COUNT(*) FROM expenses WHERE status = 'pending'")->fetchColumn();
+// General (other) expenses live in the general_expenses table — the legacy
+// `expenses` table is empty/unused, so this chip never appeared before.
+$pending_general_expenses = (int) $pdo->query("SELECT COUNT(*) FROM general_expenses WHERE status = 'pending'")->fetchColumn();
 $pending_budgets = (int) $pdo->query("SELECT COUNT(*) FROM budgets WHERE status = 'pending'")->fetchColumn();
 
 // ── Death Expenses & Net Balance ──────────────────────────────────────────
@@ -142,7 +144,7 @@ $display_month = $is_sw ? $sw_months[date('n')] : $en_months[date('n')];
                     <?php endif; ?>
 
                     <?php if ($is_viongozi && $pending_general_expenses > 0): ?>
-                    <a href="<?= getUrl('expenses') ?>" class="vk-alert-chip vk-chip-orange">
+                    <a href="<?= getUrl('other_expenses') ?>?status=pending" class="vk-alert-chip vk-chip-orange">
                         <i class="bi bi-cart-dash"></i> <?= $pending_general_expenses ?> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Matumizi Mengineyo' : 'General Expenses' ?>
                     </a>
                     <?php endif; ?>
