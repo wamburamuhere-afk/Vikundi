@@ -9,6 +9,7 @@
 !/uploads/.gitkeep
 /backups/*
 !/backups/.gitkeep
+!/backups/.htaccess
 /downloads/*
 !/downloads/.gitkeep
 /documents/*
