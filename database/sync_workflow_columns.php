@@ -65,7 +65,12 @@ $ct->execute();
 $type = (string)$ct->fetchColumn();
 if ($type !== '' && strpos($type, "'reviewed'") === false) {
     try {
-        $pdo->exec("ALTER TABLE contributions MODIFY COLUMN status ENUM('','pending','reviewed','approved','cancelled') NOT NULL DEFAULT 'pending'");
+        // Legacy/imported rows may carry an empty or invalid status. Normalize them to
+        // 'approved' (they are confirmed contributions) FIRST, so changing the enum
+        // cannot truncate any row even under strict SQL mode, then widen the enum to
+        // add the 'reviewed' step. Wrapped so it can never abort the migration.
+        $pdo->exec("UPDATE contributions SET status = 'approved' WHERE status NOT IN ('pending','approved','cancelled')");
+        $pdo->exec("ALTER TABLE contributions MODIFY COLUMN status ENUM('pending','reviewed','approved','cancelled') NOT NULL DEFAULT 'pending'");
         $enumFixed = true;
     } catch (Throwable $e) {
         echo "  (status enum widen skipped: " . $e->getMessage() . ")\n";
