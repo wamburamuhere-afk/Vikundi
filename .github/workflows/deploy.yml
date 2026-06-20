@@ -17,9 +17,29 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
+            set -e
             cd /var/www/vikundi.bjptechnologies.co.tz/public_html
-            git pull origin main
-            echo "Running database migrations..."
-            php database/migrate.php
-            echo "Vikundi deployed at $(date)"
+
+            echo "==> Force-syncing working tree to origin/main"
+            # A plain 'git pull' silently fails when the server tree is dirty,
+            # leaving the live site on stale code (e.g. missing SMS Settings).
+            # Force it to match main. config.php and vendor/ are gitignored,
+            # so they are preserved by reset --hard.
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "==> Installing PHP dependencies (PHPMailer etc.)"
+            if command -v composer >/dev/null 2>&1; then
+              composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader || echo "composer step skipped"
+            else
+              echo "composer not found on server — skipping (install it to enable email sending)"
+            fi
+
+            echo "==> Running database migrations"
+            php database/migrate.php || echo "migrate step reported issues"
+
+            echo "==> Clearing PHP OPcache so updated files take effect immediately"
+            php -r 'if (function_exists("opcache_reset")) { opcache_reset(); echo "opcache reset\n"; }' || true
+
+            echo "==> Deployed commit: $(git rev-parse --short HEAD) at $(date)"
             echo "Deployment was successful!"
