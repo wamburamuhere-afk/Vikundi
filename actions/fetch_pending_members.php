@@ -1,17 +1,17 @@
 <?php
 // actions/fetch_pending_members.php
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
-require_once __DIR__ . '/../includes/config.php';
+// roots.php bootstraps config (PDO), core/permissions.php and getUrl(). In the
+// normal request flow index.php loads it first; requiring it here (idempotent)
+// makes the endpoint robust even if reached directly.
+require_once __DIR__ . '/../roots.php';
 
 header('Content-Type: application/json');
 
-// Auth check
-$allowed_roles = ['Admin', 'Secretary', 'Katibu', 'Administrator'];
-$stmt_check = $pdo->prepare("SELECT r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.role_id WHERE u.user_id = ?");
-$stmt_check->execute([$_SESSION['user_id'] ?? 0]);
-$user_role_db = $stmt_check->fetchColumn();
-
-if (!in_array($user_role_db, $allowed_roles) && !in_array($_SESSION['user_role'] ?? '', $allowed_roles)) {
+// Auth check — use the SAME permission gate as the dashboard badge and the
+// member_approvals page (isAdmin covers Chairman/Mwenyekiti/Treasurer/Secretary),
+// so whoever can see the "Action Required" count can also load the list.
+if (empty($_SESSION['user_id']) || (!isAdmin() && !canView('customers'))) {
     echo json_encode(['error' => 'Access Denied']);
     exit;
 }
@@ -22,10 +22,13 @@ $start = intval($_POST['start'] ?? 0);
 $length = intval($_POST['length'] ?? 10);
 $search = $_POST['search']['value'] ?? '';
 
-// Base query
+// Base query — LEFT JOIN on the reliable customers.user_id link (NOT email,
+// which silently dropped pending users whose email didn't match a customer).
+// LEFT JOIN guarantees every pending user appears, so the list always equals
+// the badge count.
 $query = "
     FROM users u
-    JOIN customers c ON u.email = c.email
+    LEFT JOIN customers c ON c.user_id = u.user_id
     WHERE u.status = 'pending'
 ";
 
@@ -33,8 +36,9 @@ if (!empty($search)) {
     $query .= " AND (c.first_name LIKE :search OR c.middle_name LIKE :search OR c.last_name LIKE :search OR u.username LIKE :search OR u.email LIKE :search OR c.phone LIKE :search)";
 }
 
-// Total records
-$total_stmt = $pdo->query("SELECT COUNT(*) FROM users WHERE status = 'pending'");
+// Total records — derived from the SAME base query as the list, so the
+// "Showing X of N" and the badge can never disagree with what is displayed.
+$total_stmt = $pdo->query("SELECT COUNT(*) FROM users u LEFT JOIN customers c ON c.user_id = u.user_id WHERE u.status = 'pending'");
 $total_records = $total_stmt->fetchColumn();
 
 // Filtered records
@@ -64,12 +68,17 @@ foreach ($members as $m) {
     
     $m['entrance_amount'] = $con['amount'] ?? ($m['initial_savings'] ?? 0);
     $m['evidence_path'] = $con['evidence_path'] ?? null;
-    
+
+    // Resilient display: fall back to the username when the customer profile
+    // is missing/blank, so a pending user is never shown as an empty row.
+    $full_name = trim(($m['first_name'] ?? '') . ' ' . ($m['middle_name'] ?? '') . ' ' . ($m['last_name'] ?? ''));
+    if ($full_name === '') $full_name = $m['username'];
+
     $data[] = [
         'sno' => $sno++,
         'date' => date('d/m/Y', strtotime($m['created_at'])),
-        'name' => '<strong>' . htmlspecialchars(trim($m['first_name'] . ' ' . $m['middle_name'] . ' ' . $m['last_name'])) . '</strong><br><small class="text-muted">@' . htmlspecialchars($m['username']) . '</small>',
-        'contact' => '<div><i class="bi bi-envelope me-1"></i> ' . htmlspecialchars($m['email']) . '</div><div><i class="bi bi-phone me-1"></i> ' . htmlspecialchars($m['phone']) . '</div>',
+        'name' => '<strong>' . htmlspecialchars($full_name) . '</strong><br><small class="text-muted">@' . htmlspecialchars($m['username']) . '</small>',
+        'contact' => '<div><i class="bi bi-envelope me-1"></i> ' . htmlspecialchars($m['email'] ?? '—') . '</div><div><i class="bi bi-phone me-1"></i> ' . htmlspecialchars($m['phone'] ?? '—') . '</div>',
         'amount' => '<div class="text-end fw-bold text-success">TSh ' . number_format($m['entrance_amount'], 2) . '</div>',
         'slip' => $m['evidence_path'] 
             ? '<a href="' . htmlspecialchars($m['evidence_path']) . '" target="_blank" class="btn btn-sm btn-outline-info rounded-pill px-3"><i class="bi bi-file-earmark-image me-1"></i> ' . (($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Tazama Slip' : 'View Slip') . '</a>'
