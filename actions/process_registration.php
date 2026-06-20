@@ -10,6 +10,7 @@ if (!defined('ROOT_DIR')) {
 if (!isset($pdo)) {
     require_once __DIR__ . '/../includes/config.php';
 }
+require_once __DIR__ . '/../includes/registration_validator.php';
 
 $response = ['success' => false, 'message' => ''];
 
@@ -29,8 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $religion = $_POST['religion_other'];
     }
     $birth_region   = $_POST['birth_region'] ?? '';
-    $marital_status = in_array($_POST['marital_status'] ?? 'Single', ['Single','Married'])
-                      ? $_POST['marital_status'] : 'Single';
+    $marital_status_in = $_POST['marital_status'] ?? 'Single';
+    $marital_status = in_array($marital_status_in, ['Single', 'Married'], true) ? $marital_status_in : 'Single';
 
     $password = $_POST['password'] ?? '';
     
@@ -113,13 +114,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $first_initial . $last_name_slug;
     $base_username = $username;
 
-    // Check for compulsory fields
-    $kianzio_uploaded = isset($_FILES['kianzio_slip']) && $_FILES['kianzio_slip']['error'] === 0;
-
-    if (empty($email) || empty($password) || empty($first_name) || empty($last_name) || empty($phone) || !$kianzio_uploaded) {
-        $response['message'] = ($preferred_language === 'sw') 
-            ? 'Tafadhali jaza maelezo yote muhimu: Jina, Email, Simu, Nywila na Risiti ya Malipo.' 
-            : 'Please fill in all required fields: Names, Email, Phone, Password, and Payment Slip.';
+    // Server-side format & required-field validation (authoritative gate).
+    // Mirrors the client-side rules in register.php and reports the SPECIFIC
+    // problem(s) instead of failing with a vague message or inserting bad data.
+    $validation_errors = validate_registration_input($_POST, $_FILES, $preferred_language);
+    if (!empty($validation_errors)) {
+        $response['message'] = implode("\n", $validation_errors);
         echo json_encode($response);
         exit;
     }
