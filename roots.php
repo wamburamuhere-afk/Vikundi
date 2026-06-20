@@ -393,6 +393,7 @@ $routes = [
     // COMMUNICATION MODULE (App Directory)
     // ========================================================================
     'communication/campaign_management' => COMMUNICATION_DIR . '/campaign_management.php',
+    'communication/email_center' => COMMUNICATION_DIR . '/email_center.php',
     'communication/email_templates' => COMMUNICATION_DIR . '/email_templates.php',
     'communication/lead_generation' => COMMUNICATION_DIR . '/lead_generation.php',
     'communication/message_center' => COMMUNICATION_DIR . '/message_center.php',
@@ -405,6 +406,8 @@ $routes = [
     'campaigns.php' => COMMUNICATION_DIR . '/campaign_management.php',
     'leads' => COMMUNICATION_DIR . '/lead_generation.php',
     'leads.php' => COMMUNICATION_DIR . '/lead_generation.php',
+    'email_center' => COMMUNICATION_DIR . '/email_center.php',
+    'email_center.php' => COMMUNICATION_DIR . '/email_center.php',
     'email_templates' => COMMUNICATION_DIR . '/email_templates.php',
     'email_templates.php' => COMMUNICATION_DIR . '/email_templates.php',
     'sms_templates' => COMMUNICATION_DIR . '/sms_templates.php',
@@ -931,6 +934,8 @@ $routes = [
     // ========================================================================
     'api/delete_email_template' => API_DIR . '/delete_email_template.php',
     'api/delete_email_template.php' => API_DIR . '/delete_email_template.php',
+    'api/email_center' => API_DIR . '/email_center.php',
+    'api/email_center.php' => API_DIR . '/email_center.php',
     'api/delete_feedback' => API_DIR . '/delete_feedback.php',
     'api/delete_feedback.php' => API_DIR . '/delete_feedback.php',
     'api/delete_notification' => API_DIR . '/delete_notification.php',

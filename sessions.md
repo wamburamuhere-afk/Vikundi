@@ -31,6 +31,39 @@ Important context, decisions made, or follow-up items.
 
 ---
 
+## Session 12 — 2026-06-20
+**Branch:** `fix-deploy-yml`
+**Developer:** Wambura Muhere / Claude Code
+**Summary:** Wired up the **Email** item under Communication (comms > Email) into a working Email Center, modelled on the existing communication module and fully compliant with `.claude/ui-constants.md`.
+
+### Changes
+- The Communication menu's **Email** entry was a dead `href="#"` placeholder (added in commit b6a388b). Built it out into a real feature: compose & send email to members/staff, with a tracked email log.
+- Reuses the existing `message_center` RBAC permission key (view/create/delete), so no new permission rows or role changes are required.
+- `email_send()` writes every attempt to `email_logs` and records the **honest** outcome — on local WAMP with no MTA, `mail()` fails and is logged as `failed` rather than faked as sent.
+
+### Files Created
+- `includes/email_helper.php` — email helper (mirrors `sms_helper.php`). Pure DB-free functions `email_is_valid()`, `email_parse_recipients()`, `email_render_template()`; DB functions `email_ensure_logs_table()`, `email_get_settings()`, `email_send()`.
+- `api/email_center.php` — JSON API (`list`, `get`, `recipients`, `send`, `resend`, `delete`); session + RBAC gated, prepared statements, audit logging.
+- `app/constant/communication/email_center.php` — Email Center UI; ui-constants.md compliant (blue scale, stat cards `#e7f0ff`/`#b6ccfe`, DataTable `dom:'rtipB'`, Select2 recipient picker with tags, SweetAlert2, gear-dropdown actions, mobile card view, bilingual EN/SW, Bootstrap Icons).
+- `database/email_logs.sql` — canonical schema for `email_logs` + optional `system_settings` email keys.
+- `tests/Unit/EmailHelperTest.php` — 11 tests for the pure helper functions.
+- `tests/Unit/EmailCenterPageTest.php` — 18 tests asserting UI-constants compliance, API security/audit, and route/menu wiring.
+
+### Files Modified
+- `header.php` — Email menu item now links to `getUrl('email_center')` instead of `#`.
+- `roots.php` — registered page routes (`email_center`, `email_center.php`, `communication/email_center`) and API route (`api/email_center`).
+
+### Database Changes
+- New table `email_logs` (self-healing: created on demand by `email_ensure_logs_table()`; also in `database/email_logs.sql`).
+- Optional `system_settings` keys (`enable_email_notifications`, `mail_from_name`, `mail_from_email`) — defaults applied in code, rows not required.
+
+### Notes
+- Full suite green: **424 tests, 650 assertions** (29 new). All new files `php -l` clean.
+- Verified end-to-end via simulated authenticated requests: list, recipients (27 members + 28 staff), send (correctly logged as failed — no MTA locally), resend, delete; audit entries written; permission + auth gates reject unauthorized/unauthenticated callers; page renders with zero warnings for a real user.
+- Follow-up (optional): when an SMTP/gateway is configured, swap the `mail()` transport in `email_send()` for PHPMailer; add an Email Templates picker to the compose modal (a `get_email_templates.php` stub already exists).
+
+---
+
 ## Session 11 — 2026-05-06
 **Branch:** `feat/mobile-expenses`
 **Developer:** mbosso khani / Claude Code
