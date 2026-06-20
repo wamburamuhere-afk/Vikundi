@@ -131,6 +131,8 @@ try {
     
     <!-- Select2 -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <!-- Select2 Bootstrap 5 theme (required by .claude/ui-constants.md §UI-3: theme:'bootstrap-5') -->
+    <link href="https://cdn.jsdelivr.net/npm/@ttskch/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
     <link rel="stylesheet" href="/style.css">
@@ -446,6 +448,7 @@ try {
                                 <li><h6 class="dropdown-header"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mawasiliano' : 'Communication' ?></h6></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('message_center') ?>"><i class="bi bi-chat-left"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Ujumbe' : 'Messages' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('email_center') ?>"><i class="bi bi-envelope"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Barua Pepe' : 'Email' ?></a></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('email_templates') ?>"><i class="bi bi-envelope-paper"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Violezo vya Barua Pepe' : 'Email Templates' ?></a></li>
                                 <li><a class="dropdown-item" href="#"><i class="bi bi-phone"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'SMS' : 'SMS' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('notification_center') ?>"><i class="bi bi-bell"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Taarifa (Notifications)' : 'Notifications' ?></a></li>
                                 <?php if (canView('ai_assistant') || canView('ai_ask_data')): ?>
