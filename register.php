@@ -1,6 +1,7 @@
 <?php
 // register.php
-require_once __DIR__ . '/roots.php'; 
+require_once __DIR__ . '/roots.php';
+require_once __DIR__ . '/includes/csrf.php';
 
 if (isset($_SESSION['user_id'])) {
     header('Location: dashboard');
@@ -95,6 +96,13 @@ if (isset($_SESSION['user_id'])) {
                 <!-- Hidden Defaults -->
                 <input type="hidden" name="user_role" value="Member">
                 <input type="hidden" name="status" value="pending">
+                <?= csrf_field() ?>
+                <!-- Honeypot: real users never see or fill this; automated bots do -->
+                <div aria-hidden="true" style="position:absolute; left:-9999px; top:-9999px; height:0; width:0; overflow:hidden;">
+                    <label>Website
+                        <input type="text" name="contact_website" tabindex="-1" autocomplete="off">
+                    </label>
+                </div>
                 
                 <div class="tab-content" id="registerTabsContent">
                     <!-- PHASE 1: PERSONAL INFORMATION -->
@@ -157,6 +165,8 @@ if (isset($_SESSION['user_id'])) {
                                 <select name="marital_status" id="marital_status" class="form-select" onchange="toggleFamilyFields(this.value)">
                                     <option value="Single">Single</option>
                                     <option value="Married">Married</option>
+                                    <option value="Widowed">Widowed</option>
+                                    <option value="Divorced">Divorced</option>
                                 </select>
                             </div>
 
@@ -470,7 +480,7 @@ if (isset($_SESSION['user_id'])) {
 
                             <div class="col-12 mt-3">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="terms" required>
+                                    <input class="form-check-input" type="checkbox" id="terms" name="terms" value="1" required>
                                     <label class="form-check-label small" for="terms">
                                         I agree to the terms and conditions of this group.
                                     </label>
@@ -739,7 +749,7 @@ if (isset($_SESSION['user_id'])) {
     function toggleFamilyFields(status) {
         const familyDiv = document.getElementById('familyFields');
         const inputs = familyDiv.querySelectorAll('input, select');
-        if (status === 'Married') {
+        if (status !== 'Single') {
             familyDiv.style.display = 'block';
             inputs.forEach(i => i.disabled = false);
         } else {
@@ -769,6 +779,10 @@ if (isset($_SESSION['user_id'])) {
             slipType:     'The payment slip must be a JPG, PNG, or PDF file.',
             photoType:    'The passport photo must be a JPG or PNG image.',
             photoSize:    'The passport photo must be smaller than 2MB.',
+            nameFormat:   'Please use letters only for the name (e.g. John).',
+            nida:         'The NIDA number must be 20 digits.',
+            fee:          'The registration fee must be a positive number.',
+            childAge:     'Child age must be a number between 0 and 120.',
             fixTitle:     'Please check the form',
             fixText:      'Some fields need your attention — please review the highlighted messages below.'
         },
@@ -780,6 +794,10 @@ if (isset($_SESSION['user_id'])) {
             slipType:     'Risiti ya malipo lazima iwe faili la JPG, PNG, au PDF.',
             photoType:    'Picha ya pasipoti lazima iwe JPG au PNG.',
             photoSize:    'Picha ya pasipoti lazima iwe chini ya 2MB.',
+            nameFormat:   'Tafadhali tumia herufi pekee kwa jina (mfano John).',
+            nida:         'Namba ya NIDA lazima iwe na tarakimu 20.',
+            fee:          'Ada ya usajili lazima iwe namba chanya.',
+            childAge:     'Umri wa mtoto lazima uwe namba kati ya 0 na 120.',
             fixTitle:     'Tafadhali kagua fomu',
             fixText:      'Kuna sehemu zinazohitaji marekebisho — tafadhali angalia ujumbe ulioonyeshwa hapa chini.'
         }
@@ -859,8 +877,8 @@ if (isset($_SESSION['user_id'])) {
             clearError(input); return true;
         }
         var name = f.name.toLowerCase();
-        var ok = f.type.indexOf('image/') === 0 || f.type === 'application/pdf' ||
-                 /\.(jpe?g|png|gif|webp|pdf)$/.test(name);
+        var ok = /^(image\/jpeg|image\/png|application\/pdf)$/.test(f.type) ||
+                 /\.(jpe?g|png|pdf)$/.test(name);
         if (!ok) { showError(input, msg('slipType')); return false; }
         clearError(input); return true;
     }
@@ -873,6 +891,31 @@ if (isset($_SESSION['user_id'])) {
         var typeOk = f.type === 'image/jpeg' || f.type === 'image/png' || /\.(jpe?g|png)$/.test(name);
         if (!typeOk) { showError(input, msg('photoType')); return false; }
         if (f.size > 2 * 1024 * 1024) { showError(input, msg('photoSize')); return false; }
+        clearError(input); return true;
+    }
+    var NAME_RE = /^[\p{L}][\p{L}\s.'-]{1,49}$/u;
+    function checkName(input) {
+        var v = input.value.trim();
+        if (v === '') { clearError(input); return true; }   // emptiness handled by native "required"
+        if (!NAME_RE.test(v)) { showError(input, msg('nameFormat')); return false; }
+        clearError(input); return true;
+    }
+    function checkNida(input) {
+        var v = input.value.trim();
+        if (v === '') { clearError(input); return true; }   // optional
+        if (v.replace(/\D/g, '').length !== 20) { showError(input, msg('nida')); return false; }
+        clearError(input); return true;
+    }
+    function checkFee(input) {
+        var v = input.value.trim();
+        if (v === '') { clearError(input); return true; }   // optional
+        if (isNaN(Number(v)) || Number(v) < 0) { showError(input, msg('fee')); return false; }
+        clearError(input); return true;
+    }
+    function checkChildAge(input) {
+        var v = input.value.trim();
+        if (v === '') { clearError(input); return true; }   // optional
+        if (!/^\d+$/.test(v) || Number(v) > 120) { showError(input, msg('childAge')); return false; }
         clearError(input); return true;
     }
 
@@ -897,6 +940,20 @@ if (isset($_SESSION['user_id'])) {
         ['father_phone', 'mother_phone', 'spouse_phone', 'guarantor_phone'].forEach(function (n) {
             var el = fieldByName(n);
             if (el && isUsable(el) && !checkPhone(el)) fail(el);
+        });
+
+        ['first_name', 'last_name'].forEach(function (n) {
+            var el = fieldByName(n);
+            if (el && isUsable(el) && !checkName(el)) fail(el);
+        });
+        ['nida_number', 'spouse_nida'].forEach(function (n) {
+            var el = fieldByName(n);
+            if (el && isUsable(el) && !checkNida(el)) fail(el);
+        });
+        var feeEl = fieldByName('entrance_fee');
+        if (feeEl && isUsable(feeEl) && !checkFee(feeEl)) fail(feeEl);
+        document.querySelectorAll('input[name="child_age[]"]').forEach(function (el) {
+            if (isUsable(el) && !checkChildAge(el)) fail(el);
         });
 
         if (!ok && firstInvalid) {
@@ -936,6 +993,20 @@ if (isset($_SESSION['user_id'])) {
 
         var photo = fieldByName('passport_photo');
         if (photo) photo.addEventListener('change', function () { checkPhoto(); });
+
+        attach(fieldByName('first_name'), checkName);
+        attach(fieldByName('last_name'), checkName);
+        attach(fieldByName('nida_number'), checkNida);
+        attach(fieldByName('spouse_nida'), checkNida);
+        attach(fieldByName('entrance_fee'), checkFee);
+
+        // Child age rows can be added dynamically — use delegation.
+        document.addEventListener('focusout', function (e) {
+            if (e.target && e.target.name === 'child_age[]') checkChildAge(e.target);
+        });
+        document.addEventListener('input', function (e) {
+            if (e.target && e.target.name === 'child_age[]' && e.target.classList.contains('is-invalid')) checkChildAge(e.target);
+        });
     }
 
     if (document.readyState === 'loading') {

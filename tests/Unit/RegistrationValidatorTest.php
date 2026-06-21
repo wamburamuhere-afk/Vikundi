@@ -31,6 +31,7 @@ class RegistrationValidatorTest extends TestCase
             'phone'            => '0712345678',
             'password'         => 'secret1',
             'confirm_password' => 'secret1',
+            'terms'            => '1',
         ];
     }
 
@@ -225,6 +226,106 @@ class RegistrationValidatorTest extends TestCase
         $files = $this->validFiles();
         $files['passport_photo'] = ['name' => 'me.png', 'type' => 'image/png', 'tmp_name' => '/tmp/p', 'error' => UPLOAD_ERR_OK, 'size' => 500 * 1024];
         $this->assertSame([], validate_registration_input($this->validPost(), $files, 'en'));
+    }
+
+    // ----- name format ------------------------------------------------------
+
+    public function test_invalid_name_format_is_reported(): void
+    {
+        $post = $this->validPost();
+        $post['first_name'] = '12345';
+        $errors = validate_registration_input($post, $this->validFiles(), 'en');
+        $this->assertContains('First name contains invalid characters (use letters only, e.g. John).', $errors);
+    }
+
+    public function test_names_with_apostrophe_hyphen_and_spaces_pass(): void
+    {
+        foreach (["N'Goma", 'Al-Amin', 'Mary Jane', 'Peter'] as $name) {
+            $this->assertTrue(reg_valid_name($name), "Expected '$name' to be a valid name");
+        }
+    }
+
+    // ----- NIDA -------------------------------------------------------------
+
+    public function test_nida_validated_only_when_present(): void
+    {
+        $post = $this->validPost();
+        $post['nida_number'] = '';
+        $this->assertSame([], validate_registration_input($post, $this->validFiles(), 'en'));
+
+        $post['nida_number'] = '123';
+        $errors = validate_registration_input($post, $this->validFiles(), 'en');
+        $this->assertContains('The NIDA number must be 20 digits.', $errors);
+
+        $post['nida_number'] = '1234 5678 9012 3456 7890'; // 20 digits with spaces
+        $this->assertSame([], validate_registration_input($post, $this->validFiles(), 'en'));
+    }
+
+    public function test_spouse_nida_validated_only_when_present(): void
+    {
+        $post = $this->validPost();
+        $post['spouse_nida'] = '99';
+        $errors = validate_registration_input($post, $this->validFiles(), 'en');
+        $this->assertContains('The spouse NIDA number must be 20 digits.', $errors);
+    }
+
+    // ----- entrance fee -----------------------------------------------------
+
+    public function test_negative_fee_is_reported_and_blank_is_allowed(): void
+    {
+        $post = $this->validPost();
+        $post['entrance_fee'] = '';
+        $this->assertSame([], validate_registration_input($post, $this->validFiles(), 'en'));
+
+        $post['entrance_fee'] = '-500';
+        $errors = validate_registration_input($post, $this->validFiles(), 'en');
+        $this->assertContains('The registration fee must be a positive number.', $errors);
+    }
+
+    // ----- children ages ----------------------------------------------------
+
+    public function test_child_age_out_of_range_is_reported_with_row_number(): void
+    {
+        $post = $this->validPost();
+        $post['child_age'] = ['5', '999'];
+        $errors = validate_registration_input($post, $this->validFiles(), 'en');
+        $this->assertContains('Child #2 age is not valid (use a number 0–120).', $errors);
+    }
+
+    public function test_blank_child_ages_are_ignored(): void
+    {
+        $post = $this->validPost();
+        $post['child_age'] = ['', '7', ''];
+        $this->assertSame([], validate_registration_input($post, $this->validFiles(), 'en'));
+    }
+
+    // ----- terms ------------------------------------------------------------
+
+    public function test_terms_must_be_accepted(): void
+    {
+        $post = $this->validPost();
+        unset($post['terms']);
+        $errors = validate_registration_input($post, $this->validFiles(), 'en');
+        $this->assertContains('You must accept the terms and conditions to register.', $errors);
+    }
+
+    public function test_terms_accepted_with_on_value(): void
+    {
+        $post = $this->validPost();
+        $post['terms'] = 'on';
+        $this->assertSame([], validate_registration_input($post, $this->validFiles(), 'en'));
+    }
+
+    // ----- phone normalization ----------------------------------------------
+
+    public function test_phone_normalization_canonicalises_tz_numbers(): void
+    {
+        $this->assertSame('+255712345678', reg_normalize_phone('0712345678'));
+        $this->assertSame('+255712345678', reg_normalize_phone('255712345678'));
+        $this->assertSame('+255712345678', reg_normalize_phone('+255712345678'));
+        $this->assertSame('+255712345678', reg_normalize_phone('071 234 5678'));
+        $this->assertSame('+255712345678', reg_normalize_phone('071-234-5678'));
+        $this->assertSame('', reg_normalize_phone(''));
     }
 
     // ----- Swahili messages -------------------------------------------------
