@@ -504,7 +504,7 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                                     <label class="form-label fw-bold">Marital Status</label>
                                     <select name="marital_status" id="marital_status_admin" class="form-select" onchange="toggleFamilyFieldsAdmin(this.value)">
                                         <option value="Single">Single</option>
-                                        <option value="Married">Married</option>
+                                        <option value="Married" selected>Married</option>
                                         <option value="Widowed">Widowed</option>
                                         <option value="Divorced">Divorced</option>
                                     </select>
@@ -840,11 +840,11 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                                             <input type="hidden" name="preferred_language" id="reg_preferred_language" value="en">
                                             <button type="button" id="reg_btn_lang_en" onclick="setRegLang('en')"
                                                 class="btn btn-primary btn-sm fw-bold px-3 rounded-pill btn-lang-reg">
-                                                ðŸ‡¬ðŸ‡§ English
+                                                🇬🇧 English
                                             </button>
                                             <button type="button" id="reg_btn_lang_sw" onclick="setRegLang('sw')"
                                                 class="btn btn-outline-primary btn-sm fw-bold px-3 rounded-pill btn-lang-reg">
-                                                ðŸ‡¹ðŸ‡¿ Kiswahili
+                                                🇹🇿 Kiswahili
                                             </button>
                                         </div>
                                     </div>
