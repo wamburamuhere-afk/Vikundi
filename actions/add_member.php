@@ -120,6 +120,33 @@ $initial_savings = (float)($_POST['initial_savings'] ?? 0);
 $preferred_lang  = $_POST['preferred_language'] ?? 'en';
 $kianzio_slip   = null;
 
+// ---- CSRF + authoritative format validation (same rules as public register) ----
+require_once __DIR__ . '/../includes/csrf.php';
+require_once __DIR__ . '/../includes/registration_validator.php';
+
+$val_lang = in_array($preferred_lang, ['en', 'sw'], true) ? $preferred_lang : 'en';
+
+if (!csrf_verify($_POST['csrf_token'] ?? null)) {
+    echo json_encode(['success' => false, 'message' => ($val_lang === 'sw')
+        ? 'Kipindi chako kimeisha au ombi si salama. Tafadhali onyesha upya ukurasa kisha ujaribu tena.'
+        : 'Your session has expired or the request was not secure. Please refresh the page and try again.']);
+    exit();
+}
+
+// The admin form's fee field is "initial_savings"; map it to the validator's key.
+$val_post = $_POST;
+$val_post['entrance_fee'] = $_POST['initial_savings'] ?? '';
+// Admin form has no terms checkbox -> require_terms = false; every other rule identical.
+$validation_errors = validate_registration_input($val_post, $_FILES, $val_lang, false);
+if (!empty($validation_errors)) {
+    echo json_encode(['success' => false, 'message' => implode("\n", $validation_errors)]);
+    exit();
+}
+
+// Canonicalise email & phone so duplicate detection and storage stay consistent.
+$email = strtolower(trim($email));
+$phone = reg_normalize_phone($phone);
+
 // Handle Payment Slip Upload (MANDATORY)
 if (!isset($_FILES['kianzio_slip']) || $_FILES['kianzio_slip']['error'] !== UPLOAD_ERR_OK) {
     echo json_encode(['success' => false, 'message' => 'Tafadhali pakia risiti ya malipo (Payment Slip) mwanzo ili kukamilisha usajili huu.']);

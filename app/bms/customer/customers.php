@@ -11,6 +11,7 @@ $can_create_members = canCreate('customers');
 $can_edit_members = canEdit('customers');
 $can_delete_members = canDelete('customers');
 $can_approve_members = canView('member_approvals');
+require_once __DIR__ . '/../../../includes/csrf.php';
 
 // Fetch members (users joined with customer details)
 $query = "
@@ -452,6 +453,7 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                 </ul>
 
                 <form id="addMemberForm" enctype="multipart/form-data" class="p-4">
+                    <?= csrf_field() ?>
                     <div class="tab-content" id="registrationTabsContent">
                         
                         <!-- TAB 1: TAARIFA BINAFSI -->
@@ -503,6 +505,8 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                                     <select name="marital_status" id="marital_status_admin" class="form-select" onchange="toggleFamilyFieldsAdmin(this.value)">
                                         <option value="Single">Single</option>
                                         <option value="Married">Married</option>
+                                        <option value="Widowed">Widowed</option>
+                                        <option value="Divorced">Divorced</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6">
@@ -779,7 +783,7 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                                 <div class="col-md-6 mb-2">
                                     <label class="form-label fw-bold small">Confirm Password *</label>
                                     <div class="input-group input-group-sm">
-                                        <input type="password" id="reg_confirm_password" class="form-control" required placeholder="******" autocomplete="new-password">
+                                        <input type="password" name="confirm_password" id="reg_confirm_password" class="form-control" required placeholder="******" autocomplete="new-password">
                                         <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordAdmin('reg_confirm_password')">
                                             <i class="bi bi-eye" id="reg_confirm_password_icon"></i>
                                         </button>
@@ -1156,9 +1160,14 @@ $(document).ready(function() {
     // Form Submission
     $('#addMemberForm').on('submit', function(e) {
         e.preventDefault();
-        
+
         const form = $(this)[0];
-        
+
+        // Same format gate as the public registration — specific messages, no silent fail
+        if (typeof validateRegistrationFormAdmin === 'function' && !validateRegistrationFormAdmin()) {
+            return false;
+        }
+
         // Password matching check
         if ($('#reg_password').val() !== $('#reg_confirm_password').val()) {
             Swal.fire({
@@ -1401,7 +1410,7 @@ function togglePasswordAdmin(fieldId) {
     function toggleFamilyFieldsAdmin(status) {
         const familyDiv = document.getElementById('familyFieldsAdmin');
         const inputs = familyDiv.querySelectorAll('input, select');
-        if (status === 'Married') {
+        if (status !== 'Single') {
             familyDiv.style.display = 'block';
             inputs.forEach(i => i.disabled = false);
         } else {
@@ -1409,6 +1418,134 @@ function togglePasswordAdmin(fieldId) {
             inputs.forEach(i => i.disabled = true);
         }
     }
+
+    /* Registration format validation for the admin "Register New Member" form.
+       Same rules as the public register.php (the server enforces them via the
+       shared validate_registration_input). Reports the SPECIFIC problem live and
+       on submit, jumping to the offending field — never a silent or late failure. */
+    (function () {
+        'use strict';
+        var L = '<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'sw' : 'en' ?>';
+        var M = {
+            en: {
+                email:'Please enter a valid email address, e.g. john@example.com',
+                phone:'Please enter a valid phone number, e.g. 0712345678 or +255712345678',
+                slipRequired:'Please upload the payment slip before submitting.',
+                slipType:'The payment slip must be a JPG, PNG, or PDF file.',
+                photoType:'The passport photo must be a JPG or PNG image.',
+                photoSize:'The passport photo must be smaller than 2MB.',
+                nameFormat:'Please use letters only for the name (e.g. John).',
+                nida:'The NIDA number must be 20 digits.',
+                fee:'The amount must be a positive number.',
+                childAge:'Child age must be a number between 0 and 120.',
+                fixTitle:'Please check the form',
+                fixText:'Some fields need your attention — please review the highlighted messages below.'
+            },
+            sw: {
+                email:'Tafadhali weka barua pepe sahihi, mfano john@example.com',
+                phone:'Tafadhali weka namba sahihi ya simu, mfano 0712345678 au +255712345678',
+                slipRequired:'Tafadhali pakia risiti ya malipo kabla ya kutuma.',
+                slipType:'Risiti ya malipo lazima iwe faili la JPG, PNG, au PDF.',
+                photoType:'Picha ya pasipoti lazima iwe JPG au PNG.',
+                photoSize:'Picha ya pasipoti lazima iwe chini ya 2MB.',
+                nameFormat:'Tafadhali tumia herufi pekee kwa jina (mfano John).',
+                nida:'Namba ya NIDA lazima iwe na tarakimu 20.',
+                fee:'Kiasi lazima kiwe namba chanya.',
+                childAge:'Umri wa mtoto lazima uwe namba kati ya 0 na 120.',
+                fixTitle:'Tafadhali kagua fomu',
+                fixText:'Kuna sehemu zinazohitaji marekebisho — tafadhali angalia ujumbe ulioonyeshwa hapa chini.'
+            }
+        };
+        function msg(k){ return (M[L]||M.en)[k]; }
+        function byName(n){ return document.querySelector('[name="'+n+'"]'); }
+        function usable(el){ return !!(el && el.offsetParent !== null && !el.disabled); }
+        function showError(input, message){
+            if(!input) return;
+            input.classList.add('is-invalid');
+            var anchor = input.closest('.input-group') || input;
+            var fb = anchor.parentNode.querySelector('.reg-feedback[data-for="'+input.name+'"]');
+            if(!fb){ fb=document.createElement('div'); fb.className='reg-feedback text-danger small mt-1';
+                fb.setAttribute('data-for', input.name); anchor.parentNode.insertBefore(fb, anchor.nextSibling); }
+            fb.innerHTML='<i class="bi bi-exclamation-circle-fill me-1"></i>'+message; fb.style.display='block';
+        }
+        function clearError(input){
+            if(!input) return;
+            input.classList.remove('is-invalid');
+            var anchor = input.closest('.input-group') || input;
+            var fb = anchor.parentNode.querySelector('.reg-feedback[data-for="'+input.name+'"]');
+            if(fb) fb.style.display='none';
+        }
+        var EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]+$/, NAME_RE=/^[\p{L}][\p{L}\s.'-]{1,49}$/u;
+        function validEmail(v){ return EMAIL_RE.test(v.trim()); }
+        function validPhone(v){ return /^\+?\d{9,13}$/.test(v.replace(/[\s\-()]/g,'')); }
+        function checkEmail(i){ var v=i.value.trim(); if(v===''){clearError(i);return true;} if(!validEmail(v)){showError(i,msg('email'));return false;} clearError(i);return true; }
+        function checkPhone(i){ var v=i.value.trim(); if(v===''){clearError(i);return true;} if(!validPhone(v)){showError(i,msg('phone'));return false;} clearError(i);return true; }
+        function checkName(i){ var v=i.value.trim(); if(v===''){clearError(i);return true;} if(!NAME_RE.test(v)){showError(i,msg('nameFormat'));return false;} clearError(i);return true; }
+        function checkNida(i){ var v=i.value.trim(); if(v===''){clearError(i);return true;} if(v.replace(/\D/g,'').length!==20){showError(i,msg('nida'));return false;} clearError(i);return true; }
+        function checkFee(i){ var v=i.value.trim(); if(v===''){clearError(i);return true;} if(isNaN(Number(v))||Number(v)<0){showError(i,msg('fee'));return false;} clearError(i);return true; }
+        function checkChildAge(i){ var v=i.value.trim(); if(v===''){clearError(i);return true;} if(!/^\d+$/.test(v)||Number(v)>120){showError(i,msg('childAge'));return false;} clearError(i);return true; }
+        function checkSlip(req){
+            var i=byName('kianzio_slip'); if(!i) return true;
+            var f=i.files&&i.files[0];
+            if(!f){ if(req){showError(i,msg('slipRequired'));return false;} clearError(i);return true; }
+            var name=f.name.toLowerCase();
+            var ok=/^(image\/jpeg|image\/png|application\/pdf)$/.test(f.type)||/\.(jpe?g|png|pdf)$/.test(name);
+            if(!ok){showError(i,msg('slipType'));return false;} clearError(i);return true;
+        }
+        function checkPhoto(){
+            var i=byName('passport_photo'); if(!i) return true;
+            var f=i.files&&i.files[0]; if(!f){clearError(i);return true;}
+            var name=f.name.toLowerCase();
+            var typeOk=f.type==='image/jpeg'||f.type==='image/png'||/\.(jpe?g|png)$/.test(name);
+            if(!typeOk){showError(i,msg('photoType'));return false;}
+            if(f.size>2*1024*1024){showError(i,msg('photoSize'));return false;}
+            clearError(i);return true;
+        }
+        function validateRegistrationFormAdmin(){
+            var ok=true, first=null;
+            function fail(el){ ok=false; if(!first&&el) first=el; }
+            var em=byName('email'); if(em&&!checkEmail(em)) fail(em);
+            var ph=byName('phone'); if(ph&&!checkPhone(ph)) fail(ph);
+            ['first_name','last_name'].forEach(function(n){var el=byName(n); if(el&&usable(el)&&!checkName(el)) fail(el);});
+            ['nida_number','spouse_nida'].forEach(function(n){var el=byName(n); if(el&&usable(el)&&!checkNida(el)) fail(el);});
+            var sp=byName('spouse_email'); if(sp&&usable(sp)&&!checkEmail(sp)) fail(sp);
+            ['father_phone','mother_phone','spouse_phone','guarantor_phone'].forEach(function(n){var el=byName(n); if(el&&usable(el)&&!checkPhone(el)) fail(el);});
+            var fee=byName('initial_savings'); if(fee&&usable(fee)&&!checkFee(fee)) fail(fee);
+            document.querySelectorAll('input[name="child_age[]"]').forEach(function(el){ if(usable(el)&&!checkChildAge(el)) fail(el); });
+            if(!checkSlip(true)){ fail(byName('kianzio_slip')); }
+            if(!checkPhoto()){ fail(byName('passport_photo')); }
+            if(!ok&&first){
+                var pane=first.closest('.tab-pane');
+                if(pane&&typeof switchTab==='function') switchTab(pane.id);
+                setTimeout(function(){ try{first.focus();}catch(e){} },200);
+                if(window.Swal) Swal.fire(msg('fixTitle'), msg('fixText'), 'warning');
+            }
+            return ok;
+        }
+        window.validateRegistrationFormAdmin = validateRegistrationFormAdmin;
+
+        function attach(input, validator){
+            if(!input) return;
+            input.addEventListener('blur', function(){ validator(input); });
+            input.addEventListener('input', function(){ if(input.classList.contains('is-invalid')) validator(input); });
+        }
+        function setup(){
+            attach(byName('email'), checkEmail);
+            attach(byName('spouse_email'), checkEmail);
+            attach(byName('phone'), checkPhone);
+            ['father_phone','mother_phone','spouse_phone','guarantor_phone'].forEach(function(n){ attach(byName(n), checkPhone); });
+            attach(byName('first_name'), checkName);
+            attach(byName('last_name'), checkName);
+            attach(byName('nida_number'), checkNida);
+            attach(byName('spouse_nida'), checkNida);
+            attach(byName('initial_savings'), checkFee);
+            var slip=byName('kianzio_slip'); if(slip) slip.addEventListener('change', function(){ checkSlip(false); });
+            var photo=byName('passport_photo'); if(photo) photo.addEventListener('change', function(){ checkPhoto(); });
+            document.addEventListener('focusout', function(e){ if(e.target&&e.target.name==='child_age[]') checkChildAge(e.target); });
+            document.addEventListener('input', function(e){ if(e.target&&e.target.name==='child_age[]'&&e.target.classList.contains('is-invalid')) checkChildAge(e.target); });
+        }
+        if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', setup); } else { setup(); }
+    })();
 </script>
 
 <!-- Assign Role Modal -->
