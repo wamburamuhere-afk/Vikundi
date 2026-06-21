@@ -1720,6 +1720,7 @@ function togglePasswordAdmin(fieldId) {
                 </div>
 
                 <form id="importMemberForm">
+                    <?= csrf_field() ?>
                     <div class="mb-4">
                         <label class="form-label fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Chagua Faili (CSV pekee)' : 'Choose File (CSV only)' ?></label>
                         <input type="file" name="import_file" id="import_file" class="form-control" accept=".csv" required>

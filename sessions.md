@@ -24,6 +24,15 @@ This file tracks every development session, modification, and significant change
 - **`app/constant/profile/profile.php`** (Edit form) — CSRF-verified, `validate_registration_input(... requireTerms:false, requireSlip:false, requirePassword:false)` for the entered parts, email/phone canonicalization, phone uniqueness (exclude-self), `csrf_field()` + live client validators (`validateProfileEditForm`).
 - **Tests** — `RegistrationValidatorTest` now 34 tests (admin path, edit path, flag behaviour). Full unit suite green: **519 tests, 888 assertions**. Both new client IIFEs pass `node --check`.
 
+### Follow-up — Batch Member Import hardening (`ajax/process_member_import.php` + `customers.php`)
+- Per-row **format validation** using the shared helpers (`reg_valid_name/email/phone/nida`) — same rules as the interactive forms; email stays optional (validated only when present, matching the template).
+- **Phone/email canonicalisation** (`reg_normalize_phone`, lowercase email) before duplicate checks and storage.
+- **Email duplicate check** added (was phone-only); **intra-file duplicate** guard for phone & email.
+- **CSRF** token on the import form + verify in the handler.
+- **All errors reported** (was first-5) with row numbers and a total count; still all-or-nothing ("Nobody was imported").
+- **Audit log** (`logCreate`) for every bulk-created member; generic DB-error message (no internals leaked, real error to `error_log`).
+- **Unchanged / preserved:** all field mappings + inserts (users, customers, contributions), 'pending' status, and the `username@123` password scheme (kept per request). Marital-default + language changes also live: register.php/customers.php default Married; customers.php language flags fixed; profile edit gained Widowed/Divorced.
+
 ---
 
 ## Log Format
