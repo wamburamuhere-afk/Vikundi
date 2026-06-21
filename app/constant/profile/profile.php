@@ -998,6 +998,8 @@ require_once 'header.php';
                                                             <select name="marital_status" id="marital_status" class="form-select" onchange="toggleFamilyFields(this.value)">
                                                                 <option value="Single" <?= ($member['marital_status']??'') == 'Single' ? 'selected' : '' ?>>Single</option>
                                                                 <option value="Married" <?= ($member['marital_status']??'') == 'Married' ? 'selected' : '' ?>>Married</option>
+                                                                <option value="Widowed" <?= ($member['marital_status']??'') == 'Widowed' ? 'selected' : '' ?>>Widowed</option>
+                                                                <option value="Divorced" <?= ($member['marital_status']??'') == 'Divorced' ? 'selected' : '' ?>>Divorced</option>
                                                             </select>
                                                         </div>
                                                         
