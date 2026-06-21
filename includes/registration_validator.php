@@ -84,12 +84,22 @@ if (!function_exists('validate_registration_input')) {
     /**
      * Validate posted registration data.
      *
-     * @param array  $post  Posted text fields (e.g. $_POST)
-     * @param array  $files Uploaded files (e.g. $_FILES)
-     * @param string $lang  'en' or 'sw'
-     * @return string[]     List of error messages; empty when the input is valid.
+     * @param array  $post         Posted text fields (e.g. $_POST)
+     * @param array  $files        Uploaded files (e.g. $_FILES)
+     * @param string $lang         'en' or 'sw'
+     * @param bool   $requireTerms    Require a terms-acceptance value. True for
+     *                                the public self-registration form; false for
+     *                                the admin "Register New Member" form.
+     * @param bool   $requireSlip     Require the payment slip upload. False for the
+     *                                profile edit form (which has no slip field).
+     * @param bool   $requirePassword Require a password. False for the profile edit
+     *                                form (password is changed separately).
+     *                                When any of these are false, the corresponding
+     *                                "required" check is skipped, but every FORMAT
+     *                                rule for the entered parts stays identical.
+     * @return string[]               List of error messages; empty when valid.
      */
-    function validate_registration_input(array $post, array $files, string $lang = 'en'): array {
+    function validate_registration_input(array $post, array $files, string $lang = 'en', bool $requireTerms = true, bool $requireSlip = true, bool $requirePassword = true): array {
         $sw = ($lang === 'sw');
         $errors = [];
 
@@ -133,7 +143,7 @@ if (!function_exists('validate_registration_input')) {
                 : 'Please enter a valid phone number, e.g. 0712345678 or +255712345678';
         }
 
-        if ($password === '') {
+        if ($requirePassword && $password === '') {
             $errors[] = $sw ? 'Nywila inahitajika.' : 'Password is required.';
         }
         if ($confirm !== null && $password !== '' && $password !== $confirm) {
@@ -206,20 +216,24 @@ if (!function_exists('validate_registration_input')) {
             }
         }
 
-        // --- Terms & conditions must be accepted ---
-        $terms = $post['terms'] ?? '';
-        $termsOk = ($terms === '1' || $terms === 1 || $terms === true
-            || strtolower((string) $terms) === 'on' || strtolower((string) $terms) === 'true');
-        if (!$termsOk) {
-            $errors[] = $sw
-                ? 'Lazima ukubali masharti na kanuni ili kujisajili.'
-                : 'You must accept the terms and conditions to register.';
+        // --- Terms & conditions must be accepted (public form only) ---
+        if ($requireTerms) {
+            $terms = $post['terms'] ?? '';
+            $termsOk = ($terms === '1' || $terms === 1 || $terms === true
+                || strtolower((string) $terms) === 'on' || strtolower((string) $terms) === 'true');
+            if (!$termsOk) {
+                $errors[] = $sw
+                    ? 'Lazima ukubali masharti na kanuni ili kujisajili.'
+                    : 'You must accept the terms and conditions to register.';
+            }
         }
 
-        // --- Payment slip (required: JPG/PNG/PDF) ---
+        // --- Payment slip (JPG/PNG/PDF; required only when $requireSlip) ---
         $slip = $files['kianzio_slip'] ?? null;
         if (!is_array($slip) || !isset($slip['error']) || $slip['error'] === UPLOAD_ERR_NO_FILE) {
-            $errors[] = $sw ? 'Tafadhali pakia risiti ya malipo.' : 'Please upload your payment slip.';
+            if ($requireSlip) {
+                $errors[] = $sw ? 'Tafadhali pakia risiti ya malipo.' : 'Please upload your payment slip.';
+            }
         } elseif ($slip['error'] === UPLOAD_ERR_INI_SIZE || $slip['error'] === UPLOAD_ERR_FORM_SIZE) {
             $errors[] = $sw ? 'Faili la risiti ya malipo ni kubwa mno.' : 'The payment slip file is too large.';
         } elseif ($slip['error'] !== UPLOAD_ERR_OK) {

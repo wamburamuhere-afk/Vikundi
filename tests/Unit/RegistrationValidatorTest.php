@@ -316,6 +316,61 @@ class RegistrationValidatorTest extends TestCase
         $this->assertSame([], validate_registration_input($post, $this->validFiles(), 'en'));
     }
 
+    // ----- admin "Register New Member" path (requireTerms = false) -----------
+
+    public function test_terms_not_required_when_flag_is_false(): void
+    {
+        $post = $this->validPost();
+        unset($post['terms']); // admin form has no terms checkbox
+        $this->assertSame([], validate_registration_input($post, $this->validFiles(), 'en', false));
+    }
+
+    public function test_admin_path_still_enforces_all_other_rules(): void
+    {
+        $post = $this->validPost();
+        unset($post['terms']);
+        $post['email'] = 'bad';
+        $post['phone'] = '12';
+        $post['nida_number'] = '123';
+        $errors = validate_registration_input($post, $this->validFiles(), 'en', false);
+        $this->assertContains('Please enter a valid email address, e.g. john@example.com', $errors);
+        $this->assertContains('Please enter a valid phone number, e.g. 0712345678 or +255712345678', $errors);
+        $this->assertContains('The NIDA number must be 20 digits.', $errors);
+        $this->assertNotContains('You must accept the terms and conditions to register.', $errors);
+    }
+
+    // ----- profile EDIT path (no slip / password / terms required) ----------
+
+    public function test_edit_mode_does_not_require_slip_password_or_terms(): void
+    {
+        // Only the entered identity fields, no files, no password, no terms.
+        $post = [
+            'first_name' => 'John',
+            'last_name'  => 'Doe',
+            'email'      => 'john@example.com',
+            'phone'      => '0712345678',
+        ];
+        $errors = validate_registration_input($post, [], 'en', false, false, false);
+        $this->assertSame([], $errors);
+    }
+
+    public function test_edit_mode_still_enforces_formats(): void
+    {
+        $post = [
+            'first_name'  => 'John',
+            'last_name'   => 'Doe',
+            'email'       => 'bad-email',
+            'phone'       => 'abc',
+            'nida_number' => '123',
+        ];
+        $errors = validate_registration_input($post, [], 'en', false, false, false);
+        $this->assertContains('Please enter a valid email address, e.g. john@example.com', $errors);
+        $this->assertContains('Please enter a valid phone number, e.g. 0712345678 or +255712345678', $errors);
+        $this->assertContains('The NIDA number must be 20 digits.', $errors);
+        $this->assertNotContains('Password is required.', $errors);
+        $this->assertNotContains('Please upload your payment slip.', $errors);
+    }
+
     // ----- phone normalization ----------------------------------------------
 
     public function test_phone_normalization_canonicalises_tz_numbers(): void
