@@ -11,6 +11,8 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . '/../roots.php';
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../helpers.php';
+require_once __DIR__ . '/../includes/csrf.php';
+require_once __DIR__ . '/../includes/registration_validator.php';
 
 /**
  * Helper to clean numeric values that might be in scientific notation (Excel)
@@ -60,6 +62,15 @@ if (!isset($_SESSION['user_id']) || !canCreate('customers')) {
     exit;
 }
 
+// CSRF protection (same as the rest of the registration flow)
+if (!csrf_verify($_POST['csrf_token'] ?? null)) {
+    $response['message'] = ($lang === 'sw')
+        ? 'Kipindi chako kimeisha au ombi si salama. Tafadhali onyesha upya ukurasa kisha ujaribu tena.'
+        : 'Your session has expired or the request was not secure. Please refresh the page and try again.';
+    echo json_encode($response);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['import_file'])) {
     $file = $_FILES['import_file'];
     
@@ -101,6 +112,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['import_file'])) {
     $rowCount = 0;
     $errors = [];
     $allRows = [];
+    $seenPhones = [];   // intra-file duplicate guards
+    $seenEmails = [];
 
     while (($data = fgetcsv($handle, 3000, $delimiter)) !== FALSE) {
         $rowCount++;
@@ -164,7 +177,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['import_file'])) {
             continue;
         }
 
-        // Duplicate Phone Check
+        // ---- Same FORMAT rules as the interactive forms (shared helpers) ----
+        $rowErr = [];
+        if (!reg_valid_name($row['first_name'])) $rowErr[] = ($lang === 'sw') ? 'jina la kwanza si sahihi' : 'first name is invalid';
+        if (!reg_valid_name($row['last_name']))  $rowErr[] = ($lang === 'sw') ? 'jina la mwisho si sahihi' : 'last name is invalid';
+        if (!reg_valid_phone($row['phone']))     $rowErr[] = ($lang === 'sw') ? 'namba ya simu si sahihi' : 'phone is invalid';
+        if ($row['email'] !== '' && !reg_valid_email($row['email']))               $rowErr[] = ($lang === 'sw') ? 'barua pepe si sahihi' : 'email is invalid';
+        if ($row['nida'] !== '' && !reg_valid_nida($row['nida']))                  $rowErr[] = ($lang === 'sw') ? 'NIDA lazima iwe tarakimu 20' : 'NIDA must be 20 digits';
+        if ($row['spouse_email'] !== '' && !reg_valid_email($row['spouse_email'])) $rowErr[] = ($lang === 'sw') ? 'barua pepe ya mwenzi si sahihi' : 'spouse email is invalid';
+        if ($row['spouse_nida'] !== '' && !reg_valid_nida($row['spouse_nida']))    $rowErr[] = ($lang === 'sw') ? 'NIDA ya mwenzi lazima iwe tarakimu 20' : 'spouse NIDA must be 20 digits';
+        foreach (['father_phone', 'mother_phone', 'spouse_phone', 'guarantor_phone'] as $pk) {
+            if ($row[$pk] !== '' && !reg_valid_phone($row[$pk])) {
+                $rowErr[] = ($lang === 'sw') ? "namba ya $pk si sahihi" : "$pk is invalid";
+            }
+        }
+        if ($row['children_raw'] !== '') {
+            foreach (explode(',', $row['children_raw']) as $kid) {
+                $parts = explode('-', trim($kid));
+                $age = trim($parts[1] ?? '');
+                if ($age !== '' && (!ctype_digit($age) || (int)$age > 120)) {
+                    $rowErr[] = ($lang === 'sw') ? 'umri wa mtoto si sahihi (0-120)' : 'a child age is invalid (0-120)';
+                    break;
+                }
+            }
+        }
+        if (!empty($rowErr)) {
+            $errors[] = "Row #$rowCount: " . implode('; ', $rowErr) . '.';
+            continue;
+        }
+
+        // ---- Canonicalise email & phone (consistent duplicate detection & storage) ----
+        $row['email'] = ($row['email'] !== '') ? strtolower($row['email']) : '';
+        $row['phone'] = reg_normalize_phone($row['phone']);
+
+        // ---- Duplicate within THIS file ----
+        if (isset($seenPhones[$row['phone']])) {
+            $errors[] = ($lang === 'sw') ? "Row #$rowCount: Simu (".$row['phone'].") imejirudia ndani ya faili." : "Row #$rowCount: Phone (".$row['phone'].") is duplicated within the file.";
+            continue;
+        }
+        if ($row['email'] !== '' && isset($seenEmails[$row['email']])) {
+            $errors[] = ($lang === 'sw') ? "Row #$rowCount: Barua pepe (".$row['email'].") imejirudia ndani ya faili." : "Row #$rowCount: Email (".$row['email'].") is duplicated within the file.";
+            continue;
+        }
+
+        // ---- Duplicate Phone Check (DB, normalized) ----
         $checkStmt = $pdo->prepare("SELECT user_id FROM users WHERE phone = ?");
         $checkStmt->execute([$row['phone']]);
         if ($checkStmt->fetch()) {
@@ -172,12 +228,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['import_file'])) {
             continue;
         }
 
+        // ---- Duplicate Email Check (DB) ----
+        if ($row['email'] !== '') {
+            $emailStmt = $pdo->prepare("SELECT user_id FROM users WHERE email = ?");
+            $emailStmt->execute([$row['email']]);
+            if ($emailStmt->fetch()) {
+                $errors[] = ($lang === 'sw') ? "Row #$rowCount: Barua pepe (".$row['email'].") tayari ipo." : "Row #$rowCount: Email (".$row['email'].") already exists.";
+                continue;
+            }
+        }
+
+        $seenPhones[$row['phone']] = true;
+        if ($row['email'] !== '') $seenEmails[$row['email']] = true;
         $allRows[] = $row;
     }
     fclose($handle);
 
     if (!empty($errors)) {
-        $response['message'] = ($lang === 'sw') ? "ERROR! Faili lina makosa:\n" . implode("\n", array_slice($errors, 0, 5)) : "ERROR! File has errors:\n" . implode("\n", array_slice($errors, 0, 5));
+        $shown = array_slice($errors, 0, 50);
+        $more  = count($errors) - count($shown);
+        $extra = $more > 0 ? ("\n" . (($lang === 'sw') ? "...na makosa mengine $more." : "...and $more more.")) : '';
+        $header = ($lang === 'sw') ? "MAKOSA! Faili lina makosa (".count($errors)."). Hakuna aliyeingizwa:\n" : "ERRORS! File has errors (".count($errors)."). Nobody was imported:\n";
+        $response['message'] = $header . implode("\n", $shown) . $extra;
         echo json_encode($response);
         exit;
     }
@@ -246,13 +318,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['import_file'])) {
             if ($fee > 0) {
                 $pdo->prepare("INSERT INTO contributions (member_id, amount, contribution_date, description, status, created_at) VALUES (?, ?, CURRENT_DATE, 'Initial savings', 'pending', NOW())")->execute([$cust_id, $fee]);
             }
+
+            // Audit trail — record each bulk-created member
+            logCreate('Members (Batch Import)', $full_name, "USER#$user_id", $_SESSION['user_id']);
             $count++;
         }
         $pdo->commit();
         $response = ['status' => 'success', 'message' => ($lang === 'sw' ? "Usajili wa wanachama $count umekamilika." : "Import of $count members completed.")];
     } catch (Exception $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
-        $response['message'] = "DB Error: " . $e->getMessage();
+        error_log('Batch member import failed: ' . $e->getMessage());
+        $response['message'] = ($lang === 'sw')
+            ? 'Hitilafu ya mfumo wakati wa kuhifadhi. Hakuna mwanachama aliyeingizwa.'
+            : 'A system error occurred while saving. No members were imported.';
     }
 }
 echo json_encode($response);
