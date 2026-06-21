@@ -4,6 +4,21 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-21
+**Branch:** `feat/admin-backup-restore` (registration hardening — to be split into its own branch)
+**Developer:** Claude Code / Wambura
+**Summary:** Hardened public member registration validation — specific (non-silent) error messages, plus CSRF, honeypot, phone normalization, NIDA/name/fee/child-age checks, terms enforcement and real-file-content checks. Password length intentionally left unchanged.
+
+### Changes
+- **New** `includes/csrf.php` — `csrf_token()`, `csrf_field()`, `csrf_verify()` (dependency-free session CSRF).
+- **`includes/registration_validator.php`** — added `reg_normalize_phone()`, `reg_valid_name()`, `reg_valid_nida()`, `reg_file_mime()`; new rules: name format, member/spouse NIDA (20 digits, optional), entrance fee ≥ 0, child ages 0–120 (named by row), terms acceptance, and real MIME content checks for slip/photo (guarded so unit tests still run without real files). Every rule emits a specific EN/SW message.
+- **`actions/process_registration.php`** — CSRF verify + bot honeypot gate at top; canonicalize email (lowercase) and phone (`reg_normalize_phone`) after validation so duplicate detection/storage are consistent.
+- **`register.php`** — added `csrf_field()` + honeypot field; gave the terms checkbox a `name`/`value`; added Widowed/Divorced marital options (family section now shows for any non-Single status); aligned client slip-type check with server (JPG/PNG/PDF); added live + on-submit client validators (`checkName/checkNida/checkFee/checkChildAge`) that jump to the offending field with a specific message.
+- **Tests** — extended `tests/Unit/RegistrationValidatorTest.php` (now 30 tests): names, NIDA, fee, child age, terms, phone normalization. Full suite green: **522 tests, 910 assertions**.
+- **Not changed:** password length/strength (left as-is per request); nothing deleted.
+
+---
+
 ## Log Format
 
 ```
