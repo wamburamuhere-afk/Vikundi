@@ -17,7 +17,9 @@ $f_member = (isset($_GET['f_member']) && $_GET['f_member'] !== '') ? (int)$_GET[
 
 try {
     // Base text search (DataTables search box)
-    $conditions = ["(c.first_name LIKE :q OR c.last_name LIKE :q OR d.deceased_name LIKE :q OR (d.phone_number IS NOT NULL AND d.phone_number LIKE :q))"];
+    // NULL-safe so rows whose member no longer exists (LEFT JOIN -> NULL customer)
+    // still match an empty search and remain visible.
+    $conditions = ["(COALESCE(c.first_name,'') LIKE :q OR COALESCE(c.last_name,'') LIKE :q OR COALESCE(d.deceased_name,'') LIKE :q OR COALESCE(d.phone_number,'') LIKE :q)"];
     $params = ['q' => "%$search_value%"];
 
     // Dropdown filters
@@ -42,18 +44,19 @@ try {
     $where = "WHERE " . implode(" AND ", $conditions);
 
     // Count All (total records in the table that have valid members)
-    $stmt_total = $pdo->query("SELECT COUNT(*) FROM death_expenses d JOIN customers c ON d.member_id = c.customer_id");
+    $stmt_total = $pdo->query("SELECT COUNT(*) FROM death_expenses d LEFT JOIN customers c ON d.member_id = c.customer_id");
     $recordsTotal = (int)$stmt_total->fetchColumn();
 
     // Count Filtered (records matching search + dropdown filters)
-    $stmt_filtered = $pdo->prepare("SELECT COUNT(*) FROM death_expenses d JOIN customers c ON d.member_id = c.customer_id $where");
+    $stmt_filtered = $pdo->prepare("SELECT COUNT(*) FROM death_expenses d LEFT JOIN customers c ON d.member_id = c.customer_id $where");
     $stmt_filtered->execute($params);
     $recordsFiltered = (int)$stmt_filtered->fetchColumn();
 
     // Data query
-    $sql = "SELECT d.*, CONCAT(c.first_name, ' ', c.last_name) as member_name
+    $sql = "SELECT d.*,
+            COALESCE(NULLIF(TRIM(CONCAT(COALESCE(c.first_name,''), ' ', COALESCE(c.last_name,''))), ''), d.deceased_name, 'Unknown Member') as member_name
             FROM death_expenses d
-            JOIN customers c ON d.member_id = c.customer_id
+            LEFT JOIN customers c ON d.member_id = c.customer_id
             $where
             ORDER BY d.created_at DESC
             LIMIT :start, :length";
@@ -69,7 +72,7 @@ try {
 
     // Filtered total amount — so the "Total Assistance" card matches the
     // currently filtered rows (not the whole table).
-    $sum_stmt = $pdo->prepare("SELECT COALESCE(SUM(d.amount), 0) FROM death_expenses d JOIN customers c ON d.member_id = c.customer_id $where");
+    $sum_stmt = $pdo->prepare("SELECT COALESCE(SUM(d.amount), 0) FROM death_expenses d LEFT JOIN customers c ON d.member_id = c.customer_id $where");
     $sum_stmt->execute($params);
     $totalAmount = $sum_stmt->fetchColumn() ?: 0;
 
