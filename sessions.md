@@ -17,6 +17,13 @@ This file tracks every development session, modification, and significant change
 - **Tests** — extended `tests/Unit/RegistrationValidatorTest.php` (now 30 tests): names, NIDA, fee, child age, terms, phone normalization. Full suite green: **522 tests, 910 assertions**.
 - **Not changed:** password length/strength (left as-is per request); nothing deleted.
 
+### Follow-up — same rules imposed on internal "Register New Member" + profile Edit
+- **`includes/registration_validator.php`** — added flags `requireTerms`, `requireSlip`, `requirePassword` (all default true, so public form unchanged). Lets the admin/edit forms reuse the SAME format rules while skipping checks they don't have (terms/slip/password).
+- **`actions/add_member.php`** (internal Register New Member) — now CSRF-verified, calls `validate_registration_input(... requireTerms:false)` BEFORE moving uploads (no orphan files on failure), maps `initial_savings`→`entrance_fee`, and canonicalizes email/phone for dedup + storage.
+- **`app/bms/customer/customers.php`** — added `csrf_field()`, named the confirm-password field, Widowed/Divorced marital options, and the same live client validators (`validateRegistrationFormAdmin`) with specific EN/SW messages + jump-to-field.
+- **`app/constant/profile/profile.php`** (Edit form) — CSRF-verified, `validate_registration_input(... requireTerms:false, requireSlip:false, requirePassword:false)` for the entered parts, email/phone canonicalization, phone uniqueness (exclude-self), `csrf_field()` + live client validators (`validateProfileEditForm`).
+- **Tests** — `RegistrationValidatorTest` now 34 tests (admin path, edit path, flag behaviour). Full unit suite green: **519 tests, 888 assertions**. Both new client IIFEs pass `node --check`.
+
 ---
 
 ## Log Format
