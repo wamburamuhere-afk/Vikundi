@@ -20,6 +20,11 @@ $settings_raw = $pdo->query("SELECT setting_key, setting_value FROM group_settin
 $start_date = $settings_raw['contribution_start_date'] ?? $settings_raw['group_founded_date'] ?? date('Y-m-01');
 $cycle = $settings_raw['cycle_type'] ?? 'monthly';
 $currency = $settings_raw['currency'] ?? 'TZS';
+// Language flag used in the print/footer JS below. Defining it here prevents an
+// "Undefined variable" warning from being printed straight into the inline
+// <script> (which broke the whole script with "Unexpected token '<'" and left
+// the Contribution Analysis Grid empty).
+$isSw = (($_SESSION['preferred_language'] ?? 'en') === 'sw');
 
 // 2. Fetch Pending Contributions (Leaders see all, Members see only theirs)
 $pending_query = "
