@@ -11,10 +11,31 @@ if (!isset($pdo)) {
     require_once __DIR__ . '/../includes/config.php';
 }
 require_once __DIR__ . '/../includes/registration_validator.php';
+require_once __DIR__ . '/../includes/csrf.php';
 
 $response = ['success' => false, 'message' => ''];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // --- Security gate: message language, CSRF token, bot honeypot ---
+    $req_lang = in_array($_POST['preferred_language'] ?? 'en', ['en', 'sw'], true) ? $_POST['preferred_language'] : 'en';
+
+    if (!csrf_verify($_POST['csrf_token'] ?? null)) {
+        $response['message'] = ($req_lang === 'sw')
+            ? 'Kipindi chako kimeisha au ombi si salama. Tafadhali onyesha upya ukurasa kisha ujaribu tena.'
+            : 'Your session has expired or the request was not secure. Please refresh the page and try again.';
+        echo json_encode($response);
+        exit;
+    }
+
+    // Honeypot: a hidden field real users never see/fill; automated bots do.
+    if (trim($_POST['contact_website'] ?? '') !== '') {
+        $response['message'] = ($req_lang === 'sw')
+            ? 'Usajili haukuweza kukamilika.'
+            : 'Your registration could not be processed.';
+        echo json_encode($response);
+        exit;
+    }
+
     // Phase 1 Fields
     $first_name = trim($_POST['first_name'] ?? '');
     $middle_name = trim($_POST['middle_name'] ?? '');
@@ -123,6 +144,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo json_encode($response);
         exit;
     }
+
+    // Canonicalise email & phone AFTER validation so duplicate detection and
+    // storage stay consistent (0712… and +255712… are the same person).
+    $email = strtolower($email);
+    $phone = reg_normalize_phone($phone);
 
     $full_name = trim("$first_name $middle_name $last_name");
 
