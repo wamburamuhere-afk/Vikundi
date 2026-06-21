@@ -164,7 +164,7 @@ if (isset($_SESSION['user_id'])) {
                                 <label class="form-label fw-bold">Marital Status</label>
                                 <select name="marital_status" id="marital_status" class="form-select" onchange="toggleFamilyFields(this.value)">
                                     <option value="Single">Single</option>
-                                    <option value="Married">Married</option>
+                                    <option value="Married" selected>Married</option>
                                     <option value="Widowed">Widowed</option>
                                     <option value="Divorced">Divorced</option>
                                 </select>
