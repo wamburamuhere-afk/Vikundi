@@ -497,24 +497,24 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                                     </div>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-bold">Region of Birth</label>
+                                    <label class="form-label fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mkoa wa Kuzaliwa' : 'Region of Birth' ?></label>
                                     <input type="text" name="birth_region" class="form-control" placeholder="e.g. Mwanza">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-bold">Marital Status</label>
+                                    <label class="form-label fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Hali ya Ndoa' : 'Marital Status' ?></label>
                                     <select name="marital_status" id="marital_status_admin" class="form-select" onchange="toggleFamilyFieldsAdmin(this.value)">
-                                        <option value="Single">Single</option>
-                                        <option value="Married" selected>Married</option>
-                                        <option value="Widowed">Widowed</option>
-                                        <option value="Divorced">Divorced</option>
+                                        <option value="Single"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Hana Ndoa' : 'Single' ?></option>
+                                        <option value="Married" selected><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Ana Ndoa' : 'Married' ?></option>
+                                        <option value="Widowed"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mjane' : 'Widowed' ?></option>
+                                        <option value="Divorced"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Talaka' : 'Divorced' ?></option>
                                     </select>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-bold">Date of Birth</label>
+                                    <label class="form-label fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Tarehe ya Kuzaliwa' : 'Date of Birth' ?></label>
                                     <input type="date" name="dob" class="form-control">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-bold">NIDA Number</label>
+                                    <label class="form-label fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Namba ya NIDA' : 'NIDA Number' ?></label>
                                     <input type="text" name="nida_number" class="form-control" placeholder="20XXXXXXXXXXXXX">
                                 </div>
 
@@ -582,19 +582,19 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                                      <div class="col-md-6 border-end">
                                          <p class="fw-bold text-muted small mb-3 border-bottom pb-1"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'TAARIFA ZA BABA' : 'FATHER\'S DETAILS' ?></p>
                                          <div class="mb-2">
-                                             <label class="form-label small mb-1 fw-bold">FATHER'S NAME</label>
+                                             <label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'JINA LA BABA' : 'FATHER\'S NAME' ?></label>
                                              <input type="text" name="father_name" class="form-control form-control-sm" placeholder="Full Name">
                                          </div>
                                          <div class="mb-2">
-                                             <label class="form-label small mb-1 fw-bold">REGION/DISTRICT WHERE LIVING</label>
+                                             <label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'MKOA/WILAYA ANAPOISHI' : 'REGION/DISTRICT WHERE LIVING' ?></label>
                                              <input type="text" name="father_location" class="form-control form-control-sm" placeholder="Location">
                                          </div>
                                          <div class="mb-2">
-                                             <label class="form-label small mb-1 fw-bold">WARD/VILLAGE/STREET</label>
+                                             <label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'KATA/KIJIJI/MTAA' : 'WARD/VILLAGE/STREET' ?></label>
                                              <input type="text" name="father_sub_location" class="form-control form-control-sm" placeholder="Sub-location">
                                          </div>
                                          <div class="mb-2">
-                                             <label class="form-label small mb-1 fw-bold">PHONE NUMBER</label>
+                                             <label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'NAMBA YA SIMU' : 'PHONE NUMBER' ?></label>
                                              <input type="tel" name="father_phone" class="form-control form-control-sm" placeholder="0xxxxxxxxx">
                                          </div>
                                      </div>
@@ -602,19 +602,19 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                                      <div class="col-md-6">
                                          <p class="fw-bold text-muted small mb-3 border-bottom pb-1"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'TAARIFA ZA MAMA' : 'MOTHER\'S DETAILS' ?></p>
                                          <div class="mb-2">
-                                             <label class="form-label small mb-1 fw-bold">MOTHER'S NAME</label>
+                                             <label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'JINA LA MAMA' : 'MOTHER\'S NAME' ?></label>
                                              <input type="text" name="mother_name" class="form-control form-control-sm" placeholder="Full Name">
                                          </div>
                                          <div class="mb-2">
-                                             <label class="form-label small mb-1 fw-bold">REGION/DISTRICT WHERE LIVING</label>
+                                             <label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'MKOA/WILAYA ANAPOISHI' : 'REGION/DISTRICT WHERE LIVING' ?></label>
                                              <input type="text" name="mother_location" class="form-control form-control-sm" placeholder="Location">
                                          </div>
                                          <div class="mb-2">
-                                             <label class="form-label small mb-1 fw-bold">WARD/VILLAGE/STREET</label>
+                                             <label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'KATA/KIJIJI/MTAA' : 'WARD/VILLAGE/STREET' ?></label>
                                              <input type="text" name="mother_sub_location" class="form-control form-control-sm" placeholder="Sub-location">
                                          </div>
                                          <div class="mb-2">
-                                             <label class="form-label small mb-1 fw-bold">PHONE NUMBER</label>
+                                             <label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'NAMBA YA SIMU' : 'PHONE NUMBER' ?></label>
                                              <input type="tel" name="mother_phone" class="form-control form-control-sm" placeholder="0xxxxxxxxx">
                                          </div>
                                      </div>
@@ -627,53 +627,53 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                                     <h6 class="text-primary border-bottom pb-2 mb-3 fw-bold"><i class="bi bi-heart-fill me-2"></i>2. <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'TAARIFA ZA MWENZI' : 'WIFE/HUSBAND INFORMATION' ?></h6>
                                     <div class="row g-3">
                                         <div class="col-md-4">
-                                            <label class="form-label fw-bold small">First Name</label>
+                                            <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jina la Kwanza' : 'First Name' ?></label>
                                             <input type="text" name="spouse_first_name" class="form-control" placeholder="First Name">
                                         </div>
                                         <div class="col-md-4">
-                                            <label class="form-label fw-bold small">Middle Name</label>
+                                            <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jina la Kati' : 'Middle Name' ?></label>
                                             <input type="text" name="spouse_middle_name" class="form-control" placeholder="Middle Name">
                                         </div>
                                         <div class="col-md-4">
-                                            <label class="form-label fw-bold small">Last Name</label>
+                                            <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jina la Mwisho' : 'Last Name' ?></label>
                                             <input type="text" name="spouse_last_name" class="form-control" placeholder="Last Name">
                                         </div>
                                         <div class="col-md-6">
-                                            <label class="form-label fw-bold small">Email</label>
+                                            <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Barua Pepe' : 'Email' ?></label>
                                             <input type="email" name="spouse_email" class="form-control" placeholder="spouse@example.com">
                                         </div>
                                         <div class="col-md-6">
-                                            <label class="form-label fw-bold small">Phone</label>
+                                            <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Namba ya Simu' : 'Phone' ?></label>
                                             <input type="tel" name="spouse_phone" class="form-control" placeholder="0xxxxxxxxx">
                                         </div>
                                         <div class="col-md-4">
-                                            <label class="form-label fw-bold small">Gender</label>
+                                            <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jinsia' : 'Gender' ?></label>
                                             <select name="spouse_gender" class="form-select">
-                                                <option value="">Select...</option>
-                                                <option value="Mwanaume">Male</option>
-                                                <option value="Mwanamke">Female</option>
+                                                <option value=""><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Chagua...' : 'Select...' ?></option>
+                                                <option value="Mwanaume"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mwanaume' : 'Male' ?></option>
+                                                <option value="Mwanamke"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mwanamke' : 'Female' ?></option>
                                             </select>
                                         </div>
                                         <div class="col-md-4">
-                                            <label class="form-label fw-bold small">DOB</label>
+                                            <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Tarehe ya Kuzaliwa' : 'DOB' ?></label>
                                             <input type="date" name="spouse_dob" class="form-control">
                                         </div>
                                         <div class="col-md-4">
-                                            <label class="form-label fw-bold small">Religion</label>
+                                            <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Dini' : 'Religion' ?></label>
                                             <div id="spouse_religion_wrapper_admin">
                                                 <select name="spouse_religion" class="form-select" onchange="handleSpouseReligionChangeAdmin(this)">
-                                                    <option value="Ukristo">Christianity</option>
-                                                    <option value="Uislamu">Islam</option>
-                                                    <option value="Nyingine">Other</option>
+                                                    <option value="Ukristo"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Ukristo' : 'Christianity' ?></option>
+                                                    <option value="Uislamu"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Uislamu' : 'Islam' ?></option>
+                                                    <option value="Nyingine"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nyingine' : 'Other' ?></option>
                                                 </select>
                                             </div>
                                         </div>
                                         <div class="col-md-6">
-                                            <label class="form-label fw-bold small">NIDA Number</label>
+                                            <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Namba ya NIDA' : 'NIDA Number' ?></label>
                                             <input type="text" name="spouse_nida" class="form-control" placeholder="NIDA Number">
                                         </div>
                                         <div class="col-md-6">
-                                            <label class="form-label fw-bold small">Region of Birth</label>
+                                            <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mkoa wa Kuzaliwa' : 'Region of Birth' ?></label>
                                             <input type="text" name="spouse_birth_region" class="form-control" placeholder="Birth Region">
                                         </div>
                                     </div>
@@ -686,10 +686,10 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                                         <table class="table table-bordered table-sm align-middle" id="childrenTableAdmin">
                                             <thead class="bg-light small">
                                                 <tr>
-                                                    <th class="text-center" style="width: 50px;">S/NO</th>
-                                                    <th>CHILD NAME</th>
-                                                    <th style="width: 100px;">AGE</th>
-                                                    <th style="width: 150px;">GENDER</th>
+                                                    <th class="text-center" style="width: 50px;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'NA.' : 'S/NO' ?></th>
+                                                    <th><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'JINA LA MTOTO' : 'CHILD NAME' ?></th>
+                                                    <th style="width: 100px;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'UMRI' : 'AGE' ?></th>
+                                                    <th style="width: 150px;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'JINSIA' : 'GENDER' ?></th>
                                                     <th class="text-center" style="width: 50px;">#</th>
                                                 </tr>
                                             </thead>
@@ -700,8 +700,8 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                                                     <td><input type="number" name="child_age[]" class="form-control form-control-sm border-0 bg-transparent" placeholder="Age"></td>
                                                     <td>
                                                         <select name="child_gender[]" class="form-select form-select-sm border-0 bg-transparent">
-                                                            <option value="Mwanaume">Male</option>
-                                                            <option value="Mwanamke">Female</option>
+                                                            <option value="Mwanaume"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mwanaume' : 'Male' ?></option>
+                                                            <option value="Mwanamke"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mwanamke' : 'Female' ?></option>
                                                         </select>
                                                     </td>
                                                     <td class="text-center">
@@ -712,7 +712,7 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                                         </table>
                                     </div>
                                     <button type="button" class="btn btn-sm btn-outline-primary rounded-pill mt-2" onclick="addChildRowAdmin()">
-                                        <i class="bi bi-plus-circle me-1"></i> Add Child
+                                        <i class="bi bi-plus-circle me-1"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Ongeza Mtoto' : 'Add Child' ?>
                                     </button>
                                 </div>
                              </div> <!-- End familyFieldsAdmin -->
@@ -723,19 +723,19 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                                 <h6 class="text-primary border-bottom pb-2 mb-3 fw-bold"><i class="bi bi-shield-check me-2"></i><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'MDHAMINI WA MWANACHAMA' : 'MEMBER\'S GUARANTOR' ?></h6>
                                 <div class="row g-3">
                                     <div class="col-md-6">
-                                        <label class="form-label fw-bold small">GUARANTOR'S NAME</label>
+                                        <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'JINA LA MDHAMINI' : 'GUARANTOR\'S NAME' ?></label>
                                         <input type="text" name="guarantor_name" class="form-control" placeholder="Full Name">
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="form-label fw-bold small">PHONE NUMBER</label>
+                                        <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'NAMBA YA SIMU' : 'PHONE NUMBER' ?></label>
                                         <input type="tel" name="guarantor_phone" class="form-control" placeholder="0xxxxxxxxx">
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="form-label fw-bold small">RELATIONSHIP WITH MEMBER</label>
+                                        <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'UHUSIANO NA MWANACHAMA' : 'RELATIONSHIP WITH MEMBER' ?></label>
                                         <input type="text" name="guarantor_rel" class="form-control" placeholder="Relationship">
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="form-label fw-bold small">REGION WHERE LIVING</label>
+                                        <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'MKOA ANAPOISHI' : 'REGION WHERE LIVING' ?></label>
                                         <input type="text" name="guarantor_location" class="form-control" placeholder="Location">
                                     </div>
                                 </div>
@@ -772,7 +772,7 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
 
                                 <!-- Passwords in One Row -->
                                 <div class="col-md-6 mb-2">
-                                    <label class="form-label fw-bold small">Initial Password *</label>
+                                    <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nenosiri la Awali *' : 'Initial Password *' ?></label>
                                     <div class="input-group input-group-sm">
                                         <input type="password" name="password" id="reg_password" class="form-control" required placeholder="******" autocomplete="new-password">
                                         <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordAdmin('reg_password')">
@@ -781,7 +781,7 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                                     </div>
                                 </div>
                                 <div class="col-md-6 mb-2">
-                                    <label class="form-label fw-bold small">Confirm Password *</label>
+                                    <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Thibitisha Nenosiri *' : 'Confirm Password *' ?></label>
                                     <div class="input-group input-group-sm">
                                         <input type="password" name="confirm_password" id="reg_confirm_password" class="form-control" required placeholder="******" autocomplete="new-password">
                                         <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordAdmin('reg_confirm_password')">
@@ -795,7 +795,7 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                                     <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nafasi ya Mwanachama (Role)' : 'Member Role' ?></label>
                                     <select name="user_role" class="form-select form-select-sm">
                                         <option value="Member"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mwanachama (Default)' : 'Member (Default)' ?></option>
-                                        <option value="Admin">Admin</option>
+                                        <option value="Admin"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Msimamizi (Admin)' : 'Admin' ?></option>
                                         <option value="Secretary"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Katibu (Secretary)' : 'Secretary' ?></option>
                                         <option value="Treasurer"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mhasibu (Treasurer)' : 'Treasurer' ?></option>
                                     </select>
@@ -849,7 +849,7 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                                         </div>
                                     </div>
                                 </div>
-                                <div class="form-text small opacity-75 mt-2 ms-2">Member can change password and language after first login.</div>
+                                <div class="form-text small opacity-75 mt-2 ms-2"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mwanachama anaweza kubadilisha nenosiri na lugha baada ya kuingia mara ya kwanza.' : 'Member can change password and language after first login.' ?></div>
                             </div>
 
                             <div class="d-flex justify-content-between mt-5 pt-3 border-top">
@@ -1172,8 +1172,8 @@ $(document).ready(function() {
         if ($('#reg_password').val() !== $('#reg_confirm_password').val()) {
             Swal.fire({
                 icon: 'error',
-                title: 'Password Error',
-                text: 'Passwords do not match! Please verify both fields.',
+                title: '<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Hitilafu ya Nenosiri' : 'Password Error' ?>',
+                text: '<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Manenosiri hayafanani! Tafadhali hakiki sehemu zote mbili.' : 'Passwords do not match! Please verify both fields.' ?>',
                 confirmButtonColor: '#d33'
             });
             return false;
@@ -1186,8 +1186,8 @@ $(document).ready(function() {
         if (!slipFile) {
             Swal.fire({
                 icon: 'warning',
-                title: 'Receipt Required!',
-                text: 'Please upload the payment slip (initial savings record) to complete this registration.',
+                title: '<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Risiti Inahitajika!' : 'Receipt Required!' ?>',
+                text: '<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Tafadhali pakia risiti ya malipo (rekodi ya akiba ya awali) ili kukamilisha usajili huu.' : 'Please upload the payment slip (initial savings record) to complete this registration.' ?>',
                 confirmButtonColor: '#0d6efd'
             }).then(() => {
                 // Focus on the tab and the field
@@ -1223,7 +1223,7 @@ $(document).ready(function() {
                 } else {
                     Swal.fire({
                         icon: 'error',
-                        title: 'Error',
+                        title: '<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Hitilafu' : 'Error' ?>',
                         text: response.message,
                         confirmButtonColor: '#d33'
                     });
@@ -1231,7 +1231,7 @@ $(document).ready(function() {
                 }
             },
             error: function() {
-                Swal.fire('Error', '<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Imeshindikana kuwasiliana na server.' : 'Server communication failed.' ?>', 'error');
+                Swal.fire('<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Hitilafu' : 'Error' ?>', '<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Imeshindikana kuwasiliana na server.' : 'Server communication failed.' ?>', 'error');
                 submitBtn.prop('disabled', false).html(originalBtnHtml);
             }
         });
@@ -1255,9 +1255,9 @@ $(document).ready(function() {
     function resetSpouseReligionAdmin() {
         document.getElementById('spouse_religion_wrapper_admin').innerHTML = `
             <select name="spouse_religion" class="form-select" onchange="handleSpouseReligionChangeAdmin(this)">
-                <option value="Ukristo">Christianity</option>
-                <option value="Uislamu">Islam</option>
-                <option value="Nyingine">Other</option>
+                <option value="Ukristo"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Ukristo' : 'Christianity' ?></option>
+                <option value="Uislamu"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Uislamu' : 'Islam' ?></option>
+                <option value="Nyingine"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nyingine' : 'Other' ?></option>
             </select>
         `;
     }
@@ -1273,8 +1273,8 @@ $(document).ready(function() {
             <td><input type="number" name="child_age[]" class="form-control form-control-sm border-0 bg-transparent" placeholder="Age"></td>
             <td>
                 <select name="child_gender[]" class="form-select form-select-sm border-0 bg-transparent">
-                    <option value="Mwanaume">Male</option>
-                    <option value="Mwanamke">Female</option>
+                    <option value="Mwanaume"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mwanaume' : 'Male' ?></option>
+                    <option value="Mwanamke"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mwanamke' : 'Female' ?></option>
                 </select>
             </td>
             <td class="text-center">
