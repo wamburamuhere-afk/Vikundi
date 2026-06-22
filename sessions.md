@@ -4,6 +4,32 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-22
+**Branch:** `fix/register-member-language-mixing`
+**Developer:** Claude Code / Wambura
+**Summary:** Fixed mixed-language display in the "Register New Member" modal on `app/bms/customer/customers.php`. The modal scaffolding (tabs, headings, primary fields, buttons, success popup) was bilingual, but many detail-field labels were hardcoded in English and stayed English in Swahili mode, producing a mixed-language form.
+
+### Changes
+- **`app/bms/customer/customers.php`** — wrapped every hardcoded label in the existing `($_SESSION['preferred_language'] ?? 'en') === 'sw' ? '<sw>' : '<en>'` pattern:
+  - Personal tab: Region of Birth, Marital Status (+ Single/Married/Widowed/Divorced options), Date of Birth, NIDA Number.
+  - Parents: Father's/Mother's Name, Region/District, Ward/Village/Street, Phone Number.
+  - Spouse: First/Middle/Last Name, Email, Phone, Gender (+ Select/Male/Female), DOB, Religion (+ Christianity/Islam/Other), NIDA Number, Region of Birth.
+  - Children: table headers (S/NO, Child Name, Age, Gender), static + JS-generated gender options, "Add Child" button.
+  - Guarantor: Name, Phone, Relationship, Region.
+  - Account: Initial/Confirm Password, Admin role option, "Member can change password…" note.
+  - JS row generators (`resetSpouseReligionAdmin`, `addChildRowAdmin`) also translated so dynamically-added rows stay bilingual.
+  - Placeholders (example hints like "Full Name", "0xxxxxxxxx") intentionally left as-is.
+- **New** `tests/Unit/CustomersRegistrationLanguageTest.php` (8 tests) — asserts the Swahili translations are present and the old English-only markup is gone (regression guard). `php -l` clean.
+
+### Follow-up — mixed-language registration error popups
+Reported: on an email-duplicate error the popup showed an English title with a Swahili body at once.
+- **`actions/add_member.php`** — root cause: server error messages (email/phone already in use, slip required, required fields, not-logged-in, no-permission, DB error) were hardcoded Swahili-only, and the front-end paired them with a hardcoded English `'Error'` title. Added `$ui_lang` from `$_SESSION['preferred_language']` and made every admin-facing message bilingual. Also changed `$val_lang` to follow the **admin's UI language** (`$val_lang = $ui_lang`) instead of the new member's chosen account-language toggle (`$preferred_lang` is still used only to store the member's account language), so validation/dedup messages match the page the admin is viewing.
+- **`app/bms/customer/customers.php`** — made the four SweetAlert popup titles/texts bilingual: server-error title (`Error`→`Hitilafu`), AJAX-error title, password-mismatch popup, and receipt-required popup.
+- **New** `tests/Unit/AddMemberLanguageTest.php` (5 tests) + extended `CustomersRegistrationLanguageTest` with `test_error_popup_titles_are_bilingual`. Both files `php -l` clean.
+- Full unit suite green: **554 tests, 986 assertions**.
+
+---
+
 ## Session — 2026-06-21
 **Branch:** `feat/admin-backup-restore` (registration hardening — to be split into its own branch)
 **Developer:** Claude Code / Wambura
