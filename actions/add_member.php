@@ -6,12 +6,18 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Language for every message shown to the admin filling this form = their UI language,
+// so the front-end popup title and this body never mix English and Swahili.
+$ui_lang = (($_SESSION['preferred_language'] ?? 'en') === 'sw') ? 'sw' : 'en';
+
 require_once __DIR__ . '/../includes/config.php';
 
 // Check if user is logged in and is a leader
 $user_id = $_SESSION['user_id'] ?? null;
 if (!$user_id) {
-    echo json_encode(['success' => false, 'message' => 'Hujalogin.']);
+    echo json_encode(['success' => false, 'message' => ($ui_lang === 'sw')
+        ? 'Hujaingia kwenye mfumo. Tafadhali ingia kisha ujaribu tena.'
+        : 'You are not logged in. Please log in and try again.']);
     exit();
 }
 
@@ -37,7 +43,9 @@ if (!in_array($current_role, $viongozi_roles)) {
     $is_admin = (int)($u['is_admin'] ?? 0);
     
     if (!in_array($alt_role, $viongozi_roles) && $is_admin !== 1) {
-        echo json_encode(['success' => false, 'message' => "Huna mamlaka ya kusajili mwanachama. Role yako ni: $current_role"]);
+        echo json_encode(['success' => false, 'message' => ($ui_lang === 'sw')
+            ? "Huna mamlaka ya kusajili mwanachama. Wadhifa wako ni: $current_role"
+            : "You do not have permission to register a member. Your role is: $current_role"]);
         exit();
     }
 }
@@ -124,7 +132,9 @@ $kianzio_slip   = null;
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/registration_validator.php';
 
-$val_lang = in_array($preferred_lang, ['en', 'sw'], true) ? $preferred_lang : 'en';
+// Messages shown to the admin (CSRF, validation, dedup) follow the admin's UI language,
+// NOT the new member's chosen account language ($preferred_lang, used only for storage).
+$val_lang = $ui_lang;
 
 if (!csrf_verify($_POST['csrf_token'] ?? null)) {
     echo json_encode(['success' => false, 'message' => ($val_lang === 'sw')
@@ -149,7 +159,9 @@ $phone = reg_normalize_phone($phone);
 
 // Handle Payment Slip Upload (MANDATORY)
 if (!isset($_FILES['kianzio_slip']) || $_FILES['kianzio_slip']['error'] !== UPLOAD_ERR_OK) {
-    echo json_encode(['success' => false, 'message' => 'Tafadhali pakia risiti ya malipo (Payment Slip) mwanzo ili kukamilisha usajili huu.']);
+    echo json_encode(['success' => false, 'message' => ($val_lang === 'sw')
+        ? 'Tafadhali pakia risiti ya malipo (Payment Slip) mwanzo ili kukamilisha usajili huu.'
+        : 'Please upload the payment slip first to complete this registration.']);
     exit();
 }
 
@@ -160,7 +172,9 @@ $kianzio_slip = 'kianzio_' . time() . '_' . uniqid() . '.' . $file_ext;
 move_uploaded_file($_FILES['kianzio_slip']['tmp_name'], $slip_dir . '/' . $kianzio_slip);
 
 if (empty($first_name) || empty($last_name) || empty($email) || empty($phone)) {
-    echo json_encode(['success' => false, 'message' => 'Tafadhali jaza taarifa zote za lazima (*).']);
+    echo json_encode(['success' => false, 'message' => ($val_lang === 'sw')
+        ? 'Tafadhali jaza taarifa zote za lazima (*).'
+        : 'Please fill in all required fields (*).']);
     exit();
 }
 
@@ -169,7 +183,9 @@ try {
     $stmt = $pdo->prepare("SELECT user_id FROM users WHERE email = ?");
     $stmt->execute([$email]);
     if ($stmt->fetch()) {
-        echo json_encode(['success' => false, 'message' => 'Barua pepe hii tayari inatumiwa na mwanachama mwingine.']);
+        echo json_encode(['success' => false, 'message' => ($val_lang === 'sw')
+            ? 'Barua pepe hii tayari inatumiwa na mwanachama mwingine.'
+            : 'This email address is already in use by another member.']);
         exit();
     }
 
@@ -177,7 +193,9 @@ try {
     $stmt = $pdo->prepare("SELECT user_id FROM users WHERE phone = ?");
     $stmt->execute([$phone]);
     if ($stmt->fetch()) {
-        echo json_encode(['success' => false, 'message' => 'Hii namba ya simu tayari imesajiliwa na mwanachama mwingine.']);
+        echo json_encode(['success' => false, 'message' => ($val_lang === 'sw')
+            ? 'Hii namba ya simu tayari imesajiliwa na mwanachama mwingine.'
+            : 'This phone number is already registered to another member.']);
         exit();
     }
 
@@ -263,6 +281,7 @@ try {
 
 } catch (Exception $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
-    echo json_encode(['success' => false, 'message' => 'Hitilafu ya Database: ' . $e->getMessage()]);
+    $db_err_prefix = ($ui_lang === 'sw') ? 'Hitilafu ya Database: ' : 'Database error: ';
+    echo json_encode(['success' => false, 'message' => $db_err_prefix . $e->getMessage()]);
 }
 ?>
