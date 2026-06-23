@@ -4,6 +4,32 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-23
+**Branch:** `feat/i18n-json-translations`
+**Developer:** Claude Code / Dutch
+**Summary:** Introduced a centralized, file-based (JSON) i18n system to replace the scattered inline `($_SESSION['preferred_language'] ?? 'en') === 'sw' ? '<sw>' : '<en>'` ternaries. Stable-key design, no database. Migrated the **login** page and **dashboard** as the proven pattern; remaining pages to follow page-by-page.
+
+### Files Created
+- **`includes/i18n.php`** — i18n helper: `t($key, $vars)` (current-lang → English → key fallback, with `{placeholder}` interpolation), `et()` (HTML-escaped), `current_lang()`, `i18n_load()` (per-request static cache). Also handles a global `?lang=en|sw` switch (session only — no DB write).
+- **`lang/en.json`** / **`lang/sw.json`** — 53 stable keys each (`common.*`, `login.*`, `dashboard.*`), full en/sw parity.
+- **`tests/Unit/I18nTest.php`** — 7 tests: default/sw/invalid-language behaviour, missing-key→key fallback, placeholder interpolation, `et()` escaping, and en/sw key-parity guard.
+
+### Files Modified
+- **`roots.php`** — `require_once includes/i18n.php` right after `ROOT_DIR` is defined, so `t()`/`et()`/`current_lang()` are available on every page (pre-auth login included) and the `?lang=` switch is global.
+- **`login.php`** — added an EN | SW language toggle (uses `?lang=`); replaced all hardcoded English with `et()`; moved JS strings (signing-in, errors, "coming soon") into a PHP-populated `I18N` object via `json_encode`; `<html lang>` now follows `current_lang()`.
+- **`app/dashboard.php`** — replaced every inline UI ternary (alert banner, chips, collapse-toggle JS, quick actions, KPI cards/subs, chart + audit-log headers, table headers, empty/system fallbacks) with `t()`/`et()`; `fmt_time_ago()` now uses `t()` with `{n}` placeholders (dropped the `$is_sw` param). The date-driven month-name arrays were intentionally left in place (localized data, not UI chrome); the audit-log DB-content module translation was left untouched.
+
+### Database Changes
+- None. Translations live in JSON files; the per-user `preferred_language` column continues to persist a user's saved choice (set via the profile page, unchanged).
+
+### Notes
+- Verified at `http://vikundi.localhost`: login + dashboard render fully in both languages, no raw translation keys leak.
+- Full unit suite green: **561 tests, 999 assertions** (was 554; +7 from `I18nTest`).
+- Behaviour to be aware of: `actions/login.php` resets the session language to the user's saved profile preference on login, so a language picked on the login screen does not carry past login (the saved preference wins). The `?lang=` switch still works ad-hoc afterwards.
+- Local-dev environment also set up this session: `includes/config.php` (dedicated `vikundi` MySQL user), DB built via `database/migrate.php` + RBAC seed import, served at `http://vikundi.localhost` through an Apache name-based VirtualHost (the `.htaccess` `RewriteBase /` requires a site root, not a `/vikundi` subdirectory).
+
+---
+
 ## Session — 2026-06-22
 **Branch:** `fix/register-member-language-mixing`
 **Developer:** Claude Code / Wambura
