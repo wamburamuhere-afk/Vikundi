@@ -89,11 +89,11 @@ $is_sw = ($lang === 'sw');
 
 function fmt_currency($n) { return 'TZS ' . number_format($n, 0); }
 
-function fmt_time_ago($log, $is_sw) {
+function fmt_time_ago($log) {
     if ($log['hrs_ago'] > 23) return date('d/m/Y', strtotime($log['created_at']));
-    if ($log['hrs_ago'] > 0) return $log['hrs_ago'] . ($is_sw ? 'h iliyopita' : 'h ago');
-    if ($log['mins_ago'] > 0) return $log['mins_ago'] . ($is_sw ? 'm iliyopita' : 'm ago');
-    return ($is_sw ? 'sasa hivi' : 'just now');
+    if ($log['hrs_ago'] > 0)  return t('dashboard.hours_ago',   ['n' => $log['hrs_ago']]);
+    if ($log['mins_ago'] > 0) return t('dashboard.minutes_ago', ['n' => $log['mins_ago']]);
+    return t('dashboard.just_now');
 }
 
 $sw_months = [1=>'Januari', 2=>'Februari', 3=>'Machi', 4=>'Aprili', 5=>'Mei', 6=>'Juni', 7=>'Julai', 8=>'Agosti', 9=>'Septemba', 10=>'Oktoba', 11=>'Novemba', 12=>'Desemba'];
@@ -115,43 +115,43 @@ $display_month = $is_sw ? $sw_months[date('n')] : $en_months[date('n')];
         <div class="px-3 px-md-4 py-2 d-flex flex-wrap align-items-center gap-3">
             <div class="d-flex align-items-center gap-2">
                 <i class="bi bi-exclamation-octagon-fill text-warning fs-5"></i>
-                <strong class="text-white"><?= $is_sw ? 'Hatua Inahitajika:' : 'Action Required:' ?></strong>
+                <strong class="text-white"><?= et('dashboard.action_required') ?></strong>
                 <span class="badge bg-danger rounded-pill px-3"><?= $total_pending ?></span>
             </div>
 
             <button id="btnToggleAlerts" class="btn btn-sm btn-outline-light py-0 px-2" type="button" data-bs-toggle="collapse" data-bs-target="#alertDetails" style="font-size: 0.75rem;">
-                <i class="bi bi-eye me-1"></i> <?= $is_sw ? 'Angalia Maelezo' : 'View Details' ?>
+                <i class="bi bi-eye me-1"></i> <?= et('dashboard.view_details') ?>
             </button>
 
             <div class="collapse flex-grow-1" id="alertDetails">
                 <div class="d-flex flex-wrap gap-2 py-1">
                     <?php if ($can_manage_members && $pending_members > 0): ?>
                     <a href="<?= getUrl('member_approvals') ?>" class="vk-alert-chip">
-                        <i class="bi bi-person-check"></i> <?= $pending_members ?> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Wanachama Wapya' : 'New Members' ?>
+                        <i class="bi bi-person-check"></i> <?= $pending_members ?> <?= et('dashboard.new_members') ?>
                     </a>
                     <?php endif; ?>
                     
                     <?php if ($pending_contributions > 0): ?>
                     <a href="<?= getUrl('manage_contributions') ?>" class="vk-alert-chip vk-chip-yellow">
-                        <i class="bi bi-cash-coin"></i> <?= $pending_contributions ?> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Michango Inayosubiri' : 'Pending Contributions' ?>
+                        <i class="bi bi-cash-coin"></i> <?= $pending_contributions ?> <?= et('dashboard.pending_contributions') ?>
                     </a>
                     <?php endif; ?>
 
                     <?php if ($is_viongozi && $pending_death_expenses > 0): ?>
                     <a href="<?= getUrl('expenses') ?>?status=pending" class="vk-alert-chip vk-chip-red">
-                        <i class="bi bi-heart-pulse"></i> <?= $pending_death_expenses ?> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Misaada ya Misiba' : 'Funeral Supports' ?>
+                        <i class="bi bi-heart-pulse"></i> <?= $pending_death_expenses ?> <?= et('dashboard.funeral_supports') ?>
                     </a>
                     <?php endif; ?>
 
                     <?php if ($is_viongozi && $pending_general_expenses > 0): ?>
                     <a href="<?= getUrl('other_expenses') ?>?status=pending" class="vk-alert-chip vk-chip-orange">
-                        <i class="bi bi-cart-dash"></i> <?= $pending_general_expenses ?> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Matumizi Mengineyo' : 'General Expenses' ?>
+                        <i class="bi bi-cart-dash"></i> <?= $pending_general_expenses ?> <?= et('dashboard.general_expenses') ?>
                     </a>
                     <?php endif; ?>
 
                     <?php if ($is_viongozi && $pending_budgets > 0): ?>
                     <a href="<?= getUrl('budget') ?>?status=pending" class="vk-alert-chip vk-chip-teal">
-                        <i class="bi bi-pie-chart"></i> <?= $pending_budgets ?> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Bajeti Inayosubiri' : 'Pending Budgets' ?>
+                        <i class="bi bi-pie-chart"></i> <?= $pending_budgets ?> <?= et('dashboard.pending_budgets') ?>
                     </a>
                     <?php endif; ?>
                 </div>
@@ -163,8 +163,8 @@ $display_month = $is_sw ? $sw_months[date('n')] : $en_months[date('n')];
         const ad = document.getElementById('alertDetails');
         const bt = document.getElementById('btnToggleAlerts');
         if (ad && bt) {
-            ad.addEventListener('show.bs.collapse', () => bt.innerHTML = '<i class="bi bi-eye-slash me-1"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Ficha' : 'Hide' ?>');
-            ad.addEventListener('hide.bs.collapse', () => bt.innerHTML = '<i class="bi bi-eye me-1"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Angalia Maelezo' : 'View Details' ?>');
+            ad.addEventListener('show.bs.collapse', () => bt.innerHTML = '<i class="bi bi-eye-slash me-1"></i> <?= et('dashboard.hide') ?>');
+            ad.addEventListener('hide.bs.collapse', () => bt.innerHTML = '<i class="bi bi-eye me-1"></i> <?= et('dashboard.view_details') ?>');
         }
     });
     </script>
@@ -173,21 +173,21 @@ $display_month = $is_sw ? $sw_months[date('n')] : $en_months[date('n')];
     <div class="pt-4 pb-5 px-3 px-md-4">
         <!-- ── QUICK ACTIONS ────────────────────── -->
         <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header bg-white border-bottom"><h6 class="mb-0 fw-bold text-dark uppercase small"><i class="bi bi-lightning-charge-fill text-warning me-2"></i><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Hatua za Haraka' : 'Quick Actions' ?></h6></div>
+            <div class="card-header bg-white border-bottom"><h6 class="mb-0 fw-bold text-dark uppercase small"><i class="bi bi-lightning-charge-fill text-warning me-2"></i><?= et('dashboard.quick_actions') ?></h6></div>
             <div class="card-body">
                 <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3">
                     <?php if ($can_manage_members): ?>
-                    <div class="col"><a href="<?= getUrl('member_approvals') ?>" class="vk-quick-btn vk-qb-blue"><i class="bi bi-person-plus"></i><span><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Sajili / Idhinisha' : 'Register / Approve' ?></span></a></div>
+                    <div class="col"><a href="<?= getUrl('member_approvals') ?>" class="vk-quick-btn vk-qb-blue"><i class="bi bi-person-plus"></i><span><?= et('dashboard.register_approve') ?></span></a></div>
                     <?php endif; ?>
 
-                    <div class="col"><a href="<?= getUrl('manage_contributions') ?>" class="vk-quick-btn vk-qb-green"><i class="bi bi-piggy-bank"></i><span><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Michango' : 'Contributions' ?></span></a></div>
+                    <div class="col"><a href="<?= getUrl('manage_contributions') ?>" class="vk-quick-btn vk-qb-green"><i class="bi bi-piggy-bank"></i><span><?= et('dashboard.contributions') ?></span></a></div>
 
                     <?php if ($can_manage_fin): ?>
-                    <div class="col"><a href="<?= getUrl('death_expenses') ?>" class="vk-quick-btn vk-qb-red"><i class="bi bi-heart-pulse"></i><span><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Misaada (Misiba)' : 'Funeral Support' ?></span></a></div>
+                    <div class="col"><a href="<?= getUrl('death_expenses') ?>" class="vk-quick-btn vk-qb-red"><i class="bi bi-heart-pulse"></i><span><?= et('dashboard.funeral_support') ?></span></a></div>
                     <?php endif; ?>
 
                     <?php if ($is_viongozi): ?>
-                    <div class="col"><a href="<?= getUrl('customers') ?>" class="vk-quick-btn vk-qb-purple"><i class="bi bi-people"></i><span><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Orodha ya Wanachama' : 'Members List' ?></span></a></div>
+                    <div class="col"><a href="<?= getUrl('customers') ?>" class="vk-quick-btn vk-qb-purple"><i class="bi bi-people"></i><span><?= et('dashboard.members_list') ?></span></a></div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -205,47 +205,47 @@ $display_month = $is_sw ? $sw_months[date('n')] : $en_months[date('n')];
             <div class="col">
                 <div class="vk-kpi-card vk-kpi-blue h-100 d-flex flex-column justify-content-between">
                     <div>
-                        <div class="vk-kpi-label"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Wanachama' : 'Members' ?></div>
+                        <div class="vk-kpi-label"><?= et('dashboard.members') ?></div>
                         <div class="vk-kpi-val mt-1"><?= $total_members ?></div>
                     </div>
-                    <div class="vk-kpi-sub mt-2"><?= $active_members ?> <?= $is_sw ? 'Wapo Hai' : 'Active' ?></div>
+                    <div class="vk-kpi-sub mt-2"><?= $active_members ?> <?= et('dashboard.active') ?></div>
                 </div>
             </div>
             <!-- 2. Balance -->
             <div class="col">
                 <div class="vk-kpi-card vk-kpi-green h-100 d-flex flex-column justify-content-between">
                     <div>
-                        <div class="vk-kpi-label"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Salio' : 'Balance' ?></div>
+                        <div class="vk-kpi-label"><?= et('dashboard.balance') ?></div>
                         <div class="vk-kpi-val mt-1" style="font-size: 1.1rem;"><?= fmt_currency($net_balance) ?></div>
                     </div>
-                    <div class="vk-kpi-sub mt-2"><?= $is_sw ? 'Hadi sasa' : 'As of today' ?></div>
+                    <div class="vk-kpi-sub mt-2"><?= et('dashboard.as_of_today') ?></div>
                 </div>
             </div>
             <!-- 3. Expenses -->
             <div class="col">
                 <div class="vk-kpi-card vk-kpi-orange h-100 d-flex flex-column justify-content-between">
                     <div>
-                        <div class="vk-kpi-label"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Matumizi' : 'Expenses' ?></div>
+                        <div class="vk-kpi-label"><?= et('dashboard.expenses') ?></div>
                         <div class="vk-kpi-val mt-1" style="font-size: 1.1rem;"><?= fmt_currency($total_all_expenses) ?></div>
                     </div>
-                    <div class="vk-kpi-sub mt-2"><?= $is_sw ? 'Jumla' : 'Total' ?></div>
+                    <div class="vk-kpi-sub mt-2"><?= et('dashboard.total') ?></div>
                 </div>
             </div>
             <!-- 4. Contributions -->
             <div class="col">
                 <div class="vk-kpi-card vk-kpi-purple h-100 d-flex flex-column justify-content-between">
                     <div>
-                        <div class="vk-kpi-label"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Michango' : 'Contributions' ?></div>
+                        <div class="vk-kpi-label"><?= et('dashboard.contributions') ?></div>
                         <div class="vk-kpi-val mt-1" style="font-size: 1.1rem;"><?= fmt_currency($total_contributions) ?></div>
                     </div>
-                    <div class="vk-kpi-sub mt-2"><?= $is_sw ? 'Imethibitishwa' : 'Verified' ?></div>
+                    <div class="vk-kpi-sub mt-2"><?= et('dashboard.verified') ?></div>
                 </div>
             </div>
             <!-- 5. Budget Allocated (NEW - Teal Color) -->
             <div class="col">
                 <div class="vk-kpi-card h-100 d-flex flex-column justify-content-between" style="background: linear-gradient(135deg, #06b6d4, #0891b2);">
                     <div>
-                        <div class="vk-kpi-label text-white opacity-75"><?= $is_sw ? 'Bajeti Iliyopangwa' : 'Budget Allocated' ?></div>
+                        <div class="vk-kpi-label text-white opacity-75"><?= et('dashboard.budget_allocated') ?></div>
                         <div class="vk-kpi-val mt-1 text-white" style="font-size: 1.1rem;"><?= fmt_currency($dash_alloc) ?></div>
                     </div>
                     <div class="vk-kpi-sub mt-2 text-white opacity-75"><?= $display_month ?></div>
@@ -263,7 +263,7 @@ $display_month = $is_sw ? $sw_months[date('n')] : $en_months[date('n')];
             <div class="<?= $chart_col ?>">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0 fw-bold"><i class="bi bi-graph-up-arrow text-primary me-2"></i><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mwelekeo wa Michango (Miezi 6 iliyopita)' : 'Contribution Trend (Last 6 Months)' ?></h6>
+                        <h6 class="mb-0 fw-bold"><i class="bi bi-graph-up-arrow text-primary me-2"></i><?= et('dashboard.contribution_trend') ?></h6>
                         <small class="text-muted"><?= date('Y') ?></small>
                     </div>
                     <div class="card-body"><canvas id="contributionsChart" height="200"></canvas></div>
@@ -275,27 +275,27 @@ $display_month = $is_sw ? $sw_months[date('n')] : $en_months[date('n')];
             <div class="col-lg-5">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-                        <h6 class="mb-0 fw-bold"><i class="bi bi-journal-text text-danger me-2"></i><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Kumbukumbu za Shughuli' : 'Audit Logs' ?></h6>
-                        <a href="<?= getUrl('audit-logs') ?>" class="btn btn-sm btn-outline-danger px-3 rounded-pill fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Tazama Vyote' : 'View All' ?></a>
+                        <h6 class="mb-0 fw-bold"><i class="bi bi-journal-text text-danger me-2"></i><?= et('dashboard.audit_logs') ?></h6>
+                        <a href="<?= getUrl('audit-logs') ?>" class="btn btn-sm btn-outline-danger px-3 rounded-pill fw-bold"><?= et('dashboard.view_all') ?></a>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
                             <table class="table table-hover align-middle mb-0" style="font-size: .85rem;">
                                 <thead class="bg-light">
                                     <tr>
-                                        <th class="ps-3 border-0"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mtumiaji' : 'User' ?></th>
-                                        <th class="border-0"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Maelezo' : 'Description' ?></th>
-                                        <th class="pe-3 text-end border-0"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Muda' : 'Time' ?></th>
+                                        <th class="ps-3 border-0"><?= et('dashboard.user') ?></th>
+                                        <th class="border-0"><?= et('dashboard.description') ?></th>
+                                        <th class="pe-3 text-end border-0"><?= et('dashboard.time') ?></th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php if (empty($activity_logs)): ?>
-                                    <tr><td colspan="3" class="text-center py-5 text-muted small">No activity recorded yet.</td></tr>
+                                    <tr><td colspan="3" class="text-center py-5 text-muted small"><?= et('dashboard.no_activity') ?></td></tr>
                                     <?php else: ?>
                                     <?php foreach ($activity_logs as $log): ?>
                                     <tr>
                                         <td class="ps-3 py-3">
-                                            <div class="fw-bold"><?= htmlspecialchars($log['full_name'] ?? (($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mfumo' : 'System')) ?></div>
+                                            <div class="fw-bold"><?= htmlspecialchars($log['full_name'] ?? t('dashboard.system')) ?></div>
                                             <span class="badge bg-light text-dark border-0 small px-0 text-uppercase" style="font-size: 10px;"><?= $log['role'] ?? '-' ?></span>
                                         </td>
                                         <td>
@@ -324,7 +324,7 @@ $display_month = $is_sw ? $sw_months[date('n')] : $en_months[date('n')];
                                             <small class="text-muted text-uppercase fw-bold" style="font-size: 9px;"><?= htmlspecialchars($clean_module) ?></small>
                                             <?php endif; ?>
                                         </td>
-                                        <td class="pe-3 text-end text-muted small fw-bold"><?= fmt_time_ago($log, $is_sw) ?></td>
+                                        <td class="pe-3 text-end text-muted small fw-bold"><?= fmt_time_ago($log) ?></td>
                                     </tr>
                                     <?php endforeach; ?>
                                     <?php endif; ?>
