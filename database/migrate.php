@@ -14,9 +14,10 @@
 require_once __DIR__ . '/../includes/config.php'; // provides $pdo for the included migrations
 
 $migrations = [
-    'sync_schema.php',           // create any base tables missing on the target DB
-    'sync_workflow_columns.php', // add review/approve columns + widen status enums
-    'ai_assistant_setup.php',    // AI tables, prompts and permissions
+    'sync_schema.php',              // create any base tables missing on the target DB
+    'sync_workflow_columns.php',    // add review/approve columns + widen status enums
+    'fix_death_expense_schema.php', // widen deceased_type, add 'dormant' + customers.is_active
+    'ai_assistant_setup.php',       // AI tables, prompts and permissions
 ];
 
 echo "== Vikundi database migrations ==\n";

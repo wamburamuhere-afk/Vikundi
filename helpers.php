@@ -554,4 +554,29 @@ if (!function_exists('format_number')) {
         return number_format((float)$number, $decimals);
     }
 }
+
+if (!function_exists('markChildDeceasedJson')) {
+    /**
+     * Mark a child (by index) inside a children_data JSON blob as deceased,
+     * keeping the entry and all sibling indexes intact. Used when a death
+     * expense for a child is approved, so the child is retained (and shown
+     * flagged) on the member's profile instead of being deleted outright.
+     *
+     * @return string|null Updated JSON, or the original input unchanged when the
+     *                     blob is empty/invalid or the index is absent.
+     */
+    function markChildDeceasedJson(?string $childrenJson, int $idx, string $deceasedDate): ?string
+    {
+        if ($childrenJson === null || $childrenJson === '') {
+            return $childrenJson;
+        }
+        $children = json_decode($childrenJson, true);
+        if (!is_array($children) || !isset($children[$idx]) || !is_array($children[$idx])) {
+            return $childrenJson;
+        }
+        $children[$idx]['is_deceased']   = 1;
+        $children[$idx]['deceased_date'] = $deceasedDate;
+        return json_encode($children);
+    }
+}
 ?>
