@@ -25,6 +25,10 @@ global $pdo, $pdo_accounts;
 // Define root directory
 define('ROOT_DIR', __DIR__);
 
+// Internationalization: JSON-based translations + global ?lang= switch.
+// Makes t() / et() / current_lang() available on every page (pre-auth included).
+require_once ROOT_DIR . '/includes/i18n.php';
+
 // ============================================================================
 // MODULE DIRECTORY DEFINITIONS
 // ============================================================================

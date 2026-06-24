@@ -12,7 +12,7 @@ if (isset($_SESSION['user_id'])) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= current_lang() ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -119,28 +119,33 @@ if (isset($_SESSION['user_id'])) {
 <body>
     <div class="container">
         <div class="login-container">
+            <div class="d-flex justify-content-end mb-2 small">
+                <a href="?lang=en" class="text-decoration-none me-1 <?= current_lang() === 'en' ? 'fw-bold text-primary' : 'text-muted' ?>"><?= et('common.english') ?></a>
+                <span class="text-muted">|</span>
+                <a href="?lang=sw" class="text-decoration-none ms-1 <?= current_lang() === 'sw' ? 'fw-bold text-primary' : 'text-muted' ?>"><?= et('common.swahili') ?></a>
+            </div>
             <div class="logo-container">
                 <div class="logo-wrapper">
                     <img src="assets/images/<?= htmlspecialchars($group_logo) ?>" alt="Logo" class="logo">
                 </div>
                 <h4 class="fw-bold text-primary mb-3"><?= htmlspecialchars($group_name) ?></h4>
-                <p class="text-muted small">Please sign in to continue</p>
+                <p class="text-muted small"><?= et('login.sign_in_prompt') ?></p>
             </div>
             
             <form id="loginForm" method="POST">
                 <div class="mb-3">
-                    <label for="username" class="form-label fw-bold">Username</label>
+                    <label for="username" class="form-label fw-bold"><?= et('login.username') ?></label>
                     <div class="input-group">
                         <span class="input-group-text"><i class="fas fa-envelope"></i></span>
-                        <input type="text" class="form-control" id="username" name="username" placeholder="Enter username" required>
+                        <input type="text" class="form-control" id="username" name="username" placeholder="<?= et('login.username_placeholder') ?>" required>
                     </div>
                 </div>
-                
+
                 <div class="mb-4">
-                    <label for="password" class="form-label fw-bold">Password</label>
+                    <label for="password" class="form-label fw-bold"><?= et('login.password') ?></label>
                     <div class="input-group">
                         <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                        <input type="password" class="form-control" id="password" name="password" placeholder="Enter password" required>
+                        <input type="password" class="form-control" id="password" name="password" placeholder="<?= et('login.password_placeholder') ?>" required>
                         <button class="btn btn-outline-secondary" type="button" id="togglePassword">
                             <i class="fas fa-eye"></i>
                         </button>
@@ -151,23 +156,23 @@ if (isset($_SESSION['user_id'])) {
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="remember" id="remember">
                         <label class="form-check-label small fw-bold" for="remember">
-                            Remember me
+                            <?= et('login.remember_me') ?>
                         </label>
                     </div>
-                    <a href="forgot_password" class="small fw-bold text-decoration-none">Forgot Password?</a>
+                    <a href="forgot_password" class="small fw-bold text-decoration-none"><?= et('login.forgot_password') ?></a>
                 </div>
 
-                <button type="submit" class="btn btn-primary w-100 btn-login">LOGIN</button>
-                
+                <button type="submit" class="btn btn-primary w-100 btn-login"><?= et('login.login_button') ?></button>
+
                 <div class="text-center mt-4 border-top pt-3">
-                    <span class="small text-muted">Don't have an account yet?</span>
-                    <a href="register" class="fw-bold text-decoration-none ms-1">Register Here</a>
+                    <span class="small text-muted"><?= et('login.no_account') ?></span>
+                    <a href="register" class="fw-bold text-decoration-none ms-1"><?= et('login.register_here') ?></a>
                 </div>
 
                 <div class="footer-links text-center mt-3">
-                    <a href="javascript:void(0)" onclick="comingSoon('Privacy Policy')">Privacy Policy</a>
-                    <a href="javascript:void(0)" onclick="comingSoon('Terms of Service')">Terms of Service</a>
-                    <a href="javascript:void(0)" onclick="comingSoon('Help Center')">Help Center</a>
+                    <a href="javascript:void(0)" class="js-coming-soon"><?= et('login.privacy_policy') ?></a>
+                    <a href="javascript:void(0)" class="js-coming-soon"><?= et('login.terms_of_service') ?></a>
+                    <a href="javascript:void(0)" class="js-coming-soon"><?= et('login.help_center') ?></a>
                 </div>
             </form>
         </div>
@@ -175,28 +180,41 @@ if (isset($_SESSION['user_id'])) {
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
+        const I18N = {
+            signingIn:        <?= json_encode(t('login.signing_in')) ?>,
+            loginLabel:       <?= json_encode(t('login.login_button')) ?>,
+            comingSoon:       <?= json_encode(t('login.coming_soon')) ?>,
+            loginFailed:      <?= json_encode(t('login.login_failed')) ?>,
+            connectionError:  <?= json_encode(t('login.connection_error')) ?>,
+            connectionErrorText: <?= json_encode(t('login.connection_error_text')) ?>
+        };
+
         function comingSoon(title) {
             Swal.fire({
                 title: title,
-                text: 'Coming soon...',
+                text: I18N.comingSoon,
                 icon: 'info',
                 confirmButtonColor: '#007bff'
             });
         }
 
         $(document).ready(function() {
+            $('.js-coming-soon').click(function() {
+                comingSoon($(this).text().trim());
+            });
+
             $('#togglePassword').click(function() {
                 const password = $('#password');
                 const type = password.attr('type') === 'password' ? 'text' : 'password';
                 password.attr('type', type);
                 $(this).find('i').toggleClass('fa-eye fa-eye-slash');
             });
-            
+
             $('#loginForm').on('submit', function(e) {
                 e.preventDefault();
-                $('.btn-login').html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Signing in...');
+                $('.btn-login').html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ' + I18N.signingIn);
                 $('.btn-login').prop('disabled', true);
-                
+
                 $.ajax({
                     url: 'actions/login.php',
                     type: 'POST',
@@ -208,22 +226,22 @@ if (isset($_SESSION['user_id'])) {
                         } else {
                             Swal.fire({
                                 icon: 'error',
-                                title: 'Login Failed',
+                                title: I18N.loginFailed,
                                 text: response.message,
                                 confirmButtonColor: '#d33'
                             });
-                            $('.btn-login').html('LOGIN');
+                            $('.btn-login').html(I18N.loginLabel);
                             $('.btn-login').prop('disabled', false);
                         }
                     },
                     error: function() {
                         Swal.fire({
                             icon: 'error',
-                            title: 'Connection Error',
-                            text: 'An error occurred while connecting to the server.',
+                            title: I18N.connectionError,
+                            text: I18N.connectionErrorText,
                             confirmButtonColor: '#d33'
                         });
-                        $('.btn-login').html('LOGIN');
+                        $('.btn-login').html(I18N.loginLabel);
                         $('.btn-login').prop('disabled', false);
                     }
                 });

@@ -4,6 +4,62 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-24
+**Branch:** `fix/death-expense-schema-and-child-retention`
+**Developer:** Claude Code / Dutch
+**Summary:** Fixed two death-expense bugs that also affect production: (1) "Data truncated for column 'deceased_type'" when recording a **parent's** death, and (2) a **deceased child being removed** from the member's profile on approval.
+
+### Root causes
+- **Truncation:** schema drift. `death_expenses.deceased_type` was `enum('member','spouse','child')`, but `/api/get_member_dependents` emits `mwanachama|spouse|child|parent` — `parent` (and `mwanachama`) weren't allowed. Related drift: `customers.status`/`users.status` lacked `dormant`, and `customers.is_active` was missing — all written on a member's death approval.
+- **Child vanishes:** `approve_death_expense.php` ran `unset($children[$idx])`, permanently deleting the deceased child from `children_data`.
+
+### Files Created
+- **`database/fix_death_expense_schema.php`** — idempotent, non-destructive migration: `deceased_type` → `VARCHAR(20)`; add `dormant` to `customers.status` + `users.status` (preserving existing values); add `customers.is_active`. Each step checks the schema first; safe to run on every deploy.
+- **`tests/Unit/MarkChildDeceasedJsonTest.php`** — 4 tests for the retention helper.
+
+### Files Modified
+- **`database/migrate.php`** — registered `fix_death_expense_schema.php` so it runs on deploy (`.github/workflows/deploy.yml` → `php database/migrate.php`), applying the fix to **production automatically**.
+- **`helpers.php`** — new `markChildDeceasedJson()` (pure, unit-tested): flags a child `is_deceased`/`deceased_date`, keeping the entry and sibling indexes.
+- **`actions/approve_death_expense.php`** — child death now **marks the child deceased instead of deleting**; loads `helpers.php`.
+- **`app/constant/profile/profile.php`** — read-only & edit views show a "Deceased / Marehemu" badge; profile save preserves the `is_deceased` flag (merged from stored data by index, so the edit form can't silently wipe it).
+
+### Database Changes
+- Applied locally via `migrate.php`; reaches prod through the deploy pipeline's `migrate.php` run. No manual DB surgery.
+
+### Notes
+- Verified end-to-end locally at `vikundi.localhost`: recording a **parent** death now succeeds (`deceased_type='parent'` stored); approving a **child** death retains the child flagged. Verification rows/balance reverted afterwards.
+- Full unit suite green: **565 tests, 1008 assertions** (+4).
+- **Scope:** spouse & parents are still erased (`NULL`ed) on death — unchanged existing behavior (user confirmed the spouse case "works fine"). Retaining-and-flagging them like children is an optional follow-up (needs small flag columns).
+- Past approvals that already deleted a child cannot be recovered; this only prevents future loss.
+
+---
+
+## Session — 2026-06-23
+**Branch:** `feat/i18n-json-translations`
+**Developer:** Claude Code / Dutch
+**Summary:** Introduced a centralized, file-based (JSON) i18n system to replace the scattered inline `($_SESSION['preferred_language'] ?? 'en') === 'sw' ? '<sw>' : '<en>'` ternaries. Stable-key design, no database. Migrated the **login** page and **dashboard** as the proven pattern; remaining pages to follow page-by-page.
+
+### Files Created
+- **`includes/i18n.php`** — i18n helper: `t($key, $vars)` (current-lang → English → key fallback, with `{placeholder}` interpolation), `et()` (HTML-escaped), `current_lang()`, `i18n_load()` (per-request static cache). Also handles a global `?lang=en|sw` switch (session only — no DB write).
+- **`lang/en.json`** / **`lang/sw.json`** — 53 stable keys each (`common.*`, `login.*`, `dashboard.*`), full en/sw parity.
+- **`tests/Unit/I18nTest.php`** — 7 tests: default/sw/invalid-language behaviour, missing-key→key fallback, placeholder interpolation, `et()` escaping, and en/sw key-parity guard.
+
+### Files Modified
+- **`roots.php`** — `require_once includes/i18n.php` right after `ROOT_DIR` is defined, so `t()`/`et()`/`current_lang()` are available on every page (pre-auth login included) and the `?lang=` switch is global.
+- **`login.php`** — added an EN | SW language toggle (uses `?lang=`); replaced all hardcoded English with `et()`; moved JS strings (signing-in, errors, "coming soon") into a PHP-populated `I18N` object via `json_encode`; `<html lang>` now follows `current_lang()`.
+- **`app/dashboard.php`** — replaced every inline UI ternary (alert banner, chips, collapse-toggle JS, quick actions, KPI cards/subs, chart + audit-log headers, table headers, empty/system fallbacks) with `t()`/`et()`; `fmt_time_ago()` now uses `t()` with `{n}` placeholders (dropped the `$is_sw` param). The date-driven month-name arrays were intentionally left in place (localized data, not UI chrome); the audit-log DB-content module translation was left untouched.
+
+### Database Changes
+- None. Translations live in JSON files; the per-user `preferred_language` column continues to persist a user's saved choice (set via the profile page, unchanged).
+
+### Notes
+- Verified at `http://vikundi.localhost`: login + dashboard render fully in both languages, no raw translation keys leak.
+- Full unit suite green: **561 tests, 999 assertions** (was 554; +7 from `I18nTest`).
+- Behaviour to be aware of: `actions/login.php` resets the session language to the user's saved profile preference on login, so a language picked on the login screen does not carry past login (the saved preference wins). The `?lang=` switch still works ad-hoc afterwards.
+- Local-dev environment also set up this session: `includes/config.php` (dedicated `vikundi` MySQL user), DB built via `database/migrate.php` + RBAC seed import, served at `http://vikundi.localhost` through an Apache name-based VirtualHost (the `.htaccess` `RewriteBase /` requires a site root, not a `/vikundi` subdirectory).
+
+---
+
 ## Session — 2026-06-22
 **Branch:** `fix/register-member-language-mixing`
 **Developer:** Claude Code / Wambura

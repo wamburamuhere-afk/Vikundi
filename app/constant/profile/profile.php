@@ -222,18 +222,33 @@ if ($_POST) {
                         WHERE email = ?
                     ");
 
-                    // Process children data
+                    // Process children data. The edit form does not carry the
+                    // 'is_deceased' flag (set when a child's death expense is
+                    // approved), so preserve it from the stored data by position.
                     $child_names = $_POST['child_name'] ?? [];
                     $child_ages = $_POST['child_age'] ?? [];
                     $child_genders = $_POST['child_gender'] ?? [];
+
+                    $existing_children_stmt = $pdo->prepare("SELECT children_data FROM customers WHERE email = ?");
+                    $existing_children_stmt->execute([$old_email]);
+                    $existing_children = json_decode($existing_children_stmt->fetchColumn() ?: '[]', true);
+                    if (!is_array($existing_children)) $existing_children = [];
+
                     $children_array = [];
                     foreach ($child_names as $idx => $cn) {
                         if (!empty($cn)) {
-                            $children_array[] = [
+                            $entry = [
                                 'name' => $cn,
                                 'age' => $child_ages[$idx] ?? '',
                                 'gender' => $child_genders[$idx] ?? 'Mwanaume'
                             ];
+                            if (!empty($existing_children[$idx]['is_deceased'])) {
+                                $entry['is_deceased'] = 1;
+                                if (isset($existing_children[$idx]['deceased_date'])) {
+                                    $entry['deceased_date'] = $existing_children[$idx]['deceased_date'];
+                                }
+                            }
+                            $children_array[] = $entry;
                         }
                     }
                     $children_json = json_encode($children_array);
@@ -1174,7 +1189,7 @@ require_once 'header.php';
                                                                     foreach ($children as $idx => $child):
                                                                     ?>
                                                                     <tr class="child-row">
-                                                                        <td class="text-center fw-bold row-idx"><?= $idx+1 ?></td>
+                                                                        <td class="text-center fw-bold row-idx"><?= $idx+1 ?><?php if (!empty($child['is_deceased'])): ?><br><span class="badge bg-secondary" style="font-size:9px;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Marehemu' : 'Deceased' ?></span><?php endif; ?></td>
                                                                         <td><input type="text" name="child_name[]" class="form-control form-control-sm border-0 bg-transparent" value="<?= $child['name'] ?>"></td>
                                                                         <td><input type="number" name="child_age[]" class="form-control form-control-sm border-0 bg-transparent" value="<?= $child['age'] ?>"></td>
                                                                         <td>
@@ -1429,7 +1444,7 @@ require_once 'header.php';
                                             <thead class="bg-light"><tr><th><?= $isSw_p ? 'Jina la Mtoto' : 'Child Name' ?></th><th style="width:80px;" class="text-center"><?= $isSw_p ? 'Umri' : 'Age' ?></th><th style="width:100px;"><?= $isSw_p ? 'Jinsia' : 'Gender' ?></th></tr></thead>
                                             <tbody>
                                                 <?php foreach ($view_children as $vc): ?>
-                                                <tr><td class="fw-semibold"><?= htmlspecialchars($vc['name'] ?? '') ?></td><td class="text-center"><?= htmlspecialchars($vc['age'] ?? '') ?></td><td><?= htmlspecialchars($vc['gender'] ?? '') ?></td></tr>
+                                                <tr><td class="fw-semibold"><?= htmlspecialchars($vc['name'] ?? '') ?><?php if (!empty($vc['is_deceased'])): ?> <span class="badge bg-secondary ms-1" style="font-size:9px;"><?= $isSw_p ? 'Marehemu' : 'Deceased' ?></span><?php endif; ?></td><td class="text-center"><?= htmlspecialchars($vc['age'] ?? '') ?></td><td><?= htmlspecialchars($vc['gender'] ?? '') ?></td></tr>
                                                 <?php endforeach; ?>
                                             </tbody>
                                         </table>
