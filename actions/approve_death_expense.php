@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../roots.php';
+require_once __DIR__ . '/../helpers.php'; // markChildDeceasedJson()
 global $pdo;
 
 header('Content-Type: application/json');
@@ -75,17 +76,15 @@ try {
         } else if ($deceased_id === 'mother') {
             $pdo->prepare("UPDATE customers SET mother_name = NULL WHERE customer_id = ?")->execute([$member_id]);
         } else if (strpos($deceased_id, 'child_') === 0) {
+            // Mark the child as deceased instead of deleting, so the record is
+            // retained and still shown (flagged) on the member's profile.
             $stmt = $pdo->prepare("SELECT children_data FROM customers WHERE customer_id = ?");
             $stmt->execute([$member_id]);
             $json = $stmt->fetchColumn();
-            if ($json) {
-                $children = json_decode($json, true);
-                $idx = (int)substr($deceased_id, 6);
-                if (isset($children[$idx])) {
-                    unset($children[$idx]);
-                    $new_json = json_encode(array_values($children)); // re-index
-                    $pdo->prepare("UPDATE customers SET children_data = ? WHERE customer_id = ?")->execute([$new_json, $member_id]);
-                }
+            $idx = (int) substr($deceased_id, 6);
+            $new_json = markChildDeceasedJson($json !== false ? $json : null, $idx, date('Y-m-d'));
+            if ($new_json !== null && $new_json !== $json) {
+                $pdo->prepare("UPDATE customers SET children_data = ? WHERE customer_id = ?")->execute([$new_json, $member_id]);
             }
         }
     }
