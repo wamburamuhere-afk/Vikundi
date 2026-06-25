@@ -1,9 +1,12 @@
 <?php
 // File: actions/delete_death_expense.php
 require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/require_auth.php'; // audit B3: must be logged in
+require_once __DIR__ . '/../core/permissions.php';
 global $pdo;
 
 header('Content-Type: application/json');
+requirePermissionJson('delete', 'death_expenses'); // audit H3
 
 $id = $_POST['id'] ?? 0;
 

@@ -4,6 +4,180 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-25 — Audit fix H4 (+ M3)
+**Branch:** `fix/h4-broken-db-include`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit High **H4** — three dead action handlers `require '../includes/db.php'`, which **does not exist**, so they fatal if reached. The audit had over-stated this as "registration broken" — verified the **live** registration is healthy: the page `register.php` (HTTP 200) posts to `actions/process_registration.php`, which works. The broken files are all unreferenced legacy.
+
+### Files Removed (3)
+- **`actions/register.php`** — legacy registration handler, superseded by `process_registration.php`; not routed, not posted to.
+- **`actions/register_customer.php`** — legacy; also wrote non-existent `customers` columns (the H2 drift item).
+- **`actions/upload_attachments.php`** — unused + broken (this also closes Medium **M3**).
+
+### Files Created
+- **`tests/Unit/NoBrokenDbIncludeTest.php`** — asserts `includes/db.php` doesn't exist and that no file requires it (recurrence guard).
+
+### Verification
+- After removal: **no** file references `includes/db.php`; `/register` 200, `/login` 200. Unit suite **604 / 1114**.
+- Removing these also clears the only "core" drift the H2 checker reported (`register_customer.php`).
+- Next: **H5** (session cookie `httponly`/`secure`).
+
+---
+
+## Session — 2026-06-25 — Audit fix H3
+**Branch:** `fix/h3-endpoint-authorization`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit High **H3** — authorization. B2 revived the permission model and B3 added authentication (logged-in?). H3 adds *authorization* (allowed?) to the mutating endpoints that only checked login, so a regular member can't perform committee actions.
+
+### Finding
+Member/user endpoints (`add_member`, `update_user_role`, `update_user_status`, `approve_member`) **already authorize** via custom committee-role checks, and the `approve_*` endpoints already use `canApprove(...)`. The gaps were the B3-guarded endpoints (authenticate-only). Note: the `permissions` table has loan/BMS keys but lacks VICOBA keys (`death_expenses`, `manage_contributions`, `petty_cash`) — so `canX('<vicoba_key>')` correctly means **committee-only** (admin-bypass passes; others denied until a key is added & granted).
+
+### Files Modified
+- **`core/permissions.php`** — new `requirePermissionJson($action, $pageKey)` helper: JSON **403** + exit if the user lacks the permission (admins bypass via `isAdmin()`).
+- **`actions/`** `delete_death_expense` (`delete`/death_expenses), `process_death_expense` (`create`/death_expenses), `update_contribution` (`edit`/manage_contributions), `delete_petty_cash` (`delete`/petty_cash) — added the permissions include + authz call.
+- **`api/account/`** `save_account`/`save_category` (`edit`/chart_of_accounts), `delete_account`/`delete_account_category` (`delete`/chart_of_accounts), `create_reconciliation` (`create`/bank_reconciliation), `delete_reconciliation` (`delete`/bank_reconciliation).
+
+### Files Created
+- **`tests/Unit/EndpointAuthorizationTest.php`** — 11 tests (helper emits 403; each endpoint authorizes on the expected key).
+
+### Verification
+- **admin** → `delete_death_expense` **200** (passes); **member** → `delete_death_expense` and `api/account/save_account` **403** (denied). Unit suite **602 / 1112**; `php -l` clean.
+- Next: **H4** (broken registration include `includes/db.php`).
+
+---
+
+## Session — 2026-06-25 — Audit fix H2
+**Branch:** `fix/h2-schema-reconciliation`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit High **H2** — systemic schema reconciliation. Built a checker that diffs every `INSERT` column-list in the codebase against the live DB. **Outcome: the VICOBA core is already reconciled** (the earlier B2 + death-expense fixes resolved the real drift). Remaining drift is **not** in core:
+- **Unused BMS modules** (`brands`, `invoice_items`, `purchase_returns`, `warehouses`, `locations`, `deleted_expenses`) — e-commerce/inventory features the group doesn't use.
+- **`register_customer.php`** writes legacy `customers` columns (`date_of_birth`, `phone_number`, `id_number`, …) — but it's a **dead/broken file** (the missing-`includes/db.php`, see H4); the live path `add_member.php` uses the correct columns.
+- **Communication tables** (`email_logs`, `sms_logs`, `auto_reminder_logs`) are **self-creating** (`CREATE TABLE IF NOT EXISTS` in `email_helper.php`/`sms_helper.php`/`contribution_reminders.php`) — no missing-table impact.
+
+### Files Created
+- **`database/check_schema_drift.php`** — permanent drift guard: reports columns the code writes that don't exist in the DB; ignores the unused BMS tables to keep the signal on core. Pure, unit-testable parser `vikundi_extract_insert_columns()`; CLI scan guarded behind direct-invocation.
+- **`tests/Unit/SchemaDriftCheckerTest.php`** — 4 tests for the parser.
+
+### Files Modified
+- **`composer.json`** — added `composer check-schema`.
+
+### Notes
+- The checker confirms the only "core" drift is the dead `register_customer.php` (handed to **H4**). Hiding/removing the unused BMS modules is a separate cleanup (relates to L3). Unit suite **591 / 1090**.
+- Next: **H3** (authorization — permission checks on mutations, not just login).
+
+---
+
+## Session — 2026-06-25 — Audit fix H1
+**Branch:** `fix/h1-fund-balance-ledger`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit High **H1** — the group fund balance was not a real ledger. Three inconsistent numbers existed: the approval **gate** read `group_settings.group_balance` (only ever decremented, never credited by contributions); the **dashboard** computed `approved contributions − death_expenses(ALL statuses) − expenses(WHERE paid)` but summed the **wrong, empty `expenses` table** instead of `general_expenses` and counted pending/rejected deaths. The gate could block valid payouts or allow overspending.
+
+### Decision (confirmed with group)
+Available fund = **(approved contributions + paid fines) − (approved death + approved general expenses + approved petty cash + member payouts[approved/paid])**.
+
+### Files Created
+- **`includes/finance.php`** — single source of truth: `getGroupFundBalance(PDO)` (computed from live records, can't drift) + pure, testable `fundBalanceFromTotals(...)`.
+- **`tests/Unit/FundBalanceTest.php`** — 4 tests for the arithmetic.
+
+### Files Modified
+- **`actions/approve_death_expense.php`** & **`api/approve_general_expense.php`** — gate now uses `getGroupFundBalance()`; removed the stale `group_balance` read+decrement (the fund derives from records, so approving auto-reduces it).
+- **`app/dashboard.php`** — balance now uses `getGroupFundBalance()`; fixed expense totals to approved death + approved general (was: all-status death + the empty `expenses` table).
+
+### Verification
+- Computed balance matches records exactly (2,399,878 = 2,400,000 contrib − 122 pre-existing approved death). Over-budget approval **blocked** (status stayed `reviewed`); affordable approval **passed**. Unit suite **587 / 1082**; `php -l` clean.
+
+### Notes
+- The vestigial `group_settings.group_balance` setting is no longer authoritative (still read by `core/ai_insights.php` for AI context only — harmless).
+- Known limitation: the gate read-modify lacks a hard concurrency lock; for a single-treasurer group this is low-risk (same as before, now at least always records-accurate). Can add row-locking later if needed.
+- Next: **H2** (systemic schema reconciliation).
+
+---
+
+## Session — 2026-06-25 — Audit fix B4
+**Branch:** `fix/b4-remove-webroot-debug-scripts`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit Blocker **B4** — ~28 one-off debug/maintenance scripts sat at the web root, reachable and unauthenticated. Several were destructive (`set_balance.php` overwrote the fund to 1,000,000; `clear_expenses.php` deleted expenses; `fix_db_schema.php`, `setup_permissions.php`) and many leaked data/schema (`list_all_users.php`, `list_db.php`, `check_*`).
+
+### Files Removed (28)
+`add_col.php`, `check_accounts.php`, `check_banks.php`, `check_cols.php`, `check_customer_cols.php`, `check_customers_cols.php`, `check_db.php`, `check_death_cols.php`, `check_raw_users.php`, `check_roles.php`, `check_users_cols.php`, `clear_expenses.php`, `compare_counts.php`, `describe_docs.php`, `find_bank_accounts.php`, `find_route.php`, `fix_db_schema.php`, `get_tables.php`, `list_account_names.php`, `list_all_users.php`, `list_db.php`, `list_fields.php`, `list_tables.php`, `migrate_expenses.php`, `set_balance.php`, `setup_granular_permissions.php`, `setup_permissions.php`, `sync_members.php`.
+
+### Files Created
+- **`tests/Unit/NoWebRootDebugScriptsTest.php`** — fails if any of these scripts reappear at the web root.
+
+### Verification
+- All 28 confirmed **unreferenced** (no code include, no `roots.php` route, not in the deploy workflow) before removal. `deploy-hook.php` (the legit deploy webhook) was kept.
+- After removal: site still serves (`/login` 200); deleted paths route to the login page (nothing executes). Unit suite **583 / 1078** green.
+
+### Notes
+- Recoverable from git history if a one-off is ever needed; proper migrations live in `database/migrate.php`.
+- **Blocker tier COMPLETE** (B1–B4). Next tier: **High** (H1 fund-balance ledger, H2 schema reconciliation, H3 authz, H4 broken registration include, H5 cookie flags, H6 CSRF).
+
+---
+
+## Session — 2026-06-25 — Audit fix B3
+**Branch:** `fix/b3-central-auth-guard`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit Blocker **B3** — several state-changing endpoints ran with no login check, so anyone with the URL could mutate/delete financial data via POST.
+
+### Approach
+A single central gate instead of per-file ad-hoc checks.
+
+### Files Created
+- **`includes/require_auth.php`** — `require_once` at the top of an endpoint; if there's no `$_SESSION['user_id']` it emits a clean JSON **401** and `exit`s. Authentication only (authorization stays with the can* helpers).
+- **`tests/Unit/EndpointAuthGuardTest.php`** — asserts the gate emits 401/exit and that each guarded endpoint includes it (11 tests).
+
+### Files Modified (guard added)
+- Actions: `delete_death_expense.php`, `update_contribution.php`, `process_death_expense.php`, `delete_petty_cash.php`.
+- API: `api/account/save_account.php`, `delete_account.php`, `save_category.php`, `delete_account_category.php`, `create_reconciliation.php`, `delete_reconciliation.php`.
+
+### Scope notes
+- Confirmed by reading each file. Excluded: endpoints that already guard via the `$_SESSION['user_id'] ?? null; if (!$user_id)` idiom (`add_member`, `update_user_role`, `update_user_status`, `approve_member`); intentionally-public flows (login/register/reset); and cron/CLI scripts (`auto_terminate_members`, `calculate_penalties`, `contribution_reminders`) which need a CLI guard, not web-auth (tracked separately). `upload_attachments.php` is broken+dead → handled by M3.
+
+### Notes
+- Verified at `vikundi.localhost`: unauthenticated POST → **401** (action and API); authenticated → **200** (passes to the endpoint's own logic). Unit suite **582 / 1050** green; `php -l` clean.
+- Next Blocker: **B4** (remove web-root debug/maintenance scripts).
+
+---
+
+## Session — 2026-06-25 — Audit fix B2
+**Branch:** `fix/b2-rbac-review-approve-columns`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit Blocker **B2** — RBAC was dead. `role_permissions` lacked `can_review`/`can_approve`, but `core/permissions.php` SELECTs them, so `loadUserPermissions()` threw on every request (`Unknown column 'rp.can_review'`, 11× in the log) and `$_SESSION['permissions']` was set to `[]` — every non-admin-bypass role got **zero** permissions.
+
+### Root cause
+`database/sync_workflow_columns.php` adds workflow *tracking* columns to transaction tables but its `$map` never included `role_permissions`, so the two permission flags were never created.
+
+### Files Modified
+- **`database/sync_workflow_columns.php`** — added `role_permissions => can_review, can_approve` (`TINYINT(1) NOT NULL DEFAULT 0`, matching existing `can_*`). Idempotent; runs via `migrate.php` on deploy, so production self-heals.
+
+### Files Created
+- **`tests/Unit/WorkflowColumnsMigrationTest.php`** — guards that the migration declares the two flags and that `core/permissions.php` still selects them (kept in lockstep).
+
+### Notes
+- Verified: migration adds both columns (idempotent); `loadUserPermissions()` no longer throws — admin loads **71 page-keys** (was 0); an authed login+dashboard produced **0** new `can_review` errors. Unit suite **571 / 1027** green.
+- **Behaviour change:** with permissions now loading, the configured `role_permissions` grants (view/create/edit/delete) actually take effect for non-admin roles. `can_review`/`can_approve` default to 0 — granting them to committee roles is a config task in the Roles UI (admins still review/approve via bypass).
+- Next Blocker: **B3** (central auth guard for unauthenticated endpoints).
+
+---
+
+## Session — 2026-06-25 — Audit fix B1
+**Branch:** `fix/b1-disable-display-errors`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit Blocker **B1** — `roots.php` forced `display_errors=1` on every request, leaking PHP errors to end users and corrupting AJAX/JSON responses (the "server connection failed" class).
+
+### Files Created
+- **`includes/env.php`** — dependency-free `vikundi_is_dev_host()`; returns true only for local/dev contexts (localhost, 127.0.0.1, ::1, `*.localhost`, `*.test`, CLI). Unknown/empty host ⇒ production (safe default).
+- **`tests/Unit/EnvTest.php`** — 4 tests (dev hosts, production hosts, empty/unknown host, CLI; includes IPv6 `::1`).
+
+### Files Modified
+- **`roots.php`** — errors are always reported + logged, but **displayed only on dev hosts**; production never shows error text. Loads `includes/env.php` at the top of the front controller.
+
+### Notes
+- Verified: dev host (`vikundi.localhost`) still serves normally; unit suite **569 tests, 1022 assertions** green; `php -l` clean.
+- Per-finding workflow: one Blocker per branch/PR. Next: **B2** (RBAC `role_permissions.can_review/can_approve`).
+
+---
+
 ## Session — 2026-06-24
 **Branch:** `fix/death-expense-schema-and-child-retention`
 **Developer:** Claude Code / Dutch

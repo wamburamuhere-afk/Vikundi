@@ -1,8 +1,13 @@
 <?php
-// Enable Error Reporting for Debugging
+// Error handling (audit B1): always report + log, but only DISPLAY errors on
+// local/dev hosts. Production never shows error text to users (security +
+// avoids corrupting AJAX/JSON responses).
+require_once __DIR__ . '/includes/env.php';
+$__vk_dev = vikundi_is_dev_host($_SERVER['HTTP_HOST'] ?? null);
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+ini_set('log_errors', '1');
+ini_set('display_errors', $__vk_dev ? '1' : '0');
+ini_set('display_startup_errors', $__vk_dev ? '1' : '0');
 
 // Ensure session cookie is accessible across the whole site
 // This must be set BEFORE session_start()

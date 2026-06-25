@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../roots.php';
 require_once __DIR__ . '/../helpers.php'; // markChildDeceasedJson()
+require_once __DIR__ . '/../includes/finance.php'; // getGroupFundBalance() (audit H1)
 global $pdo;
 
 header('Content-Type: application/json');
@@ -32,18 +33,14 @@ try {
     $deceased_type = strtolower($expense['deceased_type'] ?? '');
     $deceased_id = $expense['deceased_id'] ?? '';
 
-    // 2. Fetch current group balance from settings
-    $stmt = $pdo->query("SELECT setting_value FROM group_settings WHERE setting_key = 'group_balance'");
-    $current_balance = (float)$stmt->fetchColumn();
-
+    // 2. Gate on the REAL available fund, computed from records (audit H1) —
+    //    not the old stale group_settings.group_balance.
+    $current_balance = getGroupFundBalance($pdo);
     if ($current_balance < $amount) {
         throw new Exception("Salio la kikundi halitoshi. Salio la sasa: " . number_format($current_balance, 2));
     }
-
-    // 3. Update group balance
-    $new_balance = $current_balance - $amount;
-    $stmt = $pdo->prepare("UPDATE group_settings SET setting_value = ? WHERE setting_key = 'group_balance'");
-    $stmt->execute([$new_balance]);
+    // The fund is derived from records: approving this expense (status -> approved
+    // below) reduces the computed balance automatically — no manual write needed.
 
     // 4. Update death expense status to 'approved' + capture signature
     $actor = workflowActorSnapshot();

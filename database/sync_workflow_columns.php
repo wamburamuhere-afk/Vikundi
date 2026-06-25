@@ -22,6 +22,10 @@ require_once __DIR__ . '/../includes/config.php';
 
 /* table => [column => definition] — mirrors what the local/dev schema has. */
 $map = [
+    // RBAC permission flags the permission loader selects (audit B2). Without
+    // these, core/permissions.php's SELECT throws and EVERY user's permissions
+    // fail to load — granular roles get nothing. Match the existing can_* type.
+    'role_permissions'     => ['can_review' => 'TINYINT(1) NOT NULL DEFAULT 0', 'can_approve' => 'TINYINT(1) NOT NULL DEFAULT 0'],
     'contributions'        => ['created_by' => 'INT NULL', 'reviewed_by' => 'INT NULL', 'reviewed_at' => 'DATETIME NULL', 'approved_by' => 'INT NULL', 'approved_at' => 'DATETIME NULL'],
     'budgets'              => ['reviewed_by' => 'INT NULL', 'reviewed_at' => 'DATETIME NULL', 'approved_by' => 'INT NULL', 'approved_at' => 'DATETIME NULL'],
     'general_expenses'     => ['reviewed_by' => 'INT NULL', 'reviewed_at' => 'DATETIME NULL', 'approved_by' => 'INT NULL', 'approved_at' => 'DATETIME NULL'],
