@@ -4,6 +4,27 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-25 — Audit fix H2
+**Branch:** `fix/h2-schema-reconciliation`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit High **H2** — systemic schema reconciliation. Built a checker that diffs every `INSERT` column-list in the codebase against the live DB. **Outcome: the VICOBA core is already reconciled** (the earlier B2 + death-expense fixes resolved the real drift). Remaining drift is **not** in core:
+- **Unused BMS modules** (`brands`, `invoice_items`, `purchase_returns`, `warehouses`, `locations`, `deleted_expenses`) — e-commerce/inventory features the group doesn't use.
+- **`register_customer.php`** writes legacy `customers` columns (`date_of_birth`, `phone_number`, `id_number`, …) — but it's a **dead/broken file** (the missing-`includes/db.php`, see H4); the live path `add_member.php` uses the correct columns.
+- **Communication tables** (`email_logs`, `sms_logs`, `auto_reminder_logs`) are **self-creating** (`CREATE TABLE IF NOT EXISTS` in `email_helper.php`/`sms_helper.php`/`contribution_reminders.php`) — no missing-table impact.
+
+### Files Created
+- **`database/check_schema_drift.php`** — permanent drift guard: reports columns the code writes that don't exist in the DB; ignores the unused BMS tables to keep the signal on core. Pure, unit-testable parser `vikundi_extract_insert_columns()`; CLI scan guarded behind direct-invocation.
+- **`tests/Unit/SchemaDriftCheckerTest.php`** — 4 tests for the parser.
+
+### Files Modified
+- **`composer.json`** — added `composer check-schema`.
+
+### Notes
+- The checker confirms the only "core" drift is the dead `register_customer.php` (handed to **H4**). Hiding/removing the unused BMS modules is a separate cleanup (relates to L3). Unit suite **591 / 1090**.
+- Next: **H3** (authorization — permission checks on mutations, not just login).
+
+---
+
 ## Session — 2026-06-25 — Audit fix H1
 **Branch:** `fix/h1-fund-balance-ledger`
 **Developer:** Claude Code / Dutch
