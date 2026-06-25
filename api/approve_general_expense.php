@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../roots.php';
+require_once __DIR__ . '/../includes/finance.php'; // getGroupFundBalance() (audit H1)
 global $pdo;
 
 header('Content-Type: application/json');
@@ -26,15 +27,12 @@ try {
 
     $amount = $expense['amount'];
 
-    $stmt = $pdo->query("SELECT setting_value FROM group_settings WHERE setting_key = 'group_balance'");
-    $current_balance = (float)$stmt->fetchColumn();
-
+    // Gate on the REAL available fund, computed from records (audit H1).
+    $current_balance = getGroupFundBalance($pdo);
     if ($current_balance < $amount) {
         throw new Exception("Salio la kikundi halitoshi. Salio la sasa: " . number_format($current_balance, 2));
     }
-
-    $new_balance = $current_balance - $amount;
-    $pdo->prepare("UPDATE group_settings SET setting_value = ? WHERE setting_key = 'group_balance'")->execute([$new_balance]);
+    // Fund is derived from records: approving this expense reduces it automatically.
 
     $actor = workflowActorSnapshot();
     $pdo->prepare("UPDATE general_expenses SET status = 'approved', approved_by = ?, approved_at = CURRENT_TIMESTAMP WHERE id = ?")->execute([$user_id, $id]);

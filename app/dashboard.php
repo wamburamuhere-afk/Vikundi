@@ -42,11 +42,12 @@ $pending_death_expenses = (int) $pdo->query("SELECT COUNT(*) FROM death_expenses
 $pending_general_expenses = (int) $pdo->query("SELECT COUNT(*) FROM general_expenses WHERE status = 'pending'")->fetchColumn();
 $pending_budgets = (int) $pdo->query("SELECT COUNT(*) FROM budgets WHERE status = 'pending'")->fetchColumn();
 
-// ── Death Expenses & Net Balance ──────────────────────────────────────────
-$total_death_expenses = (float) $pdo->query("SELECT COALESCE(SUM(amount),0) FROM death_expenses")->fetchColumn();
-$total_other_expenses = (float) $pdo->query("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE status='paid'")->fetchColumn();
-$total_all_expenses = $total_death_expenses + $total_other_expenses;
-$net_balance = $total_contributions - $total_all_expenses;
+// ── Death Expenses & Net Balance (audit H1: single source of truth) ───────
+require_once ROOT_DIR . '/includes/finance.php';
+$total_death_expenses   = (float) $pdo->query("SELECT COALESCE(SUM(amount),0) FROM death_expenses WHERE status='approved'")->fetchColumn();
+$total_general_expenses = (float) $pdo->query("SELECT COALESCE(SUM(amount),0) FROM general_expenses WHERE status='approved'")->fetchColumn();
+$total_all_expenses = $total_death_expenses + $total_general_expenses;
+$net_balance = getGroupFundBalance($pdo); // computed from records, matches the approval gate
 
 // ── My own stats if Member ───────────────────────────────────────────────
 $my_total_contributions = 0; $my_pending_contributions = 0;
