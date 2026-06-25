@@ -4,6 +4,26 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-25 — Audit fix H4 (+ M3)
+**Branch:** `fix/h4-broken-db-include`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit High **H4** — three dead action handlers `require '../includes/db.php'`, which **does not exist**, so they fatal if reached. The audit had over-stated this as "registration broken" — verified the **live** registration is healthy: the page `register.php` (HTTP 200) posts to `actions/process_registration.php`, which works. The broken files are all unreferenced legacy.
+
+### Files Removed (3)
+- **`actions/register.php`** — legacy registration handler, superseded by `process_registration.php`; not routed, not posted to.
+- **`actions/register_customer.php`** — legacy; also wrote non-existent `customers` columns (the H2 drift item).
+- **`actions/upload_attachments.php`** — unused + broken (this also closes Medium **M3**).
+
+### Files Created
+- **`tests/Unit/NoBrokenDbIncludeTest.php`** — asserts `includes/db.php` doesn't exist and that no file requires it (recurrence guard).
+
+### Verification
+- After removal: **no** file references `includes/db.php`; `/register` 200, `/login` 200. Unit suite **604 / 1114**.
+- Removing these also clears the only "core" drift the H2 checker reported (`register_customer.php`).
+- Next: **H5** (session cookie `httponly`/`secure`).
+
+---
+
 ## Session — 2026-06-25 — Audit fix H3
 **Branch:** `fix/h3-endpoint-authorization`
 **Developer:** Claude Code / Dutch
