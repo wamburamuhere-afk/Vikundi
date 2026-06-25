@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 if (!isset($pdo)) {
     require_once __DIR__ . '/../includes/config.php';
 }
+require_once __DIR__ . '/../includes/require_auth.php'; // audit B3: must be logged in
 
 header('Content-Type: application/json');
 
