@@ -4,6 +4,27 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-25 — Audit fix B2
+**Branch:** `fix/b2-rbac-review-approve-columns`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit Blocker **B2** — RBAC was dead. `role_permissions` lacked `can_review`/`can_approve`, but `core/permissions.php` SELECTs them, so `loadUserPermissions()` threw on every request (`Unknown column 'rp.can_review'`, 11× in the log) and `$_SESSION['permissions']` was set to `[]` — every non-admin-bypass role got **zero** permissions.
+
+### Root cause
+`database/sync_workflow_columns.php` adds workflow *tracking* columns to transaction tables but its `$map` never included `role_permissions`, so the two permission flags were never created.
+
+### Files Modified
+- **`database/sync_workflow_columns.php`** — added `role_permissions => can_review, can_approve` (`TINYINT(1) NOT NULL DEFAULT 0`, matching existing `can_*`). Idempotent; runs via `migrate.php` on deploy, so production self-heals.
+
+### Files Created
+- **`tests/Unit/WorkflowColumnsMigrationTest.php`** — guards that the migration declares the two flags and that `core/permissions.php` still selects them (kept in lockstep).
+
+### Notes
+- Verified: migration adds both columns (idempotent); `loadUserPermissions()` no longer throws — admin loads **71 page-keys** (was 0); an authed login+dashboard produced **0** new `can_review` errors. Unit suite **571 / 1027** green.
+- **Behaviour change:** with permissions now loading, the configured `role_permissions` grants (view/create/edit/delete) actually take effect for non-admin roles. `can_review`/`can_approve` default to 0 — granting them to committee roles is a config task in the Roles UI (admins still review/approve via bypass).
+- Next Blocker: **B3** (central auth guard for unauthenticated endpoints).
+
+---
+
 ## Session — 2026-06-25 — Audit fix B1
 **Branch:** `fix/b1-disable-display-errors`
 **Developer:** Claude Code / Dutch
