@@ -4,6 +4,27 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-25 — Audit fix B4
+**Branch:** `fix/b4-remove-webroot-debug-scripts`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit Blocker **B4** — ~28 one-off debug/maintenance scripts sat at the web root, reachable and unauthenticated. Several were destructive (`set_balance.php` overwrote the fund to 1,000,000; `clear_expenses.php` deleted expenses; `fix_db_schema.php`, `setup_permissions.php`) and many leaked data/schema (`list_all_users.php`, `list_db.php`, `check_*`).
+
+### Files Removed (28)
+`add_col.php`, `check_accounts.php`, `check_banks.php`, `check_cols.php`, `check_customer_cols.php`, `check_customers_cols.php`, `check_db.php`, `check_death_cols.php`, `check_raw_users.php`, `check_roles.php`, `check_users_cols.php`, `clear_expenses.php`, `compare_counts.php`, `describe_docs.php`, `find_bank_accounts.php`, `find_route.php`, `fix_db_schema.php`, `get_tables.php`, `list_account_names.php`, `list_all_users.php`, `list_db.php`, `list_fields.php`, `list_tables.php`, `migrate_expenses.php`, `set_balance.php`, `setup_granular_permissions.php`, `setup_permissions.php`, `sync_members.php`.
+
+### Files Created
+- **`tests/Unit/NoWebRootDebugScriptsTest.php`** — fails if any of these scripts reappear at the web root.
+
+### Verification
+- All 28 confirmed **unreferenced** (no code include, no `roots.php` route, not in the deploy workflow) before removal. `deploy-hook.php` (the legit deploy webhook) was kept.
+- After removal: site still serves (`/login` 200); deleted paths route to the login page (nothing executes). Unit suite **583 / 1078** green.
+
+### Notes
+- Recoverable from git history if a one-off is ever needed; proper migrations live in `database/migrate.php`.
+- **Blocker tier COMPLETE** (B1–B4). Next tier: **High** (H1 fund-balance ledger, H2 schema reconciliation, H3 authz, H4 broken registration include, H5 cookie flags, H6 CSRF).
+
+---
+
 ## Session — 2026-06-25 — Audit fix B3
 **Branch:** `fix/b3-central-auth-guard`
 **Developer:** Claude Code / Dutch
