@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/require_auth.php'; // audit B3: must be logged in
 global $pdo;
 
 header('Content-Type: application/json');

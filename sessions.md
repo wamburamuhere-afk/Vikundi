@@ -4,6 +4,31 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-25 — Audit fix B3
+**Branch:** `fix/b3-central-auth-guard`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit Blocker **B3** — several state-changing endpoints ran with no login check, so anyone with the URL could mutate/delete financial data via POST.
+
+### Approach
+A single central gate instead of per-file ad-hoc checks.
+
+### Files Created
+- **`includes/require_auth.php`** — `require_once` at the top of an endpoint; if there's no `$_SESSION['user_id']` it emits a clean JSON **401** and `exit`s. Authentication only (authorization stays with the can* helpers).
+- **`tests/Unit/EndpointAuthGuardTest.php`** — asserts the gate emits 401/exit and that each guarded endpoint includes it (11 tests).
+
+### Files Modified (guard added)
+- Actions: `delete_death_expense.php`, `update_contribution.php`, `process_death_expense.php`, `delete_petty_cash.php`.
+- API: `api/account/save_account.php`, `delete_account.php`, `save_category.php`, `delete_account_category.php`, `create_reconciliation.php`, `delete_reconciliation.php`.
+
+### Scope notes
+- Confirmed by reading each file. Excluded: endpoints that already guard via the `$_SESSION['user_id'] ?? null; if (!$user_id)` idiom (`add_member`, `update_user_role`, `update_user_status`, `approve_member`); intentionally-public flows (login/register/reset); and cron/CLI scripts (`auto_terminate_members`, `calculate_penalties`, `contribution_reminders`) which need a CLI guard, not web-auth (tracked separately). `upload_attachments.php` is broken+dead → handled by M3.
+
+### Notes
+- Verified at `vikundi.localhost`: unauthenticated POST → **401** (action and API); authenticated → **200** (passes to the endpoint's own logic). Unit suite **582 / 1050** green; `php -l` clean.
+- Next Blocker: **B4** (remove web-root debug/maintenance scripts).
+
+---
+
 ## Session — 2026-06-25 — Audit fix B2
 **Branch:** `fix/b2-rbac-review-approve-columns`
 **Developer:** Claude Code / Dutch
