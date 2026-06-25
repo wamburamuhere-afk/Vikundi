@@ -4,6 +4,24 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-25 — Audit fix B1
+**Branch:** `fix/b1-disable-display-errors`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit Blocker **B1** — `roots.php` forced `display_errors=1` on every request, leaking PHP errors to end users and corrupting AJAX/JSON responses (the "server connection failed" class).
+
+### Files Created
+- **`includes/env.php`** — dependency-free `vikundi_is_dev_host()`; returns true only for local/dev contexts (localhost, 127.0.0.1, ::1, `*.localhost`, `*.test`, CLI). Unknown/empty host ⇒ production (safe default).
+- **`tests/Unit/EnvTest.php`** — 4 tests (dev hosts, production hosts, empty/unknown host, CLI; includes IPv6 `::1`).
+
+### Files Modified
+- **`roots.php`** — errors are always reported + logged, but **displayed only on dev hosts**; production never shows error text. Loads `includes/env.php` at the top of the front controller.
+
+### Notes
+- Verified: dev host (`vikundi.localhost`) still serves normally; unit suite **569 tests, 1022 assertions** green; `php -l` clean.
+- Per-finding workflow: one Blocker per branch/PR. Next: **B2** (RBAC `role_permissions.can_review/can_approve`).
+
+---
+
 ## Session — 2026-06-24
 **Branch:** `fix/death-expense-schema-and-child-retention`
 **Developer:** Claude Code / Dutch
