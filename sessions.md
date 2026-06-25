@@ -4,6 +4,32 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-25 — Audit fix H1
+**Branch:** `fix/h1-fund-balance-ledger`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit High **H1** — the group fund balance was not a real ledger. Three inconsistent numbers existed: the approval **gate** read `group_settings.group_balance` (only ever decremented, never credited by contributions); the **dashboard** computed `approved contributions − death_expenses(ALL statuses) − expenses(WHERE paid)` but summed the **wrong, empty `expenses` table** instead of `general_expenses` and counted pending/rejected deaths. The gate could block valid payouts or allow overspending.
+
+### Decision (confirmed with group)
+Available fund = **(approved contributions + paid fines) − (approved death + approved general expenses + approved petty cash + member payouts[approved/paid])**.
+
+### Files Created
+- **`includes/finance.php`** — single source of truth: `getGroupFundBalance(PDO)` (computed from live records, can't drift) + pure, testable `fundBalanceFromTotals(...)`.
+- **`tests/Unit/FundBalanceTest.php`** — 4 tests for the arithmetic.
+
+### Files Modified
+- **`actions/approve_death_expense.php`** & **`api/approve_general_expense.php`** — gate now uses `getGroupFundBalance()`; removed the stale `group_balance` read+decrement (the fund derives from records, so approving auto-reduces it).
+- **`app/dashboard.php`** — balance now uses `getGroupFundBalance()`; fixed expense totals to approved death + approved general (was: all-status death + the empty `expenses` table).
+
+### Verification
+- Computed balance matches records exactly (2,399,878 = 2,400,000 contrib − 122 pre-existing approved death). Over-budget approval **blocked** (status stayed `reviewed`); affordable approval **passed**. Unit suite **587 / 1082**; `php -l` clean.
+
+### Notes
+- The vestigial `group_settings.group_balance` setting is no longer authoritative (still read by `core/ai_insights.php` for AI context only — harmless).
+- Known limitation: the gate read-modify lacks a hard concurrency lock; for a single-treasurer group this is low-risk (same as before, now at least always records-accurate). Can add row-locking later if needed.
+- Next: **H2** (systemic schema reconciliation).
+
+---
+
 ## Session — 2026-06-25 — Audit fix B4
 **Branch:** `fix/b4-remove-webroot-debug-scripts`
 **Developer:** Claude Code / Dutch
