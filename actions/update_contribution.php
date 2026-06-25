@@ -7,8 +7,10 @@ if (!isset($pdo)) {
     require_once __DIR__ . '/../includes/config.php';
 }
 require_once __DIR__ . '/../includes/require_auth.php'; // audit B3: must be logged in
+require_once __DIR__ . '/../core/permissions.php';
 
 header('Content-Type: application/json');
+requirePermissionJson('edit', 'manage_contributions'); // audit H3
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id = $_POST['id'] ?? null;

@@ -4,6 +4,28 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-25 — Audit fix H3
+**Branch:** `fix/h3-endpoint-authorization`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit High **H3** — authorization. B2 revived the permission model and B3 added authentication (logged-in?). H3 adds *authorization* (allowed?) to the mutating endpoints that only checked login, so a regular member can't perform committee actions.
+
+### Finding
+Member/user endpoints (`add_member`, `update_user_role`, `update_user_status`, `approve_member`) **already authorize** via custom committee-role checks, and the `approve_*` endpoints already use `canApprove(...)`. The gaps were the B3-guarded endpoints (authenticate-only). Note: the `permissions` table has loan/BMS keys but lacks VICOBA keys (`death_expenses`, `manage_contributions`, `petty_cash`) — so `canX('<vicoba_key>')` correctly means **committee-only** (admin-bypass passes; others denied until a key is added & granted).
+
+### Files Modified
+- **`core/permissions.php`** — new `requirePermissionJson($action, $pageKey)` helper: JSON **403** + exit if the user lacks the permission (admins bypass via `isAdmin()`).
+- **`actions/`** `delete_death_expense` (`delete`/death_expenses), `process_death_expense` (`create`/death_expenses), `update_contribution` (`edit`/manage_contributions), `delete_petty_cash` (`delete`/petty_cash) — added the permissions include + authz call.
+- **`api/account/`** `save_account`/`save_category` (`edit`/chart_of_accounts), `delete_account`/`delete_account_category` (`delete`/chart_of_accounts), `create_reconciliation` (`create`/bank_reconciliation), `delete_reconciliation` (`delete`/bank_reconciliation).
+
+### Files Created
+- **`tests/Unit/EndpointAuthorizationTest.php`** — 11 tests (helper emits 403; each endpoint authorizes on the expected key).
+
+### Verification
+- **admin** → `delete_death_expense` **200** (passes); **member** → `delete_death_expense` and `api/account/save_account` **403** (denied). Unit suite **602 / 1112**; `php -l` clean.
+- Next: **H4** (broken registration include `includes/db.php`).
+
+---
+
 ## Session — 2026-06-25 — Audit fix H2
 **Branch:** `fix/h2-schema-reconciliation`
 **Developer:** Claude Code / Dutch

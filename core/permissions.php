@@ -493,4 +493,36 @@ function getLandingPage()
     // All other users go to their personalized dashboard
     return 'loan-dashboard';
 }
+
+/**
+ * Authorization gate for JSON endpoints (audit H3). Emits a JSON 403 and exits
+ * if the current user lacks the given permission. Admins/committee bypass via
+ * isAdmin() inside the can* helpers.
+ *
+ * @param string $action  one of: view, create, edit, delete, approve
+ * @param string $pageKey permission page key (e.g. 'death_expenses')
+ */
+function requirePermissionJson(string $action, string $pageKey): void
+{
+    $allowed = match ($action) {
+        'view'    => canView($pageKey),
+        'create'  => canCreate($pageKey),
+        'edit'    => canEdit($pageKey),
+        'delete'  => canDelete($pageKey),
+        'approve' => canApprove($pageKey),
+        default   => false,
+    };
+    if (!$allowed) {
+        if (!headers_sent()) {
+            header('Content-Type: application/json');
+            http_response_code(403);
+        }
+        echo json_encode([
+            'success' => false,
+            'status'  => 'error',
+            'message' => 'You do not have permission to perform this action.',
+        ]);
+        exit;
+    }
+}
 ?>
