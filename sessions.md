@@ -4,6 +4,30 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-26 — Audit fix M6
+**Branch:** `fix/m6-password-policy`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit Medium **M6** — weak/inconsistent password policy. `reset_password.php` allowed **6** chars, registration enforced **nothing**, and admin create/edit + profile-change required 8 but with **no complexity**. Centralized one policy and applied it to every server-side password path. The "verify `forgot_password.php` proves identity" half was a pass — it already requires **username + NIDA** to match before issuing the (1-hour, session-stored) reset token.
+
+### Policy (single source of truth)
+- **`includes/registration_validator.php`** — new pure `reg_password_errors($password, $lang)`: ≥ 8 chars **and** at least one letter **and** one digit; returns bilingual error messages (empty = OK). Balanced for the member base — stronger than "6, no complexity" without locking users out.
+
+### Files Modified
+- **`includes/registration_validator.php`** — add the helper; `validate_registration_input()` now runs it whenever a password is provided (registration previously had no strength check).
+- **`actions/reset_password.php`** — replace `strlen < 6` with the central helper (+ require the validator).
+- **`app/constant/settings/add_user.php`**, **`edit_user.php`** — replace `strlen < 8` with the helper (+ require the validator).
+- **`app/constant/profile/profile.php`** — change-password path now uses the helper.
+
+### Tests
+- **`tests/Unit/RegistrationValidatorTest.php`** — +6 tests (strong passes; short / no-digit / no-letter rejected; Swahili messages; registration rejects a weak password). Bumped the base valid fixture `secret1` → `secret12` to satisfy the new policy.
+
+### Verification
+- Live (seeded reset session, non-existent user so 0 rows change): `abc123` (6 chars, previously allowed) → **rejected** "at least 8 characters"; `onlyletters` → **rejected** "must contain at least one number"; `secret12` → **accepted**. reset_password.php with no token → clean "session expired" JSON (no fatal).
+- Unit suite **631 / 1201**; `php -l` clean on all touched files.
+- Medium tier: M1 ⏳ · M2 ⏳ · M3 ✅ · M4 ⏳ · M5 ✅ · M6 ✅.
+
+---
+
 ## Session — 2026-06-26 — Audit fix M5
 **Branch:** `fix/m5-profile-auth-guard`
 **Developer:** Claude Code / Dutch

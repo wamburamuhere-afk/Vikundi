@@ -80,6 +80,39 @@ if (!function_exists('reg_file_mime')) {
     }
 }
 
+if (!function_exists('reg_password_errors')) {
+    /**
+     * Central password policy (audit M6). Returns a list of human-readable error
+     * messages — empty means the password is acceptable. Every server-side path
+     * that sets a password (registration, reset, admin create/edit, profile
+     * change) calls this so the rule lives in exactly one place.
+     *
+     * Policy: at least 8 characters, containing at least one letter and one
+     * digit. Balanced for a community-microfinance user base — meaningfully
+     * stronger than the old "6 chars, no complexity" without locking members out.
+     */
+    function reg_password_errors(string $password, string $lang = 'en'): array {
+        $sw = ($lang === 'sw');
+        $errors = [];
+        if (strlen($password) < 8) {
+            $errors[] = $sw
+                ? 'Nywila lazima iwe na herufi 8 au zaidi.'
+                : 'Password must be at least 8 characters.';
+        }
+        if (!preg_match('/[A-Za-z]/', $password)) {
+            $errors[] = $sw
+                ? 'Nywila lazima iwe na angalau herufi moja.'
+                : 'Password must contain at least one letter.';
+        }
+        if (!preg_match('/\d/', $password)) {
+            $errors[] = $sw
+                ? 'Nywila lazima iwe na angalau tarakimu moja.'
+                : 'Password must contain at least one number.';
+        }
+        return $errors;
+    }
+}
+
 if (!function_exists('validate_registration_input')) {
     /**
      * Validate posted registration data.
@@ -145,6 +178,9 @@ if (!function_exists('validate_registration_input')) {
 
         if ($requirePassword && $password === '') {
             $errors[] = $sw ? 'Nywila inahitajika.' : 'Password is required.';
+        } elseif ($password !== '') {
+            // audit M6: enforce the central password policy whenever one is set.
+            $errors = array_merge($errors, reg_password_errors($password, $lang));
         }
         if ($confirm !== null && $password !== '' && $password !== $confirm) {
             $errors[] = $sw ? 'Nywila hazifanani.' : 'Passwords do not match.';

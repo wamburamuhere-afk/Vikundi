@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/registration_validator.php'; // audit M6: central password policy
 
 $password = $_POST['password'] ?? '';
 $confirm_password = $_POST['confirm_password'] ?? '';
@@ -18,8 +19,13 @@ if (!$user_id || empty($session_token) || (time() - $reset_time) > 3600) {
     exit();
 }
 
-if (empty($password) || strlen($password) < 6) {
-    echo json_encode(['success' => false, 'message' => 'Password must be at least 6 characters.']);
+if (empty($password)) {
+    echo json_encode(['success' => false, 'message' => 'Password is required.']);
+    exit();
+}
+$pwErrors = reg_password_errors($password, $_SESSION['preferred_language'] ?? 'en');
+if (!empty($pwErrors)) {
+    echo json_encode(['success' => false, 'message' => implode(' ', $pwErrors)]);
     exit();
 }
 
