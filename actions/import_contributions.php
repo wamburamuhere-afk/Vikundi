@@ -1,118 +1,145 @@
 <?php
 // actions/import_contributions.php
+// Bulk transaction import — our own template OR an M-Koba statement. Each row is
+// normalised by includes/transaction_import.php, matched to a member by phone,
+// de-duplicated, and inserted into `contributions` as a PENDING transaction.
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-if (!defined('ROOT_DIR')) {
-    require_once __DIR__ . '/../roots.php'; 
-}
-
 require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/require_csrf.php'; // audit H6: valid CSRF token required
+require_once __DIR__ . '/../includes/transaction_import.php';
+require_once __DIR__ . '/../roots.php';
 
-// Access Control
 if (!isset($_SESSION['user_id'])) {
-    // Attempt fallback if routing is different
-    if (!isset($_SESSION['id'])) {
-        die("Unauthorized access. Please login first.");
-    } else {
-        $_SESSION['user_id'] = $_SESSION['id'];
-    }
+    die("Unauthorized access. Please login first.");
 }
 
 $response = ['success' => false, 'message' => ''];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['upload_file'])) {
     $upload_type = $_POST['upload_type'] ?? 'existing_report';
+    $isMkoba = ($upload_type === 'mkoba_statement');
     $file = $_FILES['upload_file']['tmp_name'];
-    
+
     if (!is_uploaded_file($file)) {
-        $response['message'] = "No file uploaded.";
-        echo json_encode($response);
+        $_SESSION['import_response'] = ['success' => false, 'message' => 'No file uploaded.'];
+        header('Location: ' . getUrl('transactions'));
         exit;
     }
 
-    $handle = fopen($file, "r");
+    $handle = fopen($file, 'r');
     if (!$handle) {
-        $response['message'] = "Unable to read file.";
-        echo json_encode($response);
+        $_SESSION['import_response'] = ['success' => false, 'message' => 'Unable to read file.'];
+        header('Location: ' . getUrl('transactions'));
         exit;
     }
 
-    $imported = 0;
-    $errors = [];
-    $row_count = 0;
-
-    // Headers
+    // Header row → lowercased, trimmed names (handles a UTF-8 BOM on col 1).
     $headers = fgetcsv($handle);
-    $phone_idx = -1;
-    $amount_idx = -1;
-
-    // Mapping logic
-    foreach ($headers as $idx => $header) {
-        $header = strtolower(trim($header));
-        if (in_array($header, ['phone', 'simu', 'namba', 'namba ya simu', 'id', 'member id', 'member_id'])) {
-            $phone_idx = $idx;
-        }
-        if (in_array($header, ['amount', 'kiasi', 'balance', 'total'])) {
-            $amount_idx = $idx;
-        }
+    if ($headers === false) {
+        $_SESSION['import_response'] = ['success' => false, 'message' => 'The file is empty.'];
+        header('Location: ' . getUrl('transactions'));
+        exit;
     }
+    $headers = array_map(function ($h) {
+        return strtolower(trim(str_replace("\xEF\xBB\xBF", '', (string) $h)));
+    }, $headers);
 
-    // Default mapping if headers not perfectly matched
-    if ($phone_idx === -1) $phone_idx = 0; // Assume col 1
-    if ($amount_idx === -1) $amount_idx = 1; // Assume col 2
+    $imported = 0; $skipped = 0; $duplicates = 0; $unmatched = [];
+
+    $findMember = $pdo->prepare("
+        SELECT c.customer_id FROM customers c
+        JOIN users u ON c.user_id = u.user_id
+        WHERE u.status = 'active' AND c.is_deceased = 0 AND c.phone LIKE ?
+        LIMIT 1
+    ");
+    $dupByReceipt = $pdo->prepare("SELECT COUNT(*) FROM contributions WHERE mkoba_receipt = ? AND member_id = ?");
+    $dupByRow     = $pdo->prepare("SELECT COUNT(*) FROM contributions WHERE member_id = ? AND amount = ? AND contribution_date = ?");
+    $insert = $pdo->prepare("
+        INSERT INTO contributions (
+            member_id, amount, contribution_type, contribution_date, description, status,
+            receipt_number, account,
+            mkoba_receipt, mkoba_trans_type, mkoba_source, mkoba_destination,
+            mkoba_member_id_str, mkoba_member_name, mkoba_trans_id, mkoba_sno,
+            created_by, created_at
+        ) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ");
 
     try {
         $pdo->beginTransaction();
-        
-        while (($data = fgetcsv($handle)) !== FALSE) {
-            $row_count++;
-            $identifier = trim($data[$phone_idx] ?? '');
-            $amount = floatval(preg_replace('/[^0-9.]/', '', $data[$amount_idx] ?? '0'));
 
-            // Robust Identification logic (Phone or ID)
-            $clean_id = preg_replace('/[^0-9]/', '', $identifier); // e.g. 255712345678 or 07123...
-            $short_phone = substr($clean_id, -9); // Last 9 digits are common (712345678)
+        while (($data = fgetcsv($handle)) !== false) {
+            // Skip wholly empty lines.
+            if (count(array_filter($data, fn($v) => trim((string) $v) !== '')) === 0) continue;
 
-            $stmt = $pdo->prepare("
-                SELECT customer_id FROM customers 
-                WHERE (
-                    phone = ? OR phone LIKE ? OR customer_id = ?
-                ) AND status = 'active' LIMIT 1
-            ");
-            $stmt->execute([$identifier, "%$short_phone", $identifier]);
-            $member_id = $stmt->fetchColumn();
-
-            if ($member_id) {
-                // Insert contribution
-                $stmt_ins = $pdo->prepare("INSERT INTO contributions (member_id, amount, contribution_date, description, status, contribution_type, created_at) VALUES (?, ?, CURRENT_DATE, ?, 'confirmed', 'bulk', NOW())");
-                $desc = ($upload_type === 'mkoba_statement') ? 'Imported from M-Koba' : 'Bulk Import from Report';
-                $stmt_ins->execute([$member_id, $amount, $desc]);
-                $imported++;
-            } else {
-                $errors[] = "Row $row_count: Member not found or inactive ($identifier)";
+            $assoc = [];
+            foreach ($headers as $i => $key) {
+                if ($key !== '') $assoc[$key] = $data[$i] ?? '';
             }
+
+            $p = $isMkoba ? mkoba_parse_row($assoc) : txn_template_parse_row($assoc);
+            if ($p === null) { $skipped++; continue; } // non-contribution / missing phone or amount
+
+            $findMember->execute(['%' . $p['phone']]);
+            $member_id = $findMember->fetchColumn();
+            if (!$member_id) {
+                $unmatched[] = ($p['name'] !== '' ? $p['name'] : 'Unknown') . ' (' . $p['phone'] . ')';
+                continue;
+            }
+
+            // De-dupe: by receipt when present, else by member+amount+date.
+            if ($p['receipt'] !== '') {
+                $dupByReceipt->execute([$p['receipt'], $member_id]);
+                $isDup = (int) $dupByReceipt->fetchColumn() > 0;
+            } else {
+                $dupByRow->execute([$member_id, $p['amount'], $p['date'] ?? date('Y-m-d')]);
+                $isDup = (int) $dupByRow->fetchColumn() > 0;
+            }
+            if ($isDup) { $duplicates++; continue; }
+
+            $insert->execute([
+                $member_id, $p['amount'], $p['type'], $p['date'] ?? date('Y-m-d'), $p['description'],
+                $p['receipt'] !== '' ? $p['receipt'] : null,
+                $p['account'],
+                $p['receipt'] !== '' ? $p['receipt'] : null,
+                $p['trans_type'] !== '' ? $p['trans_type'] : null,
+                $p['source'] !== '' ? $p['source'] : null,
+                $p['destination'] !== '' ? $p['destination'] : null,
+                $p['phone'],
+                $p['name'] !== '' ? $p['name'] : null,
+                $p['trans_id'] !== '' ? $p['trans_id'] : null,
+                $p['sno'] !== '' ? $p['sno'] : null,
+                $_SESSION['user_id'],
+            ]);
+            $imported++;
         }
-        
+
         $pdo->commit();
+
+        $parts = ["Imported $imported transaction(s) (pending approval)."];
+        if ($duplicates) $parts[] = "$duplicates already on record — skipped.";
+        if ($skipped)    $parts[] = "$skipped non-contribution row(s) ignored.";
+        if ($unmatched)  $parts[] = count($unmatched) . " unmatched (no member): " . implode(', ', array_slice($unmatched, 0, 8)) . (count($unmatched) > 8 ? '…' : '');
+
         $response['success'] = true;
-        $response['message'] = "Successfully imported $imported records. " . (count($errors) > 0 ? count($errors) . " records failed." : "");
-        if (count($errors) > 0) {
-            $response['errors'] = array_slice($errors, 0, 10); // Return first 10 errors
+        $response['message'] = implode(' ', $parts);
+
+        if ($imported > 0) {
+            require_once __DIR__ . '/../includes/activity_logger.php';
+            logCreate('Transactions', (string) $imported, $isMkoba ? 'M-Koba import' : 'Bulk import');
         }
-    } catch (Exception $e) {
-        $pdo->rollBack();
-        $response['message'] = "Database error: " . $e->getMessage();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        $response['message'] = 'Import error: ' . $e->getMessage();
     }
-    
+
     fclose($handle);
 } else {
-    $response['message'] = "Invalid request.";
+    $response['message'] = 'Invalid request.';
 }
 
-// Redirect back with message
-$redirect_url = $_SERVER['HTTP_REFERER'] ?? '../app/bms/customer/manage_contributions.php';
 $_SESSION['import_response'] = $response;
-header("Location: $redirect_url");
+header('Location: ' . getUrl('transactions'));
 exit;
