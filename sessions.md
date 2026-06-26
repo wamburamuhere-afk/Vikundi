@@ -4,6 +4,29 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-26 — VICOBA system roles & RBAC (roles PR-1)
+**Branch:** `feat/vicoba-roles-rbac`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** First of two PRs for the four default user roles. PR-1 = the **roles + permissions**; PR-2 = the **member sensitive-data masking**. Replaced the BMS leftover roles with four VICOBA system roles and set their access. Scope confirmed: Chairperson = full admin; Secretary & Treasurer = full CRUD on operational data but **not** user/role/settings management; Member = view-only.
+
+### Files Created
+- **`database/seed_vicoba_roles.php`** — idempotent, deploy-safe seeder (registered in `database/migrate.php`):
+  - Reassigns any user on a BMS role to Member, then **removes** Director/CFO/Accountant/Credit Manager/Loan Manager (ids 5–9).
+  - Creates the four roles with fixed ids: **2 Chairperson · 3 Secretary · 4 Treasurer · 13 Member**.
+  - Seeds **default permissions only when a role has none yet** (so deploys never wipe manual changes): Chairperson → all 77 keys, full CRUD; Secretary/Treasurer → full CRUD on every key **except** the admin keys (`users, user_roles, add_user, edit_user, system_settings, policy_management`) = 71 keys; Member → `can_view` only on `customers, customer_details, dashboard`.
+- **`tests/Unit/VicobaRolesTest.php`** — unit-tests the pure `vk_role_grants()` logic (chairperson all / secretary-treasurer operational-not-admin / member view-only) + guards the role declarations, BMS removal, and migrate registration.
+
+### Files Modified
+- **`core/permissions.php`** — tightened `isAdmin()`: full-admin bypass now only **Admin + Chairperson** (role names `admin/administrator/chairperson/mwenyekiti/chairman`, role ids 1/2/12). **Removed `secretary`/`treasurer`/`sekretari`/`mweka hazina`** from the bypass — they were treated as full admins, which would have overridden the operational-only restriction.
+- **`tests/Unit/PermissionsTest.php`** — secretary/treasurer now assert **not** admin; added chairperson (name + role id 2) = admin.
+
+### Verification
+- Live seeder run: roles = Admin, Chairperson, Secretary, Treasurer, Member; BMS removed. Permission counts: Chairperson **77/all-CRUD**, Secretary & Treasurer **71** (no admin keys), Member **3 view-only**. Re-run via `migrate.php` → "left unchanged" (idempotent, no wipe).
+- Unit suite **699 / 1498**; `php -l` clean.
+- Next: **PR-2** — hide phone/NIDA/email/financial/family from a Member viewing other members (server-side masking on the list + details).
+
+---
+
 ## Session — 2026-06-26 — Public registration → 6-step wizard + children-when-single fix (PR-2)
 **Branch:** `feat/public-registration-stepper`
 **Developer:** Claude Code / Jabir Mussa

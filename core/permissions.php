@@ -262,10 +262,13 @@ function getAllPermissions()
  */
 function isAdmin()
 {
-    // Check by role_id 1/12 or role names. Mwenyekiti (Chairman) has Admin access.
-    $admin_roles = ['admin', 'administrator', 'mwenyekiti', 'chairman', 'secretary', 'sekretari', 'treasurer', 'mweka hazina'];
-    
-    return (isset($_SESSION['role_id']) && in_array((int)$_SESSION['role_id'], [1, 12])) || 
+    // Full administrative access. The Chairperson (Mwenyekiti) leads the group and
+    // has Admin-level access. Secretary and Treasurer are NOT full admins — they
+    // get explicit operational CRUD via role_permissions, so they cannot manage
+    // users/roles/settings. Role ids: 1 Admin, 2 Chairperson (12 = legacy admin).
+    $admin_roles = ['admin', 'administrator', 'chairperson', 'mwenyekiti', 'chairman'];
+
+    return (isset($_SESSION['role_id']) && in_array((int)$_SESSION['role_id'], [1, 2, 12])) ||
            (isset($_SESSION['role']) && in_array(strtolower($_SESSION['role']), $admin_roles)) ||
            (isset($_SESSION['user_role']) && in_array(strtolower($_SESSION['user_role']), $admin_roles));
 }
