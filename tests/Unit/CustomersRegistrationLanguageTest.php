@@ -45,10 +45,11 @@ class CustomersRegistrationLanguageTest extends TestCase
 
     public function test_parents_labels_translated(): void
     {
-        $this->assertStringContainsString('Jina la Baba', $this->src);           // Father's Name
-        $this->assertStringContainsString('Jina la Mama', $this->src);           // Mother's Name
-        $this->assertStringContainsString('Mkoa/Wilaya Anapoishi', $this->src);  // Region/District
-        $this->assertStringContainsString('Kata/Kijiji/Mtaa', $this->src);       // Ward/Village/Street
+        // PR-B: parents now use structured names + the six-field location + photo.
+        $this->assertStringContainsString('Taarifa za Baba', $this->src);     // Father's Details heading
+        $this->assertStringContainsString('Taarifa za Mama', $this->src);     // Mother's Details heading
+        $this->assertStringContainsString('Namba ya Nyumba', $this->src);     // House Number
+        $this->assertStringContainsString('Picha ya Pasipoti (Hiari)', $this->src); // Passport Photo (Optional)
     }
 
     public function test_spouse_labels_translated(): void

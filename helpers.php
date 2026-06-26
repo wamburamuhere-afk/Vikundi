@@ -556,6 +556,20 @@ function vk_age_from_dob(?string $dob): ?int {
     return (int) $birth->diff($now)->y;
 }
 
+/**
+ * Join first/middle/last into one display name, dropping blanks and collapsing
+ * the gaps. Used to keep the legacy single-column *_name fields populated when
+ * a record also stores the structured name parts (registration PR-B).
+ */
+function vk_full_name(?string $first, ?string $middle = '', ?string $last = ''): string {
+    $parts = array_filter([
+        trim((string) $first),
+        trim((string) $middle),
+        trim((string) $last),
+    ], fn($p) => $p !== '');
+    return implode(' ', $parts);
+}
+
 function safe_output($value, $default = 'N/A') {
     return !empty($value) ? htmlspecialchars($value) : $default;
 }
