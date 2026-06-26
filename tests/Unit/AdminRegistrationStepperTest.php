@@ -75,4 +75,12 @@ class AdminRegistrationStepperTest extends TestCase
         $this->assertSame(substr_count($seg, '<div'), substr_count($seg, '</div>'),
             'the add-member form must have balanced <div> tags after the split');
     }
+
+    public function testGuarantorPickerBrowsesOnOpen(): void
+    {
+        // minimumInputLength 0 -> members list as soon as the box is opened (browse),
+        // typing still filters (search).
+        $this->assertStringContainsString('minimumInputLength: 0', $this->src,
+            'the guarantor member picker should list members on open, not require a search');
+    }
 }
