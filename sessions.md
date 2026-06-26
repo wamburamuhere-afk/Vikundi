@@ -4,6 +4,37 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-26 — Registration form PR-C (guarantor details)
+**Branch:** `feat/registration-pr-c-guarantor`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Richer guarantor details. The guarantor now has the **same six-field location** as the member (on **both** forms), and the **admin** add-member form can **pull an existing member** as the guarantor and autofill their name/phone/location.
+
+### Security decision (member directory privacy)
+The "pull existing member" picker is on the **admin form only**. `register.php` is the **public, anonymous** self-registration page — adding a member search there would expose every member's name + phone to anonymous visitors (reversing the audit B3/H3 hardening). So the public form keeps **manual guarantor entry + the six-field location**, and only the authenticated admin form gets the picker. The autofill endpoint is auth-gated.
+
+### Database
+- **`database/add_guarantor_detail_columns.php`** — idempotent migration; adds 7 columns to `customers`: `guarantor_member_id` + `guarantor_{country,state,district,ward,street,house_number}`. Legacy `guarantor_name/phone/rel/location` kept and populated. **Registered in `database/migrate.php`** (auto-runs on deploy).
+
+### Files Created
+- **`api/get_guarantor_member.php`** — auth-gated (`require_auth.php`); returns a member's name/phone/six-field location by id, for the admin autofill.
+
+### Files Modified
+- **`register.php`** (public) — guarantor section gains the six-field location; **no** member picker.
+- **`app/bms/customer/customers.php`** (admin) — guarantor section gains the six-field location **+ a Select2 "pull existing member" picker** (searches `api/search_customers.php`); on select it fetches `get_guarantor_member.php` and autofills name/phone/location, and sets a hidden `guarantor_member_id`.
+- **`actions/process_registration.php`** + **`actions/add_member.php`** — capture the six-field location; `add_member` also captures `guarantor_member_id` (public handler forces it null); legacy `guarantor_location` populated from state; `customers` INSERT extended to 72 columns (71 placeholders + `created_at`).
+
+### Tests
+- **`tests/Unit/GuarantorDetailsTest.php`** — 6 tests: migration declares columns + is registered in the runner; endpoint is auth-gated; six-field location on both forms; picker is **admin-only** (absent from the public form); handlers persist the columns.
+- Updated `CustomersRegistrationLanguageTest` guarantor labels for the new structure.
+
+### Verification
+- Migration ran → 7 columns added; all 72 INSERT columns exist; placeholders = values = 71 in both handlers.
+- Live: endpoint **blocks anonymous** (auth error) and returns member details when authed; public `register.php` shows the six-field location with **no picker**; admin form has the picker + member-id + autofill JS; a rolled-back INSERT round-tripped `guarantor_member_id` + structured location.
+- Unit suite **661 / 1348**; `php -l` clean.
+- Registration tasks: PR-A ✅ · PR-B ✅ · **PR-C ✅** · PR-D ⏳ (passport "add later" on edit/profile + children passport photo).
+
+---
+
 ## Session — 2026-06-26 — Registration form PR-B (parent details)
 **Branch:** `feat/registration-pr-b-parents`
 **Developer:** Claude Code / Jabir Mussa

@@ -383,10 +383,13 @@ if (isset($_SESSION['user_id'])) {
                                     <label class="form-label fw-bold small">Relationship With Member</label>
                                     <input type="text" name="guarantor_rel" class="form-control" placeholder="Relationship">
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label fw-bold small">Region Where Living</label>
-                                    <input type="text" name="guarantor_location" class="form-control" placeholder="Location">
-                                </div>
+                                <div class="col-12 mt-1"><small class="text-muted fw-bold">Guarantor's Physical Location</small></div>
+                                <div class="col-md-4"><label class="form-label fw-bold small">Country</label><input type="text" name="guarantor_country" class="form-control" value="Tanzania"></div>
+                                <div class="col-md-4"><label class="form-label fw-bold small">Region / State</label><input type="text" name="guarantor_state" class="form-control" placeholder="Region"></div>
+                                <div class="col-md-4"><label class="form-label fw-bold small">District</label><input type="text" name="guarantor_district" class="form-control" placeholder="District"></div>
+                                <div class="col-md-4"><label class="form-label fw-bold small">Ward</label><input type="text" name="guarantor_ward" class="form-control" placeholder="Ward"></div>
+                                <div class="col-md-4"><label class="form-label fw-bold small">Street / Village</label><input type="text" name="guarantor_street" class="form-control" placeholder="Street"></div>
+                                <div class="col-md-4"><label class="form-label fw-bold small">House Number</label><input type="text" name="guarantor_house_number" class="form-control" placeholder="House No."></div>
                             </div>
                         </div>
 

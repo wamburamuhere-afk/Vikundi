@@ -147,7 +147,15 @@ $mother_sub_location = $mother_ward;
 $guarantor_name = $_POST['guarantor_name'] ?? '';
 $guarantor_phone = $_POST['guarantor_phone'] ?? '';
 $guarantor_rel = $_POST['guarantor_rel'] ?? '';
-$guarantor_location = $_POST['guarantor_location'] ?? '';
+// PR-C: optional link to an existing member (admin picker) + six-field location.
+$guarantor_member_id    = !empty($_POST['guarantor_member_id']) ? (int) $_POST['guarantor_member_id'] : null;
+$guarantor_country      = $_POST['guarantor_country'] ?? '';
+$guarantor_state        = $_POST['guarantor_state'] ?? '';
+$guarantor_district     = $_POST['guarantor_district'] ?? '';
+$guarantor_ward         = $_POST['guarantor_ward'] ?? '';
+$guarantor_street       = $_POST['guarantor_street'] ?? '';
+$guarantor_house_number = $_POST['guarantor_house_number'] ?? '';
+$guarantor_location = $guarantor_state; // keep legacy column populated
 
 $initial_savings = (float)($_POST['initial_savings'] ?? 0);
 $preferred_lang  = $_POST['preferred_language'] ?? 'en';
@@ -301,7 +309,8 @@ try {
             mother_name, mother_first_name, mother_middle_name, mother_last_name, mother_phone,
             mother_location, mother_sub_location,
             mother_country, mother_state, mother_district, mother_ward, mother_street, mother_house_number, mother_photo,
-            guarantor_name, guarantor_phone, guarantor_rel, guarantor_location,
+            guarantor_member_id, guarantor_name, guarantor_phone, guarantor_rel, guarantor_location,
+            guarantor_country, guarantor_state, guarantor_district, guarantor_ward, guarantor_street, guarantor_house_number,
             status, initial_savings, created_at
         ) VALUES (
             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
@@ -312,7 +321,8 @@ try {
             ?,
             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?,
+            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?,
             ?, ?, NOW()
         )
     ");
@@ -329,7 +339,8 @@ try {
         $mother_name, $mother_first_name, $mother_middle_name, $mother_last_name, $mother_phone,
         $mother_location, $mother_sub_location,
         $mother_country, $mother_state, $mother_district, $mother_ward, $mother_street, $mother_house_number, $mother_photo,
-        $guarantor_name, $guarantor_phone, $guarantor_rel, $guarantor_location,
+        $guarantor_member_id, $guarantor_name, $guarantor_phone, $guarantor_rel, $guarantor_location,
+        $guarantor_country, $guarantor_state, $guarantor_district, $guarantor_ward, $guarantor_street, $guarantor_house_number,
         $status, $initial_savings
     ]);
     $new_customer_id = $pdo->lastInsertId();

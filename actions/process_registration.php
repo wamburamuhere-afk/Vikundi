@@ -143,7 +143,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $guarantor_name = $_POST['guarantor_name'] ?? '';
     $guarantor_phone = $_POST['guarantor_phone'] ?? '';
     $guarantor_rel = $_POST['guarantor_rel'] ?? '';
-    $guarantor_location = $_POST['guarantor_location'] ?? '';
+    // PR-C: six-field location. The public form has no member picker, so the
+    // guarantor is never linked to an existing member here.
+    $guarantor_member_id    = null;
+    $guarantor_country      = $_POST['guarantor_country'] ?? '';
+    $guarantor_state        = $_POST['guarantor_state'] ?? '';
+    $guarantor_district     = $_POST['guarantor_district'] ?? '';
+    $guarantor_ward         = $_POST['guarantor_ward'] ?? '';
+    $guarantor_street       = $_POST['guarantor_street'] ?? '';
+    $guarantor_house_number = $_POST['guarantor_house_number'] ?? '';
+    $guarantor_location = $guarantor_state; // keep legacy column populated
 
     // Phase 3 Fields (Finance)
     $entrance_fee = $_POST['entrance_fee'] ?? 0;
@@ -256,7 +265,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     mother_name, mother_first_name, mother_middle_name, mother_last_name, mother_phone,
                     mother_location, mother_sub_location,
                     mother_country, mother_state, mother_district, mother_ward, mother_street, mother_house_number, mother_photo,
-                    guarantor_name, guarantor_phone, guarantor_rel, guarantor_location,
+                    guarantor_member_id, guarantor_name, guarantor_phone, guarantor_rel, guarantor_location,
+                    guarantor_country, guarantor_state, guarantor_district, guarantor_ward, guarantor_street, guarantor_house_number,
                     status, initial_savings, user_id, created_at
                 ) VALUES (
                     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
@@ -267,7 +277,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ?,
                     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                    ?, ?, ?, ?,
+                    ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?, ?, ?,
                     ?, ?, ?, NOW()
                 )
             ");
@@ -284,7 +295,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $mother_name, $mother_first_name, $mother_middle_name, $mother_last_name, $mother_phone,
                 $mother_location, $mother_sub_location,
                 $mother_country, $mother_state, $mother_district, $mother_ward, $mother_street, $mother_house_number, $mother_photo,
-                $guarantor_name, $guarantor_phone, $guarantor_rel, $guarantor_location,
+                $guarantor_member_id, $guarantor_name, $guarantor_phone, $guarantor_rel, $guarantor_location,
+                $guarantor_country, $guarantor_state, $guarantor_district, $guarantor_ward, $guarantor_street, $guarantor_house_number,
                 $status, $entrance_fee, $user_id
             ]);
             $customer_id = $pdo->lastInsertId();

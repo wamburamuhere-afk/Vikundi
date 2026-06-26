@@ -718,6 +718,13 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                             <div class="mb-4">
                                 <h6 class="text-primary border-bottom pb-2 mb-3 fw-bold"><i class="bi bi-shield-check me-2"></i><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'MDHAMINI WA MWANACHAMA' : 'MEMBER\'S GUARANTOR' ?></h6>
                                 <div class="row g-3">
+                                    <!-- PR-C: pull an existing member as the guarantor (autofills the fields below) -->
+                                    <div class="col-12">
+                                        <label class="form-label fw-bold small text-primary"><i class="bi bi-search me-1"></i><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Chagua Mwanachama Aliyepo (Hiari)' : 'Pull an Existing Member (Optional)' ?></label>
+                                        <select id="guarantorMemberSelect" class="form-select"><option value=""></option></select>
+                                        <input type="hidden" name="guarantor_member_id" id="guarantorMemberId" value="">
+                                        <div class="form-text small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Au jaza taarifa za mdhamini kwa mkono hapa chini.' : 'Or fill in the guarantor details manually below.' ?></div>
+                                    </div>
                                     <div class="col-md-6">
                                         <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jina la Mdhamini' : 'Guarantor\'s Name' ?></label>
                                         <input type="text" name="guarantor_name" class="form-control" placeholder="Full Name">
@@ -730,10 +737,13 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                                         <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Uhusiano na Mwanachama' : 'Relationship With Member' ?></label>
                                         <input type="text" name="guarantor_rel" class="form-control" placeholder="Relationship">
                                     </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mkoa Anapoishi' : 'Region Where Living' ?></label>
-                                        <input type="text" name="guarantor_location" class="form-control" placeholder="Location">
-                                    </div>
+                                    <div class="col-12"><small class="text-muted fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mahali Anapoishi Mdhamini' : 'Guarantor\'s Physical Location' ?></small></div>
+                                    <div class="col-md-4"><label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nchi' : 'Country' ?></label><input type="text" name="guarantor_country" class="form-control" value="Tanzania"></div>
+                                    <div class="col-md-4"><label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mkoa' : 'Region / State' ?></label><input type="text" name="guarantor_state" class="form-control" placeholder="Region"></div>
+                                    <div class="col-md-4"><label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Wilaya' : 'District' ?></label><input type="text" name="guarantor_district" class="form-control" placeholder="District"></div>
+                                    <div class="col-md-4"><label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Kata' : 'Ward' ?></label><input type="text" name="guarantor_ward" class="form-control" placeholder="Ward"></div>
+                                    <div class="col-md-4"><label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mtaa/Kijiji' : 'Street / Village' ?></label><input type="text" name="guarantor_street" class="form-control" placeholder="Street"></div>
+                                    <div class="col-md-4"><label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Namba ya Nyumba' : 'House Number' ?></label><input type="text" name="guarantor_house_number" class="form-control" placeholder="House No."></div>
                                 </div>
                             </div>
 
@@ -1828,6 +1838,51 @@ function downloadTemplate() {
     link.click();
     document.body.removeChild(link);
 }
+</script>
+
+<!-- PR-C: guarantor "pull existing member" picker + autofill (admin form only) -->
+<script>
+$(function () {
+    var $sel = $('#guarantorMemberSelect');
+    if (!$sel.length || !$.fn.select2) return;
+    var setVal = function (name, v) { var el = document.querySelector('[name="' + name + '"]'); if (el) el.value = v || ''; };
+    var $modal = $sel.closest('.modal');
+    $sel.select2({
+        theme: 'bootstrap-5',
+        width: '100%',
+        allowClear: true,
+        dropdownParent: $modal.length ? $modal : $(document.body),
+        placeholder: '<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Tafuta mwanachama...' : 'Search members...' ?>',
+        ajax: {
+            url: 'api/search_customers.php',
+            dataType: 'json',
+            delay: 250,
+            data: function (params) { return { q: params.term }; },
+            processResults: function (data) { return { results: (data && data.results) || [] }; },
+            cache: true
+        },
+        minimumInputLength: 1
+    }).on('select2:select', function (e) {
+        var id = e.params.data.id;
+        document.getElementById('guarantorMemberId').value = id;
+        fetch('api/get_guarantor_member.php?id=' + encodeURIComponent(id))
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (!d || !d.success) return;
+                var m = d.member;
+                setVal('guarantor_name', m.name);
+                setVal('guarantor_phone', m.phone);
+                setVal('guarantor_country', m.country);
+                setVal('guarantor_state', m.state);
+                setVal('guarantor_district', m.district);
+                setVal('guarantor_ward', m.ward);
+                setVal('guarantor_street', m.street);
+                setVal('guarantor_house_number', m.house_number);
+            });
+    }).on('select2:clear', function () {
+        document.getElementById('guarantorMemberId').value = '';
+    });
+});
 </script>
 <?php endif; ?>
 
