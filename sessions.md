@@ -4,6 +4,29 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-26 — Audit fix M4
+**Branch:** `fix/m4-auto-terminate-throttle`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit Medium **M4** — `header.php:4` included `actions/auto_terminate_members.php`, which ran a heavy aggregate (customers ⋈ users ⋈ contributions, GROUP BY/HAVING) plus a write per late member on **every page load**, for every user. Refactored into testable functions and throttled to run **at most once per calendar day**; added a CLI entry point for a real cron. The sweep is idempotent (only touches `status='active'`), so the throttle is a pure performance win.
+
+### Files Modified
+- **`actions/auto_terminate_members.php`** — rewritten:
+  - `vk_required_contribution_total(array $settings, DateTime $now): float` — pure deadline math, now unit-testable.
+  - `vk_run_auto_termination(PDO): int` — the sweep, returns members moved.
+  - `vk_auto_termination_due()` / `vk_mark_auto_termination_ran()` — once-per-day throttle via a `group_settings` row `auto_termination_last_run` (PK upsert; no schema change).
+  - Entry points: direct CLI run (cron) executes unconditionally; web include throttles to the first hit of the day. A `realpath($argv[0]) === __FILE__` guard keeps the file inert when PHPUnit loads it (no DB in tests).
+- **`header.php`** — unchanged; still `include_once`s the file, which now self-throttles. Per-request cost drops from a full aggregate + writes to a single primary-key lookup.
+
+### Files Created
+- **`tests/Unit/AutoTerminationTest.php`** — 6 tests: deadline math (before first deadline, after deadline, previous-months-only, grace days, deadline-time boundary) + recurrence guard for the throttle/CLI entry point.
+
+### Verification
+- Live: marker absent → CLI sweep (`php actions/auto_terminate_members.php`) ran ("0 moved" — dev DB already swept, idempotent) → marker set to today → `vk_auto_termination_due()` now **false**, so header.php skips the heavy sweep for the rest of the day.
+- Unit suite **637 / 1209**; `php -l` clean. (Optional cron: `0 1 * * * php /path/to/vikundi/actions/auto_terminate_members.php`.)
+- Medium tier: M1 ⏳ · M2 ⏳ · M3 ✅ · M4 ✅ · M5 ✅ · M6 ✅.
+
+---
+
 ## Session — 2026-06-26 — Audit fix M6
 **Branch:** `fix/m6-password-policy`
 **Developer:** Claude Code / Dutch
