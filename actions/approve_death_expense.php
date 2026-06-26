@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../roots.php';
+require_once __DIR__ . '/../includes/require_csrf.php'; // audit H6: valid CSRF token required
 require_once __DIR__ . '/../helpers.php'; // markChildDeceasedJson()
 require_once __DIR__ . '/../includes/finance.php'; // getGroupFundBalance() (audit H1)
 global $pdo;

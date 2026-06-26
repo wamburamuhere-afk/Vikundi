@@ -2,6 +2,7 @@
 // actions/process_contribution.php
 if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/require_csrf.php'; // audit H6: valid CSRF token required
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($_SESSION['user_id'])) {

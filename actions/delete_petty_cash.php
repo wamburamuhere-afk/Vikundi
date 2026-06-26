@@ -5,6 +5,7 @@ require_once __DIR__ . '/../includes/activity_logger.php';
 
 if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../includes/require_auth.php'; // audit B3: must be logged in
+require_once __DIR__ . '/../includes/require_csrf.php'; // audit H6: valid CSRF token required
 require_once __DIR__ . '/../core/permissions.php';
 
 header('Content-Type: application/json');

@@ -96,10 +96,69 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <?php require_once __DIR__ . '/includes/csrf.php'; ?>
+    <!-- CSRF token (audit H6): attached to same-origin mutating fetch()s by the wrapper below -->
+    <meta name="csrf-token" content="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES); ?>">
+    <script>
+    (function () {
+        // Audit H6: transparently attach the per-session CSRF token to every
+        // same-origin state-changing fetch() request, so existing fetch() calls
+        // are protected without per-call edits. Installed in <head> (before any
+        // body script runs); token is read lazily so DOM ordering never matters.
+        if (window.__vkCsrfFetchPatched || !window.fetch) return;
+        window.__vkCsrfFetchPatched = true;
+
+        var SAFE = { GET: 1, HEAD: 1, OPTIONS: 1, TRACE: 1 };
+        var nativeFetch = window.fetch.bind(window);
+
+        function sameOrigin(url) {
+            try {
+                return new URL(url, window.location.href).origin === window.location.origin;
+            } catch (e) {
+                return true; // bare relative URL -> same origin
+            }
+        }
+
+        window.fetch = function (input, init) {
+            init = init || {};
+            var method = (init.method || (input && input.method) || 'GET').toUpperCase();
+            var url = (typeof input === 'string') ? input : (input && input.url) || '';
+
+            if (!SAFE[method] && sameOrigin(url)) {
+                var meta = document.querySelector('meta[name="csrf-token"]');
+                var token = meta ? (meta.getAttribute('content') || '') : '';
+                if (token) {
+                    var headers = new Headers(init.headers || (input && input.headers) || {});
+                    if (!headers.has('X-CSRF-Token')) {
+                        headers.set('X-CSRF-Token', token);
+                    }
+                    init = Object.assign({}, init, { headers: headers });
+                }
+            }
+            return nativeFetch(input, init);
+        };
+    })();
+    </script>
     <title><?php echo isset($page_title) ? $page_title : 'VIKUNDI MANAGEMENT SYSTEM'; ?></title>
     
     <!-- jQuery first -->
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script>
+    // Audit H6: attach the CSRF token to every same-origin state-changing jQuery
+    // AJAX request. ajaxSend is a global hook that always fires and cannot be
+    // overridden by a per-call beforeSend, so it covers all $.ajax/$.post calls.
+    (function () {
+        if (!window.jQuery) return;
+        var SAFE = { GET: 1, HEAD: 1, OPTIONS: 1, TRACE: 1 };
+        jQuery(document).ajaxSend(function (event, xhr, settings) {
+            var method = (settings.type || 'GET').toUpperCase();
+            if (SAFE[method] || settings.crossDomain) return;
+            var meta = document.querySelector('meta[name="csrf-token"]');
+            var token = meta ? (meta.getAttribute('content') || '') : '';
+            if (token) xhr.setRequestHeader('X-CSRF-Token', token);
+        });
+    })();
+    </script>
 
     <!-- Font Awesome 5 CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">

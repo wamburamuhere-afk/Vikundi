@@ -2,6 +2,7 @@
 // File: actions/delete_death_expense.php
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/require_auth.php'; // audit B3: must be logged in
+require_once __DIR__ . '/../includes/require_csrf.php'; // audit H6: valid CSRF token required
 require_once __DIR__ . '/../core/permissions.php';
 global $pdo;
 

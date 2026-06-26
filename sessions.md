@@ -4,6 +4,34 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-26 — Audit fix H6
+**Branch:** `fix/h6-csrf-central-guard`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit High **H6** — CSRF was verified on only ~3 endpoints. Built a reusable central CSRF guard plus app-wide token delivery, then enforced it on the financially/security-sensitive mutating endpoints (chosen scope: sensitive set + global plumbing, lower regression risk — mirrors how H3 was scoped). Remaining endpoints are a documented follow-up; the infra now makes wiring them a one-line add.
+
+### Design
+- **Server guard** `includes/require_csrf.php` (drop-in like `require_auth.php`): on unsafe methods (POST/PUT/PATCH/DELETE) requires a valid per-session token, else JSON **403** + exit. Safe methods pass through. Token read from the `X-CSRF-Token` header **or** the `csrf_token` POST field.
+- **App-wide token delivery** (front-end uses both `$.ajax` *and* `fetch()`): `header.php` now emits `<meta name="csrf-token">` and installs two hooks that attach the token to same-origin state-changing requests automatically — a `window.fetch` wrapper (in `<head>`, before any body script) and a jQuery `$(document).ajaxSend` hook. So existing AJAX/fetch calls are covered with no per-call edits. Header maps to `$_SERVER['HTTP_X_CSRF_TOKEN']` (verified live).
+
+### Files Created
+- **`includes/require_csrf.php`** — central CSRF gate.
+- **`tests/Unit/CsrfTest.php`** — 10 tests: token verify, safe-method gating, header-vs-field extraction, guard decision.
+- **`tests/Unit/CsrfCoverageTest.php`** — recurrence guard: every protected endpoint keeps the guard; header.php keeps the meta + both delivery hooks.
+
+### Files Modified
+- **`includes/csrf.php`** — added pure helpers `csrf_is_safe_method()` and `csrf_extract_token()`.
+- **`header.php`** — CSRF meta + fetch wrapper + jQuery `ajaxSend` hook.
+- **17 endpoints** wired to `require_csrf.php` (after `require_auth.php` where present): `actions/` update_contribution, delete_death_expense, delete_petty_cash, process_death_expense, process_contribution, save_petty_cash, approve_death_expense, approve_petty_cash, update_user_role, update_user_status, approve_member; `api/account/` save_account, save_category, delete_account, delete_account_category, create_reconciliation, delete_reconciliation.
+- **`app/bms/customer/submit_contribution.php`** — `csrf_field()` added (only native HTML form POST in the set; all others reach the endpoints via fetch/$.ajax and are covered by the hooks).
+
+### Verification
+- Live (PHP built-in server): tokenless POST → **403**; wrong token → **403**; valid `X-CSRF-Token` header + session → **200**; safe GET → **200**. Confirmed every protected endpoint's UI path (fetch / $.ajax / $.post / native form) actually carries the token before enforcing.
+- Unit suite **622 / 1184**; `php -l` clean on all touched files.
+- High tier complete: H1 ✅ · H2 ✅ · H3 ✅ · H4 ✅ · H5 ✅ · **H6 ✅**.
+- **Follow-up:** extend `require_csrf.php` to the remaining ~220 mutating endpoints (infra + global token delivery already in place; each is now a one-line require + `csrf_field()` for any remaining native forms).
+
+---
+
 ## Session — 2026-06-26 — Audit fix H5
 **Branch:** `fix/h5-session-cookie-hardening`
 **Developer:** Claude Code / Dutch
