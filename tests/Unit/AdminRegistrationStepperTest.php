@@ -52,8 +52,9 @@ class AdminRegistrationStepperTest extends TestCase
         // familyFieldsAdmin (spouse) is opened once and closed once...
         $this->assertSame(1, substr_count($this->src, 'id="familyFieldsAdmin"'), 'one spouse wrapper');
         $this->assertSame(1, substr_count($this->src, 'close familyFieldsAdmin'), 'closed once (before children)');
-        // ...and the children table input remains present (now outside the wrapper).
-        $this->assertStringContainsString('id="childrenTableAdmin"', $this->src);
+        // ...and the children repeater remains present (now outside the wrapper, card-based).
+        $this->assertStringContainsString('id="childrenListAdmin"', $this->src);
+        $this->assertStringContainsString('child-card-admin', $this->src);
     }
 
     public function testFormDivsBalanced(): void

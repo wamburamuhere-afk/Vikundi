@@ -16,6 +16,7 @@ Personal · Residence · Parents · Spouse & Children · Guarantor · Account.
 - Replaced the 3-pill nav with a **6-step stepper** generated from a `$__steps` array (numbered circles; labels hidden on mobile; horizontal-scroll on narrow screens).
 - Split the `#personal` pane (Residence carved into its own `#residence` step) and the giant `#home` pane into `#parents`, `#family`, `#guarantor` panes; re-chained the Next/Back buttons across all 6 steps.
 - **Children moved out of `familyFieldsAdmin`** so they're always shown (spouse stays conditional on "Married"), avoiding an empty step for single members.
+- **Children UI: table → card repeater.** The cramped 7-column table (date/file/select jammed into narrow cells) is now a **card per child** — a bordered card with a clean grid (Name · DOB · Age · Gender, then Photo) and an "×" remove in the header. `addChildRowAdmin`/`removeRowAdmin`/`vkChildAge` rewired to cards (`.child-card-admin`); div balance 132 = 132.
 
 ### Tests
 - **`tests/Unit/AdminRegistrationStepperTest.php`** — 6 step panes exist; stepper declares 6 steps; **no field dropped** (representative fields from every section); spouse wrapper opened/closed once + children table present; **form `<div>`s balanced**.
