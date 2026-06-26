@@ -49,6 +49,13 @@ $statusBadge = [
 ?>
 
 <div class="container-fluid py-3">
+    <?php if (isset($_SESSION['import_response'])): $ir = $_SESSION['import_response']; unset($_SESSION['import_response']); ?>
+    <div class="alert alert-<?= !empty($ir['success']) ? 'success' : 'danger' ?> alert-dismissible fade show" role="alert">
+        <i class="bi bi-<?= !empty($ir['success']) ? 'check-circle' : 'exclamation-triangle' ?> me-2"></i><?= htmlspecialchars($ir['message'] ?? '') ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <?php endif; ?>
+
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
         <div>
             <h4 class="fw-bold mb-1"><i class="bi bi-arrow-left-right text-primary me-2"></i><?= $isSw ? 'Miamala' : 'Transactions' ?></h4>
@@ -212,7 +219,8 @@ $statusBadge = [
                         <label class="form-label fw-bold"><?= $isSw ? 'Chagua Faili (CSV)' : 'Select File (CSV)' ?></label>
                         <input type="file" name="upload_file" class="form-control" accept=".csv, .xls, .xlsx" required>
                     </div>
-                    <div class="alert alert-info py-2 small mb-0"><i class="bi bi-info-circle me-1"></i><?= $isSw ? 'Hakikisha faili lina safu za: Namba ya Simu na Kiasi.' : 'Ensure the file has columns for Phone/ID and Amount.' ?></div>
+                    <div class="alert alert-info py-2 small mb-2"><i class="bi bi-info-circle me-1"></i><?= $isSw ? 'Hakikisha faili lina safu za: Namba ya Simu na Kiasi.' : 'Ensure the file has columns for Phone/ID and Amount.' ?></div>
+                    <a href="<?= getUrl('actions/download_transactions_template') ?>" class="small text-decoration-none"><i class="bi bi-download me-1"></i><?= $isSw ? 'Pakua kiolezo (template)' : 'Download template' ?></a>
                 </div>
                 <div class="modal-footer bg-light">
                     <button type="button" class="btn btn-link text-secondary" data-bs-dismiss="modal"><?= $isSw ? 'Ghairi' : 'Cancel' ?></button>

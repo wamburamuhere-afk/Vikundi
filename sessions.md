@@ -4,6 +4,28 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-27 — Finance: bulk imports + M-Koba (transactions PR-2)
+**Branch:** `feat/transaction-imports`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Second Finance PR. Rewrote the bulk importer, fixed its data-corruption bugs, and added a downloadable template. (PR-3 = slim Contributions to a filtered listing.)
+
+### The bugs fixed (old `import_contributions.php`)
+The old importer stamped `CURRENT_DATE` (ignored the statement date), wrote `status='confirmed'` and `contribution_type='bulk'` — **neither a valid enum value** (silent corruption) — and pulled only phone + amount.
+
+### Files Created
+- **`includes/transaction_import.php`** — pure, testable parsers: `mkoba_normalize_phone` (handles the Excel `.00` suffix + `255…` prefix → last 9), `mkoba_parse_amount` (`"5,000.00"`→5000), `mkoba_parse_date` (`dd/mm/yyyy`→`Y-m-d`), `mkoba_is_contribution` (skips empty / "Opening an account on cbs" / "Group Transfer"), `mkoba_parse_row`, and `txn_template_parse_row` (validates type/account).
+- **`templates/transactions_template.csv`** + **`actions/download_transactions_template.php`** — the downloadable bulk template.
+- **`tests/Unit/TransactionImportTest.php`** — 7 tests over the parsers using **real M-Koba values**.
+
+### Files Modified
+- **`actions/import_contributions.php`** — full rewrite: CSRF-guarded; header-mapped; pulls **receipt · date · member(phone) · amount · trans type** + the `mkoba_*` columns; skips non-contribution rows; **de-dupes** (by receipt, else member+amount+date); inserts valid `status='pending'`, `contribution_type='monthly'`; reports imported / duplicates / skipped / unmatched.
+- **`app/bms/customer/transactions.php`** — import-result flash + "Download template" link.
+
+### Verification
+- Parsed the **real M-Koba CSV**: **524 contribution rows** parsed, **36** non-contribution rows skipped; phones normalised (e.g. `255767276015.00 → 767276015`), real dates/amounts. Live insert of a parsed row stored the real date (2026-02-28) with valid enum `status='pending'`. INSERT balance 16=16; `php -l` clean. Unit suite **717 / 1585**.
+
+---
+
 ## Session — 2026-06-27 — Finance: Transactions recording hub (transactions PR-1)
 **Branch:** `feat/transactions-page`
 **Developer:** Claude Code / Jabir Mussa
