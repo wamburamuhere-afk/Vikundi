@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/require_csrf.php'; // audit H6: valid CSRF token required
 
 // Check if user is logged in
 $user_id = $_SESSION['user_id'] ?? null;

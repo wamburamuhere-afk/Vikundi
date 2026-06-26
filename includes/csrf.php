@@ -38,3 +38,33 @@ if (!function_exists('csrf_verify')) {
         return is_string($token) && $token !== '' && $stored !== '' && hash_equals($stored, $token);
     }
 }
+
+if (!function_exists('csrf_is_safe_method')) {
+    /**
+     * Safe HTTP methods carry no state change, so CSRF need not be enforced on
+     * them (audit H6). Everything else (POST/PUT/PATCH/DELETE/…) is "unsafe".
+     */
+    function csrf_is_safe_method(string $method): bool {
+        return in_array(strtoupper(trim($method)), ['GET', 'HEAD', 'OPTIONS', 'TRACE'], true);
+    }
+}
+
+if (!function_exists('csrf_extract_token')) {
+    /**
+     * Pull the submitted CSRF token from a request. Browsers using fetch() send
+     * it as the `X-CSRF-Token` header (works for both FormData and JSON bodies);
+     * classic HTML forms send it as the `csrf_token` POST field. The header is
+     * preferred when both are present.
+     *
+     * @param array $server Typically $_SERVER.
+     * @param array $post   Typically $_POST.
+     */
+    function csrf_extract_token(array $server, array $post): ?string {
+        $header = $server['HTTP_X_CSRF_TOKEN'] ?? null;
+        if (is_string($header) && $header !== '') {
+            return $header;
+        }
+        $field = $post['csrf_token'] ?? null;
+        return is_string($field) && $field !== '' ? $field : null;
+    }
+}
