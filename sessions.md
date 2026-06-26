@@ -4,6 +4,31 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-26 — Admin registration modal → 6-step wizard (PR-1)
+**Branch:** `feat/admin-registration-stepper`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** The admin add-member modal (`customers.php`) had grown congested — one "Family & Beneficiaries" tab held ~49 fields (parents + spouse + children + guarantor). Split it into a **6-step wizard** with a slim numbered stepper. **Pure UI** — no field/handler/DB change (every `name=` preserved; all panes stay in the one `<form>`, so submission is untouched).
+
+### Steps (3 tabs → 6)
+Personal · Residence · Parents · Spouse & Children · Guarantor · Account.
+
+### Files Modified — `app/bms/customer/customers.php`
+- Replaced the 3-pill nav with a **6-step stepper** generated from a `$__steps` array (numbered circles; labels hidden on mobile; horizontal-scroll on narrow screens).
+- Split the `#personal` pane (Residence carved into its own `#residence` step) and the giant `#home` pane into `#parents`, `#family`, `#guarantor` panes; re-chained the Next/Back buttons across all 6 steps.
+- **Children moved out of `familyFieldsAdmin`** so they're always shown (spouse stays conditional on "Married"), avoiding an empty step for single members.
+- **Children UI: table → card repeater.** The cramped 7-column table (date/file/select jammed into narrow cells) is now a **card per child** — a bordered card with a clean grid (Name · DOB · Age · Gender, then Photo) and an "×" remove in the header. `addChildRowAdmin`/`removeRowAdmin`/`vkChildAge` rewired to cards (`.child-card-admin`); div balance 132 = 132.
+
+### Tests
+- **`tests/Unit/AdminRegistrationStepperTest.php`** — 6 step panes exist; stepper declares 6 steps; **no field dropped** (representative fields from every section); spouse wrapper opened/closed once + children table present; **form `<div>`s balanced**.
+- Updated `CustomersButtonsTest` to the new stepper structure (was asserting the old `home-tab` / `switchTab('home')`).
+
+### Verification
+- `<div>` balance in the form: **122 = 122**; **6 tab-panes**; the stepper PHP loop renders **6 buttons** → personal/residence/parents/family/guarantor/account; all section fields retained; `familyFieldsAdmin` opened/closed once.
+- Unit suite **686 / 1442**; `php -l` clean. (Visual/UX to be eyeballed in the browser.)
+- **PR-2 (public `register.php`)** mirrors this once PR-1 is signed off.
+
+---
+
 ## Session — 2026-06-26 — Member-family edit: passport photos (E2)
 **Branch:** `feat/member-edit-photos-e2`
 **Developer:** Claude Code / Jabir Mussa

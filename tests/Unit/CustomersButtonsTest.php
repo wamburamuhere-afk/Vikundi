@@ -96,14 +96,17 @@ class CustomersButtonsTest extends TestCase
 
     public function test_registration_modal_buttons_exist(): void
     {
-        // Tabs
-        $this->assertStringContainsString('id="personal-tab"', $this->src);
-        $this->assertStringContainsString('id="home-tab"', $this->src);
-        $this->assertStringContainsString('id="account-tab"', $this->src);
-        
-        // Navigation
-        $this->assertStringContainsString('onclick="switchTab(\'home\')"', $this->src);
-        $this->assertStringContainsString('onclick="switchTab(\'personal\')"', $this->src);
+        // Tabs (PR-1: 6-step stepper generated from a $__steps array)
+        $this->assertStringContainsString('id="<?= $__st[0] ?>-tab"', $this->src);
+        foreach (['personal', 'residence', 'parents', 'family', 'guarantor', 'account'] as $step) {
+            $this->assertStringContainsString("'" . $step . "',", $this->src, "stepper must include the $step step");
+        }
+
+        // Navigation between the 6 steps
+        $this->assertStringContainsString('onclick="switchTab(\'residence\')"', $this->src);
+        $this->assertStringContainsString('onclick="switchTab(\'parents\')"', $this->src);
+        $this->assertStringContainsString('onclick="switchTab(\'family\')"', $this->src);
+        $this->assertStringContainsString('onclick="switchTab(\'guarantor\')"', $this->src);
         $this->assertStringContainsString('onclick="switchTab(\'account\')"', $this->src);
 
         // Dynamic Rows

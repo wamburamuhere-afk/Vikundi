@@ -431,25 +431,24 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
             </div>
             <div class="modal-body p-0">
                 <!-- Multi-tab Progress/Navigation -->
-                <ul class="nav nav-pills nav-justified bg-light p-2 mb-0" id="registrationTabs" role="tablist" style="border-radius: 0 !important;">
+                <?php $__sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
+                      $__steps = [
+                          ['personal',  $__sw ? 'Binafsi'   : 'Personal'],
+                          ['residence', $__sw ? 'Makazi'    : 'Residence'],
+                          ['parents',   $__sw ? 'Wazazi'    : 'Parents'],
+                          ['family',    $__sw ? 'Familia'   : 'Family'],
+                          ['guarantor', $__sw ? 'Mdhamini'  : 'Guarantor'],
+                          ['account',   $__sw ? 'Akaunti'   : 'Account'],
+                      ]; ?>
+                <ul class="nav nav-pills nav-justified bg-light px-2 py-2 mb-0 flex-nowrap overflow-auto small" id="registrationTabs" role="tablist" style="border-radius: 0 !important;">
+                    <?php foreach ($__steps as $__i => $__st): ?>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active py-2" id="personal-tab" data-bs-toggle="pill" 
-                                data-bs-target="#personal" type="button" role="tab" style="border-radius: 0 !important;">
-                            <i class="bi bi-1-circle me-1"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Binafsi & Makazi' : 'Personal & Residence' ?>
+                        <button class="nav-link <?= $__i === 0 ? 'active' : '' ?> py-1 px-1" id="<?= $__st[0] ?>-tab" data-bs-toggle="pill"
+                                data-bs-target="#<?= $__st[0] ?>" type="button" role="tab" style="border-radius: 0 !important;">
+                            <i class="bi bi-<?= $__i + 1 ?>-circle d-block mx-auto"></i><span class="d-none d-md-inline"><?= $__st[1] ?></span>
                         </button>
                     </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link py-2" id="home-tab" data-bs-toggle="pill" 
-                                data-bs-target="#home" type="button" role="tab" style="border-radius: 0 !important;">
-                            <i class="bi bi-2-circle me-1"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Familia & Wanufaika' : 'Family & Beneficiaries' ?>
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link py-2" id="account-tab" data-bs-toggle="pill" 
-                                data-bs-target="#account" type="button" role="tab" style="border-radius: 0 !important;">
-                            <i class="bi bi-3-circle me-1"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Akaunti & Fedha' : 'Account & Finance' ?>
-                        </button>
-                    </li>
+                    <?php endforeach; ?>
                 </ul>
 
                 <form id="addMemberForm" enctype="multipart/form-data" class="p-4">
@@ -517,8 +516,16 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                                     <label class="form-label fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Namba ya NIDA' : 'NIDA Number' ?></label>
                                     <input type="text" name="nida_number" class="form-control" placeholder="20XXXXXXXXXXXXX">
                                 </div>
+                            </div>
+                            <div class="d-flex justify-content-end mt-4">
+                                <button type="button" class="btn btn-primary px-4" onclick="switchTab('residence')"><?= $__sw ? 'Endelea' : 'Continue' ?> <i class="bi bi-arrow-right ms-1"></i></button>
+                            </div>
+                        </div>
 
-                                <div class="col-12 mt-4">
+                        <!-- STEP 2: RESIDENCE & PHOTO -->
+                        <div class="tab-pane fade" id="residence" role="tabpanel">
+                            <div class="row g-3">
+                                <div class="col-12 mt-2">
                                     <h6 class="text-primary border-bottom pb-2 mb-3 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Makazi Yako ya Sasa' : 'Current Residence' ?></h6>
                                     <div class="row g-3">
                                         <div class="col-md-4">
@@ -558,15 +565,14 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                                     </div>
                                 </div>
                             </div>
-                            <div class="d-flex justify-content-end mt-4">
-                                <button type="button" class="btn btn-primary px-4" onclick="switchTab('home')">
-                                    <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Endelea' : 'Continue' ?> <i class="bi bi-arrow-right ms-1"></i>
-                                </button>
+                            <div class="d-flex justify-content-between mt-4">
+                                <button type="button" class="btn btn-outline-secondary px-4" onclick="switchTab('personal')"><i class="bi bi-arrow-left me-1"></i> <?= $__sw ? 'Nyuma' : 'Back' ?></button>
+                                <button type="button" class="btn btn-primary px-4" onclick="switchTab('parents')"><?= $__sw ? 'Endelea' : 'Continue' ?> <i class="bi bi-arrow-right ms-1"></i></button>
                             </div>
                         </div>
 
-                         <!-- TAB 2: FAMILY & RESIDENCE -->
-                         <div class="tab-pane fade" id="home" role="tabpanel">
+                         <!-- STEP 3: PARENTS -->
+                         <div class="tab-pane fade" id="parents" role="tabpanel">
                              
                              <!-- MAIN BENEFICIARIES HEADING -->
                              <h5 class="mt-2 mb-4 text-primary fw-bold border-bottom pb-2">
@@ -614,6 +620,15 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                                      </div>
                                  </div>
                              </div>
+
+                            <div class="d-flex justify-content-between mt-4">
+                                <button type="button" class="btn btn-outline-secondary px-4" onclick="switchTab('residence')"><i class="bi bi-arrow-left me-1"></i> <?= $__sw ? 'Nyuma' : 'Back' ?></button>
+                                <button type="button" class="btn btn-primary px-4" onclick="switchTab('family')"><?= $__sw ? 'Endelea' : 'Continue' ?> <i class="bi bi-arrow-right ms-1"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- STEP 4: SPOUSE & CHILDREN -->
+                        <div class="tab-pane fade" id="family" role="tabpanel">
 
                              <div id="familyFieldsAdmin" style="display: none;">
                                 <!-- 2: WIFE/HUSBAND INFORMATION -->
@@ -677,48 +692,41 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                                     </div>
                                 </div>
 
+                             </div> <!-- close familyFieldsAdmin (spouse only); children below are always shown -->
+
                                 <!-- 3: CHILDREN INFORMATION -->
                                 <div class="mb-4 pt-2">
                                     <h6 class="text-primary border-bottom pb-2 mb-3 fw-bold"><i class="bi bi-people-fill me-2"></i>3. <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'TAARIFA ZA WATOTO WA KUZAA WA MWANACHAMA' : 'MEMBER\'S CHILDREN INFORMATION' ?></h6>
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered table-sm align-middle" id="childrenTableAdmin">
-                                            <thead class="bg-light small">
-                                                <tr>
-                                                    <th class="text-center" style="width: 50px;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Na.' : 'S/No' ?></th>
-                                                    <th><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jina la Mtoto' : 'Child Name' ?></th>
-                                                    <th style="width: 160px;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Tarehe ya Kuzaliwa' : 'Date of Birth' ?></th>
-                                                    <th style="width: 90px;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Umri' : 'Age' ?></th>
-                                                    <th style="width: 130px;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jinsia' : 'Gender' ?></th>
-                                                    <th style="width: 160px;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Picha (Hiari)' : 'Photo (Optional)' ?></th>
-                                                    <th class="text-center" style="width: 50px;">#</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="childrenListAdmin">
-                                                <tr class="child-row-admin">
-                                                    <td class="text-center fw-bold row-idx-admin">1</td>
-                                                    <td><input type="text" name="child_name[]" class="form-control form-control-sm border-0 bg-transparent" placeholder="Child Name"></td>
-                                                    <td><input type="date" name="child_dob[]" class="form-control form-control-sm border-0 bg-transparent" onchange="vkChildAge(this)"></td>
-                                                    <td><input type="number" name="child_age[]" class="form-control form-control-sm border-0 bg-transparent" placeholder="Auto" readonly></td>
-                                                    <td>
-                                                        <select name="child_gender[]" class="form-select form-select-sm border-0 bg-transparent">
-                                                            <option value="Mwanaume"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mwanaume' : 'Male' ?></option>
-                                                            <option value="Mwanamke"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mwanamke' : 'Female' ?></option>
-                                                        </select>
-                                                    </td>
-                                                    <td><input type="file" name="child_photo[]" class="form-control form-control-sm border-0 bg-transparent" accept="image/*"></td>
-                                                    <td class="text-center">
-                                                        <button type="button" class="btn btn-sm text-danger border-0" onclick="removeRowAdmin(this)"><i class="bi bi-trash"></i></button>
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
+                                    <div class="form-text small text-muted mb-2"><?= $__sw ? 'Ongeza watoto wa mwanachama (kama wapo).' : "Add the member's children (if any)." ?></div>
+                                    <div id="childrenListAdmin">
+                                        <div class="child-card-admin card border mb-2">
+                                            <div class="card-body p-3">
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <span class="fw-bold small text-primary"><i class="bi bi-person-badge me-1"></i><?= $__sw ? 'Mtoto' : 'Child' ?> <span class="child-idx-admin">1</span></span>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger border-0 py-0 px-2" onclick="removeRowAdmin(this)"><i class="bi bi-x-lg"></i></button>
+                                                </div>
+                                                <div class="row g-2">
+                                                    <div class="col-md-4"><label class="form-label small mb-1 fw-bold"><?= $__sw ? 'Jina la Mtoto' : 'Child Name' ?></label><input type="text" name="child_name[]" class="form-control form-control-sm" placeholder="<?= $__sw ? 'Jina Kamili' : 'Full Name' ?>"></div>
+                                                    <div class="col-md-3"><label class="form-label small mb-1 fw-bold"><?= $__sw ? 'Tarehe ya Kuzaliwa' : 'Date of Birth' ?></label><input type="date" name="child_dob[]" class="form-control form-control-sm" onchange="vkChildAge(this)"></div>
+                                                    <div class="col-md-2"><label class="form-label small mb-1 fw-bold"><?= $__sw ? 'Umri' : 'Age' ?></label><input type="number" name="child_age[]" class="form-control form-control-sm" placeholder="Auto" readonly></div>
+                                                    <div class="col-md-3"><label class="form-label small mb-1 fw-bold"><?= $__sw ? 'Jinsia' : 'Gender' ?></label><select name="child_gender[]" class="form-select form-select-sm"><option value="Mwanaume"><?= $__sw ? 'Mwanaume' : 'Male' ?></option><option value="Mwanamke"><?= $__sw ? 'Mwanamke' : 'Female' ?></option></select></div>
+                                                    <div class="col-md-6"><label class="form-label small mb-1 fw-bold"><?= $__sw ? 'Picha (Hiari)' : 'Photo (Optional)' ?></label><input type="file" name="child_photo[]" class="form-control form-control-sm" accept="image/*"></div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                     <button type="button" class="btn btn-sm btn-outline-primary rounded-pill mt-2" onclick="addChildRowAdmin()">
                                         <i class="bi bi-plus-circle me-1"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Ongeza Mtoto' : 'Add Child' ?>
                                     </button>
                                 </div>
-                             </div> <!-- End familyFieldsAdmin -->
+                            <div class="d-flex justify-content-between mt-4">
+                                <button type="button" class="btn btn-outline-secondary px-4" onclick="switchTab('parents')"><i class="bi bi-arrow-left me-1"></i> <?= $__sw ? 'Nyuma' : 'Back' ?></button>
+                                <button type="button" class="btn btn-primary px-4" onclick="switchTab('guarantor')"><?= $__sw ? 'Endelea' : 'Continue' ?> <i class="bi bi-arrow-right ms-1"></i></button>
+                            </div>
+                        </div>
 
+                        <!-- STEP 5: GUARANTOR -->
+                        <div class="tab-pane fade" id="guarantor" role="tabpanel">
 
                             <!-- 2.4: GUARANTOR INFORMATION -->
                             <div class="mb-4">
@@ -754,16 +762,12 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                             </div>
 
                             <div class="d-flex justify-content-between mt-4">
-                                <button type="button" class="btn btn-outline-secondary px-4" onclick="switchTab('personal')">
-                                    <i class="bi bi-arrow-left me-1"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nyuma' : 'Back' ?>
-                                </button>
-                                <button type="button" class="btn btn-primary px-4" onclick="switchTab('account')">
-                                    <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Endelea' : 'Continue' ?> <i class="bi bi-arrow-right ms-1"></i>
-                                </button>
+                                <button type="button" class="btn btn-outline-secondary px-4" onclick="switchTab('family')"><i class="bi bi-arrow-left me-1"></i> <?= $__sw ? 'Nyuma' : 'Back' ?></button>
+                                <button type="button" class="btn btn-primary px-4" onclick="switchTab('account')"><?= $__sw ? 'Endelea' : 'Continue' ?> <i class="bi bi-arrow-right ms-1"></i></button>
                             </div>
                         </div>
 
-                        <!-- TAB 3: AKAUNTI & FEDHA -->
+                        <!-- STEP 6: ACCOUNT & FINANCE -->
                         <div class="tab-pane fade" id="account" role="tabpanel">
                             <div class="row g-3">
                                 <!-- Username Preview at Top -->
@@ -865,7 +869,7 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                             </div>
 
                             <div class="d-flex justify-content-between mt-5 pt-3 border-top">
-                                <button type="button" class="btn btn-outline-secondary px-4" onclick="switchTab('home')">
+                                <button type="button" class="btn btn-outline-secondary px-4" onclick="switchTab('guarantor')">
                                     <i class="bi bi-arrow-left me-1"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nyuma' : 'Back' ?>
                                 </button>
                                 <button type="submit" class="btn btn-primary btn-lg px-5 shadow">
@@ -1276,8 +1280,8 @@ $(document).ready(function() {
 
     // registration: derive a child's age from the entered date of birth.
     function vkChildAge(dobInput) {
-        const row = dobInput.closest('tr');
-        const ageInput = row ? row.querySelector('input[name="child_age[]"]') : null;
+        const card = dobInput.closest('.child-card-admin') || dobInput.closest('tr');
+        const ageInput = card ? card.querySelector('input[name="child_age[]"]') : null;
         if (!ageInput) return;
         const d = new Date(dobInput.value);
         if (!dobInput.value || isNaN(d.getTime())) { ageInput.value = ''; return; }
@@ -1289,42 +1293,40 @@ $(document).ready(function() {
     }
 
     function addChildRowAdmin() {
-        const tbody = document.getElementById('childrenListAdmin');
-        const rowCount = tbody.getElementsByClassName('child-row-admin').length + 1;
-        const newRow = document.createElement('tr');
-        newRow.className = 'child-row-admin';
-        newRow.innerHTML = `
-            <td class="text-center fw-bold row-idx-admin">${rowCount}</td>
-            <td><input type="text" name="child_name[]" class="form-control form-control-sm border-0 bg-transparent" placeholder="Name"></td>
-            <td><input type="date" name="child_dob[]" class="form-control form-control-sm border-0 bg-transparent" onchange="vkChildAge(this)"></td>
-            <td><input type="number" name="child_age[]" class="form-control form-control-sm border-0 bg-transparent" placeholder="Auto" readonly></td>
-            <td>
-                <select name="child_gender[]" class="form-select form-select-sm border-0 bg-transparent">
-                    <option value="Mwanaume"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mwanaume' : 'Male' ?></option>
-                    <option value="Mwanamke"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mwanamke' : 'Female' ?></option>
-                </select>
-            </td>
-            <td><input type="file" name="child_photo[]" class="form-control form-control-sm border-0 bg-transparent" accept="image/*"></td>
-            <td class="text-center">
-                <button type="button" class="btn btn-sm text-danger border-0" onclick="removeRowAdmin(this)"><i class="bi bi-trash"></i></button>
-            </td>
+        const list = document.getElementById('childrenListAdmin');
+        const card = document.createElement('div');
+        card.className = 'child-card-admin card border mb-2';
+        card.innerHTML = `
+            <div class="card-body p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="fw-bold small text-primary"><i class="bi bi-person-badge me-1"></i><?= $__sw ? 'Mtoto' : 'Child' ?> <span class="child-idx-admin"></span></span>
+                    <button type="button" class="btn btn-sm btn-outline-danger border-0 py-0 px-2" onclick="removeRowAdmin(this)"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <div class="row g-2">
+                    <div class="col-md-4"><label class="form-label small mb-1 fw-bold"><?= $__sw ? 'Jina la Mtoto' : 'Child Name' ?></label><input type="text" name="child_name[]" class="form-control form-control-sm" placeholder="<?= $__sw ? 'Jina Kamili' : 'Full Name' ?>"></div>
+                    <div class="col-md-3"><label class="form-label small mb-1 fw-bold"><?= $__sw ? 'Tarehe ya Kuzaliwa' : 'Date of Birth' ?></label><input type="date" name="child_dob[]" class="form-control form-control-sm" onchange="vkChildAge(this)"></div>
+                    <div class="col-md-2"><label class="form-label small mb-1 fw-bold"><?= $__sw ? 'Umri' : 'Age' ?></label><input type="number" name="child_age[]" class="form-control form-control-sm" placeholder="Auto" readonly></div>
+                    <div class="col-md-3"><label class="form-label small mb-1 fw-bold"><?= $__sw ? 'Jinsia' : 'Gender' ?></label><select name="child_gender[]" class="form-select form-select-sm"><option value="Mwanaume"><?= $__sw ? 'Mwanaume' : 'Male' ?></option><option value="Mwanamke"><?= $__sw ? 'Mwanamke' : 'Female' ?></option></select></div>
+                    <div class="col-md-6"><label class="form-label small mb-1 fw-bold"><?= $__sw ? 'Picha (Hiari)' : 'Photo (Optional)' ?></label><input type="file" name="child_photo[]" class="form-control form-control-sm" accept="image/*"></div>
+                </div>
+            </div>
         `;
-        tbody.appendChild(newRow);
+        list.appendChild(card);
         updateRowNumbersAdmin();
     }
 
     function removeRowAdmin(btn) {
-        const row = btn.closest('tr');
-        if (document.getElementsByClassName('child-row-admin').length > 1) {
-            row.remove();
+        const card = btn.closest('.child-card-admin');
+        if (card && document.getElementsByClassName('child-card-admin').length > 1) {
+            card.remove();
             updateRowNumbersAdmin();
         }
     }
 
     function updateRowNumbersAdmin() {
-        const rows = document.getElementsByClassName('row-idx-admin');
-        for (let i = 0; i < rows.length; i++) {
-            rows[i].innerText = i + 1;
+        const idxs = document.getElementsByClassName('child-idx-admin');
+        for (let i = 0; i < idxs.length; i++) {
+            idxs[i].innerText = i + 1;
         }
     }
 
