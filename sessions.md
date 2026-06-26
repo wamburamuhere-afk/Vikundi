@@ -4,6 +4,25 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-26 — Fix: guarantor picker not loading members
+**Branch:** `fix/guarantor-picker-url`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Bug from PR-C — the admin guarantor "pull existing member" picker loaded no results. Root cause was **not** local testing: the Select2 search and the autofill `fetch` used **relative** paths (`api/search_customers.php`, `api/get_guarantor_member.php`), which resolve to the wrong path on the admin page's clean URL → 404. Every other AJAX call in `customers.php` uses `getUrl(...)` clean routes. Also, the autofill endpoint had **no route registered** (so even `getUrl` would have 404'd it).
+
+### Files Modified
+- **`roots.php`** — register `api/get_guarantor_member` (and the `.php` variant) clean routes.
+- **`app/bms/customer/customers.php`** — picker search → `getUrl("api/search_customers")`; autofill → `getUrl("api/get_guarantor_member")`.
+
+### Tests
+- **`tests/Unit/GuarantorPickerUrlTest.php`** — picker uses `getUrl` clean routes (not bare relative `.php`); the autofill endpoint route is registered.
+- Updated `GuarantorDetailsTest` to match the clean-route reference.
+
+### Verification
+- Live (front controller): `/api/search_customers?q=a` returns the member list; `/api/get_guarantor_member?id=2` resolves (auth error when unauthenticated — gate intact).
+- Unit suite **668 / 1366**; `php -l` clean.
+
+---
+
 ## Session — 2026-06-26 — Registration form PR-D (children passport photo)
 **Branch:** `feat/registration-pr-d-children-photo`
 **Developer:** Claude Code / Jabir Mussa

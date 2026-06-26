@@ -1857,7 +1857,7 @@ $(function () {
         dropdownParent: $modal.length ? $modal : $(document.body),
         placeholder: '<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Tafuta mwanachama...' : 'Search members...' ?>',
         ajax: {
-            url: 'api/search_customers.php',
+            url: '<?= getUrl("api/search_customers") ?>',
             dataType: 'json',
             delay: 250,
             data: function (params) { return { q: params.term }; },
@@ -1868,7 +1868,7 @@ $(function () {
     }).on('select2:select', function (e) {
         var id = e.params.data.id;
         document.getElementById('guarantorMemberId').value = id;
-        fetch('api/get_guarantor_member.php?id=' + encodeURIComponent(id))
+        fetch('<?= getUrl("api/get_guarantor_member") ?>?id=' + encodeURIComponent(id))
             .then(function (r) { return r.json(); })
             .then(function (d) {
                 if (!d || !d.success) return;

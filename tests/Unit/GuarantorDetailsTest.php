@@ -65,7 +65,7 @@ class GuarantorDetailsTest extends TestCase
 
         $this->assertStringContainsString('id="guarantorMemberSelect"', $admin, 'admin form must have the picker');
         $this->assertStringContainsString('name="guarantor_member_id"', $admin, 'admin form must capture the member link');
-        $this->assertStringContainsString('get_guarantor_member.php', $admin, 'admin form must autofill from the endpoint');
+        $this->assertStringContainsString('get_guarantor_member', $admin, 'admin form must autofill from the endpoint');
 
         // Privacy: the public self-registration form must NOT expose a member picker.
         $this->assertStringNotContainsString('guarantorMemberSelect', $public, 'public form must not leak the member directory');
