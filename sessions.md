@@ -4,6 +4,31 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-26 — Registration form PR-D (children passport photo)
+**Branch:** `feat/registration-pr-d-children-photo`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Optional **passport photo per child** on both registration forms — the last piece of the children work. No DB migration (children are stored as JSON, so the photo path lives in each child entry).
+
+### Files Modified
+- **`register.php`** + **`app/bms/customer/customers.php`** — children table gains a **Photo (Optional)** column with a `child_photo[]` file input; both `addChildRow` / `addChildRowAdmin` JS templates updated to match.
+- **`helpers.php`** — new `vk_save_child_photo($files, $i, $dir)`: saves one optional photo from the array-style `$_FILES['child_photo']` (returns '' when no file for that row).
+- **`actions/process_registration.php`** + **`actions/add_member.php`** — capture `$_FILES['child_photo']` and store `photo` in each child's `children_data` JSON entry via the helper.
+
+### Tests
+- **`tests/Unit/ChildPhotoTest.php`** — 5 tests: helper guard logic (no file / missing row → ''); both forms collect `child_photo` (static + JS rows); both handlers persist `photo`.
+
+### Verification
+- Live: `register.php` **200**, no errors, `child_photo[]` present (static + dynamic rows), Photo column renders.
+- Unit suite **666 / 1361**; `php -l` clean.
+
+### Deferred follow-up (flagged, scope decision by Jabir)
+"Add parents'/children's passport **later** on the edit screens" is **not** delivered here — investigation showed the member-family **edit flow has no home**: the "Edit Member" page (`edit_customer.php`) is a BMS business-customer KYC form (company/BRELA/TIN docs, no family fields), and `profile.php`'s edit mode is outdated (old flat `father_name`/`father_phone` + children name/age/gender only — none of the PR-A/B/C structured fields). The member's **own** passport add-later already works (`profile.php` avatar upload). Proper "add later for parents/children" needs a dedicated **member-family edit form** (sync edit/profile with all PR-A/B/C fields + photos) — a separate effort, agreed to defer.
+
+### Registration rework status
+PR-A ✅ · PR-B ✅ · PR-C ✅ · **PR-D ✅** — registration data-entry rework complete. Follow-up: member-family **edit** form sync (incl. passport add-later for parents/children).
+
+---
+
 ## Session — 2026-06-26 — Registration form PR-C (guarantor details)
 **Branch:** `feat/registration-pr-c-guarantor`
 **Developer:** Claude Code / Jabir Mussa
