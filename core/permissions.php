@@ -274,6 +274,19 @@ function isAdmin()
 }
 
 /**
+ * May the current user see a member's sensitive details (phone, NIDA, email,
+ * full address, financials, family/guarantor)? Yes for admin/chairperson and for
+ * anyone who can edit members (secretary/treasurer), or when looking at their own
+ * record. Ordinary view-only Members get the limited view of other members.
+ *
+ * @param bool $isSelf True when the record being viewed belongs to the viewer.
+ */
+function canSeeMemberSensitiveData($isSelf = false)
+{
+    return (bool) $isSelf || isAdmin() || canEdit('customers');
+}
+
+/**
  * Get permission summary for a page
  * Returns a string describing the permissions (e.g., "View, Edit, Delete")
  * 

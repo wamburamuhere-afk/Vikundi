@@ -36,6 +36,14 @@ $active_members = array_filter($members, function($m) { return $m['user_status']
 $inactive_members = array_filter($members, function($m) { return ($m['user_status'] == 'inactive' || $m['user_status'] == '') && $m['is_deceased'] == 0; });
 $pending_members = array_filter($members, function($m) { return $m['user_status'] == 'pending' && $m['is_deceased'] == 0; });
 
+// roles: a view-only member sees only limited info about other members — blank
+// the sensitive fields server-side so they never reach the browser.
+if (!canSeeMemberSensitiveData()) {
+    foreach ($members as $i => $m) {
+        $members[$i] = vk_mask_member_row($m);
+    }
+}
+
 ?>
 
 

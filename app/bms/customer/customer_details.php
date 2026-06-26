@@ -38,6 +38,14 @@ if (!$customer) {
     die($isSw ? "Mwanachama hajapatikana" : "Customer not found");
 }
 
+// roles: defense-in-depth — a view-only member who somehow reaches another
+// member's details sees only the limited fields (the block above already keeps
+// members on their own record). Their own record and leadership see everything.
+$__own = isset($customer['user_id_ref']) && (int) $customer['user_id_ref'] === (int) ($_SESSION['user_id'] ?? 0);
+if (!canSeeMemberSensitiveData($__own)) {
+    $customer = vk_mask_member_row($customer);
+}
+
 // Format names
 $customer_name = safe_output($customer['customer_name'] ?: ($customer['first_name'] . ' ' . $customer['last_name']));
 
