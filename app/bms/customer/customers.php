@@ -670,6 +670,10 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                                             <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mkoa wa Kuzaliwa' : 'Region of Birth' ?></label>
                                             <input type="text" name="spouse_birth_region" class="form-control" placeholder="Birth Region">
                                         </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Picha ya Pasipoti (Hiari)' : 'Passport Photo (Optional)' ?></label>
+                                            <input type="file" name="spouse_photo" class="form-control" accept="image/*">
+                                        </div>
                                     </div>
                                 </div>
 
