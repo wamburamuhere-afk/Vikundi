@@ -76,4 +76,13 @@ class VicobaRolesTest extends TestCase
         $runner = file_get_contents(__DIR__ . '/../../database/migrate.php');
         $this->assertStringContainsString('seed_vicoba_roles.php', $runner, 'seeder must run on deploy');
     }
+
+    public function testMemberRoleIsForcedToViewOnly(): void
+    {
+        $src = file_get_contents(self::SEEDER);
+        // Member is enforced (reset to view-only every run), not seed-if-empty —
+        // so its permissions can't drift and break the sensitive-data masking.
+        $this->assertMatchesRegularExpression("/'Member'\\s*=>\\s*\\['view',\\s*\\d+,[^\\]]*,\\s*true\\]/", $src);
+        $this->assertStringContainsString('Reset to default permissions', $src);
+    }
 }

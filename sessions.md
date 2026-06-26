@@ -15,8 +15,8 @@ This file tracks every development session, modification, and significant change
 - `VicobaRolesTest` updated to the purpose-based function + name resolution.
 
 ### Verification
-- Reproduced the exact prod conflict locally in a rolled-back transaction: OLD approach → the same 1452 FK error; NEW approach → Member resolves to its existing id and the permission insert succeeds. Real seeder runs idempotently locally. Suite **733 / 1638**.
-- **Caveat:** production's existing Member role already has permissions, so the seeder reuses it but does **not** reseed (seed-if-empty) — i.e. it won't force that role to view-only. A separate explicit step is needed if Member must be reset to view-only.
+- Reproduced the exact prod conflict locally in a rolled-back transaction: OLD approach → the same 1452 FK error; NEW approach → Member resolves to its existing id and the permission insert succeeds. Real seeder runs idempotently locally.
+- **Member enforced view-only (per decision):** the seeder now **resets the Member role's permissions to the view-only set on every run** (enforce flag) — so the existing production Member role becomes strictly view-only (3 view perms, 0 write-grants), which the sensitive-data masking depends on. Leadership roles stay seed-if-empty (their customisations are preserved). Verified live: Member#13 = customers/customer_details/dashboard, view only. Suite **734 / 1640**.
 
 ---
 

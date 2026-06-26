@@ -24,12 +24,16 @@
 
 require_once __DIR__ . '/../includes/config.php';
 
-// name => [purpose, preferred_id, description]
+// name => [purpose, preferred_id, description, enforce_defaults]
+// enforce_defaults=true resets the role's permissions to its defaults on every
+// run — used for Member so it stays strictly view-only (required for the member
+// sensitive-data masking to apply). false = seed only when the role has none yet,
+// so manual changes to the leadership roles are preserved.
 $roles = [
-    'Chairperson' => ['admin',       2,  'Group chairperson — full administrative access.'],
-    'Secretary'   => ['operational', 3,  'Group secretary — full CRUD on operational data.'],
-    'Treasurer'   => ['operational', 4,  'Group treasurer/accountant — full CRUD on operational data.'],
-    'Member'      => ['view',        13, 'Ordinary member — view-only, with a limited view of other members.'],
+    'Chairperson' => ['admin',       2,  'Group chairperson — full administrative access.', false],
+    'Secretary'   => ['operational', 3,  'Group secretary — full CRUD on operational data.', false],
+    'Treasurer'   => ['operational', 4,  'Group treasurer/accountant — full CRUD on operational data.', false],
+    'Member'      => ['view',        13, 'Ordinary member — view-only, with a limited view of other members.', true],
 ];
 
 // BMS leftover role NAMES to remove (names are stable across environments; ids are not).
@@ -110,17 +114,21 @@ try {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
     );
 
+    $resetPerms = $pdo->prepare("DELETE FROM role_permissions WHERE role_id = ?");
     $seeded = [];
-    foreach ($roles as $name => [$purpose]) {
+    $reset  = [];
+    foreach ($roles as $name => [$purpose, , , $enforce]) {
         $rid = $resolved[$name];
         $countPerms->execute([$rid]);
-        if ((int) $countPerms->fetchColumn() > 0) { continue; } // already configured — leave it
+        $has = (int) $countPerms->fetchColumn() > 0;
+        if ($has && !$enforce) { continue; }                 // keep existing customisations
+        if ($has && $enforce)  { $resetPerms->execute([$rid]); $reset[] = "$name#$rid"; }
+        else                   { $seeded[] = "$name#$rid"; }
         foreach ($perms as $pid => $key) {
             $g = vk_role_grants($purpose, $key, $adminOnlyKeys, $memberViewKeys);
             if ($g === null) { continue; }
             $insPerm->execute([$rid, $pid, $g[0], $g[1], $g[2], $g[3], $g[4], $g[5]]);
         }
-        $seeded[] = "$name#$rid";
     }
 
     $pdo->commit();
@@ -129,8 +137,9 @@ try {
     foreach ($resolved as $n => $i) { $list[] = "$n#$i"; }
     echo "VICOBA roles ready: " . implode(', ', $list) . ".\n";
     echo $removedBms ? "  Removed BMS roles: " . implode(', ', $removedBms) . "\n" : "  No BMS leftover roles to remove.\n";
-    echo $seeded ? "  Seeded default permissions for: " . implode(', ', $seeded) . "\n"
-                 : "  All four roles already had permissions — left unchanged.\n";
+    if ($seeded) echo "  Seeded default permissions for: " . implode(', ', $seeded) . "\n";
+    if ($reset)  echo "  Reset to default permissions (enforced): " . implode(', ', $reset) . "\n";
+    if (!$seeded && !$reset) echo "  Roles already configured — left unchanged.\n";
 } catch (Throwable $e) {
     $pdo->rollBack();
     echo "VICOBA role seed FAILED: " . $e->getMessage() . "\n";
