@@ -4,6 +4,25 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-27 — Admin-created members: password = username@123 (members PR-1)
+**Branch:** `feat/admin-member-password`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** First of two member-onboarding PRs. When the **admin** creates a member via the add-member wizard, the login password is now set automatically to **`username@123`** instead of being typed. (PR-2 = the simplified bulk-upload template + importer rewrite.)
+
+### Changes
+- **`app/bms/customer/customers.php`** (Account step) — removed the *Initial Password* + *Confirm Password* inputs (and the password-match JS check); added a bilingual note: *"The login password is set automatically as `username@123`… the member can change it after first login."*
+- **`actions/add_member.php`** — no longer reads `$_POST['password']`; sets `$password = $username . '@123'` right after the username is generated, then hashes as before.
+- **Unchanged (already correct):** self-registration (`process_registration.php`) keeps the member's typed password; bulk import already used `username@123`.
+
+### Tests
+- **`tests/Unit/AdminMemberPasswordTest.php`** — handler derives password from username, no longer trusts POST; wizard has no typed-password inputs and shows the note; self-registration still typed; password round-trips through hash/verify.
+- Updated `CustomersButtonsTest` + `CustomersRegistrationLanguageTest` (they asserted the removed password labels/toggle/popup).
+
+### Verification
+- `php -l` clean; password round-trip OK (`bkessy@123`); 0 typed-password inputs remain; `add_member` no longer reads POST password. Unit suite **727 / 1609**.
+
+---
+
 ## Session — 2026-06-27 — Fix: reviewed contributions stranded (can't be approved)
 **Branch:** `fix/approve-reviewed-contributions`
 **Summary:** The Pending Approvals section loaded only `status = 'pending'`, but the **Approve** button renders only for `reviewed` rows — so once an item was marked Reviewed it dropped out of the queue and could never be approved (e.g. contribution #49, Baraka Emmanuel Kessy, sat at "reviewed"). 

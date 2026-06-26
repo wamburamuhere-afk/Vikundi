@@ -57,7 +57,8 @@ $middle_name = $_POST['middle_name'] ?? '';
 $last_name  = $_POST['last_name'] ?? '';
 $email      = $_POST['email'] ?? '';
 $phone      = $_POST['phone'] ?? '';
-$password   = $_POST['password'] ?? 'Vikundi2024';
+// Password is set automatically to username@123 once the username is generated
+// (see below). The admin no longer types a password.
 $user_role  = $_POST['user_role'] ?? 'Member';
 $status     = $_POST['status'] ?? 'active';
 
@@ -288,6 +289,9 @@ try {
     $pdo->beginTransaction();
 
     // 1. Insert into users table
+    // Admin-created members get a deterministic initial password: username@123
+    // (the admin does not type one). The member changes it after first login.
+    $password = $username . '@123';
     $hashed_password = password_hash($password, PASSWORD_DEFAULT);
     $stmt = $pdo->prepare("
         INSERT INTO users (first_name, middle_name, last_name, email, phone, username, password, user_role, status, avatar, preferred_language, created_at, updated_at) 

@@ -113,8 +113,8 @@ class CustomersButtonsTest extends TestCase
         $this->assertStringContainsString('onclick="addChildRowAdmin()"', $this->src);
         $this->assertStringContainsString('onclick="removeRowAdmin(this)"', $this->src);
 
-        // Password Toggles
-        $this->assertStringContainsString('onclick="togglePasswordAdmin(', $this->src);
+        // Login password is auto-set (username@123) — the typed-password inputs/toggles were removed.
+        $this->assertStringContainsString('username@123', $this->src);
 
         // Language
         $this->assertStringContainsString('onclick="setRegLang(\'en\')"', $this->src);
