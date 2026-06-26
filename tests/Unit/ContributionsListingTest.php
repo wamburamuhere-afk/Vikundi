@@ -37,6 +37,14 @@ class ContributionsListingTest extends TestCase
         }
     }
 
+    public function testApprovalQueueIncludesReviewedItems(): void
+    {
+        // The Approve button renders only for 'reviewed' rows, so the queue must
+        // load them too — otherwise reviewed contributions get stranded.
+        $this->assertStringContainsString("con.status IN ('pending', 'reviewed')", $this->src);
+        $this->assertStringNotContainsString("WHERE con.status = 'pending'", $this->src);
+    }
+
     public function testFilteredListIsParameterised(): void
     {
         // The list query is built with bound params, never string-interpolated input.
