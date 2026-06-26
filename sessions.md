@@ -4,6 +4,26 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-26 — Member-family edit form sync (E1)
+**Branch:** `feat/member-edit-sync-e1`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** First of two PRs bringing the member-family **edit** form (`profile.php` edit mode — open to the member on their own profile and to Admin/Secretary/Katibu on others) in sync with the registration rework. **E1 = field sync + the parent-location bug fix** (photo upload/replace is E2). Scope confirmed with Jabir: no member-picker on edit (privacy), full field parity, 2-PR split.
+
+### Files Modified — `app/constant/profile/profile.php`
+- **SELECT** — loads the new columns so the form pre-fills: parent structured names + 6-field location, guarantor 6-field location.
+- **Edit form** — parents rewritten to structured First/Middle/Last + 6-field location (Title-cased, pre-filled); guarantor gains the 6-field location; children table gains **Date of Birth** (with `vkChildAge()` deriving age); labels Title-cased.
+- **UPDATE handler** — now persists all the new parent/guarantor columns; legacy `*_name` rebuilt via `vk_full_name()`, legacy location from state/ward (registration parity). **Fixed the latent bug** where the form showed parent location but the handler never saved it. Children re-encode now stores DOB + derives age **and preserves a photo/`is_deceased` set elsewhere** (editing no longer wipes a registration child photo).
+
+### Tests
+- **`tests/Unit/MemberEditSyncTest.php`** — 5 tests: SELECT loads new columns; edit form has the new inputs; UPDATE persists them; the parent-location bug is fixed; children re-encode reads DOB + preserves the photo.
+
+### Verification
+- UPDATE statement balanced: **78 placeholders = 78 values** (verified by evaluating the bind array). New columns valid in an UPDATE (rolled-back transaction round-tripped `father_first_name`/`father_state`/`guarantor_district`). The full SELECT executes and returns the new keys for pre-fill.
+- Unit suite **676 / 1398**; `php -l` clean.
+- Next: **E2** — passport photo upload/replace on edit for member/spouse/parents/children (show current, replace, never wipe on empty).
+
+---
+
 ## Session — 2026-06-26 — Registration: spouse passport photo
 **Branch:** `feat/registration-spouse-photo`
 **Developer:** Claude Code / Jabir Mussa

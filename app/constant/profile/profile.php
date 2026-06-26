@@ -30,9 +30,12 @@ $stmt = $pdo->prepare("
            c.marital_status, c.spouse_first_name, c.spouse_middle_name, c.spouse_last_name, c.spouse_email, 
            c.spouse_phone, c.spouse_gender, c.spouse_dob, c.spouse_nida, c.spouse_religion, c.spouse_birth_region,
            c.children_data,
-           c.father_name, c.father_location, c.father_sub_location, c.father_phone,
-           c.mother_name, c.mother_location, c.mother_sub_location, c.mother_phone,
+           c.father_name, c.father_first_name, c.father_middle_name, c.father_last_name, c.father_location, c.father_sub_location, c.father_phone,
+           c.father_country, c.father_state, c.father_district, c.father_ward, c.father_street, c.father_house_number,
+           c.mother_name, c.mother_first_name, c.mother_middle_name, c.mother_last_name, c.mother_location, c.mother_sub_location, c.mother_phone,
+           c.mother_country, c.mother_state, c.mother_district, c.mother_ward, c.mother_street, c.mother_house_number,
            c.guarantor_name, c.guarantor_phone, c.guarantor_rel, c.guarantor_location,
+           c.guarantor_country, c.guarantor_state, c.guarantor_district, c.guarantor_ward, c.guarantor_street, c.guarantor_house_number,
            c.initial_savings
     FROM users u 
     LEFT JOIN roles r ON u.role_id = r.role_id 
@@ -215,8 +218,14 @@ if ($_POST) {
                             spouse_phone = ?, spouse_gender = ?, spouse_dob = ?, spouse_nida = ?,
                             spouse_religion = ?, spouse_birth_region = ?,
                             children_data = ?,
-                            father_name = ?, father_phone = ?, mother_name = ?, mother_phone = ?,
-                            guarantor_name = ?, guarantor_phone = ?,
+                            father_name = ?, father_first_name = ?, father_middle_name = ?, father_last_name = ?, father_phone = ?,
+                            father_location = ?, father_sub_location = ?,
+                            father_country = ?, father_state = ?, father_district = ?, father_ward = ?, father_street = ?, father_house_number = ?,
+                            mother_name = ?, mother_first_name = ?, mother_middle_name = ?, mother_last_name = ?, mother_phone = ?,
+                            mother_location = ?, mother_sub_location = ?,
+                            mother_country = ?, mother_state = ?, mother_district = ?, mother_ward = ?, mother_street = ?, mother_house_number = ?,
+                            guarantor_name = ?, guarantor_phone = ?, guarantor_rel = ?, guarantor_location = ?,
+                            guarantor_country = ?, guarantor_state = ?, guarantor_district = ?, guarantor_ward = ?, guarantor_street = ?, guarantor_house_number = ?,
                             next_of_kin_name = ?, nok_gender = ?, next_of_kin_relationship = ?, next_of_kin_phone = ?,
                             nok_nationality = ?, nok_age = ?,
                             nok_country = ?, nok_state = ?, nok_district = ?, nok_ward = ?, nok_street = ?, nok_house_number = ?
@@ -229,6 +238,7 @@ if ($_POST) {
                     $child_names = $_POST['child_name'] ?? [];
                     $child_ages = $_POST['child_age'] ?? [];
                     $child_genders = $_POST['child_gender'] ?? [];
+                    $child_dobs = $_POST['child_dob'] ?? [];
 
                     $existing_children_stmt = $pdo->prepare("SELECT children_data FROM customers WHERE email = ?");
                     $existing_children_stmt->execute([$old_email]);
@@ -238,11 +248,19 @@ if ($_POST) {
                     $children_array = [];
                     foreach ($child_names as $idx => $cn) {
                         if (!empty($cn)) {
+                            // DOB entered -> derive age; else keep existing dob/posted age.
+                            $dob = $child_dobs[$idx] ?? ($existing_children[$idx]['dob'] ?? '');
+                            $age = $dob !== '' ? vk_age_from_dob($dob) : ($child_ages[$idx] ?? '');
                             $entry = [
                                 'name' => $cn,
-                                'age' => $child_ages[$idx] ?? '',
+                                'dob' => $dob,
+                                'age' => $age,
                                 'gender' => $child_genders[$idx] ?? 'Mwanaume'
                             ];
+                            // Preserve a photo set at registration (PR-D); E2 will allow replacing it.
+                            if (!empty($existing_children[$idx]['photo'])) {
+                                $entry['photo'] = $existing_children[$idx]['photo'];
+                            }
                             if (!empty($existing_children[$idx]['is_deceased'])) {
                                 $entry['is_deceased'] = 1;
                                 if (isset($existing_children[$idx]['deceased_date'])) {
@@ -263,9 +281,16 @@ if ($_POST) {
                         $_POST['spouse_phone'] ?? '', $_POST['spouse_gender'] ?? '', $_POST['spouse_dob'] ?? null, $_POST['spouse_nida'] ?? '',
                         $_POST['spouse_religion'] ?? '', $_POST['spouse_birth_region'] ?? '',
                         $children_json,
-                        $_POST['father_name'] ?? '', $_POST['father_phone'] ?? '',
-                        $_POST['mother_name'] ?? '', $_POST['mother_phone'] ?? '',
-                        $_POST['guarantor_name'] ?? '', $_POST['guarantor_phone'] ?? '',
+                        vk_full_name($_POST['father_first_name'] ?? '', $_POST['father_middle_name'] ?? '', $_POST['father_last_name'] ?? ''),
+                        $_POST['father_first_name'] ?? '', $_POST['father_middle_name'] ?? '', $_POST['father_last_name'] ?? '', $_POST['father_phone'] ?? '',
+                        $_POST['father_state'] ?? '', $_POST['father_ward'] ?? '',
+                        $_POST['father_country'] ?? '', $_POST['father_state'] ?? '', $_POST['father_district'] ?? '', $_POST['father_ward'] ?? '', $_POST['father_street'] ?? '', $_POST['father_house_number'] ?? '',
+                        vk_full_name($_POST['mother_first_name'] ?? '', $_POST['mother_middle_name'] ?? '', $_POST['mother_last_name'] ?? ''),
+                        $_POST['mother_first_name'] ?? '', $_POST['mother_middle_name'] ?? '', $_POST['mother_last_name'] ?? '', $_POST['mother_phone'] ?? '',
+                        $_POST['mother_state'] ?? '', $_POST['mother_ward'] ?? '',
+                        $_POST['mother_country'] ?? '', $_POST['mother_state'] ?? '', $_POST['mother_district'] ?? '', $_POST['mother_ward'] ?? '', $_POST['mother_street'] ?? '', $_POST['mother_house_number'] ?? '',
+                        $_POST['guarantor_name'] ?? '', $_POST['guarantor_phone'] ?? '', $_POST['guarantor_rel'] ?? '', $_POST['guarantor_state'] ?? '',
+                        $_POST['guarantor_country'] ?? '', $_POST['guarantor_state'] ?? '', $_POST['guarantor_district'] ?? '', $_POST['guarantor_ward'] ?? '', $_POST['guarantor_street'] ?? '', $_POST['guarantor_house_number'] ?? '',
                         $_POST['next_of_kin_name'] ?? '', $_POST['nok_gender'] ?? '', $_POST['next_of_kin_relationship'] ?? '', $_POST['next_of_kin_phone'] ?? '',
                         $_POST['nok_nationality'] ?? '', $_POST['nok_age'] ?? null,
                         $_POST['nok_country'] ?? '', $_POST['nok_state'] ?? '', $_POST['nok_district'] ?? '', $_POST['nok_ward'] ?? '', $_POST['nok_street'] ?? '', $_POST['nok_house_number'] ?? '',
@@ -1070,42 +1095,34 @@ require_once 'header.php';
                                                         <div class="row g-4">
                                                             <!-- Father -->
                                                             <div class="col-md-6 border-end">
-                                                                <p class="fw-bold text-muted small mb-3 border-bottom pb-1"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'TAARIFA ZA BABA' : 'FATHER\'S DETAILS' ?></p>
-                                                                <div class="mb-2">
-                                                                    <label class="form-label small mb-1 fw-bold">FATHER'S NAME</label>
-                                                                    <input type="text" name="father_name" class="form-control form-control-sm" placeholder="Full Name" value="<?= htmlspecialchars($member['father_name']??'') ?>">
-                                                                </div>
-                                                                <div class="mb-2">
-                                                                    <label class="form-label small mb-1 fw-bold">REGION/DISTRICT WHERE LIVING</label>
-                                                                    <input type="text" name="father_location" class="form-control form-control-sm" placeholder="Location" value="<?= htmlspecialchars($member['father_location']??'') ?>">
-                                                                </div>
-                                                                <div class="mb-2">
-                                                                    <label class="form-label small mb-1 fw-bold">WARD/VILLAGE/STREET</label>
-                                                                    <input type="text" name="father_sub_location" class="form-control form-control-sm" placeholder="Sub-location" value="<?= htmlspecialchars($member['father_sub_location']??'') ?>">
-                                                                </div>
-                                                                <div class="mb-2">
-                                                                    <label class="form-label small mb-1 fw-bold">PHONE NUMBER</label>
-                                                                    <input type="tel" name="father_phone" class="form-control form-control-sm" placeholder="0xxxxxxxxx" value="<?= htmlspecialchars($member['father_phone']??'') ?>">
+                                                                <p class="fw-bold text-muted small mb-3 border-bottom pb-1"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Taarifa za Baba' : 'Father\'s Details' ?></p>
+                                                                <div class="row g-2">
+                                                                    <div class="col-6"><label class="form-label small mb-1 fw-bold">First Name</label><input type="text" name="father_first_name" class="form-control form-control-sm" value="<?= htmlspecialchars($member['father_first_name']??'') ?>"></div>
+                                                                    <div class="col-6"><label class="form-label small mb-1 fw-bold">Middle Name</label><input type="text" name="father_middle_name" class="form-control form-control-sm" value="<?= htmlspecialchars($member['father_middle_name']??'') ?>"></div>
+                                                                    <div class="col-6"><label class="form-label small mb-1 fw-bold">Last Name</label><input type="text" name="father_last_name" class="form-control form-control-sm" value="<?= htmlspecialchars($member['father_last_name']??'') ?>"></div>
+                                                                    <div class="col-6"><label class="form-label small mb-1 fw-bold">Phone Number</label><input type="tel" name="father_phone" class="form-control form-control-sm" placeholder="0xxxxxxxxx" value="<?= htmlspecialchars($member['father_phone']??'') ?>"></div>
+                                                                    <div class="col-6"><label class="form-label small mb-1 fw-bold">Country</label><input type="text" name="father_country" class="form-control form-control-sm" value="<?= htmlspecialchars($member['father_country']??'Tanzania') ?>"></div>
+                                                                    <div class="col-6"><label class="form-label small mb-1 fw-bold">Region / State</label><input type="text" name="father_state" class="form-control form-control-sm" value="<?= htmlspecialchars($member['father_state']??'') ?>"></div>
+                                                                    <div class="col-6"><label class="form-label small mb-1 fw-bold">District</label><input type="text" name="father_district" class="form-control form-control-sm" value="<?= htmlspecialchars($member['father_district']??'') ?>"></div>
+                                                                    <div class="col-6"><label class="form-label small mb-1 fw-bold">Ward</label><input type="text" name="father_ward" class="form-control form-control-sm" value="<?= htmlspecialchars($member['father_ward']??'') ?>"></div>
+                                                                    <div class="col-6"><label class="form-label small mb-1 fw-bold">Street / Village</label><input type="text" name="father_street" class="form-control form-control-sm" value="<?= htmlspecialchars($member['father_street']??'') ?>"></div>
+                                                                    <div class="col-6"><label class="form-label small mb-1 fw-bold">House Number</label><input type="text" name="father_house_number" class="form-control form-control-sm" value="<?= htmlspecialchars($member['father_house_number']??'') ?>"></div>
                                                                 </div>
                                                             </div>
                                                             <!-- Mother -->
                                                             <div class="col-md-6">
-                                                                <p class="fw-bold text-muted small mb-3 border-bottom pb-1"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'TAARIFA ZA MAMA' : 'MOTHER\'S DETAILS' ?></p>
-                                                                <div class="mb-2">
-                                                                    <label class="form-label small mb-1 fw-bold">MOTHER'S NAME</label>
-                                                                    <input type="text" name="mother_name" class="form-control form-control-sm" placeholder="Full Name" value="<?= htmlspecialchars($member['mother_name']??'') ?>">
-                                                                </div>
-                                                                <div class="mb-2">
-                                                                    <label class="form-label small mb-1 fw-bold">REGION/DISTRICT WHERE LIVING</label>
-                                                                    <input type="text" name="mother_location" class="form-control form-control-sm" placeholder="Location" value="<?= htmlspecialchars($member['mother_location']??'') ?>">
-                                                                </div>
-                                                                <div class="mb-2">
-                                                                    <label class="form-label small mb-1 fw-bold">WARD/VILLAGE/STREET</label>
-                                                                    <input type="text" name="mother_sub_location" class="form-control form-control-sm" placeholder="Sub-location" value="<?= htmlspecialchars($member['mother_sub_location']??'') ?>">
-                                                                </div>
-                                                                <div class="mb-2">
-                                                                    <label class="form-label small mb-1 fw-bold">PHONE NUMBER</label>
-                                                                    <input type="tel" name="mother_phone" class="form-control form-control-sm" placeholder="0xxxxxxxxx" value="<?= htmlspecialchars($member['mother_phone']??'') ?>">
+                                                                <p class="fw-bold text-muted small mb-3 border-bottom pb-1"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Taarifa za Mama' : 'Mother\'s Details' ?></p>
+                                                                <div class="row g-2">
+                                                                    <div class="col-6"><label class="form-label small mb-1 fw-bold">First Name</label><input type="text" name="mother_first_name" class="form-control form-control-sm" value="<?= htmlspecialchars($member['mother_first_name']??'') ?>"></div>
+                                                                    <div class="col-6"><label class="form-label small mb-1 fw-bold">Middle Name</label><input type="text" name="mother_middle_name" class="form-control form-control-sm" value="<?= htmlspecialchars($member['mother_middle_name']??'') ?>"></div>
+                                                                    <div class="col-6"><label class="form-label small mb-1 fw-bold">Last Name</label><input type="text" name="mother_last_name" class="form-control form-control-sm" value="<?= htmlspecialchars($member['mother_last_name']??'') ?>"></div>
+                                                                    <div class="col-6"><label class="form-label small mb-1 fw-bold">Phone Number</label><input type="tel" name="mother_phone" class="form-control form-control-sm" placeholder="0xxxxxxxxx" value="<?= htmlspecialchars($member['mother_phone']??'') ?>"></div>
+                                                                    <div class="col-6"><label class="form-label small mb-1 fw-bold">Country</label><input type="text" name="mother_country" class="form-control form-control-sm" value="<?= htmlspecialchars($member['mother_country']??'Tanzania') ?>"></div>
+                                                                    <div class="col-6"><label class="form-label small mb-1 fw-bold">Region / State</label><input type="text" name="mother_state" class="form-control form-control-sm" value="<?= htmlspecialchars($member['mother_state']??'') ?>"></div>
+                                                                    <div class="col-6"><label class="form-label small mb-1 fw-bold">District</label><input type="text" name="mother_district" class="form-control form-control-sm" value="<?= htmlspecialchars($member['mother_district']??'') ?>"></div>
+                                                                    <div class="col-6"><label class="form-label small mb-1 fw-bold">Ward</label><input type="text" name="mother_ward" class="form-control form-control-sm" value="<?= htmlspecialchars($member['mother_ward']??'') ?>"></div>
+                                                                    <div class="col-6"><label class="form-label small mb-1 fw-bold">Street / Village</label><input type="text" name="mother_street" class="form-control form-control-sm" value="<?= htmlspecialchars($member['mother_street']??'') ?>"></div>
+                                                                    <div class="col-6"><label class="form-label small mb-1 fw-bold">House Number</label><input type="text" name="mother_house_number" class="form-control form-control-sm" value="<?= htmlspecialchars($member['mother_house_number']??'') ?>"></div>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -1177,10 +1194,11 @@ require_once 'header.php';
                                                             <table class="table table-bordered table-sm align-middle" id="childrenTable">
                                                                 <thead class="bg-light small">
                                                                     <tr>
-                                                                         <th class="text-center" style="width: 50px;">S/NO</th>
-                                                                         <th>CHILD NAME</th>
-                                                                         <th style="width: 100px;">AGE</th>
-                                                                        <th style="width: 100px;">GENDER</th>
+                                                                         <th class="text-center" style="width: 50px;">S/No</th>
+                                                                         <th>Child Name</th>
+                                                                         <th style="width: 150px;">Date of Birth</th>
+                                                                         <th style="width: 90px;">Age</th>
+                                                                        <th style="width: 100px;">Gender</th>
                                                                         <th class="text-center" style="width: 40px;">#</th>
                                                                     </tr>
                                                                 </thead>
@@ -1192,8 +1210,9 @@ require_once 'header.php';
                                                                     ?>
                                                                     <tr class="child-row">
                                                                         <td class="text-center fw-bold row-idx"><?= $idx+1 ?><?php if (!empty($child['is_deceased'])): ?><br><span class="badge bg-secondary" style="font-size:9px;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Marehemu' : 'Deceased' ?></span><?php endif; ?></td>
-                                                                        <td><input type="text" name="child_name[]" class="form-control form-control-sm border-0 bg-transparent" value="<?= $child['name'] ?>"></td>
-                                                                        <td><input type="number" name="child_age[]" class="form-control form-control-sm border-0 bg-transparent" value="<?= $child['age'] ?>"></td>
+                                                                        <td><input type="text" name="child_name[]" class="form-control form-control-sm border-0 bg-transparent" value="<?= htmlspecialchars($child['name']??'') ?>"></td>
+                                                                        <td><input type="date" name="child_dob[]" class="form-control form-control-sm border-0 bg-transparent" value="<?= htmlspecialchars($child['dob']??'') ?>" onchange="vkChildAge(this)"></td>
+                                                                        <td><input type="number" name="child_age[]" class="form-control form-control-sm border-0 bg-transparent" value="<?= htmlspecialchars($child['age']??'') ?>"></td>
                                                                         <td>
                                                                             <select name="child_gender[]" class="form-select form-select-sm border-0 bg-transparent">
                                                                                 <option value="Mwanaume" <?= ($child['gender']??'') == 'Mwanaume' ? 'selected' : '' ?>>Male</option>
@@ -1229,10 +1248,13 @@ require_once 'header.php';
                                                                  <label class="form-label fw-bold small">RELATIONSHIP WITH MEMBER</label>
                                                                  <input type="text" name="guarantor_rel" class="form-control" placeholder="Relationship" value="<?= htmlspecialchars($member['guarantor_rel']??'') ?>">
                                                              </div>
-                                                             <div class="col-md-6">
-                                                                 <label class="form-label fw-bold small">REGION WHERE LIVING</label>
-                                                                 <input type="text" name="guarantor_location" class="form-control" placeholder="Location" value="<?= htmlspecialchars($member['guarantor_location']??'') ?>">
-                                                             </div>
+                                                             <div class="col-12"><small class="text-muted fw-bold">Guarantor's Physical Location</small></div>
+                                                             <div class="col-md-4"><label class="form-label fw-bold small">Country</label><input type="text" name="guarantor_country" class="form-control" value="<?= htmlspecialchars($member['guarantor_country']??'Tanzania') ?>"></div>
+                                                             <div class="col-md-4"><label class="form-label fw-bold small">Region / State</label><input type="text" name="guarantor_state" class="form-control" value="<?= htmlspecialchars($member['guarantor_state']??'') ?>"></div>
+                                                             <div class="col-md-4"><label class="form-label fw-bold small">District</label><input type="text" name="guarantor_district" class="form-control" value="<?= htmlspecialchars($member['guarantor_district']??'') ?>"></div>
+                                                             <div class="col-md-4"><label class="form-label fw-bold small">Ward</label><input type="text" name="guarantor_ward" class="form-control" value="<?= htmlspecialchars($member['guarantor_ward']??'') ?>"></div>
+                                                             <div class="col-md-4"><label class="form-label fw-bold small">Street / Village</label><input type="text" name="guarantor_street" class="form-control" value="<?= htmlspecialchars($member['guarantor_street']??'') ?>"></div>
+                                                             <div class="col-md-4"><label class="form-label fw-bold small">House Number</label><input type="text" name="guarantor_house_number" class="form-control" value="<?= htmlspecialchars($member['guarantor_house_number']??'') ?>"></div>
                                                          </div>
                                                      </div>
 
@@ -2070,6 +2092,20 @@ $(document).ready(function() {
         }
     }
 
+    // Derive a child's age from the entered date of birth (registration parity).
+    function vkChildAge(dobInput) {
+        const row = dobInput.closest('tr');
+        const ageInput = row ? row.querySelector('input[name="child_age[]"]') : null;
+        if (!ageInput) return;
+        const d = new Date(dobInput.value);
+        if (!dobInput.value || isNaN(d.getTime())) { ageInput.value = ''; return; }
+        const now = new Date();
+        let age = now.getFullYear() - d.getFullYear();
+        const m = now.getMonth() - d.getMonth();
+        if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
+        ageInput.value = age >= 0 ? age : '';
+    }
+
     function addChildRow() {
         const tbody = document.getElementById('childrenList');
         if (!tbody) return;
@@ -2079,6 +2115,7 @@ $(document).ready(function() {
         newRow.innerHTML = `
             <td class="text-center fw-bold row-idx">${rowCount}</td>
             <td><input type="text" name="child_name[]" class="form-control form-control-sm border-0 bg-transparent" placeholder="Name"></td>
+            <td><input type="date" name="child_dob[]" class="form-control form-control-sm border-0 bg-transparent" onchange="vkChildAge(this)"></td>
             <td><input type="number" name="child_age[]" class="form-control form-control-sm border-0 bg-transparent" placeholder="Age"></td>
             <td>
                 <select name="child_gender[]" class="form-select form-select-sm border-0 bg-transparent">
