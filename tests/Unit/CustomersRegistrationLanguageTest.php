@@ -80,8 +80,8 @@ class CustomersRegistrationLanguageTest extends TestCase
 
     public function test_account_tab_labels_translated(): void
     {
-        $this->assertStringContainsString('Nenosiri la Awali', $this->src);   // Initial Password
-        $this->assertStringContainsString('Thibitisha Nenosiri', $this->src); // Confirm Password
+        // Password is now auto-set (username@123); the bilingual note replaces the typed-password labels.
+        $this->assertStringContainsString('Nenosiri la kuingia litawekwa kiotomatiki', $this->src);
         $this->assertStringContainsString(
             'Mwanachama anaweza kubadilisha nenosiri na lugha',
             $this->src
@@ -127,8 +127,7 @@ class CustomersRegistrationLanguageTest extends TestCase
         $this->assertStringNotContainsString("title: 'Error'", $this->src);
         // Bilingual error title is present instead.
         $this->assertStringContainsString("'Hitilafu' : 'Error'", $this->src);
-        // Password mismatch + receipt-required popups translated too.
-        $this->assertStringContainsString('Hitilafu ya Nenosiri', $this->src);
+        // Receipt-required popup translated too.
         $this->assertStringContainsString('Risiti Inahitajika!', $this->src);
     }
 }

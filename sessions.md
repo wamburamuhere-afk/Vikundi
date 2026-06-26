@@ -4,6 +4,215 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-27 — Members: simple header-named bulk template + importer (members PR-2)
+**Branch:** `feat/members-bulk-template`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Replaced the fragile 42-column **positional** members CSV with a simple, **header-named** template and rewrote the importer to map by header (order-independent, error-resistant). Core fields only; rich family/guarantor/photo data is added per member via Edit.
+
+### Note on wiring (found during the work)
+The live members bulk-upload UI is the **modal in `app/bms/customer/customers.php`** (`#importMemberForm` → `ajax/process_member_import.php`, checks `resp.status==='success'`). The `customer_import.php` page is a **dead BMS leftover** (its form posts to a non-existent `api/import_customers.php`) — left untouched.
+
+### Files Created
+- **`includes/member_import.php`** — pure `member_import_parse_row()` (header-keyed): enforces required `first_name/middle_name/last_name/phone`, cleans phone/NIDA (drops Excel `.00`), normalises gender (m/f/Swahili → Male/Female), defaults country/savings.
+- **`templates/members_template.csv`** — 16 clear headers + 2 sample rows.
+- **`actions/download_members_template.php`** — serves the template.
+- **`tests/Unit/MemberImportTest.php`** — 6 tests (required-field errors, normalisation, gender variants, template headers, importer is header-based + auto password, modal uses the new template).
+
+### Files Modified
+- **`ajax/process_member_import.php`** — full rewrite: header-mapped rows via the helper; auto username + `password = username@123`; core `users` + `customers` INSERTs (only `customer_name` is NOT NULL); optional initial-savings contribution; per-row error reporting (no more "Expected 41 columns").
+- **`app/bms/customer/customers.php`** — import modal instructions simplified (header-named, required columns, auto password); `downloadTemplate()` now points to the server template.
+
+### Verification
+- Parser + live `users`+`customers` INSERT (rolled back) succeed; gender/phone/savings normalise; required-field errors returned. `php -l` clean. Unit suite **733 / 1641**.
+
+---
+
+## Session — 2026-06-27 — Admin-created members: password = username@123 (members PR-1)
+**Branch:** `feat/admin-member-password`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** First of two member-onboarding PRs. When the **admin** creates a member via the add-member wizard, the login password is now set automatically to **`username@123`** instead of being typed. (PR-2 = the simplified bulk-upload template + importer rewrite.)
+
+### Changes
+- **`app/bms/customer/customers.php`** (Account step) — removed the *Initial Password* + *Confirm Password* inputs (and the password-match JS check); added a bilingual note: *"The login password is set automatically as `username@123`… the member can change it after first login."*
+- **`actions/add_member.php`** — no longer reads `$_POST['password']`; sets `$password = $username . '@123'` right after the username is generated, then hashes as before.
+- **Unchanged (already correct):** self-registration (`process_registration.php`) keeps the member's typed password; bulk import already used `username@123`.
+
+### Tests
+- **`tests/Unit/AdminMemberPasswordTest.php`** — handler derives password from username, no longer trusts POST; wizard has no typed-password inputs and shows the note; self-registration still typed; password round-trips through hash/verify.
+- Updated `CustomersButtonsTest` + `CustomersRegistrationLanguageTest` (they asserted the removed password labels/toggle/popup).
+
+### Verification
+- `php -l` clean; password round-trip OK (`bkessy@123`); 0 typed-password inputs remain; `add_member` no longer reads POST password. Unit suite **727 / 1609**.
+
+---
+
+## Session — 2026-06-27 — Fix: reviewed contributions stranded (can't be approved)
+**Branch:** `fix/approve-reviewed-contributions`
+**Summary:** The Pending Approvals section loaded only `status = 'pending'`, but the **Approve** button renders only for `reviewed` rows — so once an item was marked Reviewed it dropped out of the queue and could never be approved (e.g. contribution #49, Baraka Emmanuel Kessy, sat at "reviewed"). 
+
+### Fix — `app/bms/customer/manage_contributions.php`
+- Pending Approvals query now loads `WHERE con.status IN ('pending', 'reviewed')`, ordered pending-first (`FIELD(status,'pending','reviewed')`). The section already had a Status column (amber Pending / blue Reviewed) and already rendered "Mark Reviewed" for pending and "Approve" for reviewed — it just wasn't being fed reviewed rows. No rendering changes needed.
+
+### Tests / Verification
+- `tests/Unit/ContributionsListingTest.php` — added a guard that the queue includes `'reviewed'`.
+- Verified live: the queue now returns the stranded reviewed item (#49). `php -l` clean. Suite **722 / 1603**.
+
+---
+
+## Session — 2026-06-27 — Finance: Contributions = filtered listing (transactions PR-3)
+**Branch:** `feat/contributions-listing`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Final Finance PR. Slimmed Contributions to a dedicated, filterable listing and moved all recording off it (recording lives on the Transactions page from PR-1/PR-2).
+
+### `app/bms/customer/manage_contributions.php`
+- **Removed the recording UI**: the Record Payment button + the Bulk dropdown (Report/M-Koba), the three modals (`manualAddModal`, `uploadReportModal`, `uploadMKobaModal`), and their JS (Select2 init, lookup, `manualAddForm` submit). Leaders now get a single **"Record Transaction"** button linking to the Transactions page.
+- **Added a filterable Contributions List** (the page's dedicated listing): a flat table (Date · Member · Receipt · Account · Type · Amount · Status) with a GET filter form — **date range · member (name/phone) · type · status · account** — plus a record count and total. The query is fully parameterised; every filter value is validated against an allow-list before use.
+- Kept the existing Pending Approvals (workflow) and the Contribution Analysis Grid below it.
+
+### Tests
+- **`tests/Unit/ContributionsListingTest.php`** — recording UI removed; links to Transactions; all six filter controls present; the list query is parameterised and allow-list validated.
+
+### Verification
+- `php -l` clean; **0** orphaned references to the removed modals/JS. Filter query runs live (1=1 → 37 rows; `status=approved` → 36; `account=M-Koba` → 0). Unit suite **721 / 1601**.
+- **Finance reorganisation complete:** PR-1 (Transactions hub) · PR-2 (importers + template) · PR-3 (Contributions listing).
+
+---
+
+## Session — 2026-06-27 — Finance: bulk imports + M-Koba (transactions PR-2)
+**Branch:** `feat/transaction-imports`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Second Finance PR. Rewrote the bulk importer, fixed its data-corruption bugs, and added a downloadable template. (PR-3 = slim Contributions to a filtered listing.)
+
+### The bugs fixed (old `import_contributions.php`)
+The old importer stamped `CURRENT_DATE` (ignored the statement date), wrote `status='confirmed'` and `contribution_type='bulk'` — **neither a valid enum value** (silent corruption) — and pulled only phone + amount.
+
+### Files Created
+- **`includes/transaction_import.php`** — pure, testable parsers: `mkoba_normalize_phone` (handles the Excel `.00` suffix + `255…` prefix → last 9), `mkoba_parse_amount` (`"5,000.00"`→5000), `mkoba_parse_date` (`dd/mm/yyyy`→`Y-m-d`), `mkoba_is_contribution` (skips empty / "Opening an account on cbs" / "Group Transfer"), `mkoba_parse_row`, and `txn_template_parse_row` (validates type/account).
+- **`templates/transactions_template.csv`** + **`actions/download_transactions_template.php`** — the downloadable bulk template.
+- **`tests/Unit/TransactionImportTest.php`** — 7 tests over the parsers using **real M-Koba values**.
+
+### Files Modified
+- **`actions/import_contributions.php`** — full rewrite: CSRF-guarded; header-mapped; pulls **receipt · date · member(phone) · amount · trans type** + the `mkoba_*` columns; skips non-contribution rows; **de-dupes** (by receipt, else member+amount+date); inserts valid `status='pending'`, `contribution_type='monthly'`; reports imported / duplicates / skipped / unmatched.
+- **`app/bms/customer/transactions.php`** — import-result flash + "Download template" link.
+
+### Verification
+- Parsed the **real M-Koba CSV**: **524 contribution rows** parsed, **36** non-contribution rows skipped; phones normalised (e.g. `255767276015.00 → 767276015`), real dates/amounts. Live insert of a parsed row stored the real date (2026-02-28) with valid enum `status='pending'`. INSERT balance 16=16; `php -l` clean. Unit suite **717 / 1585**.
+
+---
+
+## Session — 2026-06-27 — Finance: Transactions recording hub (transactions PR-1)
+**Branch:** `feat/transactions-page`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** First of three PRs for the Finance reorganisation. Adds a **Transactions** page (the recording hub) under Finance, with an enriched record-payment form. (PR-2 = importers + bulk template; PR-3 = slim Contributions to a filtered listing.) All recording writes to the existing `contributions` table — the loan `transactions` table is untouched.
+
+### Files Created
+- **`database/add_transaction_fields.php`** — idempotent migration (registered in `migrate.php`) adding `contributions.receipt_number` (VARCHAR 100) + `contributions.account` (VARCHAR 50).
+- **`app/bms/customer/transactions.php`** — the recording hub: enriched Record Payment form (member · receipt number · date · account · type · amount · description · receipt image), bulk "our template" + M-Koba import buttons, and a recent-transactions table. Gated by `requireViewPermission('manage_contributions')`; the form is shown only with `canCreate`.
+- **`tests/Unit/TransactionsPageTest.php`** — route + menu + migration registered; form has all fields and posts to the handler with CSRF; page is permission-gated; handler validates type/account and persists the new columns.
+
+### Files Modified
+- **`actions/process_contribution.php`** — now accepts and **validates** the new fields: `contribution_type` (against the enum set), `account` (M-Koba/Bank/Cash/Mobile Money), `receipt_number`, and an editable `contribution_date` (must be valid `Y-m-d`, defaults today). INSERT persists `receipt_number` + `account`.
+- **`roots.php`** — `transactions` route. **`header.php`** — Finance menu → **Transactions** (before Contributions). **`database/migrate.php`** — registered the migration.
+
+### Verification
+- Migration run live: both columns added. INSERT placeholder/value balance 10=10; live insert with the new columns succeeded (valid enum status/type). Route resolves. `php -l` clean across all touched files. Unit suite **704 / 1522**.
+- Note: the existing M-Koba importer is still the old (buggy) one — that is fixed in **PR-2**. Contributions still has its own record buttons until **PR-3** slims it.
+## Session — 2026-06-26 — Member sensitive-data masking (roles PR-2)
+**Branch:** `feat/member-data-masking`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Second roles PR. A view-only **Member** now sees only **limited data** about *other* members — phone, NIDA, email, precise address, financials, and family/guarantor details are hidden. Masking is done **server-side** (the data never reaches the member's browser). Leadership (Chairperson/Secretary/Treasurer/Admin) and a member viewing their **own** record see everything.
+
+### Files Modified
+- **`core/permissions.php`** — `canSeeMemberSensitiveData($isSelf=false)`: true for own record, admins/chairperson, or anyone who can edit members (Secretary/Treasurer); false for view-only members.
+- **`helpers.php`** — `vk_member_sensitive_keys()` (the hidden field set: contact/identity, precise address, financials, spouse/parents/children/guarantor/next-of-kin) + `vk_mask_member_row($row)` which **blanks** those keys at the data layer (only keys present are touched; name/photo/status/general area kept).
+- **`app/bms/customer/customers.php`** (members list) — masks each row server-side when the viewer can't see sensitive data.
+- **`app/bms/customer/customer_details.php`** — data-layer masking as **defense-in-depth** (the page already redirects members away from other members' details; their own record/leadership see all).
+
+### Tests
+- **`tests/Unit/MemberDataMaskingTest.php`** — 6 tests: the gate (own/admin/chairperson see; view-only member doesn't), `vk_mask_member_row` blanks sensitive + keeps basics + only touches present keys, and both views apply the mask.
+
+### Verification
+- Live gate check against the seeded permissions: **Member → MASKED**; Secretary/Treasurer/Chairperson/Admin → see everything.
+- Unit suite **705 / 1524**; `php -l` clean.
+- Roles feature complete: PR-1 (roles + RBAC) ✅ · PR-2 (member data masking) ✅.
+
+---
+
+## Session — 2026-06-26 — VICOBA system roles & RBAC (roles PR-1)
+**Branch:** `feat/vicoba-roles-rbac`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** First of two PRs for the four default user roles. PR-1 = the **roles + permissions**; PR-2 = the **member sensitive-data masking**. Replaced the BMS leftover roles with four VICOBA system roles and set their access. Scope confirmed: Chairperson = full admin; Secretary & Treasurer = full CRUD on operational data but **not** user/role/settings management; Member = view-only.
+
+### Files Created
+- **`database/seed_vicoba_roles.php`** — idempotent, deploy-safe seeder (registered in `database/migrate.php`):
+  - Reassigns any user on a BMS role to Member, then **removes** Director/CFO/Accountant/Credit Manager/Loan Manager (ids 5–9).
+  - Creates the four roles with fixed ids: **2 Chairperson · 3 Secretary · 4 Treasurer · 13 Member**.
+  - Seeds **default permissions only when a role has none yet** (so deploys never wipe manual changes): Chairperson → all 77 keys, full CRUD; Secretary/Treasurer → full CRUD on every key **except** the admin keys (`users, user_roles, add_user, edit_user, system_settings, policy_management`) = 71 keys; Member → `can_view` only on `customers, customer_details, dashboard`.
+- **`tests/Unit/VicobaRolesTest.php`** — unit-tests the pure `vk_role_grants()` logic (chairperson all / secretary-treasurer operational-not-admin / member view-only) + guards the role declarations, BMS removal, and migrate registration.
+
+### Files Modified
+- **`core/permissions.php`** — tightened `isAdmin()`: full-admin bypass now only **Admin + Chairperson** (role names `admin/administrator/chairperson/mwenyekiti/chairman`, role ids 1/2/12). **Removed `secretary`/`treasurer`/`sekretari`/`mweka hazina`** from the bypass — they were treated as full admins, which would have overridden the operational-only restriction.
+- **`tests/Unit/PermissionsTest.php`** — secretary/treasurer now assert **not** admin; added chairperson (name + role id 2) = admin.
+
+### Verification
+- Live seeder run: roles = Admin, Chairperson, Secretary, Treasurer, Member; BMS removed. Permission counts: Chairperson **77/all-CRUD**, Secretary & Treasurer **71** (no admin keys), Member **3 view-only**. Re-run via `migrate.php` → "left unchanged" (idempotent, no wipe).
+- Unit suite **699 / 1498**; `php -l` clean.
+- Next: **PR-2** — hide phone/NIDA/email/financial/family from a Member viewing other members (server-side masking on the list + details).
+
+---
+
+## Session — 2026-06-26 — Public registration → 6-step wizard + children-when-single fix (PR-2)
+**Branch:** `feat/public-registration-stepper`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Mirrored the PR-1 restructure onto the **public** `register.php` (6-step wizard + children card repeater) and fixed the **children-show-when-single bug** on **both** forms.
+
+### Bug fix (flagged after PR-1 merged)
+PR-1 moved children out of the marital-status wrapper, which made the children area show for **single** members. Fix on both forms: the marital toggle (`toggleFamilyFields` / `toggleFamilyFieldsAdmin`) now hides **and disables** the spouse wrapper **and** the children section when "Single", and shows a small "applies to married members" note so the step isn't blank.
+
+### Public form — `register.php`
+- Added a **6-step stepper** nav (the public form had none — only Next/Back); `switchTab()` now drives the Bootstrap pill so Next/Back and the stepper stay in sync.
+- Split into **Personal · Residence · Parents · Spouse & Children · Guarantor · Account**; carved Residence out of Personal; re-chained Next/Back.
+- Children **table → card repeater** (`.child-card`); `addChildRow`/`removeRow`/`vkChildAge` rewired to cards.
+- `childrenSection` + `familyNote` wired to the marital toggle (on-load call applies the initial state).
+
+### Admin form — `customers.php`
+- The children-hide-when-single fix (the actual bug, since PR-1 is what introduced it there).
+
+### Tests
+- **`tests/Unit/RegisterStepperTest.php`** — 6 panes (no dup), stepper present, no field dropped, children are cards + hide-when-single, form `<div>`s balanced.
+- **`AdminRegistrationStepperTest`** — added a children-hidden-when-single guard.
+
+### Verification
+- Both forms: `<div>` balanced (register 127=127, admin from PR-1); 6 unique panes; steppers render 6 buttons; no orphaned old-table refs. Live `register.php` → **200**, no errors, 6 stepper buttons, 6 panes, child cards present.
+- Unit suite **692 / 1473**; `php -l` clean.
+
+---
+
+## Session — 2026-06-26 — Admin registration modal → 6-step wizard (PR-1)
+**Branch:** `feat/admin-registration-stepper`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** The admin add-member modal (`customers.php`) had grown congested — one "Family & Beneficiaries" tab held ~49 fields (parents + spouse + children + guarantor). Split it into a **6-step wizard** with a slim numbered stepper. **Pure UI** — no field/handler/DB change (every `name=` preserved; all panes stay in the one `<form>`, so submission is untouched).
+
+### Steps (3 tabs → 6)
+Personal · Residence · Parents · Spouse & Children · Guarantor · Account.
+
+### Files Modified — `app/bms/customer/customers.php`
+- Replaced the 3-pill nav with a **6-step stepper** generated from a `$__steps` array (numbered circles; labels hidden on mobile; horizontal-scroll on narrow screens).
+- Split the `#personal` pane (Residence carved into its own `#residence` step) and the giant `#home` pane into `#parents`, `#family`, `#guarantor` panes; re-chained the Next/Back buttons across all 6 steps.
+- **Children moved out of `familyFieldsAdmin`** so they're always shown (spouse stays conditional on "Married"), avoiding an empty step for single members.
+- **Children UI: table → card repeater.** The cramped 7-column table (date/file/select jammed into narrow cells) is now a **card per child** — a bordered card with a clean grid (Name · DOB · Age · Gender, then Photo) and an "×" remove in the header. `addChildRowAdmin`/`removeRowAdmin`/`vkChildAge` rewired to cards (`.child-card-admin`); div balance 132 = 132.
+
+### Tests
+- **`tests/Unit/AdminRegistrationStepperTest.php`** — 6 step panes exist; stepper declares 6 steps; **no field dropped** (representative fields from every section); spouse wrapper opened/closed once + children table present; **form `<div>`s balanced**.
+- Updated `CustomersButtonsTest` to the new stepper structure (was asserting the old `home-tab` / `switchTab('home')`).
+
+### Verification
+- `<div>` balance in the form: **122 = 122**; **6 tab-panes**; the stepper PHP loop renders **6 buttons** → personal/residence/parents/family/guarantor/account; all section fields retained; `familyFieldsAdmin` opened/closed once.
+- Unit suite **686 / 1442**; `php -l` clean. (Visual/UX to be eyeballed in the browser.)
+- **PR-2 (public `register.php`)** mirrors this once PR-1 is signed off.
+
+---
+
 ## Session — 2026-06-26 — Member-family edit: passport photos (E2)
 **Branch:** `feat/member-edit-photos-e2`
 **Developer:** Claude Code / Jabir Mussa

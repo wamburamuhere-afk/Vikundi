@@ -491,6 +491,7 @@ try {
                             </a>
                             <ul class="dropdown-menu shadow border-0 mt-0" aria-labelledby="financeDropdown">
                                 <li><h6 class="dropdown-header"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Usimamizi wa Fedha' : 'Financial Management' ?></h6></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('transactions') ?>"><i class="bi bi-arrow-left-right text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Miamala' : 'Transactions' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('manage_contributions') ?>"><i class="bi bi-cash-stack text-success me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Michango' : 'Contributions' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('expenses') ?>"><i class="bi bi-cart-dash-fill text-danger me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Matumizi' : 'Expenses' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('petty_cash') ?>"><i class="bi bi-receipt text-info me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Miamala ya Vocha' : 'Petty Cash Voucher' ?></a></li>
