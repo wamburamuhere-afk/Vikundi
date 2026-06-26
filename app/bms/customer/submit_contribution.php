@@ -33,6 +33,7 @@ $is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
                 </div>
                 <div class="card-body p-4">
                     <form id="contributionForm" action="actions/process_contribution.php" method="POST" enctype="multipart/form-data">
+                        <?= csrf_field() // audit H6: native form POST carries the token in a hidden field ?>
                         <input type="hidden" name="member_id" value="<?= $customer_id ?>">
                         
                         <div class="mb-3">

@@ -1,6 +1,7 @@
 <?php
 // actions/approve_petty_cash.php
 require_once __DIR__ . '/../roots.php';
+require_once __DIR__ . '/../includes/require_csrf.php'; // audit H6: valid CSRF token required
 require_once __DIR__ . '/../includes/activity_logger.php';
 
 header('Content-Type: application/json');

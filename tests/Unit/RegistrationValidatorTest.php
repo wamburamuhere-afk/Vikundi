@@ -29,8 +29,8 @@ class RegistrationValidatorTest extends TestCase
             'last_name'        => 'Doe',
             'email'            => 'john@example.com',
             'phone'            => '0712345678',
-            'password'         => 'secret1',
-            'confirm_password' => 'secret1',
+            'password'         => 'secret12',
+            'confirm_password' => 'secret12',
             'terms'            => '1',
         ];
     }
@@ -138,6 +138,48 @@ class RegistrationValidatorTest extends TestCase
         unset($post['confirm_password']);
         $errors = validate_registration_input($post, $this->validFiles(), 'en');
         $this->assertSame([], $errors);
+    }
+
+    // ----- reg_password_errors (audit M6: central password policy) -----------
+
+    public function test_strong_password_has_no_errors(): void
+    {
+        $this->assertSame([], reg_password_errors('secret12'));
+        $this->assertSame([], reg_password_errors('Vikundi2024'));
+    }
+
+    public function test_short_password_is_rejected(): void
+    {
+        $errors = reg_password_errors('abc1');
+        $this->assertContains('Password must be at least 8 characters.', $errors);
+    }
+
+    public function test_password_without_a_digit_is_rejected(): void
+    {
+        $errors = reg_password_errors('onlyletters');
+        $this->assertContains('Password must contain at least one number.', $errors);
+    }
+
+    public function test_password_without_a_letter_is_rejected(): void
+    {
+        $errors = reg_password_errors('12345678');
+        $this->assertContains('Password must contain at least one letter.', $errors);
+    }
+
+    public function test_password_policy_messages_localize(): void
+    {
+        $errors = reg_password_errors('abc', 'sw');
+        $this->assertContains('Nywila lazima iwe na herufi 8 au zaidi.', $errors);
+    }
+
+    public function test_registration_rejects_a_weak_password(): void
+    {
+        $post = $this->validPost();
+        $post['password'] = 'weak';            // < 8 and no digit
+        $post['confirm_password'] = 'weak';
+        $errors = validate_registration_input($post, $this->validFiles(), 'en');
+        $this->assertContains('Password must be at least 8 characters.', $errors);
+        $this->assertContains('Password must contain at least one number.', $errors);
     }
 
     // ----- optional spouse email / relative phones --------------------------

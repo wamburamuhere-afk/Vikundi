@@ -272,9 +272,8 @@ function get_setting($key, $default = '') {
                                         <div class="mb-3">
                                             <label for="currency" class="form-label"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Sarafu' : 'Currency' ?> *</label>
                                             <select class="form-control" id="currency" name="currency" required>
-                                                <option value="TZS" <?= get_setting('currency') == 'TZS' ? 'selected' : '' ?>><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Shilingi ya Tanzania (TSh)' : 'Tanzanian Shilling (TSh)' ?></option>
-                                                <option value="USD" <?= get_setting('currency') == 'USD' ? 'selected' : '' ?>>US Dollar ($)</option>
-                                                <option value="KES" <?= get_setting('currency') == 'KES' ? 'selected' : '' ?>><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Shilingi ya Kenya (KSh)' : 'Kenyan Shilling (KSh)' ?></option>
+                                                <!-- audit M1: this group operates in TZS only; foreign currencies removed -->
+                                                <option value="TZS" selected><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Shilingi ya Tanzania (TSh)' : 'Tanzanian Shilling (TSh)' ?></option>
                                             </select>
                                         </div>
                                     </div>

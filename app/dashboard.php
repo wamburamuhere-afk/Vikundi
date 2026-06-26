@@ -88,7 +88,9 @@ if (in_array($user_role_lower, ['admin', 'chairman', 'mwenyekiti'])) {
 $lang = $_SESSION['preferred_language'] ?? 'en';
 $is_sw = ($lang === 'sw');
 
-function fmt_currency($n) { return 'TZS ' . number_format($n, 0); }
+// audit M1: delegate to the central formatter so the symbol matches the rest of
+// the app (TSh); 0 decimals keeps dashboard cards on whole shillings.
+function fmt_currency($n) { return format_currency($n, 'TZS', 0); }
 
 function fmt_time_ago($log) {
     if ($log['hrs_ago'] > 23) return date('d/m/Y', strtotime($log['created_at']));

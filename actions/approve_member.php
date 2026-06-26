@@ -5,6 +5,7 @@ if (session_status() === PHP_SESSION_NONE) { session_start(); }
 // 1. Connection logic (Safier inclusion)
 if (!isset($pdo)) {
     require_once __DIR__ . '/../includes/config.php';
+    require_once __DIR__ . '/../includes/require_csrf.php'; // audit H6: valid CSRF token required
 }
 
 header('Content-Type: application/json');

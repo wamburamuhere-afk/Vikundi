@@ -170,6 +170,18 @@ class HelpersTest extends TestCase
         $this->assertStringContainsString('TSh', $result);
     }
 
+    public function test_format_currency_default_decimals_unchanged(): void
+    {
+        // audit M1: existing callers (no $decimals arg) keep 2-decimal output.
+        $this->assertSame('TSh 1,000.00', format_currency(1000, 'TZS'));
+    }
+
+    public function test_format_currency_zero_decimals_for_whole_shillings(): void
+    {
+        // Dashboard cards pass 0 decimals through the same formatter.
+        $this->assertSame('TSh 50,000', format_currency(50000, 'TZS', 0));
+    }
+
     // -------------------------------------------------------------------------
     // format_date()
     // -------------------------------------------------------------------------

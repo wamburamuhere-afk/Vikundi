@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../../roots.php';
+require_once __DIR__ . '/../../../includes/require_login.php'; // audit M5: authenticate before any $_SESSION['user_id'] use
 require_once __DIR__ . '/../../../includes/csrf.php';
 require_once __DIR__ . '/../../../includes/registration_validator.php';
 date_default_timezone_set('Africa/Nairobi');
@@ -344,8 +345,9 @@ if ($_POST) {
                 throw new Exception("New password is required");
             }
             
-            if (strlen($new_password) < 8) {
-                throw new Exception("New password must be at least 8 characters long");
+            $pwErrors = reg_password_errors($new_password, $_SESSION['preferred_language'] ?? 'en'); // audit M6
+            if (!empty($pwErrors)) {
+                throw new Exception(implode(' ', $pwErrors));
             }
             
             if ($new_password !== $confirm_password) {

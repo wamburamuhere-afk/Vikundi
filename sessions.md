@@ -4,6 +4,147 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-26 — Audit fix M1
+**Branch:** `fix/m1-currency-normalize`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit Medium **M1** — currency inconsistent for Tanzania. Two formatters disagreed on the symbol (`helpers.php` → `'TSh '`, `dashboard.php` → hardcoded `'TZS '`), and the group-currency settings offered USD/KES/EUR/etc. Normalized to one TZS formatter and made TZS the only selectable group currency.
+
+### Files Modified
+- **`helpers.php`** — `format_currency($amount, $currency = 'TZS', $decimals = 2)`: added the optional `$decimals` so whole-shilling displays (dashboard) and 2-decimal accounting views share one symbol map. Backward-compatible (default 2 decimals → existing 15 callers + tests unchanged).
+- **`app/dashboard.php`** — `fmt_currency()` now delegates to `format_currency($n, 'TZS', 0)` instead of hardcoding `'TZS '`. Symbol is now `TSh` like the rest of the app; 0-decimal card style preserved.
+- **`app/constant/settings/system_settings.php`**, **`app/bms/customer/group_settings.php`**, **`app/bms/purchase/purchase_order_create.php`** — currency selectors/list trimmed to **TZS only** (dropped USD/KES/EUR/GBP/UGX).
+
+### Scope note
+Left the **unused BMS** supplier/POS/employee currency dropdowns (`suppliers.php`, `supplier_payments.php`, `pos/employees.php`) untouched — not named by M1 and part of the unused e-commerce modules flagged in H2; they have their own per-supplier currency coupling.
+
+### Tests
+- **`tests/Unit/HelpersTest.php`** — +2 (default decimals unchanged; 0-decimals path).
+- **`tests/Unit/CurrencyNormalizationTest.php`** — dashboard delegates to the central formatter (no hardcoded symbol); the three named selectors offer no foreign currency.
+
+### Verification
+- `format_currency(50000,'TZS')` → `TSh 50,000.00`; `format_currency(50000,'TZS',0)` → `TSh 50,000`.
+- Unit suite **643 / 1246**; `php -l` clean on all touched files.
+- Medium tier: M1 ✅ · M2 ⏳ · M3 ✅ · M4 ✅ · M5 ✅ · M6 ✅.
+
+---
+
+## Session — 2026-06-26 — Audit fix M4
+**Branch:** `fix/m4-auto-terminate-throttle`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit Medium **M4** — `header.php:4` included `actions/auto_terminate_members.php`, which ran a heavy aggregate (customers ⋈ users ⋈ contributions, GROUP BY/HAVING) plus a write per late member on **every page load**, for every user. Refactored into testable functions and throttled to run **at most once per calendar day**; added a CLI entry point for a real cron. The sweep is idempotent (only touches `status='active'`), so the throttle is a pure performance win.
+
+### Files Modified
+- **`actions/auto_terminate_members.php`** — rewritten:
+  - `vk_required_contribution_total(array $settings, DateTime $now): float` — pure deadline math, now unit-testable.
+  - `vk_run_auto_termination(PDO): int` — the sweep, returns members moved.
+  - `vk_auto_termination_due()` / `vk_mark_auto_termination_ran()` — once-per-day throttle via a `group_settings` row `auto_termination_last_run` (PK upsert; no schema change).
+  - Entry points: direct CLI run (cron) executes unconditionally; web include throttles to the first hit of the day. A `realpath($argv[0]) === __FILE__` guard keeps the file inert when PHPUnit loads it (no DB in tests).
+- **`header.php`** — unchanged; still `include_once`s the file, which now self-throttles. Per-request cost drops from a full aggregate + writes to a single primary-key lookup.
+
+### Files Created
+- **`tests/Unit/AutoTerminationTest.php`** — 6 tests: deadline math (before first deadline, after deadline, previous-months-only, grace days, deadline-time boundary) + recurrence guard for the throttle/CLI entry point.
+
+### Verification
+- Live: marker absent → CLI sweep (`php actions/auto_terminate_members.php`) ran ("0 moved" — dev DB already swept, idempotent) → marker set to today → `vk_auto_termination_due()` now **false**, so header.php skips the heavy sweep for the rest of the day.
+- Unit suite **637 / 1209**; `php -l` clean. (Optional cron: `0 1 * * * php /path/to/vikundi/actions/auto_terminate_members.php`.)
+- Medium tier: M1 ⏳ · M2 ⏳ · M3 ✅ · M4 ✅ · M5 ✅ · M6 ✅.
+
+---
+
+## Session — 2026-06-26 — Audit fix M6
+**Branch:** `fix/m6-password-policy`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit Medium **M6** — weak/inconsistent password policy. `reset_password.php` allowed **6** chars, registration enforced **nothing**, and admin create/edit + profile-change required 8 but with **no complexity**. Centralized one policy and applied it to every server-side password path. The "verify `forgot_password.php` proves identity" half was a pass — it already requires **username + NIDA** to match before issuing the (1-hour, session-stored) reset token.
+
+### Policy (single source of truth)
+- **`includes/registration_validator.php`** — new pure `reg_password_errors($password, $lang)`: ≥ 8 chars **and** at least one letter **and** one digit; returns bilingual error messages (empty = OK). Balanced for the member base — stronger than "6, no complexity" without locking users out.
+
+### Files Modified
+- **`includes/registration_validator.php`** — add the helper; `validate_registration_input()` now runs it whenever a password is provided (registration previously had no strength check).
+- **`actions/reset_password.php`** — replace `strlen < 6` with the central helper (+ require the validator).
+- **`app/constant/settings/add_user.php`**, **`edit_user.php`** — replace `strlen < 8` with the helper (+ require the validator).
+- **`app/constant/profile/profile.php`** — change-password path now uses the helper.
+
+### Tests
+- **`tests/Unit/RegistrationValidatorTest.php`** — +6 tests (strong passes; short / no-digit / no-letter rejected; Swahili messages; registration rejects a weak password). Bumped the base valid fixture `secret1` → `secret12` to satisfy the new policy.
+
+### Verification
+- Live (seeded reset session, non-existent user so 0 rows change): `abc123` (6 chars, previously allowed) → **rejected** "at least 8 characters"; `onlyletters` → **rejected** "must contain at least one number"; `secret12` → **accepted**. reset_password.php with no token → clean "session expired" JSON (no fatal).
+- Unit suite **631 / 1201**; `php -l` clean on all touched files.
+- Medium tier: M1 ⏳ · M2 ⏳ · M3 ✅ · M4 ⏳ · M5 ✅ · M6 ✅.
+
+---
+
+## Session — 2026-06-26 — Audit fix M5
+**Branch:** `fix/m5-profile-auth-guard`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit Medium **M5** — `profile.php` and `my_settings.php` read `$_SESSION['user_id']` at the top before any auth check (their `header.php` / auth gate runs much later or not at all), so an anonymous hit emitted `Undefined array key "user_id"` warnings and ran queries with a null user id (louder since B1). Added an HTML auth gate that redirects to login first.
+
+### Files Created
+- **`includes/require_login.php`** — central auth gate for HTML pages (sibling of `require_auth.php`, which serves JSON). No `$_SESSION['user_id']` → redirect to `getUrl('login')` + exit.
+- **`tests/Unit/RequireLoginGuardTest.php`** — 3 tests: guard redirects/stops; both pages include the guard *before* the first `$_SESSION['user_id']` read.
+
+### Files Modified
+- **`app/constant/profile/profile.php`** — require the login guard right after `roots.php`, before any session use.
+- **`app/constant/profile/my_settings.php`** — same.
+
+### Verification
+- Live (PHP built-in server, dev SAPI = display_errors on): both pages anonymous → **302 → /login**, zero `Undefined array key` warnings in the body (was: 200 + warnings).
+- Unit suite **625 / 1193**; `php -l` clean.
+- Medium tier: M1 ⏳ · M2 ⏳ · M3 ✅ (done in H4) · M4 ⏳ · M5 ✅ · M6 ⏳.
+
+---
+
+## Session — 2026-06-26 — Audit fix H6
+**Branch:** `fix/h6-csrf-central-guard`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit High **H6** — CSRF was verified on only ~3 endpoints. Built a reusable central CSRF guard plus app-wide token delivery, then enforced it on the financially/security-sensitive mutating endpoints (chosen scope: sensitive set + global plumbing, lower regression risk — mirrors how H3 was scoped). Remaining endpoints are a documented follow-up; the infra now makes wiring them a one-line add.
+
+### Design
+- **Server guard** `includes/require_csrf.php` (drop-in like `require_auth.php`): on unsafe methods (POST/PUT/PATCH/DELETE) requires a valid per-session token, else JSON **403** + exit. Safe methods pass through. Token read from the `X-CSRF-Token` header **or** the `csrf_token` POST field.
+- **App-wide token delivery** (front-end uses both `$.ajax` *and* `fetch()`): `header.php` now emits `<meta name="csrf-token">` and installs two hooks that attach the token to same-origin state-changing requests automatically — a `window.fetch` wrapper (in `<head>`, before any body script) and a jQuery `$(document).ajaxSend` hook. So existing AJAX/fetch calls are covered with no per-call edits. Header maps to `$_SERVER['HTTP_X_CSRF_TOKEN']` (verified live).
+
+### Files Created
+- **`includes/require_csrf.php`** — central CSRF gate.
+- **`tests/Unit/CsrfTest.php`** — 10 tests: token verify, safe-method gating, header-vs-field extraction, guard decision.
+- **`tests/Unit/CsrfCoverageTest.php`** — recurrence guard: every protected endpoint keeps the guard; header.php keeps the meta + both delivery hooks.
+
+### Files Modified
+- **`includes/csrf.php`** — added pure helpers `csrf_is_safe_method()` and `csrf_extract_token()`.
+- **`header.php`** — CSRF meta + fetch wrapper + jQuery `ajaxSend` hook.
+- **17 endpoints** wired to `require_csrf.php` (after `require_auth.php` where present): `actions/` update_contribution, delete_death_expense, delete_petty_cash, process_death_expense, process_contribution, save_petty_cash, approve_death_expense, approve_petty_cash, update_user_role, update_user_status, approve_member; `api/account/` save_account, save_category, delete_account, delete_account_category, create_reconciliation, delete_reconciliation.
+- **`app/bms/customer/submit_contribution.php`** — `csrf_field()` added (only native HTML form POST in the set; all others reach the endpoints via fetch/$.ajax and are covered by the hooks).
+
+### Verification
+- Live (PHP built-in server): tokenless POST → **403**; wrong token → **403**; valid `X-CSRF-Token` header + session → **200**; safe GET → **200**. Confirmed every protected endpoint's UI path (fetch / $.ajax / $.post / native form) actually carries the token before enforcing.
+- Unit suite **622 / 1184**; `php -l` clean on all touched files.
+- High tier complete: H1 ✅ · H2 ✅ · H3 ✅ · H4 ✅ · H5 ✅ · **H6 ✅**.
+- **Follow-up:** extend `require_csrf.php` to the remaining ~220 mutating endpoints (infra + global token delivery already in place; each is now a one-line require + `csrf_field()` for any remaining native forms).
+
+---
+
+## Session — 2026-06-26 — Audit fix H5
+**Branch:** `fix/h5-session-cookie-hardening`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit High **H5** — session cookie hardening. `roots.php` set `samesite=Lax` but omitted `httponly` and `secure`, leaving `PHPSESSID` readable by JS (XSS session theft) and sendable over plain HTTP. Added both flags; `secure` is gated on a new testable HTTPS helper so plain-HTTP local WAMP dev still works.
+
+### Files Modified
+- **`includes/env.php`** — new `vikundi_is_https(?array $server = null)`: pure, override-able HTTPS detector (direct TLS / `HTTPS` not "off", port 443, `X-Forwarded-Proto: https` for reverse proxies). Mirrors the existing `vikundi_is_dev_host()` pattern.
+- **`roots.php`** — session cookie params now set `httponly => true` and `secure => vikundi_is_https()` alongside the existing `samesite => 'Lax'`.
+
+### Files Created
+- *(none — tests appended to existing `tests/Unit/EnvTest.php`)*
+
+### Tests
+- **`tests/Unit/EnvTest.php`** — 4 new cases for `vikundi_is_https()` (direct TLS, port 443, forwarded-proto, and plain-HTTP-stays-false).
+
+### Verification
+- Live `Set-Cookie` over plain HTTP (PHP built-in server): `PHPSESSID=…; path=/; HttpOnly; SameSite=Lax` — `HttpOnly` present, `Secure` correctly **absent** (local dev unbroken), page **200**.
+- Unit suite **608 / 1123**; `php -l` clean on both files.
+- High tier: H1 ✅ · H2 ✅ · H3 ✅ · H4 ✅ · H5 ✅ · H6 ⏳ — next is **H6**.
+
+---
+
 ## Session — 2026-06-25 — Audit fix H4 (+ M3)
 **Branch:** `fix/h4-broken-db-include`
 **Developer:** Claude Code / Dutch

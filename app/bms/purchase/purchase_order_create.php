@@ -24,12 +24,9 @@ $tax_rates = $pdo->query("SELECT * FROM tax_rates WHERE status = 'active' ORDER 
 // Get shipping methods
 $shipping_methods = $pdo->query("SELECT * FROM shipping_methods WHERE status = 'active' ORDER BY method_name")->fetchAll(PDO::FETCH_ASSOC);
 
+// audit M1: this group operates in TZS only; foreign currencies removed.
 $currencies = [
     'TZS' => 'Tanzanian Shilling',
-    'USD' => 'US Dollar',
-    'EUR' => 'Euro',
-    'GBP' => 'British Pound',
-    'KES' => 'Kenyan Shilling'
 ];
 ?>
 

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../../roots.php';
+require_once __DIR__ . '/../../../includes/require_login.php'; // audit M5: authenticate before any $_SESSION['user_id'] use
 
 // Fetch current user data
 $stmt = $pdo->prepare("SELECT u.*, c.customer_id FROM users u LEFT JOIN customers c ON LOWER(u.email) = LOWER(c.email) WHERE u.user_id = ?");

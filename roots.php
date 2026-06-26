@@ -16,6 +16,11 @@ if (session_status() === PHP_SESSION_NONE) {
     session_set_cookie_params([
         'lifetime' => 0,
         'path' => '/',
+        // httponly: JS cannot read PHPSESSID -> blocks XSS-based session theft.
+        'httponly' => true,
+        // secure: cookie only travels over HTTPS. Gated so plain-HTTP local dev
+        // (WAMP) still works; production over TLS gets the hardened flag.
+        'secure' => vikundi_is_https(),
         'samesite' => 'Lax'
     ]);
     session_start();
