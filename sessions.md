@@ -4,6 +4,22 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-27 — Hotfix: role seeder FK crash on deploy
+**Branch:** `fix/roles-seeder-name-resolve`
+**Summary:** `seed_vicoba_roles.php` crashed on the production deploy with a foreign-key violation (`fk_role_permissions_role`). Root cause: production already had a **"Member"** role (4 users) at a different id, so the fixed-id `INSERT (13,'Member') ON DUPLICATE KEY UPDATE` (unique `role_name`) updated that existing row instead of creating id 13 — then the permission insert referenced a non-existent role id. (The seeder is transactional, so it rolled back cleanly — production roles were unchanged.)
+
+### Fix — `database/seed_vicoba_roles.php`
+- **Resolve each role by NAME** (reuse the existing one; create only when the name is absent — at its preferred id if free, else auto-assigned). No more fixed-id INSERT that clashes with the unique name / FK.
+- BMS leftover roles removed **by name** (`Director, CFO, Accountant, Credit Manager, Loan Manager`), reassigning their users to Member first; never touches a resolved role.
+- Permissions keyed off role **purpose** (`vk_role_grants(purpose, …)`), still seeded only when a role has none (deploy-safe).
+- `VicobaRolesTest` updated to the purpose-based function + name resolution.
+
+### Verification
+- Reproduced the exact prod conflict locally in a rolled-back transaction: OLD approach → the same 1452 FK error; NEW approach → Member resolves to its existing id and the permission insert succeeds. Real seeder runs idempotently locally. Suite **733 / 1638**.
+- **Caveat:** production's existing Member role already has permissions, so the seeder reuses it but does **not** reseed (seed-if-empty) — i.e. it won't force that role to view-only. A separate explicit step is needed if Member must be reset to view-only.
+
+---
+
 ## Session — 2026-06-27 — Members: simple header-named bulk template + importer (members PR-2)
 **Branch:** `feat/members-bulk-template`
 **Developer:** Claude Code / Jabir Mussa
