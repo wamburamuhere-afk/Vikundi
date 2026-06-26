@@ -51,16 +51,30 @@ class PermissionsTest extends TestCase
         $this->assertTrue(isAdmin());
     }
 
-    public function test_role_name_secretary_is_admin(): void
+    public function test_role_name_chairperson_is_admin(): void
     {
-        $_SESSION['role'] = 'secretary';
+        $_SESSION['role'] = 'chairperson';
         $this->assertTrue(isAdmin());
     }
 
-    public function test_role_name_treasurer_is_admin(): void
+    public function test_role_id_2_chairperson_is_admin(): void
+    {
+        $_SESSION['role_id'] = 2;
+        $this->assertTrue(isAdmin());
+    }
+
+    // Secretary and Treasurer are NOT full admins — they get explicit operational
+    // CRUD instead, so they cannot manage users/roles/settings.
+    public function test_role_name_secretary_is_not_admin(): void
+    {
+        $_SESSION['role'] = 'secretary';
+        $this->assertFalse(isAdmin());
+    }
+
+    public function test_role_name_treasurer_is_not_admin(): void
     {
         $_SESSION['role'] = 'treasurer';
-        $this->assertTrue(isAdmin());
+        $this->assertFalse(isAdmin());
     }
 
     public function test_user_role_field_also_checked(): void
