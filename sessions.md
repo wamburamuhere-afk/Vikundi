@@ -4,6 +4,30 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-26 — Audit fix M1
+**Branch:** `fix/m1-currency-normalize`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit Medium **M1** — currency inconsistent for Tanzania. Two formatters disagreed on the symbol (`helpers.php` → `'TSh '`, `dashboard.php` → hardcoded `'TZS '`), and the group-currency settings offered USD/KES/EUR/etc. Normalized to one TZS formatter and made TZS the only selectable group currency.
+
+### Files Modified
+- **`helpers.php`** — `format_currency($amount, $currency = 'TZS', $decimals = 2)`: added the optional `$decimals` so whole-shilling displays (dashboard) and 2-decimal accounting views share one symbol map. Backward-compatible (default 2 decimals → existing 15 callers + tests unchanged).
+- **`app/dashboard.php`** — `fmt_currency()` now delegates to `format_currency($n, 'TZS', 0)` instead of hardcoding `'TZS '`. Symbol is now `TSh` like the rest of the app; 0-decimal card style preserved.
+- **`app/constant/settings/system_settings.php`**, **`app/bms/customer/group_settings.php`**, **`app/bms/purchase/purchase_order_create.php`** — currency selectors/list trimmed to **TZS only** (dropped USD/KES/EUR/GBP/UGX).
+
+### Scope note
+Left the **unused BMS** supplier/POS/employee currency dropdowns (`suppliers.php`, `supplier_payments.php`, `pos/employees.php`) untouched — not named by M1 and part of the unused e-commerce modules flagged in H2; they have their own per-supplier currency coupling.
+
+### Tests
+- **`tests/Unit/HelpersTest.php`** — +2 (default decimals unchanged; 0-decimals path).
+- **`tests/Unit/CurrencyNormalizationTest.php`** — dashboard delegates to the central formatter (no hardcoded symbol); the three named selectors offer no foreign currency.
+
+### Verification
+- `format_currency(50000,'TZS')` → `TSh 50,000.00`; `format_currency(50000,'TZS',0)` → `TSh 50,000`.
+- Unit suite **643 / 1246**; `php -l` clean on all touched files.
+- Medium tier: M1 ✅ · M2 ⏳ · M3 ✅ · M4 ✅ · M5 ✅ · M6 ✅.
+
+---
+
 ## Session — 2026-06-26 — Audit fix M4
 **Branch:** `fix/m4-auto-terminate-throttle`
 **Developer:** Claude Code / Dutch
