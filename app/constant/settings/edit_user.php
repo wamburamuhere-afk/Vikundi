@@ -3,6 +3,7 @@
 ob_start();
 
 require_once __DIR__ . '/../../../roots.php';
+require_once __DIR__ . '/../../../includes/registration_validator.php'; // audit M6: central password policy
 require_once 'header.php';
 
 // Check admin permissions
@@ -111,8 +112,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Only validate password if provided
     if (!empty($password)) {
-        if (strlen($password) < 8) {
-            $errors['password'] = 'Password must be at least 8 characters';
+        $pwErrors = reg_password_errors($password, $_SESSION['preferred_language'] ?? 'en'); // audit M6
+        if (!empty($pwErrors)) {
+            $errors['password'] = implode(' ', $pwErrors);
         }
 
         if ($password !== $confirm_password) {

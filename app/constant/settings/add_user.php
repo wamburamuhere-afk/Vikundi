@@ -5,6 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 require_once 'includes/config.php';
 require_once 'core/permissions.php';
+require_once 'includes/registration_validator.php'; // audit M6: central password policy
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -98,8 +99,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($password)) {
         $errors['password'] = 'Password is required';
-    } elseif (strlen($password) < 8) {
-        $errors['password'] = 'Password must be at least 8 characters';
+    } else {
+        $pwErrors = reg_password_errors($password, $_SESSION['preferred_language'] ?? 'en'); // audit M6
+        if (!empty($pwErrors)) {
+            $errors['password'] = implode(' ', $pwErrors);
+        }
     }
 
     if ($password !== $confirm_password) {
