@@ -589,6 +589,22 @@ function vk_save_child_photo($files, int $i, string $dir): string {
     return move_uploaded_file($files['tmp_name'][$i], rtrim($dir, '/\\') . '/' . $name) ? $name : '';
 }
 
+/**
+ * Save one optional uploaded photo from a single `$_FILES[$field]`. Returns the
+ * stored filename, or null when no file was uploaded — so callers can keep the
+ * existing value (never wipe a photo on an empty upload). Used by the member
+ * edit form to add/replace member/spouse/parent photos later.
+ */
+function vk_upload_photo(string $field, string $dir): ?string {
+    if (!isset($_FILES[$field]) || ($_FILES[$field]['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        return null;
+    }
+    if (!is_dir($dir)) mkdir($dir, 0777, true);
+    $ext  = pathinfo($_FILES[$field]['name'] ?? '', PATHINFO_EXTENSION);
+    $name = $field . '_' . time() . '_' . uniqid() . ($ext !== '' ? '.' . $ext : '');
+    return move_uploaded_file($_FILES[$field]['tmp_name'], rtrim($dir, '/\\') . '/' . $name) ? $name : null;
+}
+
 function safe_output($value, $default = 'N/A') {
     return !empty($value) ? htmlspecialchars($value) : $default;
 }

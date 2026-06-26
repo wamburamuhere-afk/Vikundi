@@ -4,6 +4,50 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-26 — Member-family edit: passport photos (E2)
+**Branch:** `feat/member-edit-photos-e2`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Second/final PR of the edit-form rework — add/replace passport photos **later** on the member-family edit form (`profile.php`) for **spouse, parents, and children**. (The member's own avatar upload already existed.) Completes the "passport can be added later" requirement and the whole registration + edit rework.
+
+### Files Modified
+- **`helpers.php`** — new `vk_upload_photo($field, $dir): ?string` (single optional upload; returns null when no file, so callers keep the existing value — never wipe).
+- **`app/constant/profile/profile.php`**:
+  - **SELECT** loads `father_photo`, `mother_photo`, `spouse_photo` (to show current + preserve).
+  - **Edit form** — each parent + spouse gains a photo field that **shows the current photo** (thumbnail) with a "choose a file to replace" input; the children table gains a **Photo** column (thumbnail + replace input). Dynamically-added child rows include the photo input.
+  - **UPDATE handler** — parent/spouse photo = new upload **or** keep existing (`vk_upload_photo(...) ?? $member[...]`); children re-encode replaces a photo on new upload, otherwise preserves the existing one. **Empty upload never wipes a photo.** UPDATE extended to **81 placeholders = 81 values**.
+
+### Tests
+- **`tests/Unit/MemberEditPhotosTest.php`** — 5 tests: helper exists; SELECT loads the photo columns; form has the photo inputs; UPDATE persists them; **empty upload keeps the existing photo** (the never-wipe rule, parents/spouse + children).
+
+### Verification
+- UPDATE balanced (81 = 81); photo columns valid in an UPDATE (rolled-back round-trip of `father_photo`/`mother_photo`/`spouse_photo`); SELECT with the photo columns executes.
+- Unit suite **681 / 1413**; `php -l` clean.
+
+### Registration + edit rework — COMPLETE
+Registration: PR-A ✅ · PR-B ✅ · PR-C ✅ · PR-D ✅ · spouse photo ✅ · picker fix ✅. Edit form: E1 ✅ (fields + parent-location bug) · **E2 ✅ (photos)**. Member-family data can now be entered at registration AND edited later, with optional photos for member/spouse/parents/children throughout.
+
+---
+
+## Session — 2026-06-26 — Member-family edit form sync (E1)
+**Branch:** `feat/member-edit-sync-e1`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** First of two PRs bringing the member-family **edit** form (`profile.php` edit mode — open to the member on their own profile and to Admin/Secretary/Katibu on others) in sync with the registration rework. **E1 = field sync + the parent-location bug fix** (photo upload/replace is E2). Scope confirmed with Jabir: no member-picker on edit (privacy), full field parity, 2-PR split.
+
+### Files Modified — `app/constant/profile/profile.php`
+- **SELECT** — loads the new columns so the form pre-fills: parent structured names + 6-field location, guarantor 6-field location.
+- **Edit form** — parents rewritten to structured First/Middle/Last + 6-field location (Title-cased, pre-filled); guarantor gains the 6-field location; children table gains **Date of Birth** (with `vkChildAge()` deriving age); labels Title-cased.
+- **UPDATE handler** — now persists all the new parent/guarantor columns; legacy `*_name` rebuilt via `vk_full_name()`, legacy location from state/ward (registration parity). **Fixed the latent bug** where the form showed parent location but the handler never saved it. Children re-encode now stores DOB + derives age **and preserves a photo/`is_deceased` set elsewhere** (editing no longer wipes a registration child photo).
+
+### Tests
+- **`tests/Unit/MemberEditSyncTest.php`** — 5 tests: SELECT loads new columns; edit form has the new inputs; UPDATE persists them; the parent-location bug is fixed; children re-encode reads DOB + preserves the photo.
+
+### Verification
+- UPDATE statement balanced: **78 placeholders = 78 values** (verified by evaluating the bind array). New columns valid in an UPDATE (rolled-back transaction round-tripped `father_first_name`/`father_state`/`guarantor_district`). The full SELECT executes and returns the new keys for pre-fill.
+- Unit suite **676 / 1398**; `php -l` clean.
+- Next: **E2** — passport photo upload/replace on edit for member/spouse/parents/children (show current, replace, never wipe on empty).
+
+---
+
 ## Session — 2026-06-26 — Registration: spouse passport photo
 **Branch:** `feat/registration-spouse-photo`
 **Developer:** Claude Code / Jabir Mussa
