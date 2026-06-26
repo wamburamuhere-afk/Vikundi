@@ -522,7 +522,13 @@ function get_variance_color($variance) {
     return 'info'; // On budget
 }
 
-function format_currency($amount, $currency = 'TZS') {
+/**
+ * Single source of truth for currency display (audit M1). The group's currency
+ * is TZS, shown with the local 'TSh ' symbol. $decimals is configurable so
+ * whole-shilling displays (dashboard cards) can pass 0 while accounting views
+ * keep 2 — without forking the symbol logic.
+ */
+function format_currency($amount, $currency = 'TZS', $decimals = 2) {
     $symbols = [
         'TZS' => 'TSh ',
         'USD' => '$',
@@ -531,7 +537,7 @@ function format_currency($amount, $currency = 'TZS') {
         'KES' => 'KSh '
     ];
     $symbol = $symbols[$currency] ?? 'TSh ';
-    return $symbol . number_format($amount, 2);
+    return $symbol . number_format($amount, $decimals);
 }
 
 function safe_output($value, $default = 'N/A') {

@@ -90,11 +90,8 @@ function gs($settings, $key, $default = '') {
                     <div class="col-md-4">
                         <label class="form-label fw-bold text-dark"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Sarafu (Currency)' : 'Currency' ?></label>
                         <select name="currency" class="form-select border-secondary-subtle">
-                            <option value="TZS" <?= gs($settings_raw, 'currency', 'TZS') === 'TZS' ? 'selected' : '' ?>>TZS - Shilingi ya Tanzania</option>
-                            <option value="USD" <?= gs($settings_raw, 'currency') === 'USD' ? 'selected' : '' ?>>USD - US Dollar</option>
-                            <option value="KES" <?= gs($settings_raw, 'currency') === 'KES' ? 'selected' : '' ?>>KES - Kenyan Shilling</option>
-                            <option value="UGX" <?= gs($settings_raw, 'currency') === 'UGX' ? 'selected' : '' ?>>UGX - Ugandan Shilling</option>
-                            <option value="EUR" <?= gs($settings_raw, 'currency') === 'EUR' ? 'selected' : '' ?>>EUR - Euro</option>
+                            <!-- audit M1: this group operates in TZS only; foreign currencies removed -->
+                            <option value="TZS" selected>TZS - Shilingi ya Tanzania</option>
                         </select>
                     </div>
                     <div class="col-md-4">
