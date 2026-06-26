@@ -4,6 +4,29 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-26 — Registration: spouse passport photo
+**Branch:** `feat/registration-spouse-photo`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Optional **passport photo for the member's spouse** on both registration forms — the spouse section had every other field but no photo. Mirrors the parent-photo pattern.
+
+### Database
+- **`database/add_spouse_photo_column.php`** — idempotent migration; adds `customers.spouse_photo`. **Registered in `database/migrate.php`** (auto-runs on deploy).
+
+### Files Modified
+- **`register.php`** + **`app/bms/customer/customers.php`** — spouse section gains an optional `spouse_photo` file input (after Region of Birth).
+- **`actions/process_registration.php`** + **`actions/add_member.php`** — upload `spouse_photo` via the existing `vk_save_photo()` closure; `customers` INSERT extended to 73 columns (72 placeholders + `created_at`).
+
+### Tests
+- **`tests/Unit/SpousePhotoTest.php`** — 3 tests: migration declares the column + is registered; both forms collect `spouse_photo`; both handlers upload and persist it.
+
+### Verification
+- Migration ran (column added); both INSERTs balanced (columns 73 / placeholders 72 / values 72); a rolled-back transaction INSERT round-tripped `spouse_photo`.
+- Live: `register.php` **200**, no errors, `spouse_photo` present.
+- Unit suite **671 / 1374**; `php -l` clean.
+- Next: member-family **edit** form (edit parent/children/guarantor/spouse + add photos later).
+
+---
+
 ## Session — 2026-06-26 — Fix: guarantor picker not loading members
 **Branch:** `fix/guarantor-picker-url`
 **Developer:** Claude Code / Jabir Mussa

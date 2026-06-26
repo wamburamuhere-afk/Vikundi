@@ -242,6 +242,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             };
             $father_photo = $vk_save_photo('father_photo');
             $mother_photo = $vk_save_photo('mother_photo');
+            $spouse_photo = $vk_save_photo('spouse_photo');
 
             // 2. Insert into users table
             $hashed_password = password_hash($password, PASSWORD_BCRYPT);
@@ -259,7 +260,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     country, state, district, ward, street, house_number,
                     marital_status,
                     spouse_first_name, spouse_middle_name, spouse_last_name, spouse_email, spouse_phone, spouse_gender, spouse_dob, spouse_nida,
-                    spouse_religion, spouse_birth_region,
+                    spouse_religion, spouse_birth_region, spouse_photo,
                     children_data,
                     father_name, father_first_name, father_middle_name, father_last_name, father_phone,
                     father_location, father_sub_location,
@@ -275,7 +276,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ?, ?, ?, ?, ?, ?,
                     ?,
                     ?, ?, ?, ?, ?, ?, ?, ?,
-                    ?, ?,
+                    ?, ?, ?,
                     ?,
                     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
@@ -289,7 +290,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $country, $state, $district, $ward, $street, $house_number,
                 $marital_status,
                 $spouse_first_name, $spouse_middle_name, $spouse_last_name, $spouse_email, $spouse_phone, $spouse_gender, $spouse_dob, $spouse_nida,
-                $spouse_religion, $spouse_birth_region,
+                $spouse_religion, $spouse_birth_region, $spouse_photo,
                 $children_data,
                 $father_name, $father_first_name, $father_middle_name, $father_last_name, $father_phone,
                 $father_location, $father_sub_location,

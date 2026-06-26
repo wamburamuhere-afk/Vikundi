@@ -262,6 +262,7 @@ try {
     };
     $father_photo = $vk_save_photo('father_photo');
     $mother_photo = $vk_save_photo('mother_photo');
+    $spouse_photo = $vk_save_photo('spouse_photo');
 
     // Generate username: first letter of first name + full last name (lowercase, no spaces)
     $first_initial = strtolower(substr(trim($first_name), 0, 1));
@@ -303,7 +304,7 @@ try {
             country, state, district, ward, street, house_number,
             marital_status,
             spouse_first_name, spouse_middle_name, spouse_last_name, spouse_email, spouse_phone, spouse_gender, spouse_dob, spouse_nida,
-            spouse_religion, spouse_birth_region,
+            spouse_religion, spouse_birth_region, spouse_photo,
             children_data,
             father_name, father_first_name, father_middle_name, father_last_name, father_phone,
             father_location, father_sub_location,
@@ -319,7 +320,7 @@ try {
             ?, ?, ?, ?, ?, ?,
             ?,
             ?, ?, ?, ?, ?, ?, ?, ?,
-            ?, ?,
+            ?, ?, ?,
             ?,
             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
@@ -333,7 +334,7 @@ try {
         $country, $state, $district, $ward, $street, $house_number,
         $_POST['marital_status'] ?? 'Single',
         $spouse_first_name, $spouse_middle_name, $spouse_last_name, $spouse_email, $spouse_phone, $spouse_gender, $spouse_dob, $spouse_nida,
-        $spouse_religion, $spouse_birth_region,
+        $spouse_religion, $spouse_birth_region, $spouse_photo,
         $children_data,
         $father_name, $father_first_name, $father_middle_name, $father_last_name, $father_phone,
         $father_location, $father_sub_location,

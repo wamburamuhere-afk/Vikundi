@@ -323,6 +323,10 @@ if (isset($_SESSION['user_id'])) {
                                     <label class="form-label fw-bold small">Region of Birth</label>
                                     <input type="text" name="spouse_birth_region" class="form-control" placeholder="Birth Region">
                                 </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Passport Photo <span class="text-muted fw-normal">(Optional)</span></label>
+                                    <input type="file" name="spouse_photo" class="form-control" accept="image/*">
+                                </div>
                             </div>
                         </div>
 

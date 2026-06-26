@@ -18,6 +18,7 @@ $migrations = [
     'sync_workflow_columns.php',    // add review/approve columns + widen status enums
     'add_parent_detail_columns.php',// parent structured name + 6-field location + photo (registration PR-B)
     'add_guarantor_detail_columns.php', // guarantor member link + 6-field location (registration PR-C)
+    'add_spouse_photo_column.php',   // optional spouse passport photo
     'fix_death_expense_schema.php', // widen deceased_type, add 'dormant' + customers.is_active
     'ai_assistant_setup.php',       // AI tables, prompts and permissions
 ];
