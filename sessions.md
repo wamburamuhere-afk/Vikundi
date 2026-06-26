@@ -4,6 +4,27 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-26 — Registration form PR-A (label casing + children DOB)
+**Branch:** `feat/registration-pr-a-casing-child-dob`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** First of the assigned registration-form tasks. (1) Title-cased the Family & Beneficiaries tab field labels so they match the Personal & Residence tab (they were ALL CAPS). (2) Added a **Date of Birth** field for children, with **age derived from DOB** (server-side, not trusting the client). Applied to **both** the public form and the admin add-member form (per the agreed scope).
+
+### Files Modified
+- **`register.php`** + **`app/bms/customer/customers.php`** — parents/guarantor/children labels → Title Case (Swahili kept, just cased, e.g. `JINA LA BABA` → `Jina la Baba`); children table gains a **Date of Birth** column; Age is now a read-only auto-filled field; `vkChildAge()` JS derives the preview age; `addChildRow`/`addChildRowAdmin` updated to match.
+- **`helpers.php`** — new pure `vk_age_from_dob(?string): ?int` (whole years; null for empty/invalid/future).
+- **`actions/process_registration.php`** + **`actions/add_member.php`** — capture `child_dob[]`, store `dob` in `children_data` JSON, derive `age` server-side via `vk_age_from_dob()` (add_member also now requires `helpers.php`). No schema change — children are JSON.
+
+### Tests
+- **`tests/Unit/ChildDobTest.php`** — 7 tests: `vk_age_from_dob` (exact birthday, day-before, future, empty/invalid); both forms collect `child_dob`; both handlers persist `dob` + derive age; Family labels are Title-Cased.
+- **`tests/Unit/CustomersRegistrationLanguageTest.php`** — updated the locked label expectations to the new Title Case (purpose preserved: Swahili labels still present) + assert the new DOB header.
+
+### Verification
+- Live (`register.php`, built-in server): **200**, no PHP errors; Title-Case labels render, old all-caps gone, `child_dob[]` present.
+- Unit suite **650 / 1268**; `php -l` clean on all touched files.
+- Registration tasks: **PR-A ✅** · PR-B ⏳ (parents: names + 6-field location + photo) · PR-C ⏳ (guarantor: pull-member + location) · PR-D ⏳ (passport "add later" + children photo).
+
+---
+
 ## Session — 2026-06-26 — Audit fix M1
 **Branch:** `fix/m1-currency-normalize`
 **Developer:** Claude Code / Dutch

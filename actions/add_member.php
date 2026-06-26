@@ -11,6 +11,7 @@ if (session_status() === PHP_SESSION_NONE) {
 $ui_lang = (($_SESSION['preferred_language'] ?? 'en') === 'sw') ? 'sw' : 'en';
 
 require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../helpers.php'; // vk_age_from_dob() (child age derived from DOB)
 
 // Check if user is logged in and is a leader
 $user_id = $_SESSION['user_id'] ?? null;
@@ -96,12 +97,17 @@ $children = [];
 $child_names = $_POST['child_name'] ?? [];
 $child_ages = $_POST['child_age'] ?? [];
 $child_genders = $_POST['child_gender'] ?? [];
+$child_dobs = $_POST['child_dob'] ?? [];
 
 for ($i = 0; $i < count($child_names); $i++) {
     if (!empty($child_names[$i])) {
+        $dob = $child_dobs[$i] ?? '';
+        // Age is derived from DOB server-side; fall back to any posted age.
+        $age = $dob !== '' ? vk_age_from_dob($dob) : ($child_ages[$i] ?? '');
         $children[] = [
             'name' => $child_names[$i],
-            'age' => $child_ages[$i] ?? '',
+            'dob' => $dob,
+            'age' => $age,
             'gender' => $child_genders[$i] ?? ''
         ];
     }

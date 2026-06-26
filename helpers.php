@@ -540,6 +540,22 @@ function format_currency($amount, $currency = 'TZS', $decimals = 2) {
     return $symbol . number_format($amount, $decimals);
 }
 
+/**
+ * Whole-years age from a date of birth (registration: children enter DOB, age is
+ * derived server-side rather than trusting the client). Returns null for an
+ * empty, unparseable, or future date.
+ */
+function vk_age_from_dob(?string $dob): ?int {
+    $dob = trim((string) $dob);
+    if ($dob === '') return null;
+    $ts = strtotime($dob);
+    if ($ts === false) return null;
+    $birth = (new DateTime())->setTimestamp($ts);
+    $now = new DateTime();
+    if ($birth > $now) return null;
+    return (int) $birth->diff($now)->y;
+}
+
 function safe_output($value, $default = 'N/A') {
     return !empty($value) ? htmlspecialchars($value) : $default;
 }
