@@ -4,6 +4,19 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-27 — Fix: reviewed contributions stranded (can't be approved)
+**Branch:** `fix/approve-reviewed-contributions`
+**Summary:** The Pending Approvals section loaded only `status = 'pending'`, but the **Approve** button renders only for `reviewed` rows — so once an item was marked Reviewed it dropped out of the queue and could never be approved (e.g. contribution #49, Baraka Emmanuel Kessy, sat at "reviewed"). 
+
+### Fix — `app/bms/customer/manage_contributions.php`
+- Pending Approvals query now loads `WHERE con.status IN ('pending', 'reviewed')`, ordered pending-first (`FIELD(status,'pending','reviewed')`). The section already had a Status column (amber Pending / blue Reviewed) and already rendered "Mark Reviewed" for pending and "Approve" for reviewed — it just wasn't being fed reviewed rows. No rendering changes needed.
+
+### Tests / Verification
+- `tests/Unit/ContributionsListingTest.php` — added a guard that the queue includes `'reviewed'`.
+- Verified live: the queue now returns the stranded reviewed item (#49). `php -l` clean. Suite **722 / 1603**.
+
+---
+
 ## Session — 2026-06-27 — Finance: Contributions = filtered listing (transactions PR-3)
 **Branch:** `feat/contributions-listing`
 **Developer:** Claude Code / Jabir Mussa

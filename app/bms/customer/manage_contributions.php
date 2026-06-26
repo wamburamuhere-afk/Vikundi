@@ -27,18 +27,22 @@ $currency = $settings_raw['currency'] ?? 'TZS';
 $isSw = (($_SESSION['preferred_language'] ?? 'en') === 'sw');
 
 // 2. Fetch Pending Contributions (Leaders see all, Members see only theirs)
+// Awaiting-action queue: 'pending' items need review, 'reviewed' items need
+// approval. Including 'reviewed' is what lets the Approve button appear (it
+// renders only for reviewed rows) — otherwise reviewed items get stranded.
 $pending_query = "
-    SELECT con.*, c.customer_name, c.first_name, c.last_name, c.phone 
-    FROM contributions con 
-    JOIN customers c ON con.member_id = c.customer_id 
-    WHERE con.status = 'pending' 
+    SELECT con.*, c.customer_name, c.first_name, c.last_name, c.phone
+    FROM contributions con
+    JOIN customers c ON con.member_id = c.customer_id
+    WHERE con.status IN ('pending', 'reviewed')
 ";
+$pending_order = " ORDER BY FIELD(con.status, 'pending', 'reviewed'), con.contribution_date DESC";
 if (!$is_leader) {
     $pending_query .= " AND c.user_id = ? ";
-    $stmt = $pdo->prepare($pending_query . " ORDER BY con.contribution_date DESC");
+    $stmt = $pdo->prepare($pending_query . $pending_order);
     $stmt->execute([$_SESSION['user_id']]);
 } else {
-    $stmt = $pdo->query($pending_query . " ORDER BY con.contribution_date DESC");
+    $stmt = $pdo->query($pending_query . $pending_order);
 }
 $pending_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
