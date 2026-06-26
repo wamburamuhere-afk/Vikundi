@@ -4,6 +4,26 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-26 — Audit fix M5
+**Branch:** `fix/m5-profile-auth-guard`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit Medium **M5** — `profile.php` and `my_settings.php` read `$_SESSION['user_id']` at the top before any auth check (their `header.php` / auth gate runs much later or not at all), so an anonymous hit emitted `Undefined array key "user_id"` warnings and ran queries with a null user id (louder since B1). Added an HTML auth gate that redirects to login first.
+
+### Files Created
+- **`includes/require_login.php`** — central auth gate for HTML pages (sibling of `require_auth.php`, which serves JSON). No `$_SESSION['user_id']` → redirect to `getUrl('login')` + exit.
+- **`tests/Unit/RequireLoginGuardTest.php`** — 3 tests: guard redirects/stops; both pages include the guard *before* the first `$_SESSION['user_id']` read.
+
+### Files Modified
+- **`app/constant/profile/profile.php`** — require the login guard right after `roots.php`, before any session use.
+- **`app/constant/profile/my_settings.php`** — same.
+
+### Verification
+- Live (PHP built-in server, dev SAPI = display_errors on): both pages anonymous → **302 → /login**, zero `Undefined array key` warnings in the body (was: 200 + warnings).
+- Unit suite **625 / 1193**; `php -l` clean.
+- Medium tier: M1 ⏳ · M2 ⏳ · M3 ✅ (done in H4) · M4 ⏳ · M5 ✅ · M6 ⏳.
+
+---
+
 ## Session — 2026-06-26 — Audit fix H6
 **Branch:** `fix/h6-csrf-central-guard`
 **Developer:** Claude Code / Dutch

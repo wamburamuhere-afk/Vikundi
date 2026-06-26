@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../../roots.php';
+require_once __DIR__ . '/../../../includes/require_login.php'; // audit M5: authenticate before any $_SESSION['user_id'] use
 require_once __DIR__ . '/../../../includes/csrf.php';
 require_once __DIR__ . '/../../../includes/registration_validator.php';
 date_default_timezone_set('Africa/Nairobi');
