@@ -1867,7 +1867,7 @@ $(function () {
         width: '100%',
         allowClear: true,
         dropdownParent: $modal.length ? $modal : $(document.body),
-        placeholder: '<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Tafuta mwanachama...' : 'Search members...' ?>',
+        placeholder: '<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Chagua au tafuta mwanachama...' : 'Pick or search a member...' ?>',
         ajax: {
             url: '<?= getUrl("api/search_customers") ?>',
             dataType: 'json',
@@ -1876,7 +1876,8 @@ $(function () {
             processResults: function (data) { return { results: (data && data.results) || [] }; },
             cache: true
         },
-        minimumInputLength: 1
+        // 0 = list members as soon as the box is opened (browse), while typing still filters (search).
+        minimumInputLength: 0
     }).on('select2:select', function (e) {
         var id = e.params.data.id;
         document.getElementById('guarantorMemberId').value = id;
