@@ -338,6 +338,7 @@ if (isset($_SESSION['user_id'])) {
                                             <th style="width: 160px;">Date of Birth</th>
                                             <th style="width: 90px;">Age</th>
                                             <th style="width: 130px;">Gender</th>
+                                            <th style="width: 160px;">Photo <span class="text-muted fw-normal">(Optional)</span></th>
                                             <th class="text-center" style="width: 50px;">#</th>
                                         </tr>
                                     </thead>
@@ -353,6 +354,7 @@ if (isset($_SESSION['user_id'])) {
                                                     <option value="Mwanamke">Female</option>
                                                 </select>
                                             </td>
+                                            <td><input type="file" name="child_photo[]" class="form-control form-control-sm border-0 bg-transparent" accept="image/*"></td>
                                             <td class="text-center">
                                                 <button type="button" class="btn btn-sm text-danger border-0" onclick="removeRow(this)"><i class="bi bi-trash"></i></button>
                                             </td>
@@ -577,6 +579,7 @@ if (isset($_SESSION['user_id'])) {
                     <option value="Mwanamke">Female</option>
                 </select>
             </td>
+            <td><input type="file" name="child_photo[]" class="form-control form-control-sm border-0 bg-transparent" accept="image/*"></td>
             <td class="text-center">
                 <button type="button" class="btn btn-sm text-danger border-0" onclick="removeRow(this)"><i class="bi bi-trash"></i></button>
             </td>

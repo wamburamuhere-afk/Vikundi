@@ -98,6 +98,7 @@ $child_names = $_POST['child_name'] ?? [];
 $child_ages = $_POST['child_age'] ?? [];
 $child_genders = $_POST['child_gender'] ?? [];
 $child_dobs = $_POST['child_dob'] ?? [];
+$child_files = $_FILES['child_photo'] ?? null; // PR-D: optional per-child photo
 
 for ($i = 0; $i < count($child_names); $i++) {
     if (!empty($child_names[$i])) {
@@ -108,7 +109,8 @@ for ($i = 0; $i < count($child_names); $i++) {
             'name' => $child_names[$i],
             'dob' => $dob,
             'age' => $age,
-            'gender' => $child_genders[$i] ?? ''
+            'gender' => $child_genders[$i] ?? '',
+            'photo' => vk_save_child_photo($child_files, $i, __DIR__ . '/../uploads/avatars'),
         ];
     }
 }

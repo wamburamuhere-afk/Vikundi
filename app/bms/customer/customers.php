@@ -685,6 +685,7 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                                                     <th style="width: 160px;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Tarehe ya Kuzaliwa' : 'Date of Birth' ?></th>
                                                     <th style="width: 90px;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Umri' : 'Age' ?></th>
                                                     <th style="width: 130px;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jinsia' : 'Gender' ?></th>
+                                                    <th style="width: 160px;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Picha (Hiari)' : 'Photo (Optional)' ?></th>
                                                     <th class="text-center" style="width: 50px;">#</th>
                                                 </tr>
                                             </thead>
@@ -700,6 +701,7 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                                                             <option value="Mwanamke"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mwanamke' : 'Female' ?></option>
                                                         </select>
                                                     </td>
+                                                    <td><input type="file" name="child_photo[]" class="form-control form-control-sm border-0 bg-transparent" accept="image/*"></td>
                                                     <td class="text-center">
                                                         <button type="button" class="btn btn-sm text-danger border-0" onclick="removeRowAdmin(this)"><i class="bi bi-trash"></i></button>
                                                     </td>
@@ -1298,6 +1300,7 @@ $(document).ready(function() {
                     <option value="Mwanamke"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mwanamke' : 'Female' ?></option>
                 </select>
             </td>
+            <td><input type="file" name="child_photo[]" class="form-control form-control-sm border-0 bg-transparent" accept="image/*"></td>
             <td class="text-center">
                 <button type="button" class="btn btn-sm text-danger border-0" onclick="removeRowAdmin(this)"><i class="bi bi-trash"></i></button>
             </td>
