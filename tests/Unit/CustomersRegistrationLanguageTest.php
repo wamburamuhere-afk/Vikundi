@@ -73,7 +73,9 @@ class CustomersRegistrationLanguageTest extends TestCase
     {
         $this->assertStringContainsString('Jina la Mdhamini', $this->src);       // Guarantor's Name
         $this->assertStringContainsString('Uhusiano na Mwanachama', $this->src); // Relationship
-        $this->assertStringContainsString('Mkoa Anapoishi', $this->src);         // Region where living
+        // PR-C: single "Region where living" replaced by the six-field location + member picker.
+        $this->assertStringContainsString('Mahali Anapoishi Mdhamini', $this->src); // Guarantor's Physical Location heading
+        $this->assertStringContainsString('Chagua Mwanachama Aliyepo', $this->src); // Pull an Existing Member
     }
 
     public function test_account_tab_labels_translated(): void
