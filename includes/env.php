@@ -40,3 +40,42 @@ if (!function_exists('vikundi_is_dev_host')) {
         return str_ends_with($host, '.localhost') || str_ends_with($host, '.test');
     }
 }
+
+if (!function_exists('vikundi_is_https')) {
+    /**
+     * True when the current request is served over HTTPS (audit H5). Used to
+     * gate the `secure` flag on the session cookie: on plain-HTTP local dev the
+     * flag must stay off, otherwise the browser drops the cookie and login
+     * silently breaks.
+     *
+     * Detection covers direct TLS termination, the standard 443 port, and a
+     * trusted reverse proxy / load balancer (X-Forwarded-Proto). Spoofing the
+     * forwarded header can only make the cookie MORE restrictive (HTTPS-only),
+     * so it is safe here.
+     *
+     * @param array|null $server Override for $_SERVER (testing).
+     */
+    function vikundi_is_https(?array $server = null): bool
+    {
+        $server = $server ?? $_SERVER;
+
+        // Direct TLS termination: HTTPS set to anything other than "off".
+        $https = $server['HTTPS'] ?? '';
+        if ($https !== '' && strtolower((string) $https) !== 'off') {
+            return true;
+        }
+
+        // Standard HTTPS port.
+        if ((int) ($server['SERVER_PORT'] ?? 0) === 443) {
+            return true;
+        }
+
+        // Behind a reverse proxy / load balancer that terminates TLS.
+        $proto = $server['HTTP_X_FORWARDED_PROTO'] ?? '';
+        if (strtolower((string) $proto) === 'https') {
+            return true;
+        }
+
+        return false;
+    }
+}
