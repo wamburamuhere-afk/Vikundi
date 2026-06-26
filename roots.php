@@ -254,6 +254,7 @@ $routes = [
     'my_contributions'           => CUSTOMERS_DIR . '/manage_contributions.php',
     'submit_contribution'        => CUSTOMERS_DIR . '/submit_contribution.php',
     'manage_contributions'       => CUSTOMERS_DIR . '/manage_contributions.php',
+    'transactions'               => CUSTOMERS_DIR . '/transactions.php',
     'contribution_view'          => CUSTOMERS_DIR . '/contribution_view.php',
     'print_contribution'         => CUSTOMERS_DIR . '/print_contribution.php',
     'api/review_contribution'    => API_DIR . '/review_contribution.php',
