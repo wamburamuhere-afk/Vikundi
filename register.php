@@ -233,41 +233,35 @@ if (isset($_SESSION['user_id'])) {
                                 <!-- Father -->
                                 <div class="col-md-6 border-end">
                                     <p class="fw-bold text-muted small mb-3 border-bottom pb-1"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Taarifa za Baba' : 'Father\'s Details' ?></p>
-                                    <div class="mb-2">
-                                        <label class="form-label small mb-1 fw-bold">Father's Name</label>
-                                        <input type="text" name="father_name" class="form-control form-control-sm" placeholder="Full Name">
-                                    </div>
-                                    <div class="mb-2">
-                                        <label class="form-label small mb-1 fw-bold">Region / District Where Living</label>
-                                        <input type="text" name="father_location" class="form-control form-control-sm" placeholder="Location">
-                                    </div>
-                                    <div class="mb-2">
-                                        <label class="form-label small mb-1 fw-bold">Ward / Village / Street</label>
-                                        <input type="text" name="father_sub_location" class="form-control form-control-sm" placeholder="Sub-location">
-                                    </div>
-                                    <div class="mb-2">
-                                        <label class="form-label small mb-1 fw-bold">Phone Number</label>
-                                        <input type="tel" name="father_phone" class="form-control form-control-sm" placeholder="0xxxxxxxxx">
+                                    <div class="row g-2">
+                                        <div class="col-6"><label class="form-label small mb-1 fw-bold">First Name</label><input type="text" name="father_first_name" class="form-control form-control-sm" placeholder="First Name"></div>
+                                        <div class="col-6"><label class="form-label small mb-1 fw-bold">Middle Name</label><input type="text" name="father_middle_name" class="form-control form-control-sm" placeholder="Middle Name"></div>
+                                        <div class="col-6"><label class="form-label small mb-1 fw-bold">Last Name</label><input type="text" name="father_last_name" class="form-control form-control-sm" placeholder="Last Name"></div>
+                                        <div class="col-6"><label class="form-label small mb-1 fw-bold">Phone Number</label><input type="tel" name="father_phone" class="form-control form-control-sm" placeholder="0xxxxxxxxx"></div>
+                                        <div class="col-6"><label class="form-label small mb-1 fw-bold">Country</label><input type="text" name="father_country" class="form-control form-control-sm" value="Tanzania"></div>
+                                        <div class="col-6"><label class="form-label small mb-1 fw-bold">Region / State</label><input type="text" name="father_state" class="form-control form-control-sm" placeholder="Region"></div>
+                                        <div class="col-6"><label class="form-label small mb-1 fw-bold">District</label><input type="text" name="father_district" class="form-control form-control-sm" placeholder="District"></div>
+                                        <div class="col-6"><label class="form-label small mb-1 fw-bold">Ward</label><input type="text" name="father_ward" class="form-control form-control-sm" placeholder="Ward"></div>
+                                        <div class="col-6"><label class="form-label small mb-1 fw-bold">Street / Village</label><input type="text" name="father_street" class="form-control form-control-sm" placeholder="Street"></div>
+                                        <div class="col-6"><label class="form-label small mb-1 fw-bold">House Number</label><input type="text" name="father_house_number" class="form-control form-control-sm" placeholder="House No."></div>
+                                        <div class="col-12"><label class="form-label small mb-1 fw-bold">Passport Photo <span class="text-muted fw-normal">(Optional)</span></label><input type="file" name="father_photo" class="form-control form-control-sm" accept="image/*"></div>
                                     </div>
                                 </div>
                                 <!-- Mother -->
                                 <div class="col-md-6">
                                     <p class="fw-bold text-muted small mb-3 border-bottom pb-1"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Taarifa za Mama' : 'Mother\'s Details' ?></p>
-                                    <div class="mb-2">
-                                        <label class="form-label small mb-1 fw-bold">Mother's Name</label>
-                                        <input type="text" name="mother_name" class="form-control form-control-sm" placeholder="Full Name">
-                                    </div>
-                                    <div class="mb-2">
-                                        <label class="form-label small mb-1 fw-bold">Region / District Where Living</label>
-                                        <input type="text" name="mother_location" class="form-control form-control-sm" placeholder="Location">
-                                    </div>
-                                    <div class="mb-2">
-                                        <label class="form-label small mb-1 fw-bold">Ward / Village / Street</label>
-                                        <input type="text" name="mother_sub_location" class="form-control form-control-sm" placeholder="Sub-location">
-                                    </div>
-                                    <div class="mb-2">
-                                        <label class="form-label small mb-1 fw-bold">Phone Number</label>
-                                        <input type="tel" name="mother_phone" class="form-control form-control-sm" placeholder="0xxxxxxxxx">
+                                    <div class="row g-2">
+                                        <div class="col-6"><label class="form-label small mb-1 fw-bold">First Name</label><input type="text" name="mother_first_name" class="form-control form-control-sm" placeholder="First Name"></div>
+                                        <div class="col-6"><label class="form-label small mb-1 fw-bold">Middle Name</label><input type="text" name="mother_middle_name" class="form-control form-control-sm" placeholder="Middle Name"></div>
+                                        <div class="col-6"><label class="form-label small mb-1 fw-bold">Last Name</label><input type="text" name="mother_last_name" class="form-control form-control-sm" placeholder="Last Name"></div>
+                                        <div class="col-6"><label class="form-label small mb-1 fw-bold">Phone Number</label><input type="tel" name="mother_phone" class="form-control form-control-sm" placeholder="0xxxxxxxxx"></div>
+                                        <div class="col-6"><label class="form-label small mb-1 fw-bold">Country</label><input type="text" name="mother_country" class="form-control form-control-sm" value="Tanzania"></div>
+                                        <div class="col-6"><label class="form-label small mb-1 fw-bold">Region / State</label><input type="text" name="mother_state" class="form-control form-control-sm" placeholder="Region"></div>
+                                        <div class="col-6"><label class="form-label small mb-1 fw-bold">District</label><input type="text" name="mother_district" class="form-control form-control-sm" placeholder="District"></div>
+                                        <div class="col-6"><label class="form-label small mb-1 fw-bold">Ward</label><input type="text" name="mother_ward" class="form-control form-control-sm" placeholder="Ward"></div>
+                                        <div class="col-6"><label class="form-label small mb-1 fw-bold">Street / Village</label><input type="text" name="mother_street" class="form-control form-control-sm" placeholder="Street"></div>
+                                        <div class="col-6"><label class="form-label small mb-1 fw-bold">House Number</label><input type="text" name="mother_house_number" class="form-control form-control-sm" placeholder="House No."></div>
+                                        <div class="col-12"><label class="form-label small mb-1 fw-bold">Passport Photo <span class="text-muted fw-normal">(Optional)</span></label><input type="file" name="mother_photo" class="form-control form-control-sm" accept="image/*"></div>
                                     </div>
                                 </div>
                             </div>

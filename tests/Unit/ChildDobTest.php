@@ -77,9 +77,12 @@ class ChildDobTest extends TestCase
     public function testFamilyLabelsAreTitleCased(): void
     {
         $reg = file_get_contents(self::ROOT . 'register.php');
+        // No shouted all-caps labels remain on the Family tab.
         $this->assertStringNotContainsString(">FATHER'S NAME</label>", $reg);
         $this->assertStringNotContainsString('>PHONE NUMBER</label>', $reg);
-        $this->assertStringContainsString(">Father's Name</label>", $reg);
+        $this->assertStringNotContainsString(">GUARANTOR'S NAME</label>", $reg);
+        // Title-Cased labels are present (guarantor section + parent phone).
+        $this->assertStringContainsString(">Guarantor's Name</label>", $reg);
         $this->assertStringContainsString('>Phone Number</label>', $reg);
     }
 }

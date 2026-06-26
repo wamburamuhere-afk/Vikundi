@@ -581,41 +581,35 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                                      <!-- Father -->
                                      <div class="col-md-6 border-end">
                                          <p class="fw-bold text-muted small mb-3 border-bottom pb-1"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Taarifa za Baba' : 'Father\'s Details' ?></p>
-                                         <div class="mb-2">
-                                             <label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jina la Baba' : 'Father\'s Name' ?></label>
-                                             <input type="text" name="father_name" class="form-control form-control-sm" placeholder="Full Name">
-                                         </div>
-                                         <div class="mb-2">
-                                             <label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mkoa/Wilaya Anapoishi' : 'Region / District Where Living' ?></label>
-                                             <input type="text" name="father_location" class="form-control form-control-sm" placeholder="Location">
-                                         </div>
-                                         <div class="mb-2">
-                                             <label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Kata/Kijiji/Mtaa' : 'Ward / Village / Street' ?></label>
-                                             <input type="text" name="father_sub_location" class="form-control form-control-sm" placeholder="Sub-location">
-                                         </div>
-                                         <div class="mb-2">
-                                             <label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Namba ya Simu' : 'Phone Number' ?></label>
-                                             <input type="tel" name="father_phone" class="form-control form-control-sm" placeholder="0xxxxxxxxx">
+                                         <div class="row g-2">
+                                             <div class="col-6"><label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jina la Kwanza' : 'First Name' ?></label><input type="text" name="father_first_name" class="form-control form-control-sm" placeholder="First Name"></div>
+                                             <div class="col-6"><label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jina la Kati' : 'Middle Name' ?></label><input type="text" name="father_middle_name" class="form-control form-control-sm" placeholder="Middle Name"></div>
+                                             <div class="col-6"><label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jina la Mwisho' : 'Last Name' ?></label><input type="text" name="father_last_name" class="form-control form-control-sm" placeholder="Last Name"></div>
+                                             <div class="col-6"><label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Namba ya Simu' : 'Phone Number' ?></label><input type="tel" name="father_phone" class="form-control form-control-sm" placeholder="0xxxxxxxxx"></div>
+                                             <div class="col-6"><label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nchi' : 'Country' ?></label><input type="text" name="father_country" class="form-control form-control-sm" value="Tanzania"></div>
+                                             <div class="col-6"><label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mkoa' : 'Region / State' ?></label><input type="text" name="father_state" class="form-control form-control-sm" placeholder="Region"></div>
+                                             <div class="col-6"><label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Wilaya' : 'District' ?></label><input type="text" name="father_district" class="form-control form-control-sm" placeholder="District"></div>
+                                             <div class="col-6"><label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Kata' : 'Ward' ?></label><input type="text" name="father_ward" class="form-control form-control-sm" placeholder="Ward"></div>
+                                             <div class="col-6"><label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mtaa/Kijiji' : 'Street / Village' ?></label><input type="text" name="father_street" class="form-control form-control-sm" placeholder="Street"></div>
+                                             <div class="col-6"><label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Namba ya Nyumba' : 'House Number' ?></label><input type="text" name="father_house_number" class="form-control form-control-sm" placeholder="House No."></div>
+                                             <div class="col-12"><label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Picha ya Pasipoti (Hiari)' : 'Passport Photo (Optional)' ?></label><input type="file" name="father_photo" class="form-control form-control-sm" accept="image/*"></div>
                                          </div>
                                      </div>
                                      <!-- Mother -->
                                      <div class="col-md-6">
                                          <p class="fw-bold text-muted small mb-3 border-bottom pb-1"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Taarifa za Mama' : 'Mother\'s Details' ?></p>
-                                         <div class="mb-2">
-                                             <label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jina la Mama' : 'Mother\'s Name' ?></label>
-                                             <input type="text" name="mother_name" class="form-control form-control-sm" placeholder="Full Name">
-                                         </div>
-                                         <div class="mb-2">
-                                             <label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mkoa/Wilaya Anapoishi' : 'Region / District Where Living' ?></label>
-                                             <input type="text" name="mother_location" class="form-control form-control-sm" placeholder="Location">
-                                         </div>
-                                         <div class="mb-2">
-                                             <label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Kata/Kijiji/Mtaa' : 'Ward / Village / Street' ?></label>
-                                             <input type="text" name="mother_sub_location" class="form-control form-control-sm" placeholder="Sub-location">
-                                         </div>
-                                         <div class="mb-2">
-                                             <label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Namba ya Simu' : 'Phone Number' ?></label>
-                                             <input type="tel" name="mother_phone" class="form-control form-control-sm" placeholder="0xxxxxxxxx">
+                                         <div class="row g-2">
+                                             <div class="col-6"><label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jina la Kwanza' : 'First Name' ?></label><input type="text" name="mother_first_name" class="form-control form-control-sm" placeholder="First Name"></div>
+                                             <div class="col-6"><label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jina la Kati' : 'Middle Name' ?></label><input type="text" name="mother_middle_name" class="form-control form-control-sm" placeholder="Middle Name"></div>
+                                             <div class="col-6"><label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jina la Mwisho' : 'Last Name' ?></label><input type="text" name="mother_last_name" class="form-control form-control-sm" placeholder="Last Name"></div>
+                                             <div class="col-6"><label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Namba ya Simu' : 'Phone Number' ?></label><input type="tel" name="mother_phone" class="form-control form-control-sm" placeholder="0xxxxxxxxx"></div>
+                                             <div class="col-6"><label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nchi' : 'Country' ?></label><input type="text" name="mother_country" class="form-control form-control-sm" value="Tanzania"></div>
+                                             <div class="col-6"><label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mkoa' : 'Region / State' ?></label><input type="text" name="mother_state" class="form-control form-control-sm" placeholder="Region"></div>
+                                             <div class="col-6"><label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Wilaya' : 'District' ?></label><input type="text" name="mother_district" class="form-control form-control-sm" placeholder="District"></div>
+                                             <div class="col-6"><label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Kata' : 'Ward' ?></label><input type="text" name="mother_ward" class="form-control form-control-sm" placeholder="Ward"></div>
+                                             <div class="col-6"><label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mtaa/Kijiji' : 'Street / Village' ?></label><input type="text" name="mother_street" class="form-control form-control-sm" placeholder="Street"></div>
+                                             <div class="col-6"><label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Namba ya Nyumba' : 'House Number' ?></label><input type="text" name="mother_house_number" class="form-control form-control-sm" placeholder="House No."></div>
+                                             <div class="col-12"><label class="form-label small mb-1 fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Picha ya Pasipoti (Hiari)' : 'Passport Photo (Optional)' ?></label><input type="file" name="mother_photo" class="form-control form-control-sm" accept="image/*"></div>
                                          </div>
                                      </div>
                                  </div>
