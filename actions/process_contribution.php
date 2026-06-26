@@ -12,10 +12,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     $member_id = intval($_POST['member_id'] ?? 0);
     $amount = floatval($_POST['amount'] ?? 0);
-    $contribution_type = 'monthly'; // Default for this group
     $description = $_POST['description'] ?? '';
-    $contribution_date = date('Y-m-d'); // Auto-set to today
-    
+
+    // Transactions form fields (validated against the allowed sets).
+    $allowed_types    = ['entrance', 'monthly', 'agm', 'fine', 'other'];
+    $allowed_accounts = ['M-Koba', 'Bank', 'Cash', 'Mobile Money'];
+
+    $contribution_type = in_array($_POST['contribution_type'] ?? '', $allowed_types, true)
+        ? $_POST['contribution_type'] : 'monthly';
+
+    $account = in_array($_POST['account'] ?? '', $allowed_accounts, true) ? $_POST['account'] : null;
+
+    $receipt_number = trim($_POST['receipt_number'] ?? '');
+    $receipt_number = $receipt_number !== '' ? $receipt_number : null;
+
+    // Date is editable but defaults to today and must be a valid Y-m-d.
+    $contribution_date = date('Y-m-d');
+    $posted_date = trim($_POST['contribution_date'] ?? '');
+    $d = $posted_date !== '' ? \DateTime::createFromFormat('Y-m-d', $posted_date) : false;
+    if ($d && $d->format('Y-m-d') === $posted_date) {
+        $contribution_date = $posted_date;
+    }
+
     $status = 'pending'; // USER REQUEST: Every created contribution must be approved.
 
     if (!$member_id || $amount <= 0) {
@@ -43,13 +61,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $stmt = $pdo->prepare("
             INSERT INTO contributions (
-                member_id, amount, contribution_type, contribution_date, description, status, 
-                evidence_path, created_by, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                member_id, amount, contribution_type, contribution_date, description, status,
+                receipt_number, account, evidence_path, created_by, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         ");
         $stmt->execute([
             $member_id, $amount, $contribution_type, $contribution_date, $description, $status,
-            $evidence_path, $_SESSION['user_id']
+            $receipt_number, $account, $evidence_path, $_SESSION['user_id']
         ]);
         $new_id = $pdo->lastInsertId();
 

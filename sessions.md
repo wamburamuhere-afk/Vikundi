@@ -4,6 +4,23 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-27 — Finance: Transactions recording hub (transactions PR-1)
+**Branch:** `feat/transactions-page`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** First of three PRs for the Finance reorganisation. Adds a **Transactions** page (the recording hub) under Finance, with an enriched record-payment form. (PR-2 = importers + bulk template; PR-3 = slim Contributions to a filtered listing.) All recording writes to the existing `contributions` table — the loan `transactions` table is untouched.
+
+### Files Created
+- **`database/add_transaction_fields.php`** — idempotent migration (registered in `migrate.php`) adding `contributions.receipt_number` (VARCHAR 100) + `contributions.account` (VARCHAR 50).
+- **`app/bms/customer/transactions.php`** — the recording hub: enriched Record Payment form (member · receipt number · date · account · type · amount · description · receipt image), bulk "our template" + M-Koba import buttons, and a recent-transactions table. Gated by `requireViewPermission('manage_contributions')`; the form is shown only with `canCreate`.
+- **`tests/Unit/TransactionsPageTest.php`** — route + menu + migration registered; form has all fields and posts to the handler with CSRF; page is permission-gated; handler validates type/account and persists the new columns.
+
+### Files Modified
+- **`actions/process_contribution.php`** — now accepts and **validates** the new fields: `contribution_type` (against the enum set), `account` (M-Koba/Bank/Cash/Mobile Money), `receipt_number`, and an editable `contribution_date` (must be valid `Y-m-d`, defaults today). INSERT persists `receipt_number` + `account`.
+- **`roots.php`** — `transactions` route. **`header.php`** — Finance menu → **Transactions** (before Contributions). **`database/migrate.php`** — registered the migration.
+
+### Verification
+- Migration run live: both columns added. INSERT placeholder/value balance 10=10; live insert with the new columns succeeded (valid enum status/type). Route resolves. `php -l` clean across all touched files. Unit suite **704 / 1522**.
+- Note: the existing M-Koba importer is still the old (buggy) one — that is fixed in **PR-2**. Contributions still has its own record buttons until **PR-3** slims it.
 ## Session — 2026-06-26 — Member sensitive-data masking (roles PR-2)
 **Branch:** `feat/member-data-masking`
 **Developer:** Claude Code / Jabir Mussa
