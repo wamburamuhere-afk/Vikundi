@@ -4,6 +4,30 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-26 — Member-family edit: passport photos (E2)
+**Branch:** `feat/member-edit-photos-e2`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Second/final PR of the edit-form rework — add/replace passport photos **later** on the member-family edit form (`profile.php`) for **spouse, parents, and children**. (The member's own avatar upload already existed.) Completes the "passport can be added later" requirement and the whole registration + edit rework.
+
+### Files Modified
+- **`helpers.php`** — new `vk_upload_photo($field, $dir): ?string` (single optional upload; returns null when no file, so callers keep the existing value — never wipe).
+- **`app/constant/profile/profile.php`**:
+  - **SELECT** loads `father_photo`, `mother_photo`, `spouse_photo` (to show current + preserve).
+  - **Edit form** — each parent + spouse gains a photo field that **shows the current photo** (thumbnail) with a "choose a file to replace" input; the children table gains a **Photo** column (thumbnail + replace input). Dynamically-added child rows include the photo input.
+  - **UPDATE handler** — parent/spouse photo = new upload **or** keep existing (`vk_upload_photo(...) ?? $member[...]`); children re-encode replaces a photo on new upload, otherwise preserves the existing one. **Empty upload never wipes a photo.** UPDATE extended to **81 placeholders = 81 values**.
+
+### Tests
+- **`tests/Unit/MemberEditPhotosTest.php`** — 5 tests: helper exists; SELECT loads the photo columns; form has the photo inputs; UPDATE persists them; **empty upload keeps the existing photo** (the never-wipe rule, parents/spouse + children).
+
+### Verification
+- UPDATE balanced (81 = 81); photo columns valid in an UPDATE (rolled-back round-trip of `father_photo`/`mother_photo`/`spouse_photo`); SELECT with the photo columns executes.
+- Unit suite **681 / 1413**; `php -l` clean.
+
+### Registration + edit rework — COMPLETE
+Registration: PR-A ✅ · PR-B ✅ · PR-C ✅ · PR-D ✅ · spouse photo ✅ · picker fix ✅. Edit form: E1 ✅ (fields + parent-location bug) · **E2 ✅ (photos)**. Member-family data can now be entered at registration AND edited later, with optional photos for member/spouse/parents/children throughout.
+
+---
+
 ## Session — 2026-06-26 — Member-family edit form sync (E1)
 **Branch:** `feat/member-edit-sync-e1`
 **Developer:** Claude Code / Jabir Mussa
