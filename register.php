@@ -232,41 +232,41 @@ if (isset($_SESSION['user_id'])) {
                             <div class="row g-4">
                                 <!-- Father -->
                                 <div class="col-md-6 border-end">
-                                    <p class="fw-bold text-muted small mb-3 border-bottom pb-1"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'TAARIFA ZA BABA' : 'FATHER\'S DETAILS' ?></p>
+                                    <p class="fw-bold text-muted small mb-3 border-bottom pb-1"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Taarifa za Baba' : 'Father\'s Details' ?></p>
                                     <div class="mb-2">
-                                        <label class="form-label small mb-1 fw-bold">FATHER'S NAME</label>
+                                        <label class="form-label small mb-1 fw-bold">Father's Name</label>
                                         <input type="text" name="father_name" class="form-control form-control-sm" placeholder="Full Name">
                                     </div>
                                     <div class="mb-2">
-                                        <label class="form-label small mb-1 fw-bold">REGION/DISTRICT WHERE LIVING</label>
+                                        <label class="form-label small mb-1 fw-bold">Region / District Where Living</label>
                                         <input type="text" name="father_location" class="form-control form-control-sm" placeholder="Location">
                                     </div>
                                     <div class="mb-2">
-                                        <label class="form-label small mb-1 fw-bold">WARD/VILLAGE/STREET</label>
+                                        <label class="form-label small mb-1 fw-bold">Ward / Village / Street</label>
                                         <input type="text" name="father_sub_location" class="form-control form-control-sm" placeholder="Sub-location">
                                     </div>
                                     <div class="mb-2">
-                                        <label class="form-label small mb-1 fw-bold">PHONE NUMBER</label>
+                                        <label class="form-label small mb-1 fw-bold">Phone Number</label>
                                         <input type="tel" name="father_phone" class="form-control form-control-sm" placeholder="0xxxxxxxxx">
                                     </div>
                                 </div>
                                 <!-- Mother -->
                                 <div class="col-md-6">
-                                    <p class="fw-bold text-muted small mb-3 border-bottom pb-1"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'TAARIFA ZA MAMA' : 'MOTHER\'S DETAILS' ?></p>
+                                    <p class="fw-bold text-muted small mb-3 border-bottom pb-1"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Taarifa za Mama' : 'Mother\'s Details' ?></p>
                                     <div class="mb-2">
-                                        <label class="form-label small mb-1 fw-bold">MOTHER'S NAME</label>
+                                        <label class="form-label small mb-1 fw-bold">Mother's Name</label>
                                         <input type="text" name="mother_name" class="form-control form-control-sm" placeholder="Full Name">
                                     </div>
                                     <div class="mb-2">
-                                        <label class="form-label small mb-1 fw-bold">REGION/DISTRICT WHERE LIVING</label>
+                                        <label class="form-label small mb-1 fw-bold">Region / District Where Living</label>
                                         <input type="text" name="mother_location" class="form-control form-control-sm" placeholder="Location">
                                     </div>
                                     <div class="mb-2">
-                                        <label class="form-label small mb-1 fw-bold">WARD/VILLAGE/STREET</label>
+                                        <label class="form-label small mb-1 fw-bold">Ward / Village / Street</label>
                                         <input type="text" name="mother_sub_location" class="form-control form-control-sm" placeholder="Sub-location">
                                     </div>
                                     <div class="mb-2">
-                                        <label class="form-label small mb-1 fw-bold">PHONE NUMBER</label>
+                                        <label class="form-label small mb-1 fw-bold">Phone Number</label>
                                         <input type="tel" name="mother_phone" class="form-control form-control-sm" placeholder="0xxxxxxxxx">
                                     </div>
                                 </div>
@@ -339,10 +339,11 @@ if (isset($_SESSION['user_id'])) {
                                 <table class="table table-bordered table-sm align-middle" id="childrenTable">
                                     <thead class="bg-light small">
                                         <tr>
-                                            <th class="text-center" style="width: 50px;">S/NO</th>
-                                            <th>CHILD NAME</th>
-                                            <th style="width: 100px;">AGE</th>
-                                            <th style="width: 150px;">GENDER</th>
+                                            <th class="text-center" style="width: 50px;">S/No</th>
+                                            <th>Child Name</th>
+                                            <th style="width: 160px;">Date of Birth</th>
+                                            <th style="width: 90px;">Age</th>
+                                            <th style="width: 130px;">Gender</th>
                                             <th class="text-center" style="width: 50px;">#</th>
                                         </tr>
                                     </thead>
@@ -350,7 +351,8 @@ if (isset($_SESSION['user_id'])) {
                                         <tr class="child-row">
                                             <td class="text-center fw-bold row-idx">1</td>
                                             <td><input type="text" name="child_name[]" class="form-control form-control-sm border-0 bg-transparent" placeholder="Child Name"></td>
-                                            <td><input type="number" name="child_age[]" class="form-control form-control-sm border-0 bg-transparent" placeholder="Age"></td>
+                                            <td><input type="date" name="child_dob[]" class="form-control form-control-sm border-0 bg-transparent" onchange="vkChildAge(this)"></td>
+                                            <td><input type="number" name="child_age[]" class="form-control form-control-sm border-0 bg-transparent" placeholder="Auto" readonly></td>
                                             <td>
                                                 <select name="child_gender[]" class="form-select form-select-sm border-0 bg-transparent">
                                                     <option value="Mwanaume">Male</option>
@@ -376,19 +378,19 @@ if (isset($_SESSION['user_id'])) {
                             <h6 class="text-primary border-bottom pb-2 mb-3 fw-bold"><i class="bi bi-shield-check me-2"></i><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'MDHAMINI WA MWANACHAMA' : 'MEMBER\'S GUARANTOR' ?></h6>
                             <div class="row g-3">
                                 <div class="col-md-6">
-                                    <label class="form-label fw-bold small">GUARANTOR'S NAME</label>
+                                    <label class="form-label fw-bold small">Guarantor's Name</label>
                                     <input type="text" name="guarantor_name" class="form-control" placeholder="Full Name">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-bold small">PHONE NUMBER</label>
+                                    <label class="form-label fw-bold small">Phone Number</label>
                                     <input type="tel" name="guarantor_phone" class="form-control" placeholder="0xxxxxxxxx">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-bold small">RELATIONSHIP WITH MEMBER</label>
+                                    <label class="form-label fw-bold small">Relationship With Member</label>
                                     <input type="text" name="guarantor_rel" class="form-control" placeholder="Relationship">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-bold small">REGION WHERE LIVING</label>
+                                    <label class="form-label fw-bold small">Region Where Living</label>
                                     <input type="text" name="guarantor_location" class="form-control" placeholder="Location">
                                 </div>
                             </div>
@@ -548,6 +550,20 @@ if (isset($_SESSION['user_id'])) {
         `;
     }
 
+    // audit/registration: derive a child's age from the entered date of birth.
+    function vkChildAge(dobInput) {
+        const row = dobInput.closest('tr');
+        const ageInput = row ? row.querySelector('input[name="child_age[]"]') : null;
+        if (!ageInput) return;
+        const d = new Date(dobInput.value);
+        if (!dobInput.value || isNaN(d.getTime())) { ageInput.value = ''; return; }
+        const now = new Date();
+        let age = now.getFullYear() - d.getFullYear();
+        const m = now.getMonth() - d.getMonth();
+        if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
+        ageInput.value = age >= 0 ? age : '';
+    }
+
     function addChildRow() {
         const tbody = document.getElementById('childrenList');
         const rowCount = tbody.getElementsByClassName('child-row').length + 1;
@@ -556,7 +572,8 @@ if (isset($_SESSION['user_id'])) {
         newRow.innerHTML = `
             <td class="text-center fw-bold row-idx">${rowCount}</td>
             <td><input type="text" name="child_name[]" class="form-control form-control-sm border-0 bg-transparent" placeholder="Name"></td>
-            <td><input type="number" name="child_age[]" class="form-control form-control-sm border-0 bg-transparent" placeholder="Age"></td>
+            <td><input type="date" name="child_dob[]" class="form-control form-control-sm border-0 bg-transparent" onchange="vkChildAge(this)"></td>
+            <td><input type="number" name="child_age[]" class="form-control form-control-sm border-0 bg-transparent" placeholder="Auto" readonly></td>
             <td>
                 <select name="child_gender[]" class="form-select form-select-sm border-0 bg-transparent">
                     <option value="Mwanaume">Male</option>

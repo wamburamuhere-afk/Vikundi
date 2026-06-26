@@ -93,12 +93,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $child_names = $_POST['child_name'] ?? [];
     $child_ages = $_POST['child_age'] ?? [];
     $child_genders = $_POST['child_gender'] ?? [];
-    
+    $child_dobs = $_POST['child_dob'] ?? [];
+
     for ($i = 0; $i < count($child_names); $i++) {
         if (!empty($child_names[$i])) {
+            $dob = $child_dobs[$i] ?? '';
+            // Age is derived from DOB server-side; fall back to any posted age.
+            $age = $dob !== '' ? vk_age_from_dob($dob) : ($child_ages[$i] ?? '');
             $children[] = [
                 'name' => $child_names[$i],
-                'age' => $child_ages[$i] ?? '',
+                'dob' => $dob,
+                'age' => $age,
                 'gender' => $child_genders[$i] ?? ''
             ];
         }
