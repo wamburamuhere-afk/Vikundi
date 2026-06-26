@@ -692,10 +692,15 @@ $pending_members = array_filter($members, function($m) { return $m['user_status'
                                     </div>
                                 </div>
 
-                             </div> <!-- close familyFieldsAdmin (spouse only); children below are always shown -->
+                             </div> <!-- close familyFieldsAdmin (spouse) -->
+
+                                <!-- Shown for single members (spouse + children are hidden) -->
+                                <div id="familyNoteAdmin" class="alert alert-light border text-muted small" style="display:none;">
+                                    <i class="bi bi-info-circle me-1"></i><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Taarifa za mwenzi na watoto zinahusu wanachama waliooa/walioolewa.' : 'Spouse and children details apply to married members.' ?>
+                                </div>
 
                                 <!-- 3: CHILDREN INFORMATION -->
-                                <div class="mb-4 pt-2">
+                                <div class="mb-4 pt-2" id="childrenSectionAdmin">
                                     <h6 class="text-primary border-bottom pb-2 mb-3 fw-bold"><i class="bi bi-people-fill me-2"></i>3. <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'TAARIFA ZA WATOTO WA KUZAA WA MWANACHAMA' : 'MEMBER\'S CHILDREN INFORMATION' ?></h6>
                                     <div class="form-text small text-muted mb-2"><?= $__sw ? 'Ongeza watoto wa mwanachama (kama wapo).' : "Add the member's children (if any)." ?></div>
                                     <div id="childrenListAdmin">
@@ -1438,15 +1443,16 @@ function togglePasswordAdmin(fieldId) {
     }
 
     function toggleFamilyFieldsAdmin(status) {
-        const familyDiv = document.getElementById('familyFieldsAdmin');
-        const inputs = familyDiv.querySelectorAll('input, select');
-        if (status !== 'Single') {
-            familyDiv.style.display = 'block';
-            inputs.forEach(i => i.disabled = false);
-        } else {
-            familyDiv.style.display = 'none';
-            inputs.forEach(i => i.disabled = true);
-        }
+        const single = (status === 'Single');
+        // Spouse AND children both belong to married members — hide/disable both when single.
+        ['familyFieldsAdmin', 'childrenSectionAdmin'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.style.display = single ? 'none' : 'block';
+            el.querySelectorAll('input, select').forEach(i => i.disabled = single);
+        });
+        const note = document.getElementById('familyNoteAdmin');
+        if (note) note.style.display = single ? 'block' : 'none';
     }
 
     /* Registration format validation for the admin "Register New Member" form.

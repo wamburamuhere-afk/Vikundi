@@ -104,6 +104,26 @@ if (isset($_SESSION['user_id'])) {
                     </label>
                 </div>
                 
+                <?php $__sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
+                      $__steps = [
+                          ['personal',  $__sw ? 'Binafsi'  : 'Personal'],
+                          ['residence', $__sw ? 'Makazi'   : 'Residence'],
+                          ['parents',   $__sw ? 'Wazazi'   : 'Parents'],
+                          ['family',    $__sw ? 'Familia'  : 'Family'],
+                          ['guarantor', $__sw ? 'Mdhamini' : 'Guarantor'],
+                          ['account',   $__sw ? 'Akaunti'  : 'Account'],
+                      ]; ?>
+                <ul class="nav nav-pills nav-justified bg-light px-2 py-2 mb-4 flex-nowrap overflow-auto small rounded" id="registerSteps" role="tablist">
+                    <?php foreach ($__steps as $__i => $__st): ?>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link <?= $__i === 0 ? 'active' : '' ?> py-1 px-1" id="<?= $__st[0] ?>-tab" data-bs-toggle="pill"
+                                data-bs-target="#<?= $__st[0] ?>" type="button" role="tab">
+                            <i class="bi bi-<?= $__i + 1 ?>-circle d-block mx-auto"></i><span class="d-none d-md-inline"><?= $__st[1] ?></span>
+                        </button>
+                    </li>
+                    <?php endforeach; ?>
+                </ul>
+
                 <div class="tab-content" id="registerTabsContent">
                     <!-- PHASE 1: PERSONAL INFORMATION -->
                     <div class="tab-pane fade show active" id="personal" role="tabpanel">
@@ -169,7 +189,16 @@ if (isset($_SESSION['user_id'])) {
                                     <option value="Divorced">Divorced</option>
                                 </select>
                             </div>
+                        </div>
+                        <div class="d-flex justify-content-end mt-4">
+                            <button type="button" class="btn btn-primary btn-next btn-lg px-4" onclick="switchTab('residence')">Continue <i class="bi bi-arrow-right ms-2"></i></button>
+                        </div>
+                    </div>
 
+                    <!-- STEP 2: RESIDENCE & PHOTO -->
+                    <div class="tab-pane fade" id="residence" role="tabpanel">
+                        <h5 class="mb-4 text-primary fw-bold">Step 2: Residence</h5>
+                        <div class="row g-3">
                             <!-- YOUR RESIDENCE INFORMATION -->
                             <div class="col-12 mt-4">
                                 <h6 class="text-primary border-bottom pb-2 mb-3 fw-bold"><i class="bi bi-geo-alt-fill me-2"></i>YOUR RESIDENCE INFORMATION</h6>
@@ -212,16 +241,15 @@ if (isset($_SESSION['user_id'])) {
                                 </div>
                             </div>
                         </div>
-                        <div class="d-flex justify-content-end mt-4">
-                            <button type="button" class="btn btn-primary btn-next btn-lg px-4" onclick="switchTab('residence')">
-                                Continue <i class="bi bi-arrow-right ms-2"></i>
-                            </button>
+                        <div class="d-flex justify-content-between mt-4">
+                            <button type="button" class="btn btn-outline-secondary btn-next px-4" onclick="switchTab('personal')"><i class="bi bi-arrow-left me-2"></i> Back</button>
+                            <button type="button" class="btn btn-primary btn-next btn-lg px-4" onclick="switchTab('parents')">Continue <i class="bi bi-arrow-right ms-2"></i></button>
                         </div>
                     </div>
 
-                    <!-- PHASE 2: FAMILY & BENEFICIARIES -->
-                    <div class="tab-pane fade" id="residence" role="tabpanel">
-                        <h5 class="mb-4 text-primary fw-bold">Step 2: Family & Beneficiaries</h5>
+                    <!-- STEP 3: PARENTS -->
+                    <div class="tab-pane fade" id="parents" role="tabpanel">
+                        <h5 class="mb-4 text-primary fw-bold">Step 3: Parents</h5>
 
                         <!-- BENEFICIARIES SECTION -->
                         <h5 class="mt-4 mb-3 text-dark fw-bold border-bottom pb-2"><i class="bi bi-people-fill me-2"></i>BENEFICIARIES & FAMILY</h5>
@@ -266,6 +294,16 @@ if (isset($_SESSION['user_id'])) {
                                 </div>
                             </div>
                         </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <button type="button" class="btn btn-outline-secondary btn-next px-4" onclick="switchTab('residence')"><i class="bi bi-arrow-left me-2"></i> Back</button>
+                            <button type="button" class="btn btn-primary btn-next btn-lg px-4" onclick="switchTab('family')">Continue <i class="bi bi-arrow-right ms-2"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- STEP 4: SPOUSE & CHILDREN -->
+                    <div class="tab-pane fade" id="family" role="tabpanel">
+                        <h5 class="mb-4 text-primary fw-bold">Step 4: Spouse &amp; Children</h5>
 
                         <!-- 2: FAMILY INFORMATION (CONDITIONAL) -->
                         <div id="familyFields" style="display: none;">
@@ -330,48 +368,49 @@ if (isset($_SESSION['user_id'])) {
                             </div>
                         </div>
 
+                        </div> <!-- close familyFields (spouse) -->
+
+                        <!-- Shown for single members (spouse + children are hidden) -->
+                        <div id="familyNote" class="alert alert-light border text-muted small" style="display:none;">
+                            <i class="bi bi-info-circle me-1"></i>Spouse and children details apply to married members.
+                        </div>
+
                         <!-- 3: CHILDREN INFORMATION -->
-                            <div class="mb-4">
-                                <h6 class="text-primary border-bottom pb-2 mb-3 fw-bold"><span class="me-2 badge bg-primary">3</span><i class="bi bi-people-fill me-2"></i><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'TAARIFA ZA WATOTO' : 'MEMBER\'S CHILDREN INFORMATION' ?></h6>
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-sm align-middle" id="childrenTable">
-                                    <thead class="bg-light small">
-                                        <tr>
-                                            <th class="text-center" style="width: 50px;">S/No</th>
-                                            <th>Child Name</th>
-                                            <th style="width: 160px;">Date of Birth</th>
-                                            <th style="width: 90px;">Age</th>
-                                            <th style="width: 130px;">Gender</th>
-                                            <th style="width: 160px;">Photo <span class="text-muted fw-normal">(Optional)</span></th>
-                                            <th class="text-center" style="width: 50px;">#</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="childrenList">
-                                        <tr class="child-row">
-                                            <td class="text-center fw-bold row-idx">1</td>
-                                            <td><input type="text" name="child_name[]" class="form-control form-control-sm border-0 bg-transparent" placeholder="Child Name"></td>
-                                            <td><input type="date" name="child_dob[]" class="form-control form-control-sm border-0 bg-transparent" onchange="vkChildAge(this)"></td>
-                                            <td><input type="number" name="child_age[]" class="form-control form-control-sm border-0 bg-transparent" placeholder="Auto" readonly></td>
-                                            <td>
-                                                <select name="child_gender[]" class="form-select form-select-sm border-0 bg-transparent">
-                                                    <option value="Mwanaume">Male</option>
-                                                    <option value="Mwanamke">Female</option>
-                                                </select>
-                                            </td>
-                                            <td><input type="file" name="child_photo[]" class="form-control form-control-sm border-0 bg-transparent" accept="image/*"></td>
-                                            <td class="text-center">
-                                                <button type="button" class="btn btn-sm text-danger border-0" onclick="removeRow(this)"><i class="bi bi-trash"></i></button>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                        <div class="mb-4" id="childrenSection">
+                            <h6 class="text-primary border-bottom pb-2 mb-3 fw-bold"><span class="me-2 badge bg-primary">3</span><i class="bi bi-people-fill me-2"></i><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'TAARIFA ZA WATOTO' : 'MEMBER\'S CHILDREN INFORMATION' ?></h6>
+                            <div class="form-text small text-muted mb-2"><?= $__sw ? 'Ongeza watoto wa mwanachama (kama wapo).' : "Add the member's children (if any)." ?></div>
+                            <div id="childrenList">
+                                <div class="child-card card border mb-2">
+                                    <div class="card-body p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="fw-bold small text-primary"><i class="bi bi-person-badge me-1"></i><?= $__sw ? 'Mtoto' : 'Child' ?> <span class="child-idx">1</span></span>
+                                            <button type="button" class="btn btn-sm btn-outline-danger border-0 py-0 px-2" onclick="removeRow(this)"><i class="bi bi-x-lg"></i></button>
+                                        </div>
+                                        <div class="row g-2">
+                                            <div class="col-md-4"><label class="form-label small mb-1 fw-bold"><?= $__sw ? 'Jina la Mtoto' : 'Child Name' ?></label><input type="text" name="child_name[]" class="form-control form-control-sm" placeholder="<?= $__sw ? 'Jina Kamili' : 'Full Name' ?>"></div>
+                                            <div class="col-md-3"><label class="form-label small mb-1 fw-bold"><?= $__sw ? 'Tarehe ya Kuzaliwa' : 'Date of Birth' ?></label><input type="date" name="child_dob[]" class="form-control form-control-sm" onchange="vkChildAge(this)"></div>
+                                            <div class="col-md-2"><label class="form-label small mb-1 fw-bold"><?= $__sw ? 'Umri' : 'Age' ?></label><input type="number" name="child_age[]" class="form-control form-control-sm" placeholder="Auto" readonly></div>
+                                            <div class="col-md-3"><label class="form-label small mb-1 fw-bold"><?= $__sw ? 'Jinsia' : 'Gender' ?></label><select name="child_gender[]" class="form-select form-select-sm"><option value="Mwanaume"><?= $__sw ? 'Mwanaume' : 'Male' ?></option><option value="Mwanamke"><?= $__sw ? 'Mwanamke' : 'Female' ?></option></select></div>
+                                            <div class="col-md-6"><label class="form-label small mb-1 fw-bold"><?= $__sw ? 'Picha (Hiari)' : 'Photo (Optional)' ?></label><input type="file" name="child_photo[]" class="form-control form-control-sm" accept="image/*"></div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <button type="button" class="btn btn-sm btn-outline-primary rounded-pill mt-2" onclick="addChildRow()">
-                                <i class="bi bi-plus-circle me-1"></i> Add Child
+                                <i class="bi bi-plus-circle me-1"></i> <?= $__sw ? 'Ongeza Mtoto' : 'Add Child' ?>
                             </button>
-                            </div>
-                        </div> <!-- End familyFields -->
+                        </div>
 
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <button type="button" class="btn btn-outline-secondary btn-next px-4" onclick="switchTab('parents')"><i class="bi bi-arrow-left me-2"></i> Back</button>
+                            <button type="button" class="btn btn-primary btn-next btn-lg px-4" onclick="switchTab('guarantor')">Continue <i class="bi bi-arrow-right ms-2"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- STEP 5: GUARANTOR -->
+                    <div class="tab-pane fade" id="guarantor" role="tabpanel">
+                        <h5 class="mb-4 text-primary fw-bold">Step 5: Guarantor</h5>
 
                         <!-- 2.4: GUARANTOR INFORMATION -->
                         <div class="mb-4">
@@ -403,16 +442,12 @@ if (isset($_SESSION['user_id'])) {
                         
                         
                         <div class="d-flex justify-content-between mt-4">
-                            <button type="button" class="btn btn-outline-secondary btn-next px-4" onclick="switchTab('personal')">
-                                <i class="bi bi-arrow-left me-2"></i> Back
-                            </button>
-                            <button type="button" class="btn btn-primary btn-next btn-lg px-4" onclick="switchTab('account')">
-                                Continue <i class="bi bi-arrow-right ms-2"></i>
-                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-next px-4" onclick="switchTab('family')"><i class="bi bi-arrow-left me-2"></i> Back</button>
+                            <button type="button" class="btn btn-primary btn-next btn-lg px-4" onclick="switchTab('account')">Continue <i class="bi bi-arrow-right ms-2"></i></button>
                         </div>
                     </div>
 
-                    <!-- PHASE 3: ACCOUNT & PAYMENT -->
+                    <!-- STEP 6: ACCOUNT & PAYMENT -->
                     <div class="tab-pane fade" id="account" role="tabpanel">
                         <h5 class="mb-4 text-primary fw-bold">Step 3: Password & Registration Fee</h5>
 
@@ -494,7 +529,7 @@ if (isset($_SESSION['user_id'])) {
                         </div>
 
                         <div class="d-flex justify-content-between mt-5 pt-3 border-top">
-                            <button type="button" class="btn btn-outline-secondary btn-next px-4" onclick="switchTab('residence')">
+                            <button type="button" class="btn btn-outline-secondary btn-next px-4" onclick="switchTab('guarantor')">
                                 <i class="bi bi-arrow-left me-2"></i> Back
                             </button>
                             <button type="submit" class="btn btn-primary btn-submit btn-lg px-5 shadow">
@@ -555,8 +590,8 @@ if (isset($_SESSION['user_id'])) {
 
     // audit/registration: derive a child's age from the entered date of birth.
     function vkChildAge(dobInput) {
-        const row = dobInput.closest('tr');
-        const ageInput = row ? row.querySelector('input[name="child_age[]"]') : null;
+        const card = dobInput.closest('.child-card') || dobInput.closest('tr');
+        const ageInput = card ? card.querySelector('input[name="child_age[]"]') : null;
         if (!ageInput) return;
         const d = new Date(dobInput.value);
         if (!dobInput.value || isNaN(d.getTime())) { ageInput.value = ''; return; }
@@ -568,42 +603,40 @@ if (isset($_SESSION['user_id'])) {
     }
 
     function addChildRow() {
-        const tbody = document.getElementById('childrenList');
-        const rowCount = tbody.getElementsByClassName('child-row').length + 1;
-        const newRow = document.createElement('tr');
-        newRow.className = 'child-row';
-        newRow.innerHTML = `
-            <td class="text-center fw-bold row-idx">${rowCount}</td>
-            <td><input type="text" name="child_name[]" class="form-control form-control-sm border-0 bg-transparent" placeholder="Name"></td>
-            <td><input type="date" name="child_dob[]" class="form-control form-control-sm border-0 bg-transparent" onchange="vkChildAge(this)"></td>
-            <td><input type="number" name="child_age[]" class="form-control form-control-sm border-0 bg-transparent" placeholder="Auto" readonly></td>
-            <td>
-                <select name="child_gender[]" class="form-select form-select-sm border-0 bg-transparent">
-                    <option value="Mwanaume">Male</option>
-                    <option value="Mwanamke">Female</option>
-                </select>
-            </td>
-            <td><input type="file" name="child_photo[]" class="form-control form-control-sm border-0 bg-transparent" accept="image/*"></td>
-            <td class="text-center">
-                <button type="button" class="btn btn-sm text-danger border-0" onclick="removeRow(this)"><i class="bi bi-trash"></i></button>
-            </td>
+        const list = document.getElementById('childrenList');
+        const card = document.createElement('div');
+        card.className = 'child-card card border mb-2';
+        card.innerHTML = `
+            <div class="card-body p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="fw-bold small text-primary"><i class="bi bi-person-badge me-1"></i><?= $__sw ? 'Mtoto' : 'Child' ?> <span class="child-idx"></span></span>
+                    <button type="button" class="btn btn-sm btn-outline-danger border-0 py-0 px-2" onclick="removeRow(this)"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <div class="row g-2">
+                    <div class="col-md-4"><label class="form-label small mb-1 fw-bold"><?= $__sw ? 'Jina la Mtoto' : 'Child Name' ?></label><input type="text" name="child_name[]" class="form-control form-control-sm" placeholder="<?= $__sw ? 'Jina Kamili' : 'Full Name' ?>"></div>
+                    <div class="col-md-3"><label class="form-label small mb-1 fw-bold"><?= $__sw ? 'Tarehe ya Kuzaliwa' : 'Date of Birth' ?></label><input type="date" name="child_dob[]" class="form-control form-control-sm" onchange="vkChildAge(this)"></div>
+                    <div class="col-md-2"><label class="form-label small mb-1 fw-bold"><?= $__sw ? 'Umri' : 'Age' ?></label><input type="number" name="child_age[]" class="form-control form-control-sm" placeholder="Auto" readonly></div>
+                    <div class="col-md-3"><label class="form-label small mb-1 fw-bold"><?= $__sw ? 'Jinsia' : 'Gender' ?></label><select name="child_gender[]" class="form-select form-select-sm"><option value="Mwanaume"><?= $__sw ? 'Mwanaume' : 'Male' ?></option><option value="Mwanamke"><?= $__sw ? 'Mwanamke' : 'Female' ?></option></select></div>
+                    <div class="col-md-6"><label class="form-label small mb-1 fw-bold"><?= $__sw ? 'Picha (Hiari)' : 'Photo (Optional)' ?></label><input type="file" name="child_photo[]" class="form-control form-control-sm" accept="image/*"></div>
+                </div>
+            </div>
         `;
-        tbody.appendChild(newRow);
+        list.appendChild(card);
         updateRowNumbers();
     }
 
     function removeRow(btn) {
-        const row = btn.closest('tr');
-        if (document.getElementsByClassName('child-row').length > 1) {
-            row.remove();
+        const card = btn.closest('.child-card');
+        if (card && document.getElementsByClassName('child-card').length > 1) {
+            card.remove();
             updateRowNumbers();
         }
     }
 
     function updateRowNumbers() {
-        const rows = document.getElementsByClassName('row-idx');
-        for (let i = 0; i < rows.length; i++) {
-            rows[i].innerText = i + 1;
+        const idxs = document.getElementsByClassName('child-idx');
+        for (let i = 0; i < idxs.length; i++) {
+            idxs[i].innerText = i + 1;
         }
     }
 
@@ -620,8 +653,14 @@ if (isset($_SESSION['user_id'])) {
     }
 
     function switchTab(tabId) {
-        $('.tab-pane').removeClass('show active');
-        $('#' + tabId).addClass('show active');
+        // Use the stepper pill trigger so the pane AND the step highlight stay in sync.
+        const triggerEl = document.querySelector('#' + tabId + '-tab');
+        if (triggerEl && window.bootstrap) {
+            bootstrap.Tab.getOrCreateInstance(triggerEl).show();
+        } else {
+            $('.tab-pane').removeClass('show active');
+            $('#' + tabId).addClass('show active');
+        }
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -768,15 +807,16 @@ if (isset($_SESSION['user_id'])) {
     }
 
     function toggleFamilyFields(status) {
-        const familyDiv = document.getElementById('familyFields');
-        const inputs = familyDiv.querySelectorAll('input, select');
-        if (status !== 'Single') {
-            familyDiv.style.display = 'block';
-            inputs.forEach(i => i.disabled = false);
-        } else {
-            familyDiv.style.display = 'none';
-            inputs.forEach(i => i.disabled = true);
-        }
+        const single = (status === 'Single');
+        // Spouse AND children both belong to married members — hide/disable both when single.
+        ['familyFields', 'childrenSection'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.style.display = single ? 'none' : 'block';
+            el.querySelectorAll('input, select').forEach(i => i.disabled = single);
+        });
+        const note = document.getElementById('familyNote');
+        if (note) note.style.display = single ? 'block' : 'none';
     }
 </script>
 

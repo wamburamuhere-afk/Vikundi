@@ -57,6 +57,17 @@ class AdminRegistrationStepperTest extends TestCase
         $this->assertStringContainsString('child-card-admin', $this->src);
     }
 
+    public function testChildrenHiddenForSingleMembers(): void
+    {
+        // Bug fix: spouse AND children hide when marital status is Single.
+        $this->assertStringContainsString('id="childrenSectionAdmin"', $this->src,
+            'children section must be toggleable');
+        $this->assertStringContainsString("['familyFieldsAdmin', 'childrenSectionAdmin']", $this->src,
+            'the marital toggle must hide both spouse and children');
+        $this->assertStringContainsString('id="familyNoteAdmin"', $this->src,
+            'a note must explain the hidden section for single members');
+    }
+
     public function testFormDivsBalanced(): void
     {
         $start = strpos($this->src, '<form id="addMemberForm"');

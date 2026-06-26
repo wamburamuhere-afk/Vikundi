@@ -4,6 +4,33 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-26 — Public registration → 6-step wizard + children-when-single fix (PR-2)
+**Branch:** `feat/public-registration-stepper`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Mirrored the PR-1 restructure onto the **public** `register.php` (6-step wizard + children card repeater) and fixed the **children-show-when-single bug** on **both** forms.
+
+### Bug fix (flagged after PR-1 merged)
+PR-1 moved children out of the marital-status wrapper, which made the children area show for **single** members. Fix on both forms: the marital toggle (`toggleFamilyFields` / `toggleFamilyFieldsAdmin`) now hides **and disables** the spouse wrapper **and** the children section when "Single", and shows a small "applies to married members" note so the step isn't blank.
+
+### Public form — `register.php`
+- Added a **6-step stepper** nav (the public form had none — only Next/Back); `switchTab()` now drives the Bootstrap pill so Next/Back and the stepper stay in sync.
+- Split into **Personal · Residence · Parents · Spouse & Children · Guarantor · Account**; carved Residence out of Personal; re-chained Next/Back.
+- Children **table → card repeater** (`.child-card`); `addChildRow`/`removeRow`/`vkChildAge` rewired to cards.
+- `childrenSection` + `familyNote` wired to the marital toggle (on-load call applies the initial state).
+
+### Admin form — `customers.php`
+- The children-hide-when-single fix (the actual bug, since PR-1 is what introduced it there).
+
+### Tests
+- **`tests/Unit/RegisterStepperTest.php`** — 6 panes (no dup), stepper present, no field dropped, children are cards + hide-when-single, form `<div>`s balanced.
+- **`AdminRegistrationStepperTest`** — added a children-hidden-when-single guard.
+
+### Verification
+- Both forms: `<div>` balanced (register 127=127, admin from PR-1); 6 unique panes; steppers render 6 buttons; no orphaned old-table refs. Live `register.php` → **200**, no errors, 6 stepper buttons, 6 panes, child cards present.
+- Unit suite **692 / 1473**; `php -l` clean.
+
+---
+
 ## Session — 2026-06-26 — Admin registration modal → 6-step wizard (PR-1)
 **Branch:** `feat/admin-registration-stepper`
 **Developer:** Claude Code / Jabir Mussa
