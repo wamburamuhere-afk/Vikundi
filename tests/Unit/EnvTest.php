@@ -40,4 +40,32 @@ class EnvTest extends TestCase
         $this->assertTrue(vikundi_is_dev_host('', 'cli'));
         $this->assertTrue(vikundi_is_dev_host('example.com', 'cli'));
     }
+
+    // --- vikundi_is_https() (audit H5: gates the secure session-cookie flag) ---
+
+    public function testDirectTlsIsHttps(): void
+    {
+        $this->assertTrue(vikundi_is_https(['HTTPS' => 'on']));
+        $this->assertTrue(vikundi_is_https(['HTTPS' => '1']));
+    }
+
+    public function testStandardHttpsPortIsHttps(): void
+    {
+        $this->assertTrue(vikundi_is_https(['SERVER_PORT' => 443]));
+        $this->assertTrue(vikundi_is_https(['SERVER_PORT' => '443']));
+    }
+
+    public function testForwardedProtoIsHttps(): void
+    {
+        $this->assertTrue(vikundi_is_https(['HTTP_X_FORWARDED_PROTO' => 'https']));
+        $this->assertTrue(vikundi_is_https(['HTTP_X_FORWARDED_PROTO' => 'HTTPS']));
+    }
+
+    public function testPlainHttpIsNotHttps(): void
+    {
+        // Local WAMP dev: secure flag must stay off or the session cookie is dropped.
+        $this->assertFalse(vikundi_is_https(['HTTPS' => 'off', 'SERVER_PORT' => 80]));
+        $this->assertFalse(vikundi_is_https(['SERVER_PORT' => 80, 'HTTP_X_FORWARDED_PROTO' => 'http']));
+        $this->assertFalse(vikundi_is_https([]));
+    }
 }

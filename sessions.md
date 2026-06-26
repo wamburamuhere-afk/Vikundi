@@ -4,6 +4,28 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-26 — Audit fix H5
+**Branch:** `fix/h5-session-cookie-hardening`
+**Developer:** Claude Code / Dutch
+**Summary:** Audit High **H5** — session cookie hardening. `roots.php` set `samesite=Lax` but omitted `httponly` and `secure`, leaving `PHPSESSID` readable by JS (XSS session theft) and sendable over plain HTTP. Added both flags; `secure` is gated on a new testable HTTPS helper so plain-HTTP local WAMP dev still works.
+
+### Files Modified
+- **`includes/env.php`** — new `vikundi_is_https(?array $server = null)`: pure, override-able HTTPS detector (direct TLS / `HTTPS` not "off", port 443, `X-Forwarded-Proto: https` for reverse proxies). Mirrors the existing `vikundi_is_dev_host()` pattern.
+- **`roots.php`** — session cookie params now set `httponly => true` and `secure => vikundi_is_https()` alongside the existing `samesite => 'Lax'`.
+
+### Files Created
+- *(none — tests appended to existing `tests/Unit/EnvTest.php`)*
+
+### Tests
+- **`tests/Unit/EnvTest.php`** — 4 new cases for `vikundi_is_https()` (direct TLS, port 443, forwarded-proto, and plain-HTTP-stays-false).
+
+### Verification
+- Live `Set-Cookie` over plain HTTP (PHP built-in server): `PHPSESSID=…; path=/; HttpOnly; SameSite=Lax` — `HttpOnly` present, `Secure` correctly **absent** (local dev unbroken), page **200**.
+- Unit suite **608 / 1123**; `php -l` clean on both files.
+- High tier: H1 ✅ · H2 ✅ · H3 ✅ · H4 ✅ · H5 ✅ · H6 ⏳ — next is **H6**.
+
+---
+
 ## Session — 2026-06-25 — Audit fix H4 (+ M3)
 **Branch:** `fix/h4-broken-db-include`
 **Developer:** Claude Code / Dutch
