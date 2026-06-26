@@ -94,6 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $child_ages = $_POST['child_age'] ?? [];
     $child_genders = $_POST['child_gender'] ?? [];
     $child_dobs = $_POST['child_dob'] ?? [];
+    $child_files = $_FILES['child_photo'] ?? null; // PR-D: optional per-child photo
 
     for ($i = 0; $i < count($child_names); $i++) {
         if (!empty($child_names[$i])) {
@@ -104,7 +105,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'name' => $child_names[$i],
                 'dob' => $dob,
                 'age' => $age,
-                'gender' => $child_genders[$i] ?? ''
+                'gender' => $child_genders[$i] ?? '',
+                'photo' => vk_save_child_photo($child_files, $i, ROOT_DIR . '/uploads/avatars/'),
             ];
         }
     }
@@ -143,7 +145,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $guarantor_name = $_POST['guarantor_name'] ?? '';
     $guarantor_phone = $_POST['guarantor_phone'] ?? '';
     $guarantor_rel = $_POST['guarantor_rel'] ?? '';
-    $guarantor_location = $_POST['guarantor_location'] ?? '';
+    // PR-C: six-field location. The public form has no member picker, so the
+    // guarantor is never linked to an existing member here.
+    $guarantor_member_id    = null;
+    $guarantor_country      = $_POST['guarantor_country'] ?? '';
+    $guarantor_state        = $_POST['guarantor_state'] ?? '';
+    $guarantor_district     = $_POST['guarantor_district'] ?? '';
+    $guarantor_ward         = $_POST['guarantor_ward'] ?? '';
+    $guarantor_street       = $_POST['guarantor_street'] ?? '';
+    $guarantor_house_number = $_POST['guarantor_house_number'] ?? '';
+    $guarantor_location = $guarantor_state; // keep legacy column populated
 
     // Phase 3 Fields (Finance)
     $entrance_fee = $_POST['entrance_fee'] ?? 0;
@@ -231,6 +242,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             };
             $father_photo = $vk_save_photo('father_photo');
             $mother_photo = $vk_save_photo('mother_photo');
+            $spouse_photo = $vk_save_photo('spouse_photo');
 
             // 2. Insert into users table
             $hashed_password = password_hash($password, PASSWORD_BCRYPT);
@@ -248,7 +260,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     country, state, district, ward, street, house_number,
                     marital_status,
                     spouse_first_name, spouse_middle_name, spouse_last_name, spouse_email, spouse_phone, spouse_gender, spouse_dob, spouse_nida,
-                    spouse_religion, spouse_birth_region,
+                    spouse_religion, spouse_birth_region, spouse_photo,
                     children_data,
                     father_name, father_first_name, father_middle_name, father_last_name, father_phone,
                     father_location, father_sub_location,
@@ -256,18 +268,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     mother_name, mother_first_name, mother_middle_name, mother_last_name, mother_phone,
                     mother_location, mother_sub_location,
                     mother_country, mother_state, mother_district, mother_ward, mother_street, mother_house_number, mother_photo,
-                    guarantor_name, guarantor_phone, guarantor_rel, guarantor_location,
+                    guarantor_member_id, guarantor_name, guarantor_phone, guarantor_rel, guarantor_location,
+                    guarantor_country, guarantor_state, guarantor_district, guarantor_ward, guarantor_street, guarantor_house_number,
                     status, initial_savings, user_id, created_at
                 ) VALUES (
                     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                     ?, ?, ?, ?, ?, ?,
                     ?,
                     ?, ?, ?, ?, ?, ?, ?, ?,
-                    ?, ?,
+                    ?, ?, ?,
                     ?,
                     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                    ?, ?, ?, ?,
+                    ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?, ?, ?,
                     ?, ?, ?, NOW()
                 )
             ");
@@ -276,7 +290,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $country, $state, $district, $ward, $street, $house_number,
                 $marital_status,
                 $spouse_first_name, $spouse_middle_name, $spouse_last_name, $spouse_email, $spouse_phone, $spouse_gender, $spouse_dob, $spouse_nida,
-                $spouse_religion, $spouse_birth_region,
+                $spouse_religion, $spouse_birth_region, $spouse_photo,
                 $children_data,
                 $father_name, $father_first_name, $father_middle_name, $father_last_name, $father_phone,
                 $father_location, $father_sub_location,
@@ -284,7 +298,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $mother_name, $mother_first_name, $mother_middle_name, $mother_last_name, $mother_phone,
                 $mother_location, $mother_sub_location,
                 $mother_country, $mother_state, $mother_district, $mother_ward, $mother_street, $mother_house_number, $mother_photo,
-                $guarantor_name, $guarantor_phone, $guarantor_rel, $guarantor_location,
+                $guarantor_member_id, $guarantor_name, $guarantor_phone, $guarantor_rel, $guarantor_location,
+                $guarantor_country, $guarantor_state, $guarantor_district, $guarantor_ward, $guarantor_street, $guarantor_house_number,
                 $status, $entrance_fee, $user_id
             ]);
             $customer_id = $pdo->lastInsertId();

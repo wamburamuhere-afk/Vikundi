@@ -570,6 +570,25 @@ function vk_full_name(?string $first, ?string $middle = '', ?string $last = ''):
     return implode(' ', $parts);
 }
 
+/**
+ * Save one optional child passport photo from an array-style `$_FILES['child_photo']`
+ * (the children table posts `child_photo[]`). Returns the stored filename, or ''
+ * when no file was uploaded for that row (registration PR-D).
+ *
+ * @param mixed  $files The $_FILES['child_photo'] array, or null.
+ * @param int    $i     The child row index.
+ * @param string $dir   Destination directory (absolute).
+ */
+function vk_save_child_photo($files, int $i, string $dir): string {
+    if (!is_array($files) || !isset($files['error'][$i]) || $files['error'][$i] !== UPLOAD_ERR_OK) {
+        return '';
+    }
+    if (!is_dir($dir)) mkdir($dir, 0777, true);
+    $ext  = pathinfo($files['name'][$i] ?? '', PATHINFO_EXTENSION);
+    $name = 'child_' . time() . '_' . uniqid() . ($ext !== '' ? '.' . $ext : '');
+    return move_uploaded_file($files['tmp_name'][$i], rtrim($dir, '/\\') . '/' . $name) ? $name : '';
+}
+
 function safe_output($value, $default = 'N/A') {
     return !empty($value) ? htmlspecialchars($value) : $default;
 }

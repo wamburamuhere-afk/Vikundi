@@ -323,6 +323,10 @@ if (isset($_SESSION['user_id'])) {
                                     <label class="form-label fw-bold small">Region of Birth</label>
                                     <input type="text" name="spouse_birth_region" class="form-control" placeholder="Birth Region">
                                 </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Passport Photo <span class="text-muted fw-normal">(Optional)</span></label>
+                                    <input type="file" name="spouse_photo" class="form-control" accept="image/*">
+                                </div>
                             </div>
                         </div>
 
@@ -338,6 +342,7 @@ if (isset($_SESSION['user_id'])) {
                                             <th style="width: 160px;">Date of Birth</th>
                                             <th style="width: 90px;">Age</th>
                                             <th style="width: 130px;">Gender</th>
+                                            <th style="width: 160px;">Photo <span class="text-muted fw-normal">(Optional)</span></th>
                                             <th class="text-center" style="width: 50px;">#</th>
                                         </tr>
                                     </thead>
@@ -353,6 +358,7 @@ if (isset($_SESSION['user_id'])) {
                                                     <option value="Mwanamke">Female</option>
                                                 </select>
                                             </td>
+                                            <td><input type="file" name="child_photo[]" class="form-control form-control-sm border-0 bg-transparent" accept="image/*"></td>
                                             <td class="text-center">
                                                 <button type="button" class="btn btn-sm text-danger border-0" onclick="removeRow(this)"><i class="bi bi-trash"></i></button>
                                             </td>
@@ -383,10 +389,13 @@ if (isset($_SESSION['user_id'])) {
                                     <label class="form-label fw-bold small">Relationship With Member</label>
                                     <input type="text" name="guarantor_rel" class="form-control" placeholder="Relationship">
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label fw-bold small">Region Where Living</label>
-                                    <input type="text" name="guarantor_location" class="form-control" placeholder="Location">
-                                </div>
+                                <div class="col-12 mt-1"><small class="text-muted fw-bold">Guarantor's Physical Location</small></div>
+                                <div class="col-md-4"><label class="form-label fw-bold small">Country</label><input type="text" name="guarantor_country" class="form-control" value="Tanzania"></div>
+                                <div class="col-md-4"><label class="form-label fw-bold small">Region / State</label><input type="text" name="guarantor_state" class="form-control" placeholder="Region"></div>
+                                <div class="col-md-4"><label class="form-label fw-bold small">District</label><input type="text" name="guarantor_district" class="form-control" placeholder="District"></div>
+                                <div class="col-md-4"><label class="form-label fw-bold small">Ward</label><input type="text" name="guarantor_ward" class="form-control" placeholder="Ward"></div>
+                                <div class="col-md-4"><label class="form-label fw-bold small">Street / Village</label><input type="text" name="guarantor_street" class="form-control" placeholder="Street"></div>
+                                <div class="col-md-4"><label class="form-label fw-bold small">House Number</label><input type="text" name="guarantor_house_number" class="form-control" placeholder="House No."></div>
                             </div>
                         </div>
 
@@ -574,6 +583,7 @@ if (isset($_SESSION['user_id'])) {
                     <option value="Mwanamke">Female</option>
                 </select>
             </td>
+            <td><input type="file" name="child_photo[]" class="form-control form-control-sm border-0 bg-transparent" accept="image/*"></td>
             <td class="text-center">
                 <button type="button" class="btn btn-sm text-danger border-0" onclick="removeRow(this)"><i class="bi bi-trash"></i></button>
             </td>

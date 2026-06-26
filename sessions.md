@@ -4,6 +4,104 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-26 — Registration: spouse passport photo
+**Branch:** `feat/registration-spouse-photo`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Optional **passport photo for the member's spouse** on both registration forms — the spouse section had every other field but no photo. Mirrors the parent-photo pattern.
+
+### Database
+- **`database/add_spouse_photo_column.php`** — idempotent migration; adds `customers.spouse_photo`. **Registered in `database/migrate.php`** (auto-runs on deploy).
+
+### Files Modified
+- **`register.php`** + **`app/bms/customer/customers.php`** — spouse section gains an optional `spouse_photo` file input (after Region of Birth).
+- **`actions/process_registration.php`** + **`actions/add_member.php`** — upload `spouse_photo` via the existing `vk_save_photo()` closure; `customers` INSERT extended to 73 columns (72 placeholders + `created_at`).
+
+### Tests
+- **`tests/Unit/SpousePhotoTest.php`** — 3 tests: migration declares the column + is registered; both forms collect `spouse_photo`; both handlers upload and persist it.
+
+### Verification
+- Migration ran (column added); both INSERTs balanced (columns 73 / placeholders 72 / values 72); a rolled-back transaction INSERT round-tripped `spouse_photo`.
+- Live: `register.php` **200**, no errors, `spouse_photo` present.
+- Unit suite **671 / 1374**; `php -l` clean.
+- Next: member-family **edit** form (edit parent/children/guarantor/spouse + add photos later).
+
+---
+
+## Session — 2026-06-26 — Fix: guarantor picker not loading members
+**Branch:** `fix/guarantor-picker-url`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Bug from PR-C — the admin guarantor "pull existing member" picker loaded no results. Root cause was **not** local testing: the Select2 search and the autofill `fetch` used **relative** paths (`api/search_customers.php`, `api/get_guarantor_member.php`), which resolve to the wrong path on the admin page's clean URL → 404. Every other AJAX call in `customers.php` uses `getUrl(...)` clean routes. Also, the autofill endpoint had **no route registered** (so even `getUrl` would have 404'd it).
+
+### Files Modified
+- **`roots.php`** — register `api/get_guarantor_member` (and the `.php` variant) clean routes.
+- **`app/bms/customer/customers.php`** — picker search → `getUrl("api/search_customers")`; autofill → `getUrl("api/get_guarantor_member")`.
+
+### Tests
+- **`tests/Unit/GuarantorPickerUrlTest.php`** — picker uses `getUrl` clean routes (not bare relative `.php`); the autofill endpoint route is registered.
+- Updated `GuarantorDetailsTest` to match the clean-route reference.
+
+### Verification
+- Live (front controller): `/api/search_customers?q=a` returns the member list; `/api/get_guarantor_member?id=2` resolves (auth error when unauthenticated — gate intact).
+- Unit suite **668 / 1366**; `php -l` clean.
+
+---
+
+## Session — 2026-06-26 — Registration form PR-D (children passport photo)
+**Branch:** `feat/registration-pr-d-children-photo`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Optional **passport photo per child** on both registration forms — the last piece of the children work. No DB migration (children are stored as JSON, so the photo path lives in each child entry).
+
+### Files Modified
+- **`register.php`** + **`app/bms/customer/customers.php`** — children table gains a **Photo (Optional)** column with a `child_photo[]` file input; both `addChildRow` / `addChildRowAdmin` JS templates updated to match.
+- **`helpers.php`** — new `vk_save_child_photo($files, $i, $dir)`: saves one optional photo from the array-style `$_FILES['child_photo']` (returns '' when no file for that row).
+- **`actions/process_registration.php`** + **`actions/add_member.php`** — capture `$_FILES['child_photo']` and store `photo` in each child's `children_data` JSON entry via the helper.
+
+### Tests
+- **`tests/Unit/ChildPhotoTest.php`** — 5 tests: helper guard logic (no file / missing row → ''); both forms collect `child_photo` (static + JS rows); both handlers persist `photo`.
+
+### Verification
+- Live: `register.php` **200**, no errors, `child_photo[]` present (static + dynamic rows), Photo column renders.
+- Unit suite **666 / 1361**; `php -l` clean.
+
+### Deferred follow-up (flagged, scope decision by Jabir)
+"Add parents'/children's passport **later** on the edit screens" is **not** delivered here — investigation showed the member-family **edit flow has no home**: the "Edit Member" page (`edit_customer.php`) is a BMS business-customer KYC form (company/BRELA/TIN docs, no family fields), and `profile.php`'s edit mode is outdated (old flat `father_name`/`father_phone` + children name/age/gender only — none of the PR-A/B/C structured fields). The member's **own** passport add-later already works (`profile.php` avatar upload). Proper "add later for parents/children" needs a dedicated **member-family edit form** (sync edit/profile with all PR-A/B/C fields + photos) — a separate effort, agreed to defer.
+
+### Registration rework status
+PR-A ✅ · PR-B ✅ · PR-C ✅ · **PR-D ✅** — registration data-entry rework complete. Follow-up: member-family **edit** form sync (incl. passport add-later for parents/children).
+
+---
+
+## Session — 2026-06-26 — Registration form PR-C (guarantor details)
+**Branch:** `feat/registration-pr-c-guarantor`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Richer guarantor details. The guarantor now has the **same six-field location** as the member (on **both** forms), and the **admin** add-member form can **pull an existing member** as the guarantor and autofill their name/phone/location.
+
+### Security decision (member directory privacy)
+The "pull existing member" picker is on the **admin form only**. `register.php` is the **public, anonymous** self-registration page — adding a member search there would expose every member's name + phone to anonymous visitors (reversing the audit B3/H3 hardening). So the public form keeps **manual guarantor entry + the six-field location**, and only the authenticated admin form gets the picker. The autofill endpoint is auth-gated.
+
+### Database
+- **`database/add_guarantor_detail_columns.php`** — idempotent migration; adds 7 columns to `customers`: `guarantor_member_id` + `guarantor_{country,state,district,ward,street,house_number}`. Legacy `guarantor_name/phone/rel/location` kept and populated. **Registered in `database/migrate.php`** (auto-runs on deploy).
+
+### Files Created
+- **`api/get_guarantor_member.php`** — auth-gated (`require_auth.php`); returns a member's name/phone/six-field location by id, for the admin autofill.
+
+### Files Modified
+- **`register.php`** (public) — guarantor section gains the six-field location; **no** member picker.
+- **`app/bms/customer/customers.php`** (admin) — guarantor section gains the six-field location **+ a Select2 "pull existing member" picker** (searches `api/search_customers.php`); on select it fetches `get_guarantor_member.php` and autofills name/phone/location, and sets a hidden `guarantor_member_id`.
+- **`actions/process_registration.php`** + **`actions/add_member.php`** — capture the six-field location; `add_member` also captures `guarantor_member_id` (public handler forces it null); legacy `guarantor_location` populated from state; `customers` INSERT extended to 72 columns (71 placeholders + `created_at`).
+
+### Tests
+- **`tests/Unit/GuarantorDetailsTest.php`** — 6 tests: migration declares columns + is registered in the runner; endpoint is auth-gated; six-field location on both forms; picker is **admin-only** (absent from the public form); handlers persist the columns.
+- Updated `CustomersRegistrationLanguageTest` guarantor labels for the new structure.
+
+### Verification
+- Migration ran → 7 columns added; all 72 INSERT columns exist; placeholders = values = 71 in both handlers.
+- Live: endpoint **blocks anonymous** (auth error) and returns member details when authed; public `register.php` shows the six-field location with **no picker**; admin form has the picker + member-id + autofill JS; a rolled-back INSERT round-tripped `guarantor_member_id` + structured location.
+- Unit suite **661 / 1348**; `php -l` clean.
+- Registration tasks: PR-A ✅ · PR-B ✅ · **PR-C ✅** · PR-D ⏳ (passport "add later" on edit/profile + children passport photo).
+
+---
+
 ## Session — 2026-06-26 — Registration form PR-B (parent details)
 **Branch:** `feat/registration-pr-b-parents`
 **Developer:** Claude Code / Jabir Mussa
