@@ -120,6 +120,46 @@ foreach ($members as $m) {
     
     $ledger[] = $row;
 }
+
+// ── Filtered Contributions List (this page is now the dedicated listing) ───────
+$f = [
+    'from'    => trim($_GET['from'] ?? ''),
+    'to'      => trim($_GET['to'] ?? ''),
+    'member'  => trim($_GET['member'] ?? ''),
+    'type'    => trim($_GET['type'] ?? ''),
+    'fstatus' => trim($_GET['fstatus'] ?? ''),
+    'account' => trim($_GET['account'] ?? ''),
+];
+$validYmd = function ($d) {
+    $dt = \DateTime::createFromFormat('Y-m-d', $d);
+    return $d !== '' && $dt && $dt->format('Y-m-d') === $d;
+};
+$where = ['1=1'];
+$params = [];
+if ($validYmd($f['from'])) { $where[] = 'con.contribution_date >= ?'; $params[] = $f['from']; }
+if ($validYmd($f['to']))   { $where[] = 'con.contribution_date <= ?'; $params[] = $f['to']; }
+if ($f['member'] !== '') {
+    $where[] = '(c.customer_name LIKE ? OR c.phone LIKE ? OR CONCAT(c.first_name, " ", c.last_name) LIKE ?)';
+    $like = '%' . $f['member'] . '%';
+    array_push($params, $like, $like, $like);
+}
+if (in_array($f['type'], ['entrance', 'monthly', 'agm', 'fine', 'other'], true))         { $where[] = 'con.contribution_type = ?'; $params[] = $f['type']; }
+if (in_array($f['fstatus'], ['pending', 'reviewed', 'approved', 'cancelled'], true))     { $where[] = 'con.status = ?'; $params[] = $f['fstatus']; }
+if (in_array($f['account'], ['M-Koba', 'Bank', 'Cash', 'Mobile Money'], true))           { $where[] = 'con.account = ?'; $params[] = $f['account']; }
+
+$stmtList = $pdo->prepare("
+    SELECT con.contribution_id, con.amount, con.contribution_type, con.contribution_date,
+           con.receipt_number, con.account, con.status,
+           c.customer_name, c.first_name, c.last_name, c.phone
+    FROM contributions con
+    JOIN customers c ON con.member_id = c.customer_id
+    WHERE " . implode(' AND ', $where) . "
+    ORDER BY con.contribution_date DESC, con.contribution_id DESC
+    LIMIT 500
+");
+$stmtList->execute($params);
+$contribList = $stmtList->fetchAll(PDO::FETCH_ASSOC);
+$contribListTotal = array_sum(array_column($contribList, 'amount'));
 ?>
 
 <!-- Header Section -->
@@ -162,23 +202,11 @@ foreach ($members as $m) {
         </div>
         
         <?php if ($is_leader): ?>
-        <!-- Bulk Upload - Rectangle on both -->
-        <div class="dropdown">
-            <button class="btn btn-outline-primary rounded-2 p-2 p-md-2 px-md-3 shadow-sm dropdown-toggle" style="min-height: 42px; display: flex; align-items: center; justify-content: center;" type="button" data-bs-toggle="dropdown">
-                <i class="bi bi-cloud-upload"></i>
-                <span class="d-none d-md-inline ms-2"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Pakia' : 'Bulk' ?></span>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end shadow border-0 p-2">
-                <li><a class="dropdown-item py-2 rounded-2" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#uploadReportModal"><i class="bi bi-file-earmark-spreadsheet me-2 text-success"></i> Report</a></li>
-                <li><a class="dropdown-item py-2 rounded-2" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#uploadMKobaModal"><i class="bi bi-phone-vibrate me-2 text-primary"></i> M-Koba</a></li>
-            </ul>
-        </div>
-
-        <!-- Record Payment - Rectangle on both -->
-        <button type="button" class="btn btn-primary rounded-2 p-2 p-md-2 px-md-4 shadow-sm" style="min-height: 42px; width: auto;" data-bs-toggle="modal" data-bs-target="#manualAddModal">
+        <!-- Recording (manual + bulk + M-Koba) now lives on the Transactions page. -->
+        <a href="<?= getUrl('transactions') ?>" class="btn btn-primary rounded-2 p-2 p-md-2 px-md-4 shadow-sm" style="min-height: 42px; width: auto;">
             <i class="bi bi-plus-lg"></i>
-            <span class="d-none d-md-inline ms-2"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Weka Mchango' : 'Record Payment' ?></span>
-        </button>
+            <span class="d-none d-md-inline ms-2"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Rekodi Muamala' : 'Record Transaction' ?></span>
+        </a>
         <?php else: ?>
         <a href="<?= getUrl('submit_contribution') ?>" class="btn btn-primary rounded-2 p-2 p-md-2 px-md-4 shadow-sm" style="min-height: 42px; width: auto;">
             <i class="bi bi-send-plus"></i>
@@ -325,7 +353,62 @@ foreach ($members as $m) {
 </div>
 <?php endif; ?>
 
-<!-- SECTION 2: DYNAMIC GRID LEDGER -->
+<!-- SECTION 2: CONTRIBUTIONS LIST (filterable — this page's dedicated listing) -->
+<div class="card border-0 shadow-sm rounded-4 mb-5">
+    <div class="card-header bg-white py-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-list-ul me-2 text-primary"></i><?= $isSw ? 'Orodha ya Michango' : 'Contributions List' ?></h6>
+        <span class="small text-muted"><?= count($contribList) ?> <?= $isSw ? 'kumbukumbu' : 'records' ?> · <?= number_format($contribListTotal, 0) ?> TZS</span>
+    </div>
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end mb-3">
+            <div class="col-6 col-md-2"><label class="form-label small mb-1 fw-bold"><?= $isSw ? 'Kuanzia' : 'From' ?></label><input type="date" name="from" value="<?= htmlspecialchars($f['from']) ?>" class="form-control form-control-sm"></div>
+            <div class="col-6 col-md-2"><label class="form-label small mb-1 fw-bold"><?= $isSw ? 'Hadi' : 'To' ?></label><input type="date" name="to" value="<?= htmlspecialchars($f['to']) ?>" class="form-control form-control-sm"></div>
+            <div class="col-12 col-md-3"><label class="form-label small mb-1 fw-bold"><?= $isSw ? 'Mwanachama' : 'Member' ?></label><input type="text" name="member" value="<?= htmlspecialchars($f['member']) ?>" class="form-control form-control-sm" placeholder="<?= $isSw ? 'Jina au simu' : 'Name or phone' ?>"></div>
+            <div class="col-6 col-md-1"><label class="form-label small mb-1 fw-bold"><?= $isSw ? 'Aina' : 'Type' ?></label>
+                <select name="type" class="form-select form-select-sm"><option value=""><?= $isSw ? 'Zote' : 'All' ?></option>
+                <?php foreach (['monthly', 'entrance', 'agm', 'fine', 'other'] as $t): ?><option value="<?= $t ?>" <?= $f['type'] === $t ? 'selected' : '' ?>><?= ucfirst($t) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small mb-1 fw-bold"><?= $isSw ? 'Hali' : 'Status' ?></label>
+                <select name="fstatus" class="form-select form-select-sm"><option value=""><?= $isSw ? 'Zote' : 'All' ?></option>
+                <?php foreach (['pending', 'reviewed', 'approved', 'cancelled'] as $s): ?><option value="<?= $s ?>" <?= $f['fstatus'] === $s ? 'selected' : '' ?>><?= ucfirst($s) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small mb-1 fw-bold"><?= $isSw ? 'Akaunti' : 'Account' ?></label>
+                <select name="account" class="form-select form-select-sm"><option value=""><?= $isSw ? 'Zote' : 'All' ?></option>
+                <?php foreach (['M-Koba', 'Bank', 'Cash', 'Mobile Money'] as $a): ?><option value="<?= $a ?>" <?= $f['account'] === $a ? 'selected' : '' ?>><?= $a ?></option><?php endforeach; ?></select></div>
+            <div class="col-12 col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3"><i class="bi bi-funnel me-1"></i><?= $isSw ? 'Chuja' : 'Filter' ?></button>
+                <a href="<?= getUrl('manage_contributions') ?>" class="btn btn-light btn-sm rounded-pill px-3"><?= $isSw ? 'Futa' : 'Clear' ?></a>
+            </div>
+        </form>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle small mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th><?= $isSw ? 'Tarehe' : 'Date' ?></th><th><?= $isSw ? 'Mwanachama' : 'Member' ?></th>
+                        <th><?= $isSw ? 'Risiti' : 'Receipt' ?></th><th><?= $isSw ? 'Akaunti' : 'Account' ?></th>
+                        <th><?= $isSw ? 'Aina' : 'Type' ?></th><th class="text-end"><?= $isSw ? 'Kiasi' : 'Amount' ?></th>
+                        <th class="text-center"><?= $isSw ? 'Hali' : 'Status' ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (!$contribList): ?>
+                        <tr><td colspan="7" class="text-center text-muted py-4"><?= $isSw ? 'Hakuna michango inayolingana na vichujio.' : 'No contributions match the filters.' ?></td></tr>
+                    <?php else: foreach ($contribList as $r): $sb = ['pending' => 'warning', 'reviewed' => 'info', 'approved' => 'success', 'cancelled' => 'secondary']; ?>
+                        <tr>
+                            <td><?= safe_output($r['contribution_date'], '—') ?></td>
+                            <td><?= htmlspecialchars($r['customer_name'] ?: ($r['first_name'] . ' ' . $r['last_name'])) ?><div class="text-muted" style="font-size:.75rem;"><?= safe_output($r['phone'], '') ?></div></td>
+                            <td><?= safe_output($r['receipt_number'], '—') ?></td>
+                            <td><?= safe_output($r['account'], '—') ?></td>
+                            <td><?= safe_output(ucfirst($r['contribution_type']), '—') ?></td>
+                            <td class="text-end fw-semibold"><?= number_format((float) $r['amount'], 0) ?></td>
+                            <td class="text-center"><span class="badge bg-<?= $sb[$r['status']] ?? 'secondary' ?>"><?= safe_output($r['status']) ?></span></td>
+                        </tr>
+                    <?php endforeach; endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- SECTION 3: DYNAMIC GRID LEDGER -->
 <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
     <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
         <h6 class="mb-0 fw-bold"><i class="bi bi-grid-3x3-gap-fill me-2 text-primary"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jedwali la Michango' : 'Contribution Analysis Grid' ?></h6>
@@ -372,126 +455,8 @@ foreach ($members as $m) {
     </div>
 </div>
 
-<!-- Manual Add Modal -->
-<div class="modal fade" id="manualAddModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow" style="border-radius: 15px;">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle me-2"></i><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Weka Mchango wa Mwanachama' : 'New Contribution Form' ?></h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="manualAddForm" enctype="multipart/form-data">
-                <div class="modal-body p-4">
-                    <div class="mb-4">
-                        <label class="form-label fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Chagua Mwanachama' : 'Select Member' ?></label>
-                        <select name="member_id" id="member_select2" class="form-select" required style="width: 100%;">
-                            <option value=""><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? '-- Tafuta kwa Jina au Namba --' : '-- Search by Name or Phone --' ?></option>
-                            <?php foreach ($members as $m): ?>
-                                <option value="<?= $m['customer_id'] ?>" data-phone="<?= $m['phone'] ?>">
-                                    <?= htmlspecialchars($m['customer_name'] ?: ($m['first_name'] . ' ' . $m['last_name'])) ?> (<?= $m['phone'] ?>)
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                        <div id="member_lookup_result" class="mt-2 small"></div>
-                    </div>
-
-                    <div class="row g-3">
-                        <div class="col-12 text-start">
-                            <label class="form-label fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Kiasi (Amount)' : 'Amount' ?></label>
-                            <input type="number" name="amount" class="form-control border-primary" required placeholder="0.00">
-                        </div>
-                        <div class="col-12 text-start">
-                            <label class="form-label fw-bold text-primary"><i class="bi bi-camera-fill me-1"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Pakia Risiti / Uthibitisho' : 'Upload Receipt / Proof' ?></label>
-                            <input type="file" name="evidence" class="form-control bg-light" accept="image/*">
-                            <small class="text-muted small italic">Select an image from your device.</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer bg-light p-3">
-                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Ghairi' : 'Cancel' ?></button>
-                    <button type="submit" class="btn btn-primary rounded-pill px-5 shadow"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'HIFADHI SASA' : 'SUBMIT PAYMENT' ?></button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Modal 1: Upload from Existing Report -->
-<div class="modal fade" id="uploadReportModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content border-0 shadow-lg rounded-4">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title fw-bold"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Upload Contribution Report</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="reportUploadForm" action="<?= getUrl('actions/import_contributions') ?>" method="POST" enctype="multipart/form-data">
-                <input type="hidden" name="upload_type" value="existing_report">
-                <div class="modal-body p-4">
-                    <p class="small text-muted mb-3">Upload a CSV or Excel file containing member contributions. Identification will be done using <b>Phone Number</b> or <b>Member ID</b>.</p>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Select File (CSV/Excel)</label>
-                        <input type="file" name="upload_file" class="form-control" accept=".csv, .xls, .xlsx" required>
-                    </div>
-                    <div class="alert alert-info py-2 small mb-0">
-                        <i class="bi bi-info-circle me-1"></i> Ensure the file has columns for: <b>Phone/ID</b> and <b>Amount</b>.
-                    </div>
-                </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-link text-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success px-4 rounded-pill">Start Uploading</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Modal 2: Upload from M-Koba Statement -->
-<div class="modal fade" id="uploadMKobaModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content border-0 shadow-lg rounded-4">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title fw-bold"><i class="bi bi-phone-vibrate me-2"></i>Upload M-Koba Statement</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="mkobaUploadForm" action="<?= getUrl('actions/import_contributions') ?>" method="POST" enctype="multipart/form-data">
-                <input type="hidden" name="upload_type" value="mkoba_statement">
-                <div class="modal-body p-4">
-                    <p class="small text-muted mb-3">Upload your M-Koba transaction statement. The system will automatically map transactions to <b>Active Members</b> based on their Phone Numbers.</p>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Statement File</label>
-                        <input type="file" name="upload_file" class="form-control" accept=".csv, .xls, .xlsx, .pdf" required>
-                    </div>
-                </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-link text-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary px-4 rounded-pill">Process Statement</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
 <script>
-// Select2 Initialization for Member Selection
-$('#manualAddModal').on('shown.bs.modal', function () {
-    $('#member_select2').select2({
-        dropdownParent: $('#manualAddModal'),
-        placeholder: '<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? '-- Tafuta kwa Jina au Namba --' : '-- Search by Name or Phone --' ?>',
-        allowClear: true
-    });
-});
-
-// Update lookup result visual when selection changes
-$('#member_select2').on('change', function() {
-    const val = $(this).val();
-    const isSw = '<?= ($_SESSION['preferred_language'] ?? 'en') ?>' === 'sw';
-    if(val) {
-        const text = $("#member_select2 option:selected").text();
-        $('#member_lookup_result').html(`<div class="alert alert-success py-1 mt-2 small border-success text-start"><i class="bi bi-person-check-fill me-1"></i> ${text}</div>`);
-    } else {
-        $('#member_lookup_result').empty();
-    }
-});
+// Recording (manual + bulk + M-Koba) moved to the Transactions page.
 
 // Pending Approvals DataTable Initialization
 $(document).ready(function() {
@@ -720,33 +685,6 @@ $(document).ready(function() {
 });
 
 // Removed auto-lookup keyup trigger to ensure modal stability
-$('#manualAddForm').on('submit', function(e) {
-    e.preventDefault();
-    if (!$('#member_select2').val()) { 
-        Swal.fire(
-            (<?= json_encode($_SESSION['preferred_language'] ?? 'en') ?> === 'sw') ? 'Kosa' : 'Error', 
-            (<?= json_encode($_SESSION['preferred_language'] ?? 'en') ?> === 'sw') ? 'Tafadhali chagua mwanachama sahihi kwanza.' : 'Please select a valid member.', 
-            'error'
-        ); 
-        return; 
-    }
-    
-    let formData = new FormData(this);
-    
-    $.ajax({
-        url: '<?= getUrl("actions/process_contribution") ?>',
-        type: 'POST',
-        data: formData,
-        contentType: false,
-        processData: false,
-        dataType: 'json',
-        success: function(res) {
-            if (res.success) {
-                Swal.fire('Submitted!', res.message, 'info').then(() => location.reload());
-            } else { Swal.fire('Error', res.message, 'error'); }
-        }
-    });
-});
 
 function _wfPost(url, id, loadingMsg) {
     Swal.fire({ title: loadingMsg, didOpen: () => Swal.showLoading() });

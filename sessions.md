@@ -4,6 +4,25 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-27 — Finance: Contributions = filtered listing (transactions PR-3)
+**Branch:** `feat/contributions-listing`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Final Finance PR. Slimmed Contributions to a dedicated, filterable listing and moved all recording off it (recording lives on the Transactions page from PR-1/PR-2).
+
+### `app/bms/customer/manage_contributions.php`
+- **Removed the recording UI**: the Record Payment button + the Bulk dropdown (Report/M-Koba), the three modals (`manualAddModal`, `uploadReportModal`, `uploadMKobaModal`), and their JS (Select2 init, lookup, `manualAddForm` submit). Leaders now get a single **"Record Transaction"** button linking to the Transactions page.
+- **Added a filterable Contributions List** (the page's dedicated listing): a flat table (Date · Member · Receipt · Account · Type · Amount · Status) with a GET filter form — **date range · member (name/phone) · type · status · account** — plus a record count and total. The query is fully parameterised; every filter value is validated against an allow-list before use.
+- Kept the existing Pending Approvals (workflow) and the Contribution Analysis Grid below it.
+
+### Tests
+- **`tests/Unit/ContributionsListingTest.php`** — recording UI removed; links to Transactions; all six filter controls present; the list query is parameterised and allow-list validated.
+
+### Verification
+- `php -l` clean; **0** orphaned references to the removed modals/JS. Filter query runs live (1=1 → 37 rows; `status=approved` → 36; `account=M-Koba` → 0). Unit suite **721 / 1601**.
+- **Finance reorganisation complete:** PR-1 (Transactions hub) · PR-2 (importers + template) · PR-3 (Contributions listing).
+
+---
+
 ## Session — 2026-06-27 — Finance: bulk imports + M-Koba (transactions PR-2)
 **Branch:** `feat/transaction-imports`
 **Developer:** Claude Code / Jabir Mussa
