@@ -799,23 +799,12 @@ if (!canSeeMemberSensitiveData()) {
                                     </div>
                                 </div>
 
-                                <!-- Passwords in One Row -->
-                                <div class="col-md-6 mb-2">
-                                    <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nenosiri la Awali *' : 'Initial Password *' ?></label>
-                                    <div class="input-group input-group-sm">
-                                        <input type="password" name="password" id="reg_password" class="form-control" required placeholder="******" autocomplete="new-password">
-                                        <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordAdmin('reg_password')">
-                                            <i class="bi bi-eye" id="reg_password_icon"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 mb-2">
-                                    <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Thibitisha Nenosiri *' : 'Confirm Password *' ?></label>
-                                    <div class="input-group input-group-sm">
-                                        <input type="password" name="confirm_password" id="reg_confirm_password" class="form-control" required placeholder="******" autocomplete="new-password">
-                                        <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordAdmin('reg_confirm_password')">
-                                            <i class="bi bi-eye" id="reg_confirm_password_icon"></i>
-                                        </button>
+                                <!-- Login password is auto-generated for admin-created members (username@123) -->
+                                <div class="col-12 mb-2">
+                                    <div class="alert alert-info py-2 small mb-0">
+                                        <i class="bi bi-info-circle me-1"></i><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw'
+                                            ? 'Nenosiri la kuingia litawekwa kiotomatiki kama <strong>jina_la_mtumiaji@123</strong>. Mwanachama anaweza kulibadilisha baada ya kuingia mara ya kwanza.'
+                                            : 'The login password is set automatically as <strong>username@123</strong> (e.g. <code>bkessy@123</code>). The member can change it after first login.' ?>
                                     </div>
                                 </div>
 
@@ -1197,16 +1186,7 @@ $(document).ready(function() {
             return false;
         }
 
-        // Password matching check
-        if ($('#reg_password').val() !== $('#reg_confirm_password').val()) {
-            Swal.fire({
-                icon: 'error',
-                title: '<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Hitilafu ya Nenosiri' : 'Password Error' ?>',
-                text: '<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Manenosiri hayafanani! Tafadhali hakiki sehemu zote mbili.' : 'Passwords do not match! Please verify both fields.' ?>',
-                confirmButtonColor: '#d33'
-            });
-            return false;
-        }
+        // Login password is auto-set to username@123 server-side — nothing to check here.
 
         // MANDATORY: Payment Slip Check
         const slipFileInput = document.getElementById('reg_kianzio_slip');
