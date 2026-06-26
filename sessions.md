@@ -21,6 +21,24 @@ This file tracks every development session, modification, and significant change
 ### Verification
 - Migration run live: both columns added. INSERT placeholder/value balance 10=10; live insert with the new columns succeeded (valid enum status/type). Route resolves. `php -l` clean across all touched files. Unit suite **704 / 1522**.
 - Note: the existing M-Koba importer is still the old (buggy) one — that is fixed in **PR-2**. Contributions still has its own record buttons until **PR-3** slims it.
+## Session — 2026-06-26 — Member sensitive-data masking (roles PR-2)
+**Branch:** `feat/member-data-masking`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Second roles PR. A view-only **Member** now sees only **limited data** about *other* members — phone, NIDA, email, precise address, financials, and family/guarantor details are hidden. Masking is done **server-side** (the data never reaches the member's browser). Leadership (Chairperson/Secretary/Treasurer/Admin) and a member viewing their **own** record see everything.
+
+### Files Modified
+- **`core/permissions.php`** — `canSeeMemberSensitiveData($isSelf=false)`: true for own record, admins/chairperson, or anyone who can edit members (Secretary/Treasurer); false for view-only members.
+- **`helpers.php`** — `vk_member_sensitive_keys()` (the hidden field set: contact/identity, precise address, financials, spouse/parents/children/guarantor/next-of-kin) + `vk_mask_member_row($row)` which **blanks** those keys at the data layer (only keys present are touched; name/photo/status/general area kept).
+- **`app/bms/customer/customers.php`** (members list) — masks each row server-side when the viewer can't see sensitive data.
+- **`app/bms/customer/customer_details.php`** — data-layer masking as **defense-in-depth** (the page already redirects members away from other members' details; their own record/leadership see all).
+
+### Tests
+- **`tests/Unit/MemberDataMaskingTest.php`** — 6 tests: the gate (own/admin/chairperson see; view-only member doesn't), `vk_mask_member_row` blanks sensitive + keeps basics + only touches present keys, and both views apply the mask.
+
+### Verification
+- Live gate check against the seeded permissions: **Member → MASKED**; Secretary/Treasurer/Chairperson/Admin → see everything.
+- Unit suite **705 / 1524**; `php -l` clean.
+- Roles feature complete: PR-1 (roles + RBAC) ✅ · PR-2 (member data masking) ✅.
 
 ---
 

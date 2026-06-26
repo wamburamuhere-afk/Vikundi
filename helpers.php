@@ -605,6 +605,49 @@ function vk_upload_photo(string $field, string $dir): ?string {
     return move_uploaded_file($_FILES[$field]['tmp_name'], rtrim($dir, '/\\') . '/' . $name) ? $name : null;
 }
 
+/**
+ * The member fields an ordinary (view-only) member must NOT see about OTHER
+ * members. General area (state/district/ward) and name/photo/status stay visible.
+ */
+function vk_member_sensitive_keys(): array {
+    $keys = [
+        // contact + identity
+        'phone', 'email', 'nida_number',
+        // precise address (region/district kept as general area)
+        'address', 'city', 'street', 'house_number',
+        // financial
+        'initial_savings',
+        // children
+        'children_data',
+        // next of kin
+        'next_of_kin_name', 'next_of_kin_phone', 'next_of_kin_relationship',
+        'nok_gender', 'nok_age', 'nok_nationality',
+        'nok_country', 'nok_state', 'nok_district', 'nok_ward', 'nok_street', 'nok_house_number',
+    ];
+    foreach (['spouse', 'father', 'mother', 'guarantor'] as $p) {
+        foreach (['name', 'first_name', 'middle_name', 'last_name', 'phone', 'email', 'nida',
+                  'dob', 'gender', 'religion', 'birth_region', 'photo', 'rel', 'member_id',
+                  'location', 'sub_location', 'country', 'state', 'district', 'ward', 'street', 'house_number'] as $f) {
+            $keys[] = $p . '_' . $f;
+        }
+    }
+    return $keys;
+}
+
+/**
+ * Blank a member row's sensitive fields at the data layer (audit/roles: a
+ * view-only member sees only limited info about other members — the data is
+ * never sent to their browser). Only keys actually present in the row are touched.
+ */
+function vk_mask_member_row(array $row): array {
+    foreach (vk_member_sensitive_keys() as $k) {
+        if (array_key_exists($k, $row)) {
+            $row[$k] = null;
+        }
+    }
+    return $row;
+}
+
 function safe_output($value, $default = 'N/A') {
     return !empty($value) ? htmlspecialchars($value) : $default;
 }
