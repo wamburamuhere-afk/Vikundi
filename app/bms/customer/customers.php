@@ -1722,25 +1722,13 @@ function togglePasswordAdmin(fieldId) {
             </div>
             <div class="modal-body p-4">
                 <div class="alert alert-info border-0 shadow-sm small mb-4">
-                    <h6 class="fw-bold mb-2"><i class="bi bi-info-circle-fill me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Maelekezo Muhimu:' : 'Important Instructions:' ?></h6>
+                    <h6 class="fw-bold mb-2"><i class="bi bi-info-circle-fill me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Maelekezo:' : 'Instructions:' ?></h6>
                     <ul class="ps-3 mb-0">
-                        <li><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Faili lazima liwe na column 41 kwa mpangilio sahihi.' : 'File must have 41 columns in the correct order.' ?></li>
-                        <li><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Taarifa za lazima: Majina Matatu, Simu, na Kianzio.' : 'Mandatory: Three Names, Phone, and Entrance Fee.' ?></li>
-                        <li><strong><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Username: Herufi ya kwanza + Jina la mwisho. Password: username@123' : 'Username: 1st initial + Last name. Password: username@123' ?></strong></li>
+                        <li><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Safu ya kwanza iwe na vichwa vya column — mpangilio haujalishi.' : 'The first row must be the column headers — order does not matter.' ?></li>
+                        <li><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Column za lazima: first_name, middle_name, last_name, phone.' : 'Required columns: first_name, middle_name, last_name, phone.' ?></li>
+                        <li><strong><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Kila mwanachama hupewa username na password username@123.' : 'Each member gets a username and password username@123.' ?></strong></li>
+                        <li><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Wazazi, mwenzi, watoto na mdhamini huongezwa baadaye kwa kila mwanachama (Hariri).' : 'Parents, spouse, children &amp; guarantor are added per member later (Edit).' ?></li>
                     </ul>
-                </div>
-
-                <div class="card bg-light border-0 mb-4">
-                    <div class="card-body p-3">
-                        <p class="fw-bold small mb-2 text-muted uppercase"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'MPANGILIO WA MAKUNDI (BLOCKS):' : 'COLUMN BLOCKS ORDER:' ?></p>
-                        <ul class="small ps-3 mb-0">
-                            <li><strong>Block 1:</strong> Personal & Finance (Col 1-12)</li>
-                            <li><strong>Block 2:</strong> Residence (Col 13-18)</li>
-                            <li><strong>Block 3:</strong> Parents (Col 19-26)</li>
-                            <li><strong>Block 4:</strong> Spouse (Col 27-36)</li>
-                            <li><strong>Block 5:</strong> Children & Guarantor (Col 37-41)</li>
-                        </ul>
-                    </div>
                 </div>
 
                 <form id="importMemberForm">
@@ -1820,26 +1808,8 @@ $(document).ready(function() {
 });
 
 function downloadTemplate() {
-    const headers = [
-        "S/NO", 
-        "First Name*", "Middle Name*", "Last Name*", "Email", "Phone*", "Gender", "Date of Birth (YYYY-MM-DD)*", "NIDA Number", "Religion", "Birth Region", "Marital Status", "Entrance Fee*",
-        "Country", "Region", "District", "Ward", "Street", "House Number",
-        "Father Name", "Father Region/District", "Father Ward/Street", "Father Phone",
-        "Mother Name", "Mother Region/District", "Mother Ward/Street", "Mother Phone",
-        "Spouse First Name", "Spouse Middle Name", "Spouse Last Name", "Spouse Email", "Spouse Phone", "Spouse Gender", "Spouse Date of Birth", "Spouse NIDA", "Spouse Religion", "Spouse Birth Region",
-        "Children (Name-Age-Gender separated by comma)",
-        "Guarantor Name", "Guarantor Phone", "Guarantor Relationship", "Guarantor Location"
-    ];
-    // Use semicolon to avoid comma conflicts with large numbers
-    const csvContent = "sep=;\n" + headers.join(";") + "\n";
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", "vikundi_batch_import_template.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // The bulk template is now a simple, header-named CSV served by the backend.
+    window.location.href = '<?= getUrl("actions/download_members_template") ?>';
 }
 </script>
 

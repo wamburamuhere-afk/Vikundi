@@ -4,6 +4,29 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-27 — Members: simple header-named bulk template + importer (members PR-2)
+**Branch:** `feat/members-bulk-template`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Replaced the fragile 42-column **positional** members CSV with a simple, **header-named** template and rewrote the importer to map by header (order-independent, error-resistant). Core fields only; rich family/guarantor/photo data is added per member via Edit.
+
+### Note on wiring (found during the work)
+The live members bulk-upload UI is the **modal in `app/bms/customer/customers.php`** (`#importMemberForm` → `ajax/process_member_import.php`, checks `resp.status==='success'`). The `customer_import.php` page is a **dead BMS leftover** (its form posts to a non-existent `api/import_customers.php`) — left untouched.
+
+### Files Created
+- **`includes/member_import.php`** — pure `member_import_parse_row()` (header-keyed): enforces required `first_name/middle_name/last_name/phone`, cleans phone/NIDA (drops Excel `.00`), normalises gender (m/f/Swahili → Male/Female), defaults country/savings.
+- **`templates/members_template.csv`** — 16 clear headers + 2 sample rows.
+- **`actions/download_members_template.php`** — serves the template.
+- **`tests/Unit/MemberImportTest.php`** — 6 tests (required-field errors, normalisation, gender variants, template headers, importer is header-based + auto password, modal uses the new template).
+
+### Files Modified
+- **`ajax/process_member_import.php`** — full rewrite: header-mapped rows via the helper; auto username + `password = username@123`; core `users` + `customers` INSERTs (only `customer_name` is NOT NULL); optional initial-savings contribution; per-row error reporting (no more "Expected 41 columns").
+- **`app/bms/customer/customers.php`** — import modal instructions simplified (header-named, required columns, auto password); `downloadTemplate()` now points to the server template.
+
+### Verification
+- Parser + live `users`+`customers` INSERT (rolled back) succeed; gender/phone/savings normalise; required-field errors returned. `php -l` clean. Unit suite **733 / 1641**.
+
+---
+
 ## Session — 2026-06-27 — Admin-created members: password = username@123 (members PR-1)
 **Branch:** `feat/admin-member-password`
 **Developer:** Claude Code / Jabir Mussa
