@@ -45,10 +45,11 @@ class CustomersRegistrationLanguageTest extends TestCase
 
     public function test_parents_labels_translated(): void
     {
-        $this->assertStringContainsString('JINA LA BABA', $this->src);           // Father's Name
-        $this->assertStringContainsString('JINA LA MAMA', $this->src);           // Mother's Name
-        $this->assertStringContainsString('MKOA/WILAYA ANAPOISHI', $this->src);  // Region/District
-        $this->assertStringContainsString('KATA/KIJIJI/MTAA', $this->src);       // Ward/Village/Street
+        // PR-B: parents now use structured names + the six-field location + photo.
+        $this->assertStringContainsString('Taarifa za Baba', $this->src);     // Father's Details heading
+        $this->assertStringContainsString('Taarifa za Mama', $this->src);     // Mother's Details heading
+        $this->assertStringContainsString('Namba ya Nyumba', $this->src);     // House Number
+        $this->assertStringContainsString('Picha ya Pasipoti (Hiari)', $this->src); // Passport Photo (Optional)
     }
 
     public function test_spouse_labels_translated(): void
@@ -62,16 +63,17 @@ class CustomersRegistrationLanguageTest extends TestCase
 
     public function test_children_section_translated(): void
     {
-        $this->assertStringContainsString('JINA LA MTOTO', $this->src); // Child Name header
-        $this->assertStringContainsString('UMRI', $this->src);          // Age header
+        $this->assertStringContainsString('Jina la Mtoto', $this->src); // Child Name header
+        $this->assertStringContainsString('Umri', $this->src);          // Age header
+        $this->assertStringContainsString('Tarehe ya Kuzaliwa', $this->src); // Date of Birth header (PR-A)
         $this->assertStringContainsString('Ongeza Mtoto', $this->src);  // Add Child button
     }
 
     public function test_guarantor_labels_translated(): void
     {
-        $this->assertStringContainsString('JINA LA MDHAMINI', $this->src);       // Guarantor's Name
-        $this->assertStringContainsString('UHUSIANO NA MWANACHAMA', $this->src); // Relationship
-        $this->assertStringContainsString('MKOA ANAPOISHI', $this->src);         // Region where living
+        $this->assertStringContainsString('Jina la Mdhamini', $this->src);       // Guarantor's Name
+        $this->assertStringContainsString('Uhusiano na Mwanachama', $this->src); // Relationship
+        $this->assertStringContainsString('Mkoa Anapoishi', $this->src);         // Region where living
     }
 
     public function test_account_tab_labels_translated(): void

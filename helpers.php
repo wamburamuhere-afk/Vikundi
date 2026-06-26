@@ -540,6 +540,36 @@ function format_currency($amount, $currency = 'TZS', $decimals = 2) {
     return $symbol . number_format($amount, $decimals);
 }
 
+/**
+ * Whole-years age from a date of birth (registration: children enter DOB, age is
+ * derived server-side rather than trusting the client). Returns null for an
+ * empty, unparseable, or future date.
+ */
+function vk_age_from_dob(?string $dob): ?int {
+    $dob = trim((string) $dob);
+    if ($dob === '') return null;
+    $ts = strtotime($dob);
+    if ($ts === false) return null;
+    $birth = (new DateTime())->setTimestamp($ts);
+    $now = new DateTime();
+    if ($birth > $now) return null;
+    return (int) $birth->diff($now)->y;
+}
+
+/**
+ * Join first/middle/last into one display name, dropping blanks and collapsing
+ * the gaps. Used to keep the legacy single-column *_name fields populated when
+ * a record also stores the structured name parts (registration PR-B).
+ */
+function vk_full_name(?string $first, ?string $middle = '', ?string $last = ''): string {
+    $parts = array_filter([
+        trim((string) $first),
+        trim((string) $middle),
+        trim((string) $last),
+    ], fn($p) => $p !== '');
+    return implode(' ', $parts);
+}
+
 function safe_output($value, $default = 'N/A') {
     return !empty($value) ? htmlspecialchars($value) : $default;
 }

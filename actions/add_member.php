@@ -11,6 +11,7 @@ if (session_status() === PHP_SESSION_NONE) {
 $ui_lang = (($_SESSION['preferred_language'] ?? 'en') === 'sw') ? 'sw' : 'en';
 
 require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../helpers.php'; // vk_age_from_dob() (child age derived from DOB)
 
 // Check if user is logged in and is a leader
 $user_id = $_SESSION['user_id'] ?? null;
@@ -96,27 +97,51 @@ $children = [];
 $child_names = $_POST['child_name'] ?? [];
 $child_ages = $_POST['child_age'] ?? [];
 $child_genders = $_POST['child_gender'] ?? [];
+$child_dobs = $_POST['child_dob'] ?? [];
 
 for ($i = 0; $i < count($child_names); $i++) {
     if (!empty($child_names[$i])) {
+        $dob = $child_dobs[$i] ?? '';
+        // Age is derived from DOB server-side; fall back to any posted age.
+        $age = $dob !== '' ? vk_age_from_dob($dob) : ($child_ages[$i] ?? '');
         $children[] = [
             'name' => $child_names[$i],
-            'age' => $child_ages[$i] ?? '',
+            'dob' => $dob,
+            'age' => $age,
             'gender' => $child_genders[$i] ?? ''
         ];
     }
 }
 $children_data = json_encode($children);
 
-// Parent Fields
-$father_name = $_POST['father_name'] ?? '';
-$father_location = $_POST['father_location'] ?? '';
-$father_sub_location = $_POST['father_sub_location'] ?? '';
-$father_phone = $_POST['father_phone'] ?? '';
-$mother_name = $_POST['mother_name'] ?? '';
-$mother_location = $_POST['mother_location'] ?? '';
-$mother_sub_location = $_POST['mother_sub_location'] ?? '';
-$mother_phone = $_POST['mother_phone'] ?? '';
+// Parent Fields (PR-B: structured name + six-field location + optional photo)
+$father_first_name   = $_POST['father_first_name'] ?? '';
+$father_middle_name  = $_POST['father_middle_name'] ?? '';
+$father_last_name    = $_POST['father_last_name'] ?? '';
+$father_phone        = $_POST['father_phone'] ?? '';
+$father_country      = $_POST['father_country'] ?? '';
+$father_state        = $_POST['father_state'] ?? '';
+$father_district     = $_POST['father_district'] ?? '';
+$father_ward         = $_POST['father_ward'] ?? '';
+$father_street       = $_POST['father_street'] ?? '';
+$father_house_number = $_POST['father_house_number'] ?? '';
+$mother_first_name   = $_POST['mother_first_name'] ?? '';
+$mother_middle_name  = $_POST['mother_middle_name'] ?? '';
+$mother_last_name    = $_POST['mother_last_name'] ?? '';
+$mother_phone        = $_POST['mother_phone'] ?? '';
+$mother_country      = $_POST['mother_country'] ?? '';
+$mother_state        = $_POST['mother_state'] ?? '';
+$mother_district     = $_POST['mother_district'] ?? '';
+$mother_ward         = $_POST['mother_ward'] ?? '';
+$mother_street       = $_POST['mother_street'] ?? '';
+$mother_house_number = $_POST['mother_house_number'] ?? '';
+// Keep the legacy single-column fields populated for existing reports/views.
+$father_name = vk_full_name($father_first_name, $father_middle_name, $father_last_name);
+$mother_name = vk_full_name($mother_first_name, $mother_middle_name, $mother_last_name);
+$father_location = $father_state;
+$father_sub_location = $father_ward;
+$mother_location = $mother_state;
+$mother_sub_location = $mother_ward;
 
 // Guarantor Fields
 $guarantor_name = $_POST['guarantor_name'] ?? '';
@@ -214,6 +239,20 @@ try {
         }
     }
 
+    // Optional parent passport photos (PR-B). Same store as the member avatar.
+    $vk_save_photo = function ($field) {
+        if (isset($_FILES[$field]) && $_FILES[$field]['error'] === UPLOAD_ERR_OK) {
+            $dir = __DIR__ . '/../uploads/avatars';
+            if (!is_dir($dir)) mkdir($dir, 0755, true);
+            $ext = pathinfo($_FILES[$field]['name'], PATHINFO_EXTENSION);
+            $name = $field . '_' . time() . '_' . uniqid() . '.' . $ext;
+            if (move_uploaded_file($_FILES[$field]['tmp_name'], $dir . '/' . $name)) return $name;
+        }
+        return null;
+    };
+    $father_photo = $vk_save_photo('father_photo');
+    $mother_photo = $vk_save_photo('mother_photo');
+
     // Generate username: first letter of first name + full last name (lowercase, no spaces)
     $first_initial = strtolower(substr(trim($first_name), 0, 1));
     $last_name_slug = strtolower(preg_replace('/\s+/', '', trim($last_name)));
@@ -256,11 +295,26 @@ try {
             spouse_first_name, spouse_middle_name, spouse_last_name, spouse_email, spouse_phone, spouse_gender, spouse_dob, spouse_nida,
             spouse_religion, spouse_birth_region,
             children_data,
-            father_name, father_location, father_sub_location, father_phone,
-            mother_name, mother_location, mother_sub_location, mother_phone,
+            father_name, father_first_name, father_middle_name, father_last_name, father_phone,
+            father_location, father_sub_location,
+            father_country, father_state, father_district, father_ward, father_street, father_house_number, father_photo,
+            mother_name, mother_first_name, mother_middle_name, mother_last_name, mother_phone,
+            mother_location, mother_sub_location,
+            mother_country, mother_state, mother_district, mother_ward, mother_street, mother_house_number, mother_photo,
             guarantor_name, guarantor_phone, guarantor_rel, guarantor_location,
             status, initial_savings, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        ) VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?,
+            ?,
+            ?, ?, ?, ?, ?, ?, ?, ?,
+            ?, ?,
+            ?,
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?,
+            ?, ?, NOW()
+        )
     ");
     $stmt->execute([
         $new_user_id, $first_name, $middle_name, $last_name, $customer_full_name, $email, $phone, $gender, $religion, $birth_region, $dob, $nida_number,
@@ -269,8 +323,12 @@ try {
         $spouse_first_name, $spouse_middle_name, $spouse_last_name, $spouse_email, $spouse_phone, $spouse_gender, $spouse_dob, $spouse_nida,
         $spouse_religion, $spouse_birth_region,
         $children_data,
-        $father_name, $father_location, $father_sub_location, $father_phone,
-        $mother_name, $mother_location, $mother_sub_location, $mother_phone,
+        $father_name, $father_first_name, $father_middle_name, $father_last_name, $father_phone,
+        $father_location, $father_sub_location,
+        $father_country, $father_state, $father_district, $father_ward, $father_street, $father_house_number, $father_photo,
+        $mother_name, $mother_first_name, $mother_middle_name, $mother_last_name, $mother_phone,
+        $mother_location, $mother_sub_location,
+        $mother_country, $mother_state, $mother_district, $mother_ward, $mother_street, $mother_house_number, $mother_photo,
         $guarantor_name, $guarantor_phone, $guarantor_rel, $guarantor_location,
         $status, $initial_savings
     ]);

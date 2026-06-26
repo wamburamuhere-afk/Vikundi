@@ -16,6 +16,7 @@ require_once __DIR__ . '/../includes/config.php'; // provides $pdo for the inclu
 $migrations = [
     'sync_schema.php',              // create any base tables missing on the target DB
     'sync_workflow_columns.php',    // add review/approve columns + widen status enums
+    'add_parent_detail_columns.php',// parent structured name + 6-field location + photo (registration PR-B)
     'fix_death_expense_schema.php', // widen deceased_type, add 'dormant' + customers.is_active
     'ai_assistant_setup.php',       // AI tables, prompts and permissions
 ];

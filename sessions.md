@@ -4,6 +4,52 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-26 — Registration form PR-B (parent details)
+**Branch:** `feat/registration-pr-b-parents`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Richer parent information on the member record, on **both** the public form and the admin add-member form. Each parent (father + mother) now has structured **First / Middle / Last** names, the **same six-field location** as the member's residence (Country, Region/State, District, Ward, Street/Village, House No.), and an **optional passport photo**. First DB migration of the registration rework.
+
+### Database
+- **`database/add_parent_detail_columns.php`** — idempotent migration (mirrors `sync_workflow_columns.php` + the existing `nok_*` pattern). Adds 20 columns to `customers`: `{father,mother}_{first_name,middle_name,last_name,country,state,district,ward,street,house_number,photo}`. Legacy `father_name/father_location/father_sub_location/father_phone` (and mother_*) are **kept and still populated**, so existing records/reports are unaffected. **Registered in `database/migrate.php`**, which `deploy.yml` already runs on every deploy — so it applies automatically (no manual server step).
+
+### Files Modified
+- **`register.php`** + **`app/bms/customer/customers.php`** — parent blocks rewritten with the 3 name fields + 6 location fields + phone + optional photo (`<input type="file" name="father_photo">` / `mother_photo`); customers.php kept bilingual.
+- **`helpers.php`** — new `vk_full_name(first, middle, last)`: joins parts, drops blanks (keeps the legacy `*_name` columns populated).
+- **`actions/process_registration.php`** + **`actions/add_member.php`** — capture the new parent fields, upload the optional photos (same store as the member avatar, via a `vk_save_photo()` closure), build `father_name`/`mother_name` via `vk_full_name()`, populate legacy location columns (state→location, ward→sub_location), and extend the `customers` INSERT to the 65-column form (64 placeholders + `created_at`).
+
+### Tests
+- **`tests/Unit/ParentDetailsTest.php`** — 5 tests: `vk_full_name`; migration declares every parent column; both forms collect the fields; both handlers persist them (+ keep `*_name` via `vk_full_name`).
+- Updated `ChildDobTest` and `CustomersRegistrationLanguageTest` for the new parent label structure.
+
+### Verification
+- Migration ran: **20 columns added**. All 65 INSERT columns exist in `customers`; placeholders = values = 64 in both handlers.
+- Live: `register.php` **200**, no errors, `enctype=multipart`, all parent fields render. Transaction-wrapped INSERT (rolled back) round-tripped `father_name='John Mike Doe'`, structured columns, and photos.
+- Unit suite **655 / 1312**; `php -l` clean on all touched files.
+- Registration tasks: PR-A ✅ · **PR-B ✅** · PR-C ⏳ (guarantor) · PR-D ⏳ (passport "add later" + children photo).
+
+---
+
+## Session — 2026-06-26 — Registration form PR-A (label casing + children DOB)
+**Branch:** `feat/registration-pr-a-casing-child-dob`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** First of the assigned registration-form tasks. (1) Title-cased the Family & Beneficiaries tab field labels so they match the Personal & Residence tab (they were ALL CAPS). (2) Added a **Date of Birth** field for children, with **age derived from DOB** (server-side, not trusting the client). Applied to **both** the public form and the admin add-member form (per the agreed scope).
+
+### Files Modified
+- **`register.php`** + **`app/bms/customer/customers.php`** — parents/guarantor/children labels → Title Case (Swahili kept, just cased, e.g. `JINA LA BABA` → `Jina la Baba`); children table gains a **Date of Birth** column; Age is now a read-only auto-filled field; `vkChildAge()` JS derives the preview age; `addChildRow`/`addChildRowAdmin` updated to match.
+- **`helpers.php`** — new pure `vk_age_from_dob(?string): ?int` (whole years; null for empty/invalid/future).
+- **`actions/process_registration.php`** + **`actions/add_member.php`** — capture `child_dob[]`, store `dob` in `children_data` JSON, derive `age` server-side via `vk_age_from_dob()` (add_member also now requires `helpers.php`). No schema change — children are JSON.
+
+### Tests
+- **`tests/Unit/ChildDobTest.php`** — 7 tests: `vk_age_from_dob` (exact birthday, day-before, future, empty/invalid); both forms collect `child_dob`; both handlers persist `dob` + derive age; Family labels are Title-Cased.
+- **`tests/Unit/CustomersRegistrationLanguageTest.php`** — updated the locked label expectations to the new Title Case (purpose preserved: Swahili labels still present) + assert the new DOB header.
+
+### Verification
+- Live (`register.php`, built-in server): **200**, no PHP errors; Title-Case labels render, old all-caps gone, `child_dob[]` present.
+- Unit suite **650 / 1268**; `php -l` clean on all touched files.
+- Registration tasks: **PR-A ✅** · PR-B ⏳ (parents: names + 6-field location + photo) · PR-C ⏳ (guarantor: pull-member + location) · PR-D ⏳ (passport "add later" + children photo).
+
+---
+
 ## Session — 2026-06-26 — Audit fix M1
 **Branch:** `fix/m1-currency-normalize`
 **Developer:** Claude Code / Dutch
