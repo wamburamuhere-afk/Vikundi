@@ -5,10 +5,10 @@ namespace Tests\Unit;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The four VICOBA system roles (database/seed_vicoba_roles.php): Chairperson and
- * Secretary/Treasurer get the right CRUD split, Member is view-only, and the BMS
- * leftover roles are removed. The seeder runs against the DB on deploy, so here we
- * unit-test its pure permission-grant logic and guard its declarations.
+ * The four VICOBA system roles (database/seed_vicoba_roles.php). Roles are
+ * resolved by NAME (reuse existing, create if absent), and permissions are seeded
+ * by role PURPOSE. The seeder runs against the DB on deploy, so here we unit-test
+ * its pure permission-grant logic and guard its declarations.
  */
 class VicobaRolesTest extends TestCase
 {
@@ -33,45 +33,56 @@ class VicobaRolesTest extends TestCase
         }
     }
 
-    private function grants(int $roleId, string $key): ?array
+    private function grants(string $purpose, string $key): ?array
     {
-        return vk_role_grants($roleId, $key, self::$adminOnlyKeys, self::$memberViewKeys);
+        return vk_role_grants($purpose, $key, self::$adminOnlyKeys, self::$memberViewKeys);
     }
 
     public function testChairpersonGetsEverything(): void
     {
-        $this->assertSame([1, 1, 1, 1, 1, 1], $this->grants(2, 'customers'));
-        $this->assertSame([1, 1, 1, 1, 1, 1], $this->grants(2, 'users')); // even admin keys
+        $this->assertSame([1, 1, 1, 1, 1, 1], $this->grants('admin', 'customers'));
+        $this->assertSame([1, 1, 1, 1, 1, 1], $this->grants('admin', 'users')); // even admin keys
     }
 
-    public function testSecretaryTreasurerGetOperationalCrudNotAdmin(): void
+    public function testOperationalRolesGetCrudButNotAdmin(): void
     {
-        foreach ([3, 4] as $rid) {
-            $this->assertSame([1, 1, 1, 1, 1, 1], $this->grants($rid, 'customers'), "role $rid CRUD on operational");
-            $this->assertSame([1, 1, 1, 1, 1, 1], $this->grants($rid, 'loans'));
-            $this->assertNull($this->grants($rid, 'users'), "role $rid must NOT manage users");
-            $this->assertNull($this->grants($rid, 'user_roles'), "role $rid must NOT manage roles");
-            $this->assertNull($this->grants($rid, 'system_settings'), "role $rid must NOT touch settings");
-        }
+        $this->assertSame([1, 1, 1, 1, 1, 1], $this->grants('operational', 'customers'));
+        $this->assertSame([1, 1, 1, 1, 1, 1], $this->grants('operational', 'loans'));
+        $this->assertNull($this->grants('operational', 'users'), 'operational role must NOT manage users');
+        $this->assertNull($this->grants('operational', 'user_roles'), 'operational role must NOT manage roles');
+        $this->assertNull($this->grants('operational', 'system_settings'), 'operational role must NOT touch settings');
     }
 
     public function testMemberIsViewOnlyAndLimited(): void
     {
-        $this->assertSame([1, 0, 0, 0, 0, 0], $this->grants(13, 'customers'), 'member views members');
-        $this->assertSame([1, 0, 0, 0, 0, 0], $this->grants(13, 'dashboard'));
-        $this->assertNull($this->grants(13, 'loans'), 'member has no loans access');
-        $this->assertNull($this->grants(13, 'users'));
+        $this->assertSame([1, 0, 0, 0, 0, 0], $this->grants('view', 'customers'), 'member views members');
+        $this->assertSame([1, 0, 0, 0, 0, 0], $this->grants('view', 'dashboard'));
+        $this->assertNull($this->grants('view', 'loans'), 'member has no loans access');
+        $this->assertNull($this->grants('view', 'users'));
     }
 
-    public function testSeederDeclaresRolesAndRemovesBms(): void
+    public function testSeederResolvesByNameAndRemovesBms(): void
     {
         $src = file_get_contents(self::SEEDER);
         foreach (['Chairperson', 'Secretary', 'Treasurer', 'Member'] as $name) {
             $this->assertStringContainsString("'$name'", $src);
         }
-        $this->assertStringContainsString('[5, 6, 7, 8, 9]', $src, 'BMS roles must be removed');
+        // Roles are resolved by name (reuse existing), not a fixed-id INSERT.
+        $this->assertStringContainsString('LOWER(role_name) = LOWER(?)', $src);
+        // BMS leftovers removed by name.
+        $this->assertStringContainsString('Loan Manager', $src);
+        $this->assertStringContainsString('Director', $src);
 
         $runner = file_get_contents(__DIR__ . '/../../database/migrate.php');
         $this->assertStringContainsString('seed_vicoba_roles.php', $runner, 'seeder must run on deploy');
+    }
+
+    public function testMemberRoleIsForcedToViewOnly(): void
+    {
+        $src = file_get_contents(self::SEEDER);
+        // Member is enforced (reset to view-only every run), not seed-if-empty —
+        // so its permissions can't drift and break the sensitive-data masking.
+        $this->assertMatchesRegularExpression("/'Member'\\s*=>\\s*\\['view',\\s*\\d+,[^\\]]*,\\s*true\\]/", $src);
+        $this->assertStringContainsString('Reset to default permissions', $src);
     }
 }
