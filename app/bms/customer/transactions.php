@@ -52,6 +52,13 @@ $statusBadge = [
     <?php if (isset($_SESSION['import_response'])): $ir = $_SESSION['import_response']; unset($_SESSION['import_response']); ?>
     <div class="alert alert-<?= !empty($ir['success']) ? 'success' : 'danger' ?> alert-dismissible fade show" role="alert">
         <i class="bi bi-<?= !empty($ir['success']) ? 'check-circle' : 'exclamation-triangle' ?> me-2"></i><?= htmlspecialchars($ir['message'] ?? '') ?>
+        <?php if (!empty($ir['unmatched_count'])): ?>
+        <div class="mt-2">
+            <a href="<?= getUrl('actions/download_unmatched') ?>" class="btn btn-sm btn-outline-danger">
+                <i class="bi bi-download me-1"></i><?= $isSw ? 'Pakua safu zisizolingana' : 'Download unmatched rows' ?> (<?= (int) $ir['unmatched_count'] ?>)
+            </a>
+        </div>
+        <?php endif; ?>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
     <?php endif; ?>

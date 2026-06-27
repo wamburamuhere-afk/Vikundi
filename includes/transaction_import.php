@@ -87,6 +87,35 @@ function mkoba_parse_row(array $assoc): ?array
 }
 
 /**
+ * Build a CSV (as a string) of the rows that didn't match a member during an
+ * import, so the user can download, onboard those members, and re-import. Each
+ * $rows entry is an assoc with name/phone/amount/date/receipt/trans_type/reason
+ * (as collected by actions/import_contributions.php). Pure — no DB / no globals.
+ */
+function unmatched_rows_to_csv(array $rows): string
+{
+    // Explicit empty $escape: RFC-4180 output (no backslash escaping) and avoids
+    // PHP 8.4's deprecation for the omitted parameter.
+    $out = fopen('php://temp', 'r+');
+    fputcsv($out, ['member_name', 'phone', 'amount', 'date', 'receipt', 'trans_type', 'reason'], ',', '"', '');
+    foreach ($rows as $r) {
+        fputcsv($out, [
+            (string) ($r['name']       ?? ''),
+            (string) ($r['phone']      ?? ''),
+            (string) ($r['amount']     ?? ''),
+            (string) ($r['date']       ?? ''),
+            (string) ($r['receipt']    ?? ''),
+            (string) ($r['trans_type'] ?? ''),
+            (string) ($r['reason']     ?? 'No matching member'),
+        ], ',', '"', '');
+    }
+    rewind($out);
+    $csv = stream_get_contents($out);
+    fclose($out);
+    return $csv;
+}
+
+/**
  * Normalise one row of OUR template (headers: receipt_number, date, member_phone,
  * member_name, amount, type, account, description). Null to skip.
  */

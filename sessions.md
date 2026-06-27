@@ -4,19 +4,22 @@ This file tracks every development session, modification, and significant change
 
 ---
 
-## Session — 2026-06-27 — Hotfix: role seeder FK crash on deploy
-**Branch:** `fix/roles-seeder-name-resolve`
-**Summary:** `seed_vicoba_roles.php` crashed on the production deploy with a foreign-key violation (`fk_role_permissions_role`). Root cause: production already had a **"Member"** role (4 users) at a different id, so the fixed-id `INSERT (13,'Member') ON DUPLICATE KEY UPDATE` (unique `role_name`) updated that existing row instead of creating id 13 — then the permission insert referenced a non-existent role id. (The seeder is transactional, so it rolled back cleanly — production roles were unchanged.)
+## Session — 2026-06-27 — Transactions import: download the unmatched (no-member) rows as CSV
+**Branch:** `feat/import-unmatched-csv`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** When a bulk transaction import (M-Koba statement or our template) can't match a row to a member, those rows were silently dropped except for an 8-name preview in the result message. Investigation of a real 560-row M-Koba statement showed **0 of 524 contribution rows matched** — the group's members were never onboarded (DB had only 6 seed members; zero phone overlap). Unmatched rows are still **never inserted** (DB stays clean); they're now offered as a one-shot CSV download so the user can onboard those members and re-import.
 
-### Fix — `database/seed_vicoba_roles.php`
-- **Resolve each role by NAME** (reuse the existing one; create only when the name is absent — at its preferred id if free, else auto-assigned). No more fixed-id INSERT that clashes with the unique name / FK.
-- BMS leftover roles removed **by name** (`Director, CFO, Accountant, Credit Manager, Loan Manager`), reassigning their users to Member first; never touches a resolved role.
-- Permissions keyed off role **purpose** (`vk_role_grants(purpose, …)`), still seeded only when a role has none (deploy-safe).
-- `VicobaRolesTest` updated to the purpose-based function + name resolution.
+### Files Created
+- **`actions/download_unmatched.php`** — auth-gated endpoint; streams `$_SESSION['import_unmatched']` as `unmatched_transactions.csv` (UTF-8 BOM for Excel), then clears it (one-shot). Reachable via the `actions/` fallback in `handleRoute()` — no new route entry needed.
+
+### Files Modified
+- **`includes/transaction_import.php`** — added pure `unmatched_rows_to_csv(array $rows): string` (header + rows, RFC-4180 escaping).
+- **`actions/import_contributions.php`** — unmatched rows now collected as structured records (name/phone/amount/date/receipt/trans_type/reason); preview text derived from them; full list stashed in `$_SESSION['import_unmatched']` with `unmatched_count` on the response. Stale rejects cleared at the start of every import.
+- **`app/bms/customer/transactions.php`** — result alert shows a "Download unmatched rows (N)" button when `unmatched_count` is set (EN/SW).
+- **`tests/Unit/TransactionImportTest.php`** — 2 tests for `unmatched_rows_to_csv()` (header+row content; missing-keys/empty-list).
 
 ### Verification
-- Reproduced the exact prod conflict locally in a rolled-back transaction: OLD approach → the same 1452 FK error; NEW approach → Member resolves to its existing id and the permission insert succeeds. Real seeder runs idempotently locally.
-- **Member enforced view-only (per decision):** the seeder now **resets the Member role's permissions to the view-only set on every run** (enforce flag) — so the existing production Member role becomes strictly view-only (3 view perms, 0 write-grants), which the sensitive-data masking depends on. Leadership roles stay seed-if-empty (their customisations are preserved). Verified live: Member#13 = customers/customer_details/dashboard, view only. Suite **734 / 1640**.
+- `composer test-unit` → 735 tests pass. New CSV tests green with no deprecations.
 
 ---
 
