@@ -182,8 +182,10 @@ if (!csrf_verify($_POST['csrf_token'] ?? null)) {
 // The admin form's fee field is "initial_savings"; map it to the validator's key.
 $val_post = $_POST;
 $val_post['entrance_fee'] = $_POST['initial_savings'] ?? '';
-// Admin form has no terms checkbox -> require_terms = false; every other rule identical.
-$validation_errors = validate_registration_input($val_post, $_FILES, $val_lang, false);
+// Admin form has no terms checkbox -> require_terms = false. The password is
+// auto-generated (username@123, see below), so the admin never types one ->
+// require_password = false. Slip is still required (validated above + here).
+$validation_errors = validate_registration_input($val_post, $_FILES, $val_lang, false, true, false);
 if (!empty($validation_errors)) {
     echo json_encode(['success' => false, 'message' => implode("\n", $validation_errors)]);
     exit();

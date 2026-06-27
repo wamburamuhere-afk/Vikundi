@@ -4,6 +4,27 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-27 — Fix: registration blocked (admin "Password is required" + public honeypot false-positive)
+**Branch:** `fix/registration-honeypot-and-admin-password`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Both member-registration paths were rejecting valid submissions. Neither was a DB error — both bailed at an early guard (HTTP 200 with a JSON error, so nothing hit the error log).
+
+### Bug 1 — Admin "Register New Member" → "Password is required."
+The admin form auto-generates the password (`username@123`) and never collects one, but `actions/add_member.php` called the shared validator without the `requirePassword` flag, so it defaulted to `true` and rejected every submission before the password was generated. The flag already existed and was used correctly elsewhere (`profile.php`); the admin call site was simply missed.
+- **Fix:** `add_member.php` now calls `validate_registration_input($val_post, $_FILES, $val_lang, false, true, false)` (requireTerms=false, requireSlip=true, **requirePassword=false**).
+
+### Bug 2 — Public registration → "Your registration could not be processed."
+This is the honeypot anti-bot guard (`process_registration.php`) firing on real users: the hidden decoy field was named `contact_website` with a `<label>Website</label>`, which Chrome autofill / password managers fill despite `autocomplete="off"`, falsely flagging humans as bots. The trap still catches naive bots that fill every field — it only stops *browsers* from filling it.
+- **Fix:** renamed the field to a neutral `hp_token`, dropped the "Website" label, added `readonly` + `data-lpignore` / `data-form-type="other"` so autofill leaves it alone; updated the server check in `process_registration.php` to match.
+
+### Files Modified
+- **`actions/add_member.php`** — pass `requirePassword=false` to the validator.
+- **`register.php`** — neutral, autofill-proof honeypot field.
+- **`actions/process_registration.php`** — honeypot check reads `hp_token`.
+- **`tests/Unit/RegistrationValidatorTest.php`** — 3 tests: admin no-password passes, missing-password still rejected when required, honeypot field name in sync between form and handler.
+
+### Verification
+- `composer test-unit` → 736 tests pass.
 ## Session — 2026-06-27 — Transactions import: download the unmatched (no-member) rows as CSV
 **Branch:** `feat/import-unmatched-csv`
 **Developer:** Claude Code / Jabir Mussa
