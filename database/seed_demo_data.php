@@ -75,6 +75,9 @@ if ($fresh) {
         $pdo->exec("TRUNCATE TABLE `{$t}`");
     }
     $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
+    // Members are users too — remove previously-seeded demo member accounts
+    // (matched by the demo email domain), but never the real admin.
+    $pdo->exec("DELETE FROM users WHERE user_role = 'Member' AND email LIKE '%@example.co.tz'");
 }
 
 // ---------------------------------------------------------------------------
@@ -94,6 +97,12 @@ $contraAcct  = (int) ($accountIds[1] ?? $cashAccount);
 $loanTypeIds = $pdo->query('SELECT id FROM loan_types ORDER BY id')->fetchAll(PDO::FETCH_COLUMN) ?: [0];
 $cycleIds    = $pdo->query('SELECT id FROM repayment_cycles ORDER BY id')->fetchAll(PDO::FETCH_COLUMN) ?: [0];
 $cycleId     = (int) $cycleIds[0];
+
+// A member in this system is a `users` row (role Member); the customer record
+// holds the profile and is linked by customers.user_id. The members page reads
+// FROM users, so every demo member needs a user account or it won't show.
+$memberRoleId     = (int) ($pdo->query("SELECT role_id FROM roles WHERE role_name = 'Member' LIMIT 1")->fetchColumn() ?: 0);
+$demoPasswordHash = password_hash('Demo@1234', PASSWORD_DEFAULT);
 
 // ---------------------------------------------------------------------------
 // Source name/place data (Tanzanian / Swahili context)
@@ -125,14 +134,21 @@ $insGroup = $pdo->prepare(
     'INSERT INTO customer_groups (group_name, description, group_type, status, created_by, created_at)
      VALUES (?, ?, "static", "active", ?, ?)');
 
+// Member login account (the members page lists users, not customers).
+$insUser = $pdo->prepare(
+    'INSERT INTO users
+        (username, password, email, phone, role, user_role, role_id, status, is_active, is_admin,
+         first_name, last_name, language, preferred_language, created_at)
+     VALUES (?, ?, ?, ?, "Member", "Member", ?, "active", 1, 0, ?, ?, "sw", "sw", ?)');
+
 $insMember = $pdo->prepare(
     'INSERT INTO customers
-        (first_name, last_name, customer_code, customer_name, customer_type, gender,
+        (user_id, first_name, last_name, customer_code, customer_name, customer_type, gender,
          marital_status, dob, nida_number, phone, mobile, email, address, city, district,
          ward, country, status, initial_savings, next_of_kin_name, next_of_kin_relationship,
          next_of_kin_phone, created_at, created_by, category_id)
      VALUES
-        (?, ?, ?, ?, "individual", ?,
+        (?, ?, ?, ?, ?, "individual", ?,
          ?, ?, ?, ?, ?, ?, ?, "Dar es Salaam", "Dar es Salaam",
          ?, "Tanzania", "active", ?, ?, ?,
          ?, ?, ?, 0)');
@@ -212,8 +228,17 @@ for ($i = 1; $i <= $members; $i++) {
 
     $nokName = $pick($allFirst) . ' ' . $pick($surnames);
 
+    // 2a) The member's user account (this is what the members page lists)
+    $username = strtolower($first . $last . $i);
+    $insUser->execute([
+        $username, $demoPasswordHash, $email, $phone, $memberRoleId,
+        $first, $last, $join->format('Y-m-d H:i:s'),
+    ]);
+    $uid = (int) $pdo->lastInsertId();
+
+    // 2b) The customer profile, linked to that user
     $insMember->execute([
-        $first, $last, $code, $name, $gender,
+        $uid, $first, $last, $code, $name, $gender,
         $marital, $dob, $nida, $phone, $phone, $email,
         $ward . ', Dar es Salaam',
         $ward, (float) $entrance, $nokName, $pick($relationships),
