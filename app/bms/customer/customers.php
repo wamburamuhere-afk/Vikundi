@@ -11,6 +11,11 @@ $can_create_members = canCreate('customers');
 $can_edit_members = canEdit('customers');
 $can_delete_members = canDelete('customers');
 $can_approve_members = canView('member_approvals');
+// Language flag at PAGE scope. The add-member modal also sets $__sw, but it is
+// wrapped in `if ($can_edit_members)`; view-only members (no edit rights) skip
+// that block while the child-row JS template below still references $__sw — so it
+// must be defined here unconditionally (Sentry: "Undefined variable $__sw").
+$__sw = (($_SESSION['preferred_language'] ?? 'en') === 'sw');
 require_once __DIR__ . '/../../../includes/csrf.php';
 
 // Fetch members (users joined with customer details)
