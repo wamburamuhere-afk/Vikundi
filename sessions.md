@@ -30,6 +30,46 @@ Members already logged in must log out/in once to pick up the new permissions (p
 
 ---
 
+## Session — 2026-06-27 — Fix: registration blocked (admin "Password is required" + public honeypot false-positive)
+**Branch:** `fix/registration-honeypot-and-admin-password`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Both member-registration paths were rejecting valid submissions. Neither was a DB error — both bailed at an early guard (HTTP 200 with a JSON error, so nothing hit the error log).
+
+### Bug 1 — Admin "Register New Member" → "Password is required."
+The admin form auto-generates the password (`username@123`) and never collects one, but `actions/add_member.php` called the shared validator without the `requirePassword` flag, so it defaulted to `true` and rejected every submission before the password was generated. The flag already existed and was used correctly elsewhere (`profile.php`); the admin call site was simply missed.
+- **Fix:** `add_member.php` now calls `validate_registration_input($val_post, $_FILES, $val_lang, false, true, false)` (requireTerms=false, requireSlip=true, **requirePassword=false**).
+
+### Bug 2 — Public registration → "Your registration could not be processed."
+This is the honeypot anti-bot guard (`process_registration.php`) firing on real users: the hidden decoy field was named `contact_website` with a `<label>Website</label>`, which Chrome autofill / password managers fill despite `autocomplete="off"`, falsely flagging humans as bots. The trap still catches naive bots that fill every field — it only stops *browsers* from filling it.
+- **Fix:** renamed the field to a neutral `hp_token`, dropped the "Website" label, added `readonly` + `data-lpignore` / `data-form-type="other"` so autofill leaves it alone; updated the server check in `process_registration.php` to match.
+
+### Files Modified
+- **`actions/add_member.php`** — pass `requirePassword=false` to the validator.
+- **`register.php`** — neutral, autofill-proof honeypot field.
+- **`actions/process_registration.php`** — honeypot check reads `hp_token`.
+- **`tests/Unit/RegistrationValidatorTest.php`** — 3 tests: admin no-password passes, missing-password still rejected when required, honeypot field name in sync between form and handler.
+
+### Verification
+- `composer test-unit` → 736 tests pass.
+## Session — 2026-06-27 — Transactions import: download the unmatched (no-member) rows as CSV
+**Branch:** `feat/import-unmatched-csv`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** When a bulk transaction import (M-Koba statement or our template) can't match a row to a member, those rows were silently dropped except for an 8-name preview in the result message. Investigation of a real 560-row M-Koba statement showed **0 of 524 contribution rows matched** — the group's members were never onboarded (DB had only 6 seed members; zero phone overlap). Unmatched rows are still **never inserted** (DB stays clean); they're now offered as a one-shot CSV download so the user can onboard those members and re-import.
+
+### Files Created
+- **`actions/download_unmatched.php`** — auth-gated endpoint; streams `$_SESSION['import_unmatched']` as `unmatched_transactions.csv` (UTF-8 BOM for Excel), then clears it (one-shot). Reachable via the `actions/` fallback in `handleRoute()` — no new route entry needed.
+
+### Files Modified
+- **`includes/transaction_import.php`** — added pure `unmatched_rows_to_csv(array $rows): string` (header + rows, RFC-4180 escaping).
+- **`actions/import_contributions.php`** — unmatched rows now collected as structured records (name/phone/amount/date/receipt/trans_type/reason); preview text derived from them; full list stashed in `$_SESSION['import_unmatched']` with `unmatched_count` on the response. Stale rejects cleared at the start of every import.
+- **`app/bms/customer/transactions.php`** — result alert shows a "Download unmatched rows (N)" button when `unmatched_count` is set (EN/SW).
+- **`tests/Unit/TransactionImportTest.php`** — 2 tests for `unmatched_rows_to_csv()` (header+row content; missing-keys/empty-list).
+
+### Verification
+- `composer test-unit` → 735 tests pass. New CSV tests green with no deprecations.
+
+---
+
 ## Session — 2026-06-27 — Members: simple header-named bulk template + importer (members PR-2)
 **Branch:** `feat/members-bulk-template`
 **Developer:** Claude Code / Jabir Mussa

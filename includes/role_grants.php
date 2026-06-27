@@ -2,17 +2,15 @@
 /**
  * includes/role_grants.php
  * ------------------------
- * Pure, testable default-permission rules for the four VICOBA system roles.
- * No DB / no globals — the seeder (database/seed_vicoba_roles.php) walks every
- * page_key and asks vk_role_grants() what to grant. Keeping this here (instead
- * of inline in the seeder) lets the policy be unit-tested.
+ * Pure, testable default-permission rules for the VICOBA role seeder
+ * (database/seed_vicoba_roles.php). The seeder resolves each role by name, maps
+ * it to a PURPOSE, then asks vk_role_grants() what to grant for every page_key.
+ * Keeping this here (not inline in the seeder) lets the policy be unit-tested.
  *
- * Roles:
- *   2  Chairperson — everything (admin).
- *   3  Secretary   — full CRUD on operational data, NOT user/role/settings.
- *   4  Treasurer   — full CRUD on operational data, NOT user/role/settings.
- *   13 Member      — VIEW-ONLY on most pages; admin/management & write-action
- *                    pages are hidden entirely (no row -> default-deny).
+ * Purposes:
+ *   'admin'       — Chairperson: everything.
+ *   'operational' — Secretary/Treasurer: full CRUD except user/role/settings.
+ *   'view'        — Member: VIEW-ONLY on most pages; admin/write-action pages hidden.
  */
 
 if (!function_exists('vk_admin_only_keys')) {
@@ -56,19 +54,19 @@ if (!function_exists('vk_member_hidden_keys')) {
 
 if (!function_exists('vk_role_grants')) {
     /**
-     * Default grants for a role on a single page, or null to grant nothing.
+     * Default grants for a role PURPOSE on a single page, or null to grant nothing.
      * Returns [can_view, can_create, can_edit, can_delete, can_review, can_approve].
      */
-    function vk_role_grants(int $roleId, string $key): ?array
+    function vk_role_grants(string $purpose, string $key): ?array
     {
-        if ($roleId === 2) {
+        if ($purpose === 'admin') {
             return [1, 1, 1, 1, 1, 1]; // Chairperson: everything
         }
-        if ($roleId === 3 || $roleId === 4) {
+        if ($purpose === 'operational') {
             // Secretary / Treasurer: full operational CRUD, but not admin/settings.
             return in_array($key, vk_admin_only_keys(), true) ? null : [1, 1, 1, 1, 1, 1];
         }
-        if ($roleId === 13) {
+        if ($purpose === 'view') {
             // Member: view-only on everything except the hidden admin/action pages.
             return in_array($key, vk_member_hidden_keys(), true) ? null : [1, 0, 0, 0, 0, 0];
         }

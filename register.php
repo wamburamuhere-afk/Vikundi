@@ -97,11 +97,13 @@ if (isset($_SESSION['user_id'])) {
                 <input type="hidden" name="user_role" value="Member">
                 <input type="hidden" name="status" value="pending">
                 <?= csrf_field() ?>
-                <!-- Honeypot: real users never see or fill this; automated bots do -->
+                <!-- Honeypot: real users never see or fill this; naive bots fill every field
+                     and get caught. Named neutrally (NOT "website"/"contact"/"email") + readonly
+                     so browser autofill & password managers leave it alone — a "Website" field
+                     was being auto-filled and falsely rejecting real users as bots. -->
                 <div aria-hidden="true" style="position:absolute; left:-9999px; top:-9999px; height:0; width:0; overflow:hidden;">
-                    <label>Website
-                        <input type="text" name="contact_website" tabindex="-1" autocomplete="off">
-                    </label>
+                    <input type="text" name="hp_token" tabindex="-1" autocomplete="off" readonly
+                           data-lpignore="true" data-1p-ignore data-form-type="other">
                 </div>
                 
                 <?php $__sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';

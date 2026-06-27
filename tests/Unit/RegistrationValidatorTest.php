@@ -381,6 +381,45 @@ class RegistrationValidatorTest extends TestCase
         $this->assertNotContains('You must accept the terms and conditions to register.', $errors);
     }
 
+    public function test_admin_create_does_not_require_password_when_auto_generated(): void
+    {
+        // Regression: the admin "Register New Member" form never collects a password
+        // (it is auto-generated as username@123). The call must pass requirePassword=false
+        // (args: requireTerms=false, requireSlip=true, requirePassword=false) — otherwise
+        // every admin member creation failed with "Password is required."
+        $post = $this->validPost();
+        unset($post['terms'], $post['password'], $post['confirm_password']);
+        $errors = validate_registration_input($post, $this->validFiles(), 'en', false, true, false);
+        $this->assertSame([], $errors);
+    }
+
+    public function test_admin_create_still_rejects_missing_password_when_required(): void
+    {
+        // Documents the bug: with the default requirePassword=true and no password,
+        // the admin submission is rejected — which is what broke member creation.
+        $post = $this->validPost();
+        unset($post['terms'], $post['password'], $post['confirm_password']);
+        $errors = validate_registration_input($post, $this->validFiles(), 'en', false); // requirePassword defaults true
+        $this->assertContains('Password is required.', $errors);
+    }
+
+    // ----- public registration honeypot wiring (form <-> handler) -----------
+
+    public function test_honeypot_field_name_is_in_sync_and_neutral(): void
+    {
+        $form    = (string) file_get_contents(__DIR__ . '/../../register.php');
+        $handler = (string) file_get_contents(__DIR__ . '/../../actions/process_registration.php');
+
+        // The form renders the neutral honeypot name and the handler checks the same key.
+        $this->assertStringContainsString('name="hp_token"', $form);
+        $this->assertStringContainsString("\$_POST['hp_token']", $handler);
+
+        // The old autofill-magnet name ("contact_website" / a "Website" field) is gone
+        // from both — it was being auto-filled and falsely flagging real users as bots.
+        $this->assertStringNotContainsString('contact_website', $form);
+        $this->assertStringNotContainsString('contact_website', $handler);
+    }
+
     // ----- profile EDIT path (no slip / password / terms required) ----------
 
     public function test_edit_mode_does_not_require_slip_password_or_terms(): void
