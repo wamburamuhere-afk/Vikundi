@@ -4,6 +4,7 @@ ob_start();
 
 // Include roots which sets up paths and authentication
 require_once __DIR__ . '/../../../roots.php';
+require_once __DIR__ . '/../../../includes/document_access.php'; // access-level enforcement
 
 // Handle document actions (Delete/Download) - MUST BE BEFORE HEADER for downloads
 $action = $_GET['action'] ?? '';
@@ -174,6 +175,16 @@ function downloadDocumentLocal($pdo, $document_id) {
 
         if (!$document) {
             die("Document record not found.");
+        }
+
+        // roles: enforce the document's access level (public / restricted / private).
+        $uid = (int) ($_SESSION['user_id'] ?? 0);
+        if ($uid === 0) { http_response_code(401); die('Unauthorized.'); }
+        $isAdmin  = function_exists('isAdmin') && isAdmin();
+        $isLeader = $isAdmin || (function_exists('canEdit') && canEdit('document_library'));
+        if (!vk_user_can_access_document($document, $uid, $isAdmin, $isLeader)) {
+            http_response_code(403);
+            die('You do not have permission to access this document.');
         }
 
         $file_path = $document['file_path'];
