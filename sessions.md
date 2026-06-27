@@ -4,6 +4,28 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-27 — Document Library: actually enforce the access level (was cosmetic)
+**Branch:** `fix/document-access-level-enforcement`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** The upload modal's **Access Level** (Public/Restricted/Private) was stored and shown (badge + filter) but **never enforced** — `api/get_documents.php` used `access_level` only as an optional user filter (base query returned every document to everyone), and `downloadDocumentLocal()` served any document by id with no check. So private/restricted files were visible and downloadable by anyone (incl. ordinary members now that they can view the library).
+
+### Rule (confirmed with owner)
+- **public** → every logged-in user · **restricted** → leadership (admin/chairperson/secretary/treasurer) + the uploader · **private** → the uploader + admins · admins see everything. Leadership = `isAdmin() || canEdit('document_library')`.
+
+### Fix
+- **`includes/document_access.php` (new, pure/testable):** `vk_user_can_access_document()` (single-doc predicate) and `vk_document_visibility_where()` (SQL WHERE fragment, "1=1" for admins).
+- **`api/get_documents.php`:** restricts the data query, the filtered count, the total count, and the stat cards to documents the viewer may see.
+- **`app/constant/document/document_library.php`:** `downloadDocumentLocal()` now 401s if unauthenticated and 403s if the user fails the access check before streaming.
+- **`tests/Unit/DocumentAccessTest.php` (new):** 8 tests across all level/role/owner combinations + the SQL fragment.
+
+### Note (separate, flagged not fixed)
+`document_library.php` gates the page on `requireViewPermission('library')`, but the real permission key is **`document_library`** — a likely page-key mismatch worth a follow-up.
+
+### Verification
+- `composer test-unit` → 747 tests pass. Visibility SQL validated against the live `documents` table (a member now sees 0 of the 3 private docs; previously all 3).
+
+---
+
 ## Session — 2026-06-27 — Fix: registration blocked (admin "Password is required" + public honeypot false-positive)
 **Branch:** `fix/registration-honeypot-and-admin-password`
 **Developer:** Claude Code / Jabir Mussa

@@ -16,6 +16,15 @@ try {
     }
 
     require_once __DIR__ . '/../roots.php'; // Correct path to roots
+    require_once __DIR__ . '/../includes/document_access.php'; // access-level enforcement
+
+    // roles: a viewer only sees documents their access level allows
+    // (public -> all, restricted -> leadership + owner, private -> owner + admin).
+    $vuid      = (int) $_SESSION['user_id'];
+    $isAdmin   = isAdmin();
+    $isLeader  = $isAdmin || canEdit('document_library');
+    $visParams = [];
+    $visCond   = vk_document_visibility_where('d', $vuid, $isAdmin, $isLeader, $visParams);
 
     $draw    = isset($_GET['draw'])   ? (int)$_GET['draw']   : 1;
     $start   = isset($_GET['start'])  ? (int)$_GET['start']  : 0;
@@ -41,10 +50,14 @@ try {
         $where .= " AND d.file_type = :f_type"; 
         $params[':f_type'] = $file_type; 
     }
-    if ($access_level) { 
-        $where .= " AND d.access_level = :a_level"; 
-        $params[':a_level'] = $access_level; 
+    if ($access_level) {
+        $where .= " AND d.access_level = :a_level";
+        $params[':a_level'] = $access_level;
     }
+
+    // roles: restrict to documents this user may actually see.
+    $where  .= " AND $visCond";
+    $params += $visParams;
 
     // Count filtered records
     $countSql  = "SELECT COUNT(*) FROM documents d $where";
@@ -55,8 +68,11 @@ try {
     $countStmt->execute();
     $recordsFiltered = (int)$countStmt->fetchColumn();
     
-    // Count total records
-    $recordsTotal = (int)$pdo->query("SELECT COUNT(*) FROM documents")->fetchColumn();
+    // Count total records (scoped to what the user can access)
+    $totStmt = $pdo->prepare("SELECT COUNT(*) FROM documents d WHERE $visCond");
+    foreach ($visParams as $k => $v) { $totStmt->bindValue($k, $v); }
+    $totStmt->execute();
+    $recordsTotal = (int) $totStmt->fetchColumn();
 
     // Sorting
     $colMap  = [
@@ -96,10 +112,16 @@ try {
     $dataStmt->execute();
     $data = $dataStmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Global stats
-    $totalSize       = (float)$pdo->query("SELECT COALESCE(SUM(file_size),0) FROM documents")->fetchColumn();
-    $recentUploads   = (int)$pdo->query("SELECT COUNT(*) FROM documents WHERE uploaded_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)")->fetchColumn();
-    $recentDownloads = (int)$pdo->query("SELECT COALESCE(SUM(download_count),0) FROM documents")->fetchColumn();
+    // Global stats (scoped to what the user can access)
+    $statBind = function ($sql) use ($pdo, $visParams) {
+        $st = $pdo->prepare($sql);
+        foreach ($visParams as $k => $v) { $st->bindValue($k, $v); }
+        $st->execute();
+        return $st->fetchColumn();
+    };
+    $totalSize       = (float) $statBind("SELECT COALESCE(SUM(file_size),0) FROM documents d WHERE $visCond");
+    $recentUploads   = (int)   $statBind("SELECT COUNT(*) FROM documents d WHERE $visCond AND d.uploaded_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)");
+    $recentDownloads = (int)   $statBind("SELECT COALESCE(SUM(download_count),0) FROM documents d WHERE $visCond");
 
     if (ob_get_length()) ob_clean();
     echo json_encode([
