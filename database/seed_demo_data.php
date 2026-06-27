@@ -198,8 +198,9 @@ for ($i = 1; $i <= $members; $i++) {
     $gender  = $isMale ? 'Male' : 'Female';
     $code    = 'VIK-' . str_pad((string) $i, 4, '0', STR_PAD_LEFT);
     $phone   = '+2557' . mt_rand(10, 89) . mt_rand(100000, 999999);
-    $nida    = mt_rand(19600101, 20001231) . '-' . mt_rand(10000, 99999) . '-' . mt_rand(10000, 99999) . '-' . mt_rand(10, 99);
     $dob     = sprintf('%04d-%02d-%02d', mt_rand(1965, 2000), mt_rand(1, 12), mt_rand(1, 28));
+    // Tanzanian NIDA is 20 digits (birthdate YYYYMMDD + 12 more). Column is varchar(20).
+    $nida    = str_replace('-', '', $dob) . sprintf('%06d%06d', mt_rand(0, 999999), mt_rand(0, 999999));
     $email   = strtolower($first . '.' . $last . $i) . '@example.co.tz';
     $ward    = $pick($wards);
     $marital = $pick(['Single', 'Married', 'Married', 'Widowed']);
