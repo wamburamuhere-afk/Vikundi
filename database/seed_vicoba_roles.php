@@ -7,7 +7,7 @@
  *   Chairperson — full administrative access (via isAdmin()).
  *   Secretary   — full CRUD on operational data, NOT user/role/settings.
  *   Treasurer   — full CRUD on operational data, NOT user/role/settings.
- *   Member      — view-only (its limited-view masking lives elsewhere).
+ *   Member      — view-only on most pages (its limited-view masking lives elsewhere).
  *
  * Roles are resolved BY NAME, not by a fixed id: if a role with the name already
  * exists (e.g. a site already has a "Member" role), that existing role is reused.
@@ -15,14 +15,19 @@
  * otherwise at an auto-assigned id. This avoids the unique-name / foreign-key
  * clash that a fixed-id INSERT caused on sites that already had these roles.
  *
+ * The default permission policy itself lives in includes/role_grants.php (pure,
+ * unit-tested by RoleGrantsTest). The Member role gets view-only on every page
+ * except an admin/action hide-list, so it can see most of the system read-only.
+ *
  * Idempotent and deploy-safe (registered in database/migrate.php):
  *  - BMS leftover roles (by name) are removed; their users move to Member first.
  *  - The four roles are created/kept as needed.
- *  - Default permissions are seeded only when a role has none yet, so manual
- *    permission changes made later in the UI are never wiped on deploy.
+ *  - Leadership permissions are seeded only when a role has none yet (manual UI
+ *    changes survive a deploy); Member is enforced (reset to defaults every run).
  */
 
 require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/role_grants.php'; // pure, testable grant policy
 
 // name => [purpose, preferred_id, description, enforce_defaults]
 // enforce_defaults=true resets the role's permissions to its defaults on every
@@ -33,32 +38,11 @@ $roles = [
     'Chairperson' => ['admin',       2,  'Group chairperson — full administrative access.', false],
     'Secretary'   => ['operational', 3,  'Group secretary — full CRUD on operational data.', false],
     'Treasurer'   => ['operational', 4,  'Group treasurer/accountant — full CRUD on operational data.', false],
-    'Member'      => ['view',        13, 'Ordinary member — view-only, with a limited view of other members.', true],
+    'Member'      => ['view',        13, 'Ordinary member — view-only on most pages, with a limited view of other members.', true],
 ];
 
 // BMS leftover role NAMES to remove (names are stable across environments; ids are not).
 $bmsRoleNames = ['Director', 'CFO', 'Accountant', 'Credit Manager', 'Loan Manager'];
-
-// Pages only the Chairperson/Admin may manage (user/role management + settings).
-$adminOnlyKeys  = ['users', 'user_roles', 'add_user', 'edit_user', 'system_settings', 'policy_management'];
-// Pages an ordinary Member may VIEW.
-$memberViewKeys = ['customers', 'customer_details', 'dashboard'];
-
-/** Default grants for a role purpose on a page, or null to grant nothing. */
-function vk_role_grants(string $purpose, string $key, array $adminOnlyKeys, array $memberViewKeys): ?array
-{
-    // [can_view, can_create, can_edit, can_delete, can_review, can_approve]
-    if ($purpose === 'admin') {
-        return [1, 1, 1, 1, 1, 1];
-    }
-    if ($purpose === 'operational') {
-        return in_array($key, $adminOnlyKeys, true) ? null : [1, 1, 1, 1, 1, 1];
-    }
-    if ($purpose === 'view') {
-        return in_array($key, $memberViewKeys, true) ? [1, 0, 0, 0, 0, 0] : null;
-    }
-    return null;
-}
 
 $pdo->beginTransaction();
 try {
@@ -106,7 +90,8 @@ try {
         $removedBms[] = "$bn#$bid";
     }
 
-    // 3. Seed default permissions — only for a role that has none yet.
+    // 3. Seed default permissions. Leadership roles seed only when empty; Member
+    //    (enforce=true) is reset to its view-only defaults on every run.
     $perms      = $pdo->query("SELECT permission_id, page_key FROM permissions")->fetchAll(PDO::FETCH_KEY_PAIR);
     $countPerms = $pdo->prepare("SELECT COUNT(*) FROM role_permissions WHERE role_id = ?");
     $insPerm    = $pdo->prepare(
@@ -125,7 +110,7 @@ try {
         if ($has && $enforce)  { $resetPerms->execute([$rid]); $reset[] = "$name#$rid"; }
         else                   { $seeded[] = "$name#$rid"; }
         foreach ($perms as $pid => $key) {
-            $g = vk_role_grants($purpose, $key, $adminOnlyKeys, $memberViewKeys);
+            $g = vk_role_grants($purpose, $key);
             if ($g === null) { continue; }
             $insPerm->execute([$rid, $pid, $g[0], $g[1], $g[2], $g[3], $g[4], $g[5]]);
         }

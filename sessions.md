@@ -4,25 +4,29 @@ This file tracks every development session, modification, and significant change
 
 ---
 
-## Session — 2026-06-27 — Document Library: actually enforce the access level (was cosmetic)
-**Branch:** `fix/document-access-level-enforcement`
+## Session — 2026-06-27 — Member role: enforce view-only access + lock profile editing
+**Branch:** `fix/member-rbac-view-only-and-profile-lock`
 **Developer:** Claude Code / Jabir Mussa
-**Summary:** The upload modal's **Access Level** (Public/Restricted/Private) was stored and shown (badge + filter) but **never enforced** — `api/get_documents.php` used `access_level` only as an optional user filter (base query returned every document to everyone), and `downloadDocumentLocal()` served any document by id with no check. So private/restricted files were visible and downloadable by anyone (incl. ordinary members now that they can view the library).
+**Summary:** Logged-in Members could only see the dashboard. **Not an enforcement bug** — RBAC is default-deny and works; the *seeder* granted Member view on only 3 pages (`customers`, `customer_details`, `dashboard`). Per the boss's requirement, a Member should view **most** pages (view-only, no create/edit/delete), with sensitive data on other members masked, and must not edit their own profile.
 
-### Rule (confirmed with owner)
-- **public** → every logged-in user · **restricted** → leadership (admin/chairperson/secretary/treasurer) + the uploader · **private** → the uploader + admins · admins see everything. Leadership = `isAdmin() || canEdit('document_library')`.
+### Root cause
+`database/seed_vicoba_roles.php` set `$memberViewKeys = ['customers','customer_details','dashboard']`. Also, the seeder only seeds a role that has **zero** rows (and runs on deploy via `migrate.php`), so editing it alone would not fix the live DB or existing deployments — Member already had 3 rows and was skipped.
 
 ### Fix
-- **`includes/document_access.php` (new, pure/testable):** `vk_user_can_access_document()` (single-doc predicate) and `vk_document_visibility_where()` (SQL WHERE fragment, "1=1" for admins).
-- **`api/get_documents.php`:** restricts the data query, the filtered count, the total count, and the stat cards to documents the viewer may see.
-- **`app/constant/document/document_library.php`:** `downloadDocumentLocal()` now 401s if unauthenticated and 403s if the user fails the access check before streaming.
-- **`tests/Unit/DocumentAccessTest.php` (new):** 8 tests across all level/role/owner combinations + the SQL fragment.
+- **`includes/role_grants.php` (new, pure/testable):** extracted the grant policy. Member = view-only `[1,0,0,0,0,0]` on every page **except** a hidden admin/action set (user/role/settings mgmt, comms & AI admin, bulk import, create/registration flows, loan/payment write-actions, edit_* pages).
+- **`database/seed_vicoba_roles.php`:** uses the shared rules and **re-syncs the Member role on every run** (`$resyncEveryRun = [13]`) so the live DB and every deploy self-heal; roles 2/3/4 keep the "seed only when empty" guard. Ran it: Member went 3 → **46 view rows, 0 writes**.
+- **Masking:** already merged (PR #131, `vk_mask_member_row` + `canSeeMemberSensitiveData`) — stays correct because Member remains view-only (`canEdit('customers')` false → other members' phone/NIDA/email/etc. blanked server-side). No change needed.
+- **`app/constant/profile/profile.php`:** added `$can_edit_profile = isAdmin() || canEdit('customers')`. Non-leadership can't enter edit mode (`?edit=1` ignored), the `update_profile` POST is rejected server-side, and the Edit button is hidden. Leadership unaffected.
 
-### Note (separate, flagged not fixed)
-`document_library.php` gates the page on `requireViewPermission('library')`, but the real permission key is **`document_library`** — a likely page-key mismatch worth a follow-up.
+### Tests
+- **`tests/Unit/RoleGrantsTest.php` (new):** Member view-only on operational pages, hidden from admin/action pages, never gets create/edit/delete; Chairperson full; Secretary operational-CRUD-not-admin.
+- **`tests/Unit/VicobaRolesTest.php`:** refocused on seeder wiring (declarations, BMS removal, Member re-sync, deploy hook); grant-logic now covered by RoleGrantsTest.
+
+### Note
+Members already logged in must log out/in once to pick up the new permissions (permissions are session-cached at login).
 
 ### Verification
-- `composer test-unit` → 747 tests pass. Visibility SQL validated against the live `documents` table (a member now sees 0 of the 3 private docs; previously all 3).
+- `composer test-unit` → 738 tests pass. Live DB re-seeded and verified.
 
 ---
 
