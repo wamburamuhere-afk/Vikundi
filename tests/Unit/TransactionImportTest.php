@@ -95,4 +95,31 @@ class TransactionImportTest extends TestCase
         $this->assertSame('monthly', $bad['type']);
         $this->assertNull($bad['account']);
     }
+
+    public function testUnmatchedRowsToCsvHasHeaderAndRows(): void
+    {
+        $csv = unmatched_rows_to_csv([
+            [
+                'name' => 'Consesa Munishi', 'phone' => '767276015', 'amount' => 5000.0,
+                'date' => '2026-02-28', 'receipt' => 'DBS9N7LOXOR',
+                'trans_type' => 'Member Contribution', 'reason' => 'No matching member',
+            ],
+        ]);
+        $lines = array_values(array_filter(explode("\n", trim($csv)), fn($l) => $l !== ''));
+        $this->assertSame('member_name,phone,amount,date,receipt,trans_type,reason', trim($lines[0]));
+        $this->assertStringContainsString('Consesa Munishi', $lines[1]);
+        $this->assertStringContainsString('767276015', $lines[1]);
+        $this->assertStringContainsString('No matching member', $lines[1]);
+    }
+
+    public function testUnmatchedRowsToCsvHandlesMissingKeysAndEmptyList(): void
+    {
+        // Header-only when there are no rejects.
+        $this->assertSame('member_name,phone,amount,date,receipt,trans_type,reason', trim(unmatched_rows_to_csv([])));
+
+        // Missing keys don't fatal; reason defaults.
+        $csv = unmatched_rows_to_csv([['phone' => '712345678']]);
+        $this->assertStringContainsString('712345678', $csv);
+        $this->assertStringContainsString('No matching member', $csv);
+    }
 }

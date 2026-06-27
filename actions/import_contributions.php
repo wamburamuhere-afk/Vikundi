@@ -48,6 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['upload_file'])) {
     }, $headers);
 
     $imported = 0; $skipped = 0; $duplicates = 0; $unmatched = [];
+    unset($_SESSION['import_unmatched']); // clear any rejects held from a prior import
 
     $findMember = $pdo->prepare("
         SELECT c.customer_id FROM customers c
@@ -85,7 +86,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['upload_file'])) {
             $findMember->execute(['%' . $p['phone']]);
             $member_id = $findMember->fetchColumn();
             if (!$member_id) {
-                $unmatched[] = ($p['name'] !== '' ? $p['name'] : 'Unknown') . ' (' . $p['phone'] . ')';
+                $unmatched[] = [
+                    'name'       => $p['name'],
+                    'phone'      => $p['phone'],
+                    'amount'     => $p['amount'],
+                    'date'       => $p['date'] ?? '',
+                    'receipt'    => $p['receipt'],
+                    'trans_type' => $p['trans_type'],
+                    'reason'     => 'No matching member',
+                ];
                 continue;
             }
 
@@ -121,7 +130,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['upload_file'])) {
         $parts = ["Imported $imported transaction(s) (pending approval)."];
         if ($duplicates) $parts[] = "$duplicates already on record — skipped.";
         if ($skipped)    $parts[] = "$skipped non-contribution row(s) ignored.";
-        if ($unmatched)  $parts[] = count($unmatched) . " unmatched (no member): " . implode(', ', array_slice($unmatched, 0, 8)) . (count($unmatched) > 8 ? '…' : '');
+        if ($unmatched) {
+            $preview = array_map(
+                fn($r) => ($r['name'] !== '' ? $r['name'] : 'Unknown') . ' (' . $r['phone'] . ')',
+                array_slice($unmatched, 0, 8)
+            );
+            $parts[] = count($unmatched) . " unmatched (no member): " . implode(', ', $preview) . (count($unmatched) > 8 ? '…' : '');
+            // Hold the full reject list for a one-shot CSV download on the page.
+            $_SESSION['import_unmatched'] = $unmatched;
+            $response['unmatched_count'] = count($unmatched);
+        }
 
         $response['success'] = true;
         $response['message'] = implode(' ', $parts);
