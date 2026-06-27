@@ -4,6 +4,32 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-27 — Member role: enforce view-only access + lock profile editing
+**Branch:** `fix/member-rbac-view-only-and-profile-lock`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Logged-in Members could only see the dashboard. **Not an enforcement bug** — RBAC is default-deny and works; the *seeder* granted Member view on only 3 pages (`customers`, `customer_details`, `dashboard`). Per the boss's requirement, a Member should view **most** pages (view-only, no create/edit/delete), with sensitive data on other members masked, and must not edit their own profile.
+
+### Root cause
+`database/seed_vicoba_roles.php` set `$memberViewKeys = ['customers','customer_details','dashboard']`. Also, the seeder only seeds a role that has **zero** rows (and runs on deploy via `migrate.php`), so editing it alone would not fix the live DB or existing deployments — Member already had 3 rows and was skipped.
+
+### Fix
+- **`includes/role_grants.php` (new, pure/testable):** extracted the grant policy. Member = view-only `[1,0,0,0,0,0]` on every page **except** a hidden admin/action set (user/role/settings mgmt, comms & AI admin, bulk import, create/registration flows, loan/payment write-actions, edit_* pages).
+- **`database/seed_vicoba_roles.php`:** uses the shared rules and **re-syncs the Member role on every run** (`$resyncEveryRun = [13]`) so the live DB and every deploy self-heal; roles 2/3/4 keep the "seed only when empty" guard. Ran it: Member went 3 → **46 view rows, 0 writes**.
+- **Masking:** already merged (PR #131, `vk_mask_member_row` + `canSeeMemberSensitiveData`) — stays correct because Member remains view-only (`canEdit('customers')` false → other members' phone/NIDA/email/etc. blanked server-side). No change needed.
+- **`app/constant/profile/profile.php`:** added `$can_edit_profile = isAdmin() || canEdit('customers')`. Non-leadership can't enter edit mode (`?edit=1` ignored), the `update_profile` POST is rejected server-side, and the Edit button is hidden. Leadership unaffected.
+
+### Tests
+- **`tests/Unit/RoleGrantsTest.php` (new):** Member view-only on operational pages, hidden from admin/action pages, never gets create/edit/delete; Chairperson full; Secretary operational-CRUD-not-admin.
+- **`tests/Unit/VicobaRolesTest.php`:** refocused on seeder wiring (declarations, BMS removal, Member re-sync, deploy hook); grant-logic now covered by RoleGrantsTest.
+
+### Note
+Members already logged in must log out/in once to pick up the new permissions (permissions are session-cached at login).
+
+### Verification
+- `composer test-unit` → 738 tests pass. Live DB re-seeded and verified.
+
+---
+
 ## Session — 2026-06-27 — Members: simple header-named bulk template + importer (members PR-2)
 **Branch:** `feat/members-bulk-template`
 **Developer:** Claude Code / Jabir Mussa

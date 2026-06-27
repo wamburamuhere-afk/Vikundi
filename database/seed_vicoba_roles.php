@@ -21,6 +21,7 @@
  */
 
 require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/role_grants.php'; // pure, testable grant rules
 
 $bmsRoleIds = [5, 6, 7, 8, 9];
 
@@ -28,29 +29,13 @@ $roles = [
     2  => ['Chairperson', 'Group chairperson — full administrative access.'],
     3  => ['Secretary',   'Group secretary — full CRUD on operational data.'],
     4  => ['Treasurer',   'Group treasurer/accountant — full CRUD on operational data.'],
-    13 => ['Member',      'Ordinary member — view-only, with a limited view of other members.'],
+    13 => ['Member',      'Ordinary member — view-only on most pages, with a limited view of other members.'],
 ];
 
-// Pages only the Chairperson/Admin may manage (user/role management + settings).
-$adminOnlyKeys  = ['users', 'user_roles', 'add_user', 'edit_user', 'system_settings', 'policy_management'];
-// Pages an ordinary Member may VIEW.
-$memberViewKeys = ['customers', 'customer_details', 'dashboard'];
-
-/** Default grants for a role on a page, or null to grant nothing. */
-function vk_role_grants(int $roleId, string $key, array $adminOnlyKeys, array $memberViewKeys): ?array
-{
-    // [can_view, can_create, can_edit, can_delete, can_review, can_approve]
-    if ($roleId === 2) {
-        return [1, 1, 1, 1, 1, 1]; // Chairperson: everything
-    }
-    if ($roleId === 3 || $roleId === 4) {
-        return in_array($key, $adminOnlyKeys, true) ? null : [1, 1, 1, 1, 1, 1]; // operational CRUD only
-    }
-    if ($roleId === 13) {
-        return in_array($key, $memberViewKeys, true) ? [1, 0, 0, 0, 0, 0] : null; // view-only
-    }
-    return null;
-}
+// Member (role 13) is a FIXED view-only system role, so its permissions are
+// re-synced on every run (self-healing across deploys). The other roles keep
+// the "seed only when empty" guard so manual UI tweaks survive a deploy.
+$resyncEveryRun = [13];
 
 $pdo->beginTransaction();
 try {
@@ -77,12 +62,18 @@ try {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
     );
 
+    $delete = $pdo->prepare("DELETE FROM role_permissions WHERE role_id = ?");
+
     $seeded = [];
     foreach (array_keys($roles) as $roleId) {
-        $count->execute([$roleId]);
-        if ((int) $count->fetchColumn() > 0) { continue; } // already configured — leave it
+        if (in_array($roleId, $resyncEveryRun, true)) {
+            $delete->execute([$roleId]); // fixed system role — always re-sync
+        } else {
+            $count->execute([$roleId]);
+            if ((int) $count->fetchColumn() > 0) { continue; } // already configured — leave it
+        }
         foreach ($perms as $pid => $key) {
-            $g = vk_role_grants($roleId, $key, $adminOnlyKeys, $memberViewKeys);
+            $g = vk_role_grants($roleId, $key);
             if ($g === null) { continue; }
             $insert->execute([$roleId, $pid, $g[0], $g[1], $g[2], $g[3], $g[4], $g[5]]);
         }

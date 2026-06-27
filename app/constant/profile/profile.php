@@ -3,13 +3,20 @@ require_once __DIR__ . '/../../../roots.php';
 require_once __DIR__ . '/../../../includes/require_login.php'; // audit M5: authenticate before any $_SESSION['user_id'] use
 require_once __DIR__ . '/../../../includes/csrf.php';
 require_once __DIR__ . '/../../../includes/registration_validator.php';
+require_once __DIR__ . '/../../../core/permissions.php'; // roles: who may edit a profile
 date_default_timezone_set('Africa/Nairobi');
+
+// roles: only leadership (admin/chairperson, or anyone who can edit members)
+// may change profile data. Ordinary view-only Members cannot edit any profile —
+// including their own. Permissions are session-cached at login, so this is
+// available here even before header.php loads.
+$can_edit_profile = isAdmin() || canEdit('customers');
 
 // Get target user ID (allow viewing others if Admin/Secretary)
 $view_user_id = isset($_GET['id']) ? (int)$_GET['id'] : $_SESSION['user_id'];
 $ref = $_GET['ref'] ?? 'list';
 $is_own_profile = ($view_user_id == $_SESSION['user_id']);
-$edit_mode = isset($_GET['edit']) && $_GET['edit'] == 1;
+$edit_mode = isset($_GET['edit']) && $_GET['edit'] == 1 && $can_edit_profile;
 
 // Fetch current user's role before access check
 $role_stmt = $pdo->prepare("SELECT r.role_name FROM users u JOIN roles r ON u.role_id = r.role_id WHERE u.user_id = ?");
@@ -143,6 +150,12 @@ if ($_POST) {
     // Update Profile
     if (isset($_POST['update_profile'])) {
         try {
+            // roles: ordinary view-only members may not edit any profile.
+            if (!$can_edit_profile) {
+                throw new Exception((($_SESSION['preferred_language'] ?? 'en') === 'sw')
+                    ? 'Huna ruhusa ya kuhariri taarifa hizi.'
+                    : 'You do not have permission to edit this profile.');
+            }
             $first_name = trim($_POST['first_name']);
             $middle_name = trim($_POST['middle_name'] ?? '');
             $last_name = trim($_POST['last_name']);
@@ -736,7 +749,7 @@ require_once 'header.php';
             // Dynamic Back Button Logic
             $back_url = ($ref === 'approvals') ? getUrl('member_approvals') : getUrl('customers');
             ?>
-            <?php if ($is_own_profile || in_array($user_role, $viongozi_roles)): ?>
+            <?php if (($is_own_profile || in_array($user_role, $viongozi_roles)) && $can_edit_profile): // roles: members can't edit ?>
                 <a href="?id=<?= $view_user_id ?>&edit=1&ref=<?= htmlspecialchars($ref) ?>" class="btn btn-primary shadow-sm d-print-none">
                     <i class="bi bi-pencil-square"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'HARIRI TAARIFA' : 'EDIT PROFILE' ?>
                 </a>
