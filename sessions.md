@@ -25,6 +25,22 @@ This is the honeypot anti-bot guard (`process_registration.php`) firing on real 
 
 ### Verification
 - `composer test-unit` → 736 tests pass.
+## Session — 2026-06-27 — Transactions import: download the unmatched (no-member) rows as CSV
+**Branch:** `feat/import-unmatched-csv`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** When a bulk transaction import (M-Koba statement or our template) can't match a row to a member, those rows were silently dropped except for an 8-name preview in the result message. Investigation of a real 560-row M-Koba statement showed **0 of 524 contribution rows matched** — the group's members were never onboarded (DB had only 6 seed members; zero phone overlap). Unmatched rows are still **never inserted** (DB stays clean); they're now offered as a one-shot CSV download so the user can onboard those members and re-import.
+
+### Files Created
+- **`actions/download_unmatched.php`** — auth-gated endpoint; streams `$_SESSION['import_unmatched']` as `unmatched_transactions.csv` (UTF-8 BOM for Excel), then clears it (one-shot). Reachable via the `actions/` fallback in `handleRoute()` — no new route entry needed.
+
+### Files Modified
+- **`includes/transaction_import.php`** — added pure `unmatched_rows_to_csv(array $rows): string` (header + rows, RFC-4180 escaping).
+- **`actions/import_contributions.php`** — unmatched rows now collected as structured records (name/phone/amount/date/receipt/trans_type/reason); preview text derived from them; full list stashed in `$_SESSION['import_unmatched']` with `unmatched_count` on the response. Stale rejects cleared at the start of every import.
+- **`app/bms/customer/transactions.php`** — result alert shows a "Download unmatched rows (N)" button when `unmatched_count` is set (EN/SW).
+- **`tests/Unit/TransactionImportTest.php`** — 2 tests for `unmatched_rows_to_csv()` (header+row content; missing-keys/empty-list).
+
+### Verification
+- `composer test-unit` → 735 tests pass. New CSV tests green with no deprecations.
 
 ---
 
