@@ -101,8 +101,7 @@ $cycleId     = (int) $cycleIds[0];
 // A member in this system is a `users` row (role Member); the customer record
 // holds the profile and is linked by customers.user_id. The members page reads
 // FROM users, so every demo member needs a user account or it won't show.
-$memberRoleId     = (int) ($pdo->query("SELECT role_id FROM roles WHERE role_name = 'Member' LIMIT 1")->fetchColumn() ?: 0);
-$demoPasswordHash = password_hash('Demo@1234', PASSWORD_DEFAULT);
+$memberRoleId = (int) ($pdo->query("SELECT role_id FROM roles WHERE role_name = 'Member' LIMIT 1")->fetchColumn() ?: 0);
 
 // ---------------------------------------------------------------------------
 // Source name/place data (Tanzanian / Swahili context)
@@ -140,6 +139,9 @@ $insUser = $pdo->prepare(
         (username, password, email, phone, role, user_role, role_id, status, is_active, is_admin,
          first_name, last_name, language, preferred_language, created_at)
      VALUES (?, ?, ?, ?, "Member", "Member", ?, "active", 1, 0, ?, ?, "sw", "sw", ?)');
+
+// Username uniqueness probe — mirrors actions/add_member.php exactly.
+$unStmt = $pdo->prepare('SELECT COUNT(*) FROM users WHERE username = ?');
 
 $insMember = $pdo->prepare(
     'INSERT INTO customers
@@ -228,10 +230,23 @@ for ($i = 1; $i <= $members; $i++) {
 
     $nokName = $pick($allFirst) . ' ' . $pick($surnames);
 
-    // 2a) The member's user account (this is what the members page lists)
-    $username = strtolower($first . $last . $i);
+    // 2a) The member's user account (this is what the members page lists).
+    //     Username convention copied from actions/add_member.php: first initial
+    //     of the first name + lowercase last name (spaces stripped), with a
+    //     numeric suffix on collision — e.g. "John Doe" -> jdoe, then jdoe1.
+    $firstInitial = strtolower(substr(trim($first), 0, 1));
+    $lastSlug     = strtolower(preg_replace('/\s+/', '', trim($last)));
+    $username     = $firstInitial . $lastSlug;
+    $base         = $username;
+    $unStmt->execute([$username]);
+    for ($k = 1; (int) $unStmt->fetchColumn() > 0; $k++) {
+        $username = $base . $k;
+        $unStmt->execute([$username]);
+    }
+    $passwordHash = password_hash($username . '@123', PASSWORD_DEFAULT); // same as add_member.php
+
     $insUser->execute([
-        $username, $demoPasswordHash, $email, $phone, $memberRoleId,
+        $username, $passwordHash, $email, $phone, $memberRoleId,
         $first, $last, $join->format('Y-m-d H:i:s'),
     ]);
     $uid = (int) $pdo->lastInsertId();
