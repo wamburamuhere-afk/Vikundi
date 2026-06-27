@@ -28,7 +28,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Honeypot: a hidden field real users never see/fill; automated bots do.
-    if (trim($_POST['contact_website'] ?? '') !== '') {
+    // Field name must match the neutral one rendered in register.php (hp_token).
+    if (trim($_POST['hp_token'] ?? '') !== '') {
         $response['message'] = ($req_lang === 'sw')
             ? 'Usajili haukuweza kukamilika.'
             : 'Your registration could not be processed.';
