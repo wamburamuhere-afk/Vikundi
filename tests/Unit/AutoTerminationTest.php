@@ -83,4 +83,23 @@ class AutoTerminationTest extends TestCase
         $this->assertStringContainsString('vk_auto_termination_due', $src);
         $this->assertStringContainsString('realpath($argv[0]) === __FILE__', $src);
     }
+
+    public function testSweepCountsApprovedContributionsAsPaid(): void
+    {
+        // Regression: the paid-total in the sweep must count 'approved'
+        // contributions (the live workflow ends at 'approved', not 'confirmed').
+        // Counting only 'confirmed' zeroed every real payment and swept fully
+        // paid-up members into dormant. Keep the status set aligned with the
+        // rest of the app: confirmed / approved / '' (legacy blank).
+        $src = file_get_contents(__DIR__ . '/../../actions/auto_terminate_members.php');
+
+        // The paid-total CASE must include 'approved', and must not have
+        // regressed to an equals-'confirmed'-only test.
+        $this->assertMatchesRegularExpression(
+            "/con\.status\s+IN\s*\(\s*'confirmed'\s*,\s*'approved'\s*,\s*''\s*\)/",
+            $src,
+            "Auto-termination must count approved contributions as paid."
+        );
+        $this->assertStringNotContainsString("con.status = 'confirmed'", $src);
+    }
 }
