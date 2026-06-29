@@ -73,6 +73,52 @@ class AutoTerminationTest extends TestCase
         $this->assertSame(15000.0, $total);
     }
 
+    public function testDeadlineDay31IsReachedInA30DayMonth(): void
+    {
+        // deadline_day 31 in June (30 days): the deadline is clamped to the
+        // 30th, so on June 30 (after the time) this month is demanded.
+        // start Mar 1 -> Jun = entrance + 4 months (Mar, Apr, May, Jun).
+        $total = vk_required_contribution_total(
+            $this->settings([
+                'deadline_day'            => 31,
+                'deadline_time'           => '00:00',
+                'contribution_start_date' => '2026-03-01',
+            ]),
+            new DateTime('2026-06-30 09:00')
+        );
+        $this->assertSame(45000.0, $total); // 5000 + 4 * 10000
+    }
+
+    public function testDeadlineDay31NotYetReachedMidMonth(): void
+    {
+        // Same setting, but on June 29 the clamped deadline (30th) has not
+        // passed -> only the previous months (Mar, Apr, May) are demanded.
+        $total = vk_required_contribution_total(
+            $this->settings([
+                'deadline_day'            => 31,
+                'deadline_time'           => '00:00',
+                'contribution_start_date' => '2026-03-01',
+            ]),
+            new DateTime('2026-06-29 09:00')
+        );
+        $this->assertSame(35000.0, $total); // 5000 + 3 * 10000
+    }
+
+    public function testDeadlineDay31IsReachedInFebruary(): void
+    {
+        // February (28 days): deadline 31 clamps to the 28th.
+        // start Jan 1 -> Feb 28 = entrance + 2 months (Jan, Feb).
+        $total = vk_required_contribution_total(
+            $this->settings([
+                'deadline_day'            => 31,
+                'deadline_time'           => '00:00',
+                'contribution_start_date' => '2026-01-01',
+            ]),
+            new DateTime('2026-02-28 09:00')
+        );
+        $this->assertSame(25000.0, $total); // 5000 + 2 * 10000
+    }
+
     public function testThrottleAndCliEntryPointsArePresent(): void
     {
         // Recurrence guard for M4: the file must keep the daily throttle marker

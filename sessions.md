@@ -4,6 +4,25 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-29 — Fix: contribution deadline day clamped to the end of the month
+**Branch:** `fix/deadline-day-clamp-to-month-end`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Follow-up to the auto-termination fix. A group whose **Payment Deadline Day** is set to 31 (or 30/29) had a deadline that never occurred in shorter months — June (30 days), February (28), etc. The current month's dues were therefore never demanded *within* that month, only after the calendar rolled over. Lenient, not the dormant bug, but inconsistent.
+
+### Root cause
+`vk_required_contribution_total()` compared the current day against `deadline_day + grace_days` literally. With `deadline_day = 31`, the condition `current_day > 31` (or `=== 31`) can never be true in a 30-day month, so this month's contribution was skipped until the next month began.
+
+### Fix
+- **`actions/auto_terminate_members.php`:** clamp the deadline to the real last day of the month — `min($deadline_day, $days_in_month) + $grace_days` (using `DateTime::format('t')`). Day 31 now behaves as the 30th in June, the 28th in February, etc. Grace days still extend it from the clamped day. Normal deadline days (≤ 28) are unaffected.
+
+### Tests
+- **`tests/Unit/AutoTerminationTest.php`:** added 3 cases — deadline 31 reached on June 30 (30-day month), not yet reached on June 29, and reached on Feb 28 (28-day month). Existing deadline-math tests unchanged.
+
+### Verification
+- `composer test-unit` → 756 tests pass.
+
+---
+
 ## Session — 2026-06-29 — Fix: auto-termination swept fully paid-up members into dormant
 **Branch:** `fix/auto-termination-counts-approved-contributions`
 **Developer:** Claude Code / Jabir Mussa
