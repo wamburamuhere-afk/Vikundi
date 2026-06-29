@@ -70,9 +70,15 @@ if (!function_exists('vk_run_auto_termination')) {
             return 0;
         }
 
+        // "Counts as paid" must use the same status set as the rest of the app
+        // (finance.php, apply_for_loan.php, get_contribution_ledger.php,
+        // manage_contributions.php): confirmed / approved / '' (legacy blank).
+        // The live workflow is pending -> reviewed -> approved, so counting only
+        // 'confirmed' here previously zeroed every real contribution and swept
+        // fully paid-up members into dormant.
         $members_query = "
             SELECT c.customer_id, c.user_id, c.first_name, c.last_name,
-                   (COALESCE(c.initial_savings, 0) + COALESCE(SUM(CASE WHEN con.status = 'confirmed' AND (con.contribution_type = 'monthly' OR con.contribution_type = 'entrance') THEN con.amount ELSE 0 END), 0)) as total_paid
+                   (COALESCE(c.initial_savings, 0) + COALESCE(SUM(CASE WHEN con.status IN ('confirmed', 'approved', '') AND (con.contribution_type = 'monthly' OR con.contribution_type = 'entrance') THEN con.amount ELSE 0 END), 0)) as total_paid
             FROM customers c
             JOIN users u ON c.user_id = u.user_id
             LEFT JOIN contributions con ON c.customer_id = con.member_id

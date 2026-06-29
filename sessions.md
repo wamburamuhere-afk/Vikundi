@@ -4,6 +4,37 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-29 — Fix: auto-termination swept fully paid-up members into dormant
+**Branch:** `fix/auto-termination-counts-approved-contributions`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** After registering members, on the next day every living member appeared under **Dormant Members → "Contribution Delay"** — even though they had hundreds of thousands paid. The daily auto-termination sweep (`actions/auto_terminate_members.php`, triggered once/day from `header.php`) was the culprit.
+
+### Root cause
+The "how much has this member paid" aggregate counted only `con.status = 'confirmed'`. The live contribution workflow is **pending → reviewed → approved**, so every real (and demo-seeded) contribution is stored as `approved`. The sweep counted **zero** of them → each member's `total_paid` collapsed to `initial_savings` only → below the required total → all active members flipped to `dormant`. Every other paid-total query in the app already uses the canonical set `('confirmed','approved','')` (`finance.php`, `apply_for_loan.php`, `get_contribution_ledger.php`, `manage_contributions.php`); only this sweep was left on `'confirmed'`-only.
+
+### Fix
+- **`actions/auto_terminate_members.php`:** the paid-total `CASE` now uses `con.status IN ('confirmed','approved','')`, aligning it with the rest of the codebase. Added a comment documenting why the status set must stay aligned.
+
+### Tests
+- **`tests/Unit/AutoTerminationTest.php`:** added `testSweepCountsApprovedContributionsAsPaid` (source-guard, matching the file's existing recurrence-guard style) — asserts the paid-total counts `approved` and can't regress to equals-`'confirmed'`-only.
+
+### Live recovery
+Wrongly-dormant members are restored (skipping the genuinely deceased) with:
+```sql
+UPDATE customers c JOIN users u ON u.user_id = c.user_id
+SET c.status = 'active', u.status = 'active'
+WHERE c.status = 'dormant' AND c.is_deceased = 0;
+```
+Run **after** deploying the code fix, otherwise the next day's sweep re-dormants them.
+
+### Note (separate, not fixed here)
+Group setting **Payment Deadline Day = 31**: in 30-day months day 31 never arrives, so that month's dues are never demanded within the month (lenient, not the cause). Decide setting-change (28/30) vs end-of-month clamping in `vk_required_contribution_total` separately.
+
+### Verification
+- `composer test-unit` → 753 tests pass.
+
+---
+
 ## Session — 2026-06-27 — Member role: enforce view-only access + lock profile editing
 **Branch:** `fix/member-rbac-view-only-and-profile-lock`
 **Developer:** Claude Code / Jabir Mussa
