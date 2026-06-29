@@ -32,9 +32,16 @@ if (!function_exists('vk_required_contribution_total')) {
         $start_date    = $settings['contribution_start_date'] ?? $now->format('Y-01-01');
         $grace_days    = intval($settings['contribution_grace_days'] ?? 0);
 
-        $current_day  = (int) $now->format('d');
-        $current_time = $now->format('H:i');
-        $effective_deadline = $deadline_day + $grace_days;
+        $current_day   = (int) $now->format('d');
+        $current_time  = $now->format('H:i');
+        $days_in_month = (int) $now->format('t');
+
+        // Cap the deadline at the real last day of the current month. A setting
+        // like "deadline day 31" (or 30/29) never occurs in a shorter month
+        // (June, February, ...), so without this clamp that month's deadline was
+        // never reached and its dues were never demanded within the month. Grace
+        // days still extend it from the clamped day.
+        $effective_deadline = min($deadline_day, $days_in_month) + $grace_days;
 
         $start_dt = new DateTime($start_date);
         $diff = $start_dt->diff($now);
