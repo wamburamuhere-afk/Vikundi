@@ -44,6 +44,14 @@ $is_sw = ($lang === 'sw');
 // "Action Required" chip lands here showing ONLY the pending expenses.
 $valid_statuses = ['pending', 'reviewed', 'approved', 'rejected'];
 $preselect_status = (isset($_GET['status']) && in_array($_GET['status'], $valid_statuses, true)) ? $_GET['status'] : '';
+
+// Members for the "charge to a member" picker and the member filter.
+$members_list = $pdo->query("
+    SELECT customer_id, TRIM(CONCAT_WS(' ', first_name, middle_name, last_name)) AS name
+      FROM customers
+     WHERE (status IS NULL OR status <> 'deleted')
+     ORDER BY first_name, last_name
+")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <div class="container-fluid py-4" id="main-content" style="background-color: #f8f9fa; min-height: 90vh; overflow-x: hidden;">
@@ -158,6 +166,16 @@ $preselect_status = (isset($_GET['status']) && in_array($_GET['status'], $valid_
                     </select>
                 </div>
                 <div class="col-md-3">
+                    <label class="form-label fw-bold small"><?= $is_sw ? 'Mwanachama / Aina' : 'Member / Type' ?></label>
+                    <select class="form-select vk-filter-select" id="memberFilter" data-placeholder="<?= $is_sw ? 'Tafuta mwanachama...' : 'Search member...' ?>">
+                        <option value=""><?= $is_sw ? 'Zote (Wote)' : 'All' ?></option>
+                        <option value="general"><?= $is_sw ? 'Za Kikundi (Jumla)' : 'Whole organization' ?></option>
+                        <?php foreach ($members_list as $m): ?>
+                            <option value="<?= (int) $m['customer_id'] ?>"><?= htmlspecialchars($m['name'] !== '' ? $m['name'] : ('Member #' . $m['customer_id'])) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-3">
                     <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Kuanzia Tarehe' : 'Date From' ?></label>
                     <input type="date" class="form-control" id="dateFromFilter">
                 </div>
@@ -208,6 +226,7 @@ $preselect_status = (isset($_GET['status']) && in_array($_GET['status'], $valid_
                             <th style="width:50px"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nambari' : 'S/No' ?></th>
                             <th><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Tarehe' : 'Date' ?></th>
                             <th><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Maelezo' : 'Description' ?></th>
+                            <th><?= $is_sw ? 'Imegharimiwa' : 'Charged To' ?></th>
                             <th><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Kiasi' : 'Amount' ?></th>
                             <th><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Hali' : 'Status' ?></th>
                             <th class="text-end no-print"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Vitendo' : 'Actions' ?></th>
@@ -265,6 +284,18 @@ $preselect_status = (isset($_GET['status']) && in_array($_GET['status'], $valid_
                             </div>
                         </div>
                         
+                        <!-- Charge to a specific member (optional) -->
+                        <div class="col-12 mb-3">
+                            <label class="form-label small fw-bold text-dark"><i class="bi bi-person me-1"></i><?= $is_sw ? 'Mgharimie Mwanachama (si lazima)' : 'Charge to a Member (optional)' ?></label>
+                            <select class="form-select shadow-sm border-0" name="member_id" id="expenseMemberSelect" data-placeholder="<?= $is_sw ? 'Acha wazi kwa matumizi ya kikundi' : 'Leave blank for a whole-organization expense' ?>">
+                                <option value=""><?= $is_sw ? '— Matumizi ya Kikundi (Jumla) —' : '— Whole organization (General) —' ?></option>
+                                <?php foreach ($members_list as $m): ?>
+                                    <option value="<?= (int) $m['customer_id'] ?>"><?= htmlspecialchars($m['name'] !== '' ? $m['name'] : ('Member #' . $m['customer_id'])) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <small class="text-muted"><?= $is_sw ? 'Ukimchagua mwanachama, gharama hii itahesabiwa kwake.' : 'Pick a member to record this as that member’s expense.' ?></small>
+                        </div>
+
                         <!-- Attachments Section -->
                         <div class="col-12 mb-3">
                             <label class="form-label small fw-bold text-dark d-flex justify-content-between align-items-center">
@@ -320,6 +351,13 @@ $(document).ready(function() {
         $('.vk-filter-select').on('select2:select select2:clear', function () {
             if (typeof applyFilters === 'function') applyFilters();
         });
+        // Searchable member picker inside the Add Expense modal.
+        $('#expenseMemberSelect').select2({
+            width: '100%',
+            placeholder: $('#expenseMemberSelect').data('placeholder') || 'Select...',
+            allowClear: true,
+            dropdownParent: $('#addExpenseModal')
+        });
     }
 
     const table = $('#expensesTable').DataTable({
@@ -332,6 +370,9 @@ $(document).ready(function() {
                 d.status = $('#statusFilter').val();
                 d.date_from = $('#dateFromFilter').val();
                 d.date_to = $('#dateToFilter').val();
+                var mf = $('#memberFilter').val();
+                if (mf === 'general') { d.scope = 'general'; }
+                else if (mf) { d.member_id = mf; }
             },
             dataSrc: json => {
                 $('#stat-total-expenses').text(formatCurrency(json.totalExpenses));
@@ -346,6 +387,7 @@ $(document).ready(function() {
             { data: null, render: (d, t, r, m) => `<strong>${m.row + 1}</strong>` },
             { data: 'expense_date', render: d => `<strong>${new Date(d).toLocaleDateString()}</strong>` },
             { data: 'description' },
+            { data: null, render: (d, t, r) => renderChargedTo(r) },
             { data: 'amount', render: d => `<strong class="text-danger">${formatCurrency(d)}</strong>` },
             { data: 'status', render: d => `<span class="badge bg-${getStatusBadgeClass(d)}">${d ? d.charAt(0).toUpperCase()+d.slice(1) : 'Pending'}</span>` },
             {
@@ -421,6 +463,7 @@ $(document).ready(function() {
                     
                     // Reset Form
                     $('#addExpenseForm')[0].reset();
+                    $('#expenseMemberSelect').val('').trigger('change');
                     $('#attachments_wrapper').html(`
                         <div class="attachment-row row g-2 mb-2 bg-white p-2 rounded-3 border-dashed">
                             <div class="col-md-5">
@@ -455,10 +498,18 @@ function updateExpensePageInfo() {
 }
 
 function applyFilters() { $('#expensesTable').DataTable().ajax.reload(); }
-function clearFilters() { $('#statusFilter').val('').trigger('change.select2'); $('#dateFromFilter, #dateToFilter').val(''); applyFilters(); }
+function clearFilters() { $('#statusFilter, #memberFilter').val('').trigger('change.select2'); $('#dateFromFilter, #dateToFilter').val(''); applyFilters(); }
 function formatCurrency(v) { return parseFloat(v).toLocaleString('en-US', {minimumFractionDigits: 2}); }
 function getStatusBadgeClass(s) {
     return s === 'approved' ? 'success' : s === 'pending' ? 'warning' : s === 'rejected' ? 'danger' : 'secondary';
+}
+// "Charged To": a specific member (badge) or the whole organisation.
+function renderChargedTo(r) {
+    var name = (r.member_name || '').trim();
+    if (r.member_id && name) {
+        return '<span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2"><i class="bi bi-person-fill me-1"></i>' + vkEscape(name) + '</span>';
+    }
+    return '<span class="text-muted"><i class="bi bi-people me-1"></i>' + (isSw ? 'Kikundi (Jumla)' : 'Organization') + '</span>';
 }
 function _geListPost(url, id, msg) {
     Swal.fire({ title: msg, didOpen: () => Swal.showLoading() });
@@ -546,6 +597,10 @@ function renderExpenseCards(api) {
                 <span class="badge bg-${badge} rounded-pill px-2 flex-shrink-0" style="font-size:10px;">${status.toUpperCase()}</span>
             </div>
             <div class="vk-card-body">
+                <div class="vk-card-row">
+                    <span class="vk-card-label">${isSw ? 'Imegharimiwa' : 'Charged To'}</span>
+                    <span class="vk-card-value">${renderChargedTo(d)}</span>
+                </div>
                 <div class="vk-card-row">
                     <span class="vk-card-label">${isSw ? 'Kiasi' : 'Amount'}</span>
                     <span class="vk-card-value fw-bold text-danger">Tsh ${amount}</span>

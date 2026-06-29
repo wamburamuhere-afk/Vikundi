@@ -4,6 +4,34 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-29 — Feat: per-member expenses (charge an expense to one member)
+**Branch:** `feat/member-expenses`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Per the boss's requirement, an expense can now be either **whole-organization** (existing behaviour) or **charged to one particular member**. Implemented on the existing `general_expenses` flow with a nullable member link — reusing the same pending→reviewed→approved workflow, listing, dashboard totals and print, rather than building a parallel system.
+
+### Schema
+- **`database/add_member_expense_column.php` (new, idempotent migration, registered in `migrate.php`):** adds `general_expenses.member_id INT NULL` — NULL = whole-org expense; set = that customer's expense. Also reflected in `database/schema_sync.sql` (avoids the H2 schema drift).
+
+### Backend
+- **`includes/expense_helpers.php` (new, pure):** `vk_expense_member_id($raw): ?int` — normalises the request value (empty/0/non-numeric → null = whole-org).
+- **`api/add_general_expense.php`:** accepts optional `member_id`, verifies the member exists (else falls back to whole-org), stores it.
+- **`api/get_general_expenses.php`:** LEFT JOINs `customers` for `member_name`; adds `scope` (general / member) and `member_id` filters; **fixes `recordsFiltered`** to respect the active filters (was always the grand total → broken paging); stat cards now respect the scope/date filter so a member view shows that member's totals; cast LIMIT params to int.
+
+### UI
+- **`app/constant/accounts/general_expenses.php`:** "Charge to a Member (optional)" Select2 picker in the Add modal (blank = whole-org), a "Member / Type" filter, and a "Charged To" column (member badge or "Organization") in both the table and the mobile cards.
+- **`app/constant/accounts/general_expense_view.php`** + **`print_general_expense.php`:** show a "Charged To" row.
+
+### Dashboard
+- No change needed — member-tagged expenses are still `general_expenses` rows, so all expense/fund totals continue to include them.
+
+### Tests
+- **`tests/Unit/MemberExpenseTest.php` (new):** pure tests for `vk_expense_member_id`, plus source-guards pinning the migration registration, the INSERT carrying `member_id`, the list endpoint's join/scope filters, and the UI picker/column.
+
+### Verification
+- `composer test-unit` → 771 tests pass. Migration run locally (idempotent; column added).
+
+---
+
 ## Session — 2026-06-29 — Feat: auto-generated member identity emails (username@domain)
 **Branch:** `feat/member-auto-email`
 **Developer:** Claude Code / Jabir Mussa
