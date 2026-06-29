@@ -12,6 +12,7 @@ if (!isset($pdo)) {
 }
 require_once __DIR__ . '/../includes/registration_validator.php';
 require_once __DIR__ . '/../includes/csrf.php';
+require_once __DIR__ . '/../includes/member_identity.php'; // username + auto-email helpers
 
 $response = ['success' => false, 'message' => ''];
 
@@ -165,16 +166,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $status = 'pending';
     $preferred_language = in_array($_POST['preferred_language'] ?? 'en', ['en', 'sw']) ? $_POST['preferred_language'] : 'en';
 
-    // Generate username: first letter of first name + full last name (lowercase, no spaces)
-    $first_initial = strtolower(substr(trim($first_name), 0, 1));
-    $last_name_slug = strtolower(preg_replace('/\s+/', '', trim($last_name)));
-    $username = $first_initial . $last_name_slug;
-    $base_username = $username;
+    // Username base: first initial + last name (made unique against the DB below).
+    $base_username = vk_build_username($first_name, $last_name);
 
     // Server-side format & required-field validation (authoritative gate).
     // Mirrors the client-side rules in register.php and reports the SPECIFIC
     // problem(s) instead of failing with a vague message or inserting bad data.
-    $validation_errors = validate_registration_input($_POST, $_FILES, $preferred_language);
+    // requireEmail=false: a member who gives no email gets an auto-generated
+    // identity email (username@domain) below; a typed email is still kept.
+    $validation_errors = validate_registration_input($_POST, $_FILES, $preferred_language, true, true, true, false);
     if (!empty($validation_errors)) {
         $response['message'] = implode("\n", $validation_errors);
         echo json_encode($response);
@@ -189,27 +189,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $full_name = trim("$first_name $middle_name $last_name");
 
     try {
+        // Resolve a unique username first, so a fallback email can be built from it.
+        $username = vk_unique_username($pdo, $base_username);
+
+        // Self-registration: keep the member's real email if they gave one;
+        // otherwise auto-generate an identity email username@<site-domain>.
+        if ($email === '') {
+            $email = vk_build_member_email($username, vk_member_email_domain($pdo));
+        }
+
         // Check if email already exists
         $stmtEmail = $pdo->prepare("SELECT user_id FROM users WHERE email = ?");
         $stmtEmail->execute([$email]);
-        
+
         // Check if phone already exists
         $stmtPhone = $pdo->prepare("SELECT user_id FROM users WHERE phone = ?");
         $stmtPhone->execute([$phone]);
-        
+
         if ($stmtEmail->rowCount() > 0) {
             $response['message'] = ($preferred_language === 'sw') ? 'Barua pepe hii tayari imesajiliwa.' : 'This email address is already registered.';
         } elseif ($stmtPhone->rowCount() > 0) {
             $response['message'] = ($preferred_language === 'sw') ? 'Namba hii ya simu tayari imesajiliwa.' : 'A user with this phone number already exists.';
         } else {
-            // Ensure username is unique (append number if duplicate exists)
-            $stmt_un = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
-            $stmt_un->execute([$username]);
-            $un_count = (int)$stmt_un->fetchColumn();
-            if ($un_count > 0) {
-                $username = $base_username . ($un_count + 1);
-            }
-
             // Get Member role_id
             $role_stmt = $pdo->prepare("SELECT role_id FROM roles WHERE LOWER(role_name) LIKE '%member%' OR LOWER(role_name) LIKE '%mwanachama%' LIMIT 1");
             $role_stmt->execute();

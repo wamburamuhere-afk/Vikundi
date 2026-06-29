@@ -8,10 +8,13 @@ use PHPUnit\Framework\TestCase;
  * Regression tests for language consistency of the internal "Register New
  * Member" action handler, actions/add_member.php.
  *
- * Bug: server-side error messages (email already in use, phone already in use,
- * payment slip required, etc.) were hardcoded in Swahili only and were shown by
- * the front-end under a hardcoded English "Error" title — producing a mixed
+ * Bug: server-side error messages (phone already in use, payment slip
+ * required, etc.) were hardcoded in Swahili only and were shown by the
+ * front-end under a hardcoded English "Error" title — producing a mixed
  * English/Swahili popup regardless of the selected language.
+ *
+ * Note: there is no email-duplicate message — admin-created members get an
+ * auto-generated identity email (username@domain), unique by construction.
  *
  * Fix: all admin-facing messages now follow the admin's UI language
  * ($_SESSION['preferred_language']) and carry both EN and SW variants.
@@ -41,18 +44,6 @@ class AddMemberLanguageTest extends TestCase
         // chosen account language, which could differ from the admin's UI.
         $this->assertStringNotContainsString(
             "in_array(\$preferred_lang, ['en', 'sw'], true) ? \$preferred_lang : 'en'",
-            $this->src
-        );
-    }
-
-    public function test_email_duplicate_message_is_bilingual(): void
-    {
-        $this->assertStringContainsString(
-            'Barua pepe hii tayari inatumiwa na mwanachama mwingine.',
-            $this->src
-        );
-        $this->assertStringContainsString(
-            'This email address is already in use by another member.',
             $this->src
         );
     }

@@ -4,6 +4,30 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-29 — Feat: auto-generated member identity emails (username@domain)
+**Branch:** `feat/member-auto-email`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Per the boss's requirement, every member now gets an email of the form `username@<site-domain>` (e.g. John Doe → `jdoe@vikundi.co.tz`). The domain is **not hardcoded** — it is derived from the live website host, so emails follow wherever the system is hosted and line up with the mailboxes created later in cPanel.
+
+### Design
+- **`includes/member_identity.php` (new, shared):** pure helpers `vk_build_username()` (first initial + last name, punctuation stripped), `vk_normalize_email_domain()` (strip scheme/path/`www.`/port), `vk_build_member_email()`; plus DB-backed `vk_member_email_domain(PDO)` (override setting → live request host, persisted to `member_email_domain_detected` for CLI → last detected → `localhost`) and `vk_unique_username(PDO, base)`. Replaces the username logic that was duplicated in the two action files.
+- **Admin-created members (`actions/add_member.php`, form in `app/bms/customer/customers.php`):** email is **always auto-generated** (`username@domain`); the email input was removed from the form (replaced with an "auto-generated" note) and the server-side "email required" guard + typed-email duplicate check were dropped (synthesised email is unique by construction).
+- **Self-registration (`actions/process_registration.php`, `register.php`):** email is **optional** — a member's real email is kept if given, otherwise synthesised (synthetic-as-fallback). The public form field is no longer `required` and carries a hint.
+- **`includes/registration_validator.php`:** new `$requireEmail = true` flag (default preserves all existing callers); both registration paths pass `false`. A blank email is allowed; format is still validated when one is typed.
+- Same value is written to both `users.email` and `customers.email` in both paths.
+
+### Backfill (existing members)
+- **`database/backfill_member_emails.php` (new, CLI):** gives every existing member with no email a `username@domain` address (both tables). Usage `php database/backfill_member_emails.php [domain]` — pass the domain explicitly on a fresh server, otherwise it resolves the same way the app does. Run **after deploy** to give the current members their emails.
+
+### Tests
+- **`tests/Unit/MemberIdentityTest.php` (new):** username building (initial+surname, spaces/punctuation stripping), domain normalisation (www/port/full-URL/empty), email assembly + localhost fallback.
+- **`tests/Unit/AddMemberLanguageTest.php`:** removed the obsolete email-duplicate-message test (that code path no longer exists); doc updated.
+
+### Verification
+- `composer test-unit` → 764 tests pass.
+
+---
+
 ## Session — 2026-06-29 — Fix: contribution deadline day clamped to the end of the month
 **Branch:** `fix/deadline-day-clamp-to-month-end`
 **Developer:** Claude Code / Jabir Mussa
