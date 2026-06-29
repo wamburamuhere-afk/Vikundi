@@ -484,8 +484,13 @@ if (!canSeeMemberSensitiveData()) {
                                     <input type="text" name="last_name" id="reg_last_name" class="form-control" required placeholder="<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mfano: Ali' : 'e.g. Doe' ?>">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Barua Pepe (Email)' : 'Email Address' ?> *</label>
-                                    <input type="email" name="email" class="form-control" required placeholder="example@gmail.com">
+                                    <label class="form-label fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Barua Pepe (Email)' : 'Email Address' ?></label>
+                                    <div class="form-control bg-light text-muted d-flex align-items-center" style="min-height:38px;">
+                                        <i class="bi bi-info-circle me-2"></i>
+                                        <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw'
+                                            ? 'Itatengenezwa kiotomatiki (jina la mtumiaji @ kikoa cha mfumo).'
+                                            : 'Generated automatically (username @ system domain).' ?>
+                                    </div>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Namba ya Simu' : 'Phone Number' ?> *</label>

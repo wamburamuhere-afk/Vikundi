@@ -1155,6 +1155,7 @@ CREATE TABLE IF NOT EXISTS `general_expenses` (
   `approved_by` int DEFAULT NULL,
   `reviewed_by` int DEFAULT NULL,
   `reviewed_at` datetime DEFAULT NULL,
+  `member_id` int DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

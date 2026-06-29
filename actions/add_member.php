@@ -12,6 +12,7 @@ $ui_lang = (($_SESSION['preferred_language'] ?? 'en') === 'sw') ? 'sw' : 'en';
 
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../helpers.php'; // vk_age_from_dob() (child age derived from DOB)
+require_once __DIR__ . '/../includes/member_identity.php'; // username + auto-email helpers
 
 // Check if user is logged in and is a leader
 $user_id = $_SESSION['user_id'] ?? null;
@@ -185,7 +186,7 @@ $val_post['entrance_fee'] = $_POST['initial_savings'] ?? '';
 // Admin form has no terms checkbox -> require_terms = false. The password is
 // auto-generated (username@123, see below), so the admin never types one ->
 // require_password = false. Slip is still required (validated above + here).
-$validation_errors = validate_registration_input($val_post, $_FILES, $val_lang, false, true, false);
+$validation_errors = validate_registration_input($val_post, $_FILES, $val_lang, false, true, false, false);
 if (!empty($validation_errors)) {
     echo json_encode(['success' => false, 'message' => implode("\n", $validation_errors)]);
     exit();
@@ -209,7 +210,9 @@ $file_ext = pathinfo($_FILES['kianzio_slip']['name'], PATHINFO_EXTENSION);
 $kianzio_slip = 'kianzio_' . time() . '_' . uniqid() . '.' . $file_ext;
 move_uploaded_file($_FILES['kianzio_slip']['tmp_name'], $slip_dir . '/' . $kianzio_slip);
 
-if (empty($first_name) || empty($last_name) || empty($email) || empty($phone)) {
+// Email is not required: admin-created members get an auto-generated identity
+// email (username@domain) below, so only name + phone are mandatory here.
+if (empty($first_name) || empty($last_name) || empty($phone)) {
     echo json_encode(['success' => false, 'message' => ($val_lang === 'sw')
         ? 'Tafadhali jaza taarifa zote za lazima (*).'
         : 'Please fill in all required fields (*).']);
@@ -217,16 +220,6 @@ if (empty($first_name) || empty($last_name) || empty($email) || empty($phone)) {
 }
 
 try {
-    // Check if email already exists
-    $stmt = $pdo->prepare("SELECT user_id FROM users WHERE email = ?");
-    $stmt->execute([$email]);
-    if ($stmt->fetch()) {
-        echo json_encode(['success' => false, 'message' => ($val_lang === 'sw')
-            ? 'Barua pepe hii tayari inatumiwa na mwanachama mwingine.'
-            : 'This email address is already in use by another member.']);
-        exit();
-    }
-
     // Check if Phone number already exists
     $stmt = $pdo->prepare("SELECT user_id FROM users WHERE phone = ?");
     $stmt->execute([$phone]);
@@ -267,26 +260,11 @@ try {
     $mother_photo = $vk_save_photo('mother_photo');
     $spouse_photo = $vk_save_photo('spouse_photo');
 
-    // Generate username: first letter of first name + full last name (lowercase, no spaces)
-    $first_initial = strtolower(substr(trim($first_name), 0, 1));
-    $last_name_slug = strtolower(preg_replace('/\s+/', '', trim($last_name)));
-    $username = $first_initial . $last_name_slug;
-    $base_username = $username;
-
-    // Ensure username is unique (append number if duplicate exists)
-    $stmt_un = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
-    $stmt_un->execute([$username]);
-    $un_count = (int)$stmt_un->fetchColumn();
-    if ($un_count > 0) {
-        // Try to find a unique one
-        $i = 1;
-        while ($un_count > 0) {
-            $username = $base_username . $i;
-            $stmt_un->execute([$username]);
-            $un_count = (int)$stmt_un->fetchColumn();
-            $i++;
-        }
-    }
+    // Username: first initial + last name, made unique. Admin-created members
+    // always get an auto-generated identity email (username@<site-domain>);
+    // any value typed into the admin form is ignored on purpose.
+    $username = vk_unique_username($pdo, vk_build_username($first_name, $last_name));
+    $email    = vk_build_member_email($username, vk_member_email_domain($pdo));
 
     $pdo->beginTransaction();
 

@@ -23,6 +23,7 @@ $migrations = [
     'add_transaction_fields.php',   // contributions.receipt_number + account (Transactions form)
     'fix_death_expense_schema.php', // widen deceased_type, add 'dormant' + customers.is_active
     'ai_assistant_setup.php',       // AI tables, prompts and permissions
+    'add_member_expense_column.php',// general_expenses.member_id (per-member vs whole-org expense)
 ];
 
 echo "== Vikundi database migrations ==\n";

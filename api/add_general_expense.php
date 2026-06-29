@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/expense_helpers.php';
 global $pdo;
 
 header('Content-Type: application/json');
@@ -13,14 +14,26 @@ $expense_date = $_POST['expense_date'] ?? date('Y-m-d');
 $description = $_POST['description'] ?? '';
 $amount = $_POST['amount'] ?? 0;
 $user_id = $_SESSION['user_id'] ?? 0;
+// Optional: charge this expense to one particular member. Empty = whole-org.
+$member_id = vk_expense_member_id($_POST['member_id'] ?? null);
 
 try {
     if (empty($description) || empty($amount)) {
         throw new Exception("Tafadhali jaza maelezo na kiasi.");
     }
 
-    $stmt = $pdo->prepare("INSERT INTO general_expenses (expense_date, description, amount, status, created_by) VALUES (?, ?, ?, 'pending', ?)");
-    $stmt->execute([$expense_date, $description, $amount, $user_id]);
+    // If a member was chosen, make sure they actually exist; otherwise treat as
+    // a whole-organization expense rather than storing a dangling id.
+    if ($member_id !== null) {
+        $chk = $pdo->prepare("SELECT COUNT(*) FROM customers WHERE customer_id = ?");
+        $chk->execute([$member_id]);
+        if ((int) $chk->fetchColumn() === 0) {
+            $member_id = null;
+        }
+    }
+
+    $stmt = $pdo->prepare("INSERT INTO general_expenses (expense_date, description, amount, status, created_by, member_id) VALUES (?, ?, ?, 'pending', ?, ?)");
+    $stmt->execute([$expense_date, $description, $amount, $user_id, $member_id]);
     $new_id = $pdo->lastInsertId();
 
     // ── ATTACHMENTS HANDLING ──

@@ -144,8 +144,9 @@ if (isset($_SESSION['user_id'])) {
                                 <input type="text" name="last_name" id="pub_last_name" class="form-control" placeholder="e.g. Doe" required>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold">Email Address *</label>
-                                <input type="email" name="email" class="form-control" placeholder="john@example.com" required>
+                                <label class="form-label fw-bold">Email Address</label>
+                                <input type="email" name="email" class="form-control" placeholder="john@example.com">
+                                <small class="text-muted">Optional — if left blank, a login email is generated for you automatically.</small>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Phone Number *</label>

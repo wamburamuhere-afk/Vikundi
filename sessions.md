@@ -4,6 +4,77 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-06-29 — Feat: per-member expenses (charge an expense to one member)
+**Branch:** `feat/member-expenses`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Per the boss's requirement, an expense can now be either **whole-organization** (existing behaviour) or **charged to one particular member**. Implemented on the existing `general_expenses` flow with a nullable member link — reusing the same pending→reviewed→approved workflow, listing, dashboard totals and print, rather than building a parallel system.
+
+### Schema
+- **`database/add_member_expense_column.php` (new, idempotent migration, registered in `migrate.php`):** adds `general_expenses.member_id INT NULL` — NULL = whole-org expense; set = that customer's expense. Also reflected in `database/schema_sync.sql` (avoids the H2 schema drift).
+
+### Backend
+- **`includes/expense_helpers.php` (new, pure):** `vk_expense_member_id($raw): ?int` — normalises the request value (empty/0/non-numeric → null = whole-org).
+- **`api/add_general_expense.php`:** accepts optional `member_id`, verifies the member exists (else falls back to whole-org), stores it.
+- **`api/get_general_expenses.php`:** LEFT JOINs `customers` for `member_name`; adds `scope` (general / member) and `member_id` filters; **fixes `recordsFiltered`** to respect the active filters (was always the grand total → broken paging); stat cards now respect the scope/date filter so a member view shows that member's totals; cast LIMIT params to int.
+
+### UI
+- **`app/constant/accounts/general_expenses.php`:** "Charge to a Member (optional)" Select2 picker in the Add modal (blank = whole-org), a "Member / Type" filter, and a "Charged To" column (member badge or "Organization") in both the table and the mobile cards.
+- **`app/constant/accounts/general_expense_view.php`** + **`print_general_expense.php`:** show a "Charged To" row.
+
+### Dashboard
+- No change needed — member-tagged expenses are still `general_expenses` rows, so all expense/fund totals continue to include them.
+
+### Tests
+- **`tests/Unit/MemberExpenseTest.php` (new):** pure tests for `vk_expense_member_id`, plus source-guards pinning the migration registration, the INSERT carrying `member_id`, the list endpoint's join/scope filters, and the UI picker/column.
+
+### Verification
+- `composer test-unit` → 771 tests pass. Migration run locally (idempotent; column added).
+
+---
+
+## Session — 2026-06-29 — Feat: auto-generated member identity emails (username@domain)
+**Branch:** `feat/member-auto-email`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Per the boss's requirement, every member now gets an email of the form `username@<site-domain>` (e.g. John Doe → `jdoe@vikundi.co.tz`). The domain is **not hardcoded** — it is derived from the live website host, so emails follow wherever the system is hosted and line up with the mailboxes created later in cPanel.
+
+### Design
+- **`includes/member_identity.php` (new, shared):** pure helpers `vk_build_username()` (first initial + last name, punctuation stripped), `vk_normalize_email_domain()` (strip scheme/path/`www.`/port), `vk_build_member_email()`; plus DB-backed `vk_member_email_domain(PDO)` (override setting → live request host, persisted to `member_email_domain_detected` for CLI → last detected → `localhost`) and `vk_unique_username(PDO, base)`. Replaces the username logic that was duplicated in the two action files.
+- **Admin-created members (`actions/add_member.php`, form in `app/bms/customer/customers.php`):** email is **always auto-generated** (`username@domain`); the email input was removed from the form (replaced with an "auto-generated" note) and the server-side "email required" guard + typed-email duplicate check were dropped (synthesised email is unique by construction).
+- **Self-registration (`actions/process_registration.php`, `register.php`):** email is **optional** — a member's real email is kept if given, otherwise synthesised (synthetic-as-fallback). The public form field is no longer `required` and carries a hint.
+- **`includes/registration_validator.php`:** new `$requireEmail = true` flag (default preserves all existing callers); both registration paths pass `false`. A blank email is allowed; format is still validated when one is typed.
+- Same value is written to both `users.email` and `customers.email` in both paths.
+
+### Backfill (existing members)
+- **`database/backfill_member_emails.php` (new, CLI):** gives every existing member with no email a `username@domain` address (both tables). Usage `php database/backfill_member_emails.php [domain]` — pass the domain explicitly on a fresh server, otherwise it resolves the same way the app does. Run **after deploy** to give the current members their emails.
+
+### Tests
+- **`tests/Unit/MemberIdentityTest.php` (new):** username building (initial+surname, spaces/punctuation stripping), domain normalisation (www/port/full-URL/empty), email assembly + localhost fallback.
+- **`tests/Unit/AddMemberLanguageTest.php`:** removed the obsolete email-duplicate-message test (that code path no longer exists); doc updated.
+
+### Verification
+- `composer test-unit` → 764 tests pass.
+
+---
+
+## Session — 2026-06-29 — Fix: contribution deadline day clamped to the end of the month
+**Branch:** `fix/deadline-day-clamp-to-month-end`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Follow-up to the auto-termination fix. A group whose **Payment Deadline Day** is set to 31 (or 30/29) had a deadline that never occurred in shorter months — June (30 days), February (28), etc. The current month's dues were therefore never demanded *within* that month, only after the calendar rolled over. Lenient, not the dormant bug, but inconsistent.
+
+### Root cause
+`vk_required_contribution_total()` compared the current day against `deadline_day + grace_days` literally. With `deadline_day = 31`, the condition `current_day > 31` (or `=== 31`) can never be true in a 30-day month, so this month's contribution was skipped until the next month began.
+
+### Fix
+- **`actions/auto_terminate_members.php`:** clamp the deadline to the real last day of the month — `min($deadline_day, $days_in_month) + $grace_days` (using `DateTime::format('t')`). Day 31 now behaves as the 30th in June, the 28th in February, etc. Grace days still extend it from the clamped day. Normal deadline days (≤ 28) are unaffected.
+
+### Tests
+- **`tests/Unit/AutoTerminationTest.php`:** added 3 cases — deadline 31 reached on June 30 (30-day month), not yet reached on June 29, and reached on Feb 28 (28-day month). Existing deadline-math tests unchanged.
+
+### Verification
+- `composer test-unit` → 756 tests pass.
+
+---
+
 ## Session — 2026-06-29 — Fix: auto-termination swept fully paid-up members into dormant
 **Branch:** `fix/auto-termination-counts-approved-contributions`
 **Developer:** Claude Code / Jabir Mussa
