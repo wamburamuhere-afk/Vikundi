@@ -18,8 +18,10 @@ $stmt = $pdo->prepare("
            TRIM(CONCAT_WS(' ', ur.first_name, ur.middle_name, ur.last_name)) AS reviewer_name,
            rr.role_name AS reviewer_role,
            TRIM(CONCAT_WS(' ', ua.first_name, ua.middle_name, ua.last_name)) AS approver_name,
-           ra.role_name AS approver_role
+           ra.role_name AS approver_role,
+           TRIM(CONCAT_WS(' ', c.first_name, c.middle_name, c.last_name)) AS member_name
       FROM general_expenses ge
+      LEFT JOIN customers c ON ge.member_id = c.customer_id
       LEFT JOIN users uc ON ge.created_by  = uc.user_id
       LEFT JOIN roles rc ON uc.role_id     = rc.role_id
       LEFT JOIN users ur ON ge.reviewed_by = ur.user_id
@@ -110,6 +112,12 @@ logActivity('Viewed', 'Other Expenses', 'Printed General Expense #' . $id, 'GE#'
     <div class="detail-card">
         <div class="dc-label">Date</div>
         <div class="dc-val"><?= date('d M Y', strtotime($ge['expense_date'])) ?></div>
+    </div>
+    <div class="detail-card">
+        <div class="dc-label">Charged To</div>
+        <div class="dc-val"><?= (!empty($ge['member_id']) && trim((string)($ge['member_name'] ?? '')) !== '')
+            ? safe_output($ge['member_name'])
+            : 'Whole organization' ?></div>
     </div>
     <?php if (!empty($ge['category'])): ?>
     <div class="detail-card">

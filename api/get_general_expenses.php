@@ -5,47 +5,88 @@ global $pdo;
 header('Content-Type: application/json');
 
 $draw = $_GET['draw'] ?? 1;
-$start = $_GET['start'] ?? 0;
-$length = $_GET['length'] ?? 10;
+$start = max(0, (int) ($_GET['start'] ?? 0));
+$length = (int) ($_GET['length'] ?? 10);
+if ($length <= 0) { $length = 10; }
 $status = $_GET['status'] ?? '';
 $date_from = $_GET['date_from'] ?? '';
 $date_to = $_GET['date_to'] ?? '';
+// Scope: 'general' = whole-org only, 'member' = member-charged only, else all.
+$scope = $_GET['scope'] ?? '';
+// Optional: restrict to one particular member.
+$member_id = ctype_digit((string)($_GET['member_id'] ?? '')) ? (int) $_GET['member_id'] : 0;
 
 try {
-    $where = "WHERE 1=1";
+    // Shared filter (everything except status) — applied to the list AND the
+    // stat cards, so a member view shows that member's totals.
+    $scopeWhere = "";
     $params = [];
-
-    if ($status) {
-        $where .= " AND status = :status";
-        $params['status'] = $status;
+    if ($member_id > 0) {
+        $scopeWhere .= " AND ge.member_id = :mid";
+        $params['mid'] = $member_id;
+    } elseif ($scope === 'general') {
+        $scopeWhere .= " AND ge.member_id IS NULL";
+    } elseif ($scope === 'member') {
+        $scopeWhere .= " AND ge.member_id IS NOT NULL";
     }
     if ($date_from) {
-        $where .= " AND expense_date >= :df";
+        $scopeWhere .= " AND ge.expense_date >= :df";
         $params['df'] = $date_from;
     }
     if ($date_to) {
-        $where .= " AND expense_date <= :dt";
+        $scopeWhere .= " AND ge.expense_date <= :dt";
         $params['dt'] = $date_to;
     }
 
-    $total_stmt = $pdo->query("SELECT COUNT(*) FROM general_expenses");
-    $recordsTotal = $total_stmt->fetchColumn();
+    // Full WHERE for the list = shared filter + status.
+    $listWhere = "WHERE 1=1" . $scopeWhere;
+    $listParams = $params;
+    if ($status) {
+        $listWhere .= " AND ge.status = :status";
+        $listParams['status'] = $status;
+    }
 
-    $stmt = $pdo->prepare("SELECT * FROM general_expenses $where ORDER BY created_at DESC LIMIT $start, $length");
-    $stmt->execute($params);
+    $recordsTotal = (int) $pdo->query("SELECT COUNT(*) FROM general_expenses")->fetchColumn();
+
+    // Filtered count (respects every active filter) — needed for correct paging.
+    $cntStmt = $pdo->prepare("SELECT COUNT(*) FROM general_expenses ge $listWhere");
+    $cntStmt->execute($listParams);
+    $recordsFiltered = (int) $cntStmt->fetchColumn();
+
+    $stmt = $pdo->prepare("
+        SELECT ge.*,
+               TRIM(CONCAT_WS(' ', c.first_name, c.middle_name, c.last_name)) AS member_name
+          FROM general_expenses ge
+          LEFT JOIN customers c ON ge.member_id = c.customer_id
+          $listWhere
+         ORDER BY ge.created_at DESC
+         LIMIT $start, $length
+    ");
+    $stmt->execute($listParams);
     $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Totals for stats
-    $stats = $pdo->query("SELECT SUM(amount) FROM general_expenses WHERE status='approved'")->fetchColumn() ?: 0;
-    $month = $pdo->query("SELECT SUM(amount) FROM general_expenses WHERE status='approved' AND MONTH(expense_date) = MONTH(CURRENT_DATE)")->fetchColumn() ?: 0;
-    $year = $pdo->query("SELECT SUM(amount) FROM general_expenses WHERE status='approved' AND YEAR(expense_date) = YEAR(CURRENT_DATE)")->fetchColumn() ?: 0;
+    // Stats reflect the shared scope/date filter (status is always 'approved').
+    $statSql = function (string $extra) use ($scopeWhere) {
+        return "SELECT COALESCE(SUM(ge.amount),0) FROM general_expenses ge WHERE ge.status='approved'$scopeWhere$extra";
+    };
+    $stats = $pdo->prepare($statSql(""));
+    $stats->execute($params);
+    $totalExpenses = (float) $stats->fetchColumn();
+
+    $monthStmt = $pdo->prepare($statSql(" AND MONTH(ge.expense_date) = MONTH(CURRENT_DATE) AND YEAR(ge.expense_date) = YEAR(CURRENT_DATE)"));
+    $monthStmt->execute($params);
+    $month = (float) $monthStmt->fetchColumn();
+
+    $yearStmt = $pdo->prepare($statSql(" AND YEAR(ge.expense_date) = YEAR(CURRENT_DATE)"));
+    $yearStmt->execute($params);
+    $year = (float) $yearStmt->fetchColumn();
 
     echo json_encode([
         'draw' => intval($draw),
-        'recordsTotal' => intval($recordsTotal),
-        'recordsFiltered' => intval($recordsTotal),
+        'recordsTotal' => $recordsTotal,
+        'recordsFiltered' => $recordsFiltered,
         'data' => $data,
-        'totalExpenses' => $stats,
+        'totalExpenses' => $totalExpenses,
         'monthTotal' => $month,
         'yearTotal' => $year
     ]);
