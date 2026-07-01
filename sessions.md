@@ -4,6 +4,32 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-01 — Feat: show attached documents on expense detail views
+**Branch:** `feat/expense-attachments-view`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** On the **general/other** and **death** expense detail views, the receipts/documents uploaded with the expense are now shown ("Attached Documents"). Detail views only — print pages stay clean, but the listing is a reusable component with a one-line switch to enable print later.
+
+### Root problem
+Both expense types already uploaded files into the Document Library (`documents`), but with **no structured link** — only free text ("Expense ID: N" for general; "Member ID: N" for death, which can't even pin a doc to one death record). So a detail page couldn't reliably show its own attachments.
+
+### Fix (Option B — structured link)
+- **`database/add_document_relation_columns.php` (new migration, registered; reflected in `schema_sync.sql`):** `documents.related_type VARCHAR(40) NULL` + `related_id INT NULL`. Idempotent, additive — safe on live.
+- **`includes/expense_attachments.php` (new, reusable):** `vk_parse_expense_id_from_description()` (pure), `vk_fetch_expense_attachments()` (structured link + legacy text/tag fallback, each doc filtered through `vk_user_can_access_document()` from PR #147), `vk_render_attachments_section($docs, $show, $isSw)` (image thumbnails + file cards; **links only via the gated download route `document_library?action=download` — never the raw uploads path**; returns '' when `$show` is false or empty — that's the on/off flag).
+- **Upload flows** set the link: `api/add_general_expense.php` → `general_expense`, `actions/process_death_expense.php` → `death_expense`.
+- **Detail views** render the section (`$show=true`): `general_expense_view.php`, `death_expense_view.php` (death passes `member_id` for the legacy fallback). Print pages untouched.
+- **`database/backfill_document_relations.php` (new CLI, run once after deploy):** links existing **general** expense docs exactly (parse `Expense ID: N`); death docs left to the legacy fallback.
+
+### Access control
+No new exposure — attachments are `private`, filtered by the existing document access control, and reachable only through the gated download route (which 401/403s per PR #147).
+
+### Tests
+- **`tests/Unit/ExpenseAttachmentsTest.php` (new):** id-parsing, render on/off + empty, gated-route-only (never raw path), and source-guards (migration registered, both flows set the link, both views include the component).
+
+### Verification
+- `composer test-unit` → 779 tests pass. Migration run locally (idempotent); backfill runs clean.
+
+---
+
 ## Session — 2026-06-29 — Feat: per-member expenses (charge an expense to one member)
 **Branch:** `feat/member-expenses`
 **Developer:** Claude Code / Jabir Mussa

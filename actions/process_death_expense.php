@@ -101,10 +101,11 @@ try {
 
                         // 2. Insert into documents table for Library
                         $stmt_doc = $pdo->prepare("INSERT INTO documents (
-                            document_name, description, file_path, original_filename, 
-                            file_size, file_type, category_id, access_level, uploaded_by, tags
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'private', ?, ?)");
-                        
+                            document_name, description, file_path, original_filename,
+                            file_size, file_type, category_id, access_level, uploaded_by, tags,
+                            related_type, related_id
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'private', ?, ?, 'death_expense', ?)");
+
                         $stmt_doc->execute([
                             $custom_name,
                             "Attached to death assistance record for $deceased_name (Member ID: $member_id)",
@@ -114,7 +115,8 @@ try {
                             $file_ext,
                             $category_id,
                             $user_id,
-                            "Death, Expense, $deceased_name"
+                            "Death, Expense, $deceased_name",
+                            $new_id
                         ]);
                     }
                 }
