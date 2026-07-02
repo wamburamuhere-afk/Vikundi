@@ -26,6 +26,7 @@ $migrations = [
     'ai_assistant_setup.php',       // AI tables, prompts and permissions
     'add_member_expense_column.php',// general_expenses.member_id (per-member vs whole-org expense)
     'add_document_relation_columns.php', // documents.related_type/related_id (attach docs to a record)
+    'add_meeting_id_to_fines.php',   // fines.meeting_id (meeting absence fines)
 ];
 
 echo "== Vikundi database migrations ==\n";
