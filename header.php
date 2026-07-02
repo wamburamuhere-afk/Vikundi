@@ -481,6 +481,7 @@ try {
                                 <li><a class="dropdown-item" href="<?= getUrl('dashboard') ?>"><i class="bi bi-speedometer2 text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Dashibodi' : 'Dashboard' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('customers') ?>"><i class="bi bi-people text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Wanachama' : 'Members' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('dormant_members') ?>"><i class="bi bi-person-x text-warning me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Wanachama Wasiofanya Kazi' : 'Dormant Members' ?></a></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('meetings') ?>"><i class="bi bi-calendar-event text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mikutano' : 'Meetings' ?></a></li>
                             </ul>
                         </li>
 

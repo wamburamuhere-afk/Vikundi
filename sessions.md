@@ -4,6 +4,35 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-02 — Feat: Meetings module (core) — record, attendance, documents
+**Branch:** `feat/meetings-core`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** New **Meetings** section under the Management nav. Record a meeting (heading, date/time, location, type, agenda, minutes, status), mark **attendance** per member, and attach **supporting documents**. PR 1 of 2 (option b) — the extras (absence→fines, SMS reminder) follow in PR 2.
+
+### Database
+- **`database/create_meetings_tables.php` (new migration, registered in `migrate.php` BEFORE `seed_vicoba_roles.php`; reflected in `schema_sync.sql`):** `meetings` + `meeting_attendance` (UNIQUE meeting+member) tables, and registers the **`meetings` permission page-key**. Idempotent. RBAC is purpose-based, so the role seeder auto-grants **Member = view-only**, leadership via admin-bypass (verified: Member `view=1,create=0,edit=0`).
+
+### Backend
+- **`includes/meeting_helpers.php` (new, pure):** input validation, type/status normalisation, attendance summary.
+- **APIs:** `get_meetings.php` (server-side list + stats, auth-guarded), `get_meeting_details.php` (edit prefill).
+- **Actions (full guard stack — `require_auth` + `require_csrf` + `requirePermissionJson` + audit):** `save_meeting.php` (create/update + document upload → `documents` `related_type='meeting'`), `save_meeting_attendance.php` (present/absent upsert), `delete_meeting.php`.
+
+### UI
+- **`app/constant/meetings/meetings.php`:** list (DataTable + stats + filters), create/edit modal (with document upload), mobile cards.
+- **`app/constant/meetings/meeting_view.php`:** details, agenda/minutes, **attendance grid** (gated to editors), and **attached documents** via the #164 component (gated/access-filtered).
+- **Nav:** "Meetings" added to the Management dropdown. Routes + `MEETINGS_DIR` in `roots.php` (api/action files reachable via the existing internal-path fallback).
+
+### Reuse
+- #164 attachment component (`related_type='meeting'`), the #102/#106/#110 guard stack, `activity_logger`, app-wide CSRF token (jQuery AJAX auto-sends `X-CSRF-Token`).
+
+### Tests
+- **`tests/Unit/MeetingsTest.php` (new):** pure validators/normalisation/attendance summary + source-guards (migration ordered before role seed, handlers carry the guard stack, route/nav present, docs use the structured link).
+
+### Verification
+- `composer test-unit` → 788 tests pass. Migration + role re-seed run locally: tables created (idempotent), Member granted view-only on `meetings`.
+
+---
+
 ## Session — 2026-07-01 — Feat: show attached documents on expense detail views
 **Branch:** `feat/expense-attachments-view`
 **Developer:** Claude Code / Jabir Mussa
