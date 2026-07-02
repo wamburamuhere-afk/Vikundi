@@ -46,8 +46,27 @@ class RegistrationNumberTest extends TestCase
         $this->assertStringContainsString('require_auth.php', $s);
         $this->assertStringContainsString('require_csrf.php', $s);
         $this->assertStringContainsString("requirePermissionJson('edit', 'customers')", $s);
-        // uniqueness check (excluding the same member)
-        $this->assertStringContainsString('registration_number = ? AND customer_id <> ?', $s);
+        // uniqueness via the shared helper (single source of truth)
+        $this->assertStringContainsString('vk_registration_number_taken', $s);
+    }
+
+    public function testUniquenessHelperExcludesSelf(): void
+    {
+        // The shared helper carries the "except this member" uniqueness rule.
+        $h = $this->src('helpers.php');
+        $this->assertStringContainsString('function vk_registration_number_taken', $h);
+        $this->assertStringContainsString('customer_id <> ?', $h);
+        // all three writers use it
+        $this->assertStringContainsString('vk_registration_number_taken', $this->src('actions/add_member.php'));
+        $this->assertStringContainsString('vk_registration_number_taken', $this->src('app/constant/profile/profile.php'));
+    }
+
+    public function testEditFormHasFieldAndSaves(): void
+    {
+        $p = $this->src('app/constant/profile/profile.php');
+        // the edit form carries the field, and the customers UPDATE writes it
+        $this->assertStringContainsString('name="registration_number"', $p);
+        $this->assertStringContainsString('registration_number = ?', $p);
     }
 
     public function testAdminCreateStoresRegistrationNumber(): void
