@@ -4,6 +4,30 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-02 — Feat: contributions page — single grid (real data) + date-range statement
+**Branch:** `feat/contributions-grid-and-statement`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Per the chairman, the contributions page now shows **one table — the Contribution Analysis Grid** (the itemised list was removed). The grid was rebuilt on **real per-month data** and made presentable, and a **date-range transactions statement** (print + Excel/CSV) was added.
+
+### Grid — now real & good
+- The grid previously showed a **synthetic even-spread** of each member's total across months (and was empty when all members were wrongly dormant). Rebuilt in `manage_contributions.php` to use **actual approved contributions summed by month** (one grouped query for the visible block; grand totals in a second).
+- **`includes/contribution_grid_helpers.php` (new, pure):** `vk_contribution_cell_status` (full/partial/none vs the monthly target), `vk_grid_block_label` (year shown once — "Mar – Jun 2026", cross-year aware), `vk_collection_rate`.
+- Display: **month-only headers** with the **year in a single caption**; **colour-coded cells** (green full / amber partial / grey none) with a legend; **Collected** + **Target** footer rows; **summary cards** (collected / expected / rate / full-vs-behind); **sticky member column**; client-side member search; browser Print. Server-rendered (dropped the AJAX DataTable + the now-unused `api/get_contribution_ledger.php`).
+
+### Date-range statement (Print + Excel)
+- **`includes/contribution_statement.php` (new, pure):** `vk_statement_filters` + `vk_statement_where` — one filter/query builder shared by both outputs.
+- **`app/bms/customer/contribution_statement.php` (new page, route `contribution_statement`):** printable statement (date, member, receipt, account, type, amount, status + total) in the house PrintHeader style; group-wide, optional member/status; reached from a **"Statement" button** → From/To (+ member/status) modal.
+- **`api/export_contributions_statement.php` (new):** same filters → **CSV with UTF-8 BOM** (opens in Excel), leadership-gated.
+
+### Tests
+- **`tests/Unit/ContributionGridTest.php` (new):** cell status, block label (same/cross-year), collection rate, statement filter/where, and source-guards (list removed, grid uses real per-month sums, statement page + CSV export exist).
+- **`tests/Unit/ContributionsListingTest.php`:** updated for the new design (list removed → grid + statement).
+
+### Verification
+- `composer test-unit` → 842 tests pass. New grid + statement SQL smoke-tested on the dev DB (grid returns real per-month cells; statement query runs).
+
+---
+
 ## Session — 2026-07-02 — Feat: registration number in the member edit form
 **Branch:** `feat/registration-number-edit-form`
 **Developer:** Claude Code / Jabir Mussa

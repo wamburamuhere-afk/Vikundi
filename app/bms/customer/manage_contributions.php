@@ -46,26 +46,30 @@ if (!$is_leader) {
 }
 $pending_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// 3. Grid Navigation Logic (Block of 4)
+// 3. Grid Navigation Logic (Block of 4 months)
+require_once __DIR__ . '/../../../includes/contribution_grid_helpers.php';
 $block = intval($_GET['block'] ?? 0);
 $periods_per_block = 4;
 $start_offset = $block * $periods_per_block;
 
+$monthly_val  = floatval($settings_raw['monthly_contribution'] ?? 10000);
+$entrance_val = floatval($settings_raw['entrance_fee'] ?? 20000);
+
 $columns = [];
 for ($i = 0; $i < $periods_per_block; $i++) {
     $idx = $start_offset + $i;
-    $ts = strtotime($start_date . " +$idx " . ($cycle === 'weekly' ? 'weeks' : 'months'));
+    $ts = strtotime($start_date . " +$idx months");
     $columns[] = [
-        'idx' => $idx,
-        'label' => date($cycle === 'weekly' ? 'Wk d M' : 'M Y', $ts),
-        'start_ts' => date('Y-m-d 00:00:00', $ts),
-        'end_ts' => date('Y-m-t 23:59:59', $ts) // Simplified for monthly
+        'ym'          => date('Y-m', $ts),          // for matching contribution sums
+        'month_label' => date('M', $ts),            // "Mar" (year shown once, in the caption)
+        'year'        => date('Y', $ts),
+        'start'       => date('Y-m-01 00:00:00', $ts),
+        'end'         => date('Y-m-t 23:59:59', $ts),
     ];
-    // Adjust end date for weekly
-    if ($cycle === 'weekly') {
-        $columns[$i]['end_ts'] = date('Y-m-d 23:59:59', strtotime(date('Y-m-d', $ts) . " +6 days"));
-    }
 }
+$block_start = $columns[0]['start'];
+$block_end   = $columns[count($columns) - 1]['end'];
+$block_label = vk_grid_block_label($columns); // e.g. "Mar – Jun 2026" (cross-year aware)
 
 // 4. Fetch All Active Members (Leaders see all, Members see themselves)
 if (!$is_leader) {
@@ -88,82 +92,64 @@ if (!$is_leader) {
 }
 $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// 5. Build Ledger Data (Intelligent Distribution)
-$ledger = [];
-$monthly_val = floatval($settings_raw['monthly_contribution'] ?? 10000);
-$entrance_val = floatval($settings_raw['entrance_fee'] ?? 20000);
-
-foreach ($members as $m) {
-    $row = [
-        'member' => $m,
-        'periods' => [],
-        'block_total' => 0,
-        'grand_total' => 0
-    ];
-    
-    // Total Confirmed Pot for this member
-    $stmt = $pdo->prepare("SELECT SUM(amount) FROM contributions WHERE member_id = ? AND status IN ('confirmed', 'approved', '')");
-    $stmt->execute([$m['customer_id']]);
-    $row['grand_total'] = floatval($stmt->fetchColumn());
-
-    // Intelligence: Subtract Entrance first, then distribute rest to months
-    $pot = $row['grand_total']; 
-    $pot -= min($pot, $entrance_val); 
-    
-    // Fill all periods from the start up to our current view window
-    for ($i = 0; $i < ($start_offset + $periods_per_block); $i++) {
-        $amt_for_this_idx = min($pot, $monthly_val);
-        $pot -= $amt_for_this_idx;
-        
-        // Only add to 'periods' if it falls within the current 4-period block view
-        if ($i >= $start_offset) {
-            $row['periods'][] = $amt_for_this_idx;
-            $row['block_total'] += $amt_for_this_idx;
-        }
+// 5. Build Ledger Data from REAL per-month contributions (approved), for the
+//    visible 4-month block — one grouped query, not a synthetic spread.
+$memberIds = array_map(fn($m) => (int) $m['customer_id'], $members);
+$blockSums = []; // [member_id][ym] => amount actually paid that month
+$grandTotals = [];
+if ($memberIds) {
+    $ph = implode(',', array_fill(0, count($memberIds), '?'));
+    $st = $pdo->prepare("
+        SELECT member_id, DATE_FORMAT(contribution_date, '%Y-%m') ym, SUM(amount) amt
+        FROM contributions
+        WHERE status IN ('confirmed','approved','')
+          AND contribution_date BETWEEN ? AND ?
+          AND member_id IN ($ph)
+        GROUP BY member_id, ym
+    ");
+    $st->execute(array_merge([$block_start, $block_end], $memberIds));
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $blockSums[(int) $r['member_id']][$r['ym']] = (float) $r['amt'];
     }
-    
-    $ledger[] = $row;
+    $gt = $pdo->prepare("SELECT member_id, SUM(amount) amt FROM contributions
+                         WHERE status IN ('confirmed','approved','') AND member_id IN ($ph) GROUP BY member_id");
+    $gt->execute($memberIds);
+    foreach ($gt->fetchAll(PDO::FETCH_ASSOC) as $r) { $grandTotals[(int) $r['member_id']] = (float) $r['amt']; }
 }
 
-// ── Filtered Contributions List (this page is now the dedicated listing) ───────
-$f = [
-    'from'    => trim($_GET['from'] ?? ''),
-    'to'      => trim($_GET['to'] ?? ''),
-    'member'  => trim($_GET['member'] ?? ''),
-    'type'    => trim($_GET['type'] ?? ''),
-    'fstatus' => trim($_GET['fstatus'] ?? ''),
-    'account' => trim($_GET['account'] ?? ''),
-];
-$validYmd = function ($d) {
-    $dt = \DateTime::createFromFormat('Y-m-d', $d);
-    return $d !== '' && $dt && $dt->format('Y-m-d') === $d;
-};
-$where = ['1=1'];
-$params = [];
-if ($validYmd($f['from'])) { $where[] = 'con.contribution_date >= ?'; $params[] = $f['from']; }
-if ($validYmd($f['to']))   { $where[] = 'con.contribution_date <= ?'; $params[] = $f['to']; }
-if ($f['member'] !== '') {
-    $where[] = '(c.customer_name LIKE ? OR c.phone LIKE ? OR CONCAT(c.first_name, " ", c.last_name) LIKE ?)';
-    $like = '%' . $f['member'] . '%';
-    array_push($params, $like, $like, $like);
+$ledger = [];
+$sum_collected = 0.0; $members_full = 0; $members_behind = 0;
+$col_totals = array_fill(0, $periods_per_block, 0.0);
+foreach ($members as $m) {
+    $mid = (int) $m['customer_id'];
+    $cells = []; $rowBlock = 0.0; $rowFull = true; $rowAny = false;
+    foreach ($columns as $ci => $col) {
+        $paid = $blockSums[$mid][$col['ym']] ?? 0.0;
+        $status = vk_contribution_cell_status($paid, $monthly_val);
+        if ($status !== 'full') $rowFull = false;
+        if ($paid > 0) $rowAny = true;
+        $rowBlock += $paid;
+        $col_totals[$ci] += $paid;
+        $cells[] = ['paid' => $paid, 'status' => $status];
+    }
+    $ledger[] = [
+        'member' => $m, 'cells' => $cells,
+        'block_total' => $rowBlock, 'grand_total' => $grandTotals[$mid] ?? 0.0,
+    ];
+    $sum_collected += $rowBlock;
+    if ($rowFull) { $members_full++; } elseif (!$rowAny) { $members_behind++; }
 }
-if (in_array($f['type'], ['entrance', 'monthly', 'agm', 'fine', 'other'], true))         { $where[] = 'con.contribution_type = ?'; $params[] = $f['type']; }
-if (in_array($f['fstatus'], ['pending', 'reviewed', 'approved', 'cancelled'], true))     { $where[] = 'con.status = ?'; $params[] = $f['fstatus']; }
-if (in_array($f['account'], ['M-Koba', 'Bank', 'Cash', 'Mobile Money'], true))           { $where[] = 'con.account = ?'; $params[] = $f['account']; }
+$expected_block  = count($members) * $periods_per_block * $monthly_val;
+$collection_rate = vk_collection_rate($sum_collected, $expected_block);
 
-$stmtList = $pdo->prepare("
-    SELECT con.contribution_id, con.amount, con.contribution_type, con.contribution_date,
-           con.receipt_number, con.account, con.status,
-           c.customer_name, c.first_name, c.last_name, c.phone
-    FROM contributions con
-    JOIN customers c ON con.member_id = c.customer_id
-    WHERE " . implode(' AND ', $where) . "
-    ORDER BY con.contribution_date DESC, con.contribution_id DESC
-    LIMIT 500
-");
-$stmtList->execute($params);
-$contribList = $stmtList->fetchAll(PDO::FETCH_ASSOC);
-$contribListTotal = array_sum(array_column($contribList, 'amount'));
+// Members for the statement filter dropdown.
+$statement_members = $pdo->query("
+    SELECT customer_id, TRIM(CONCAT_WS(' ', first_name, middle_name, last_name)) AS name
+    FROM customers WHERE (status IS NULL OR status <> 'deleted') ORDER BY first_name, last_name
+")->fetchAll(PDO::FETCH_ASSOC);
+
+// ── (The itemised transactions table was removed — the grid is the single
+//    table; a date-range statement is available on demand.) ──────────────────
 ?>
 
 <!-- Header Section -->
@@ -200,11 +186,17 @@ $contribListTotal = array_sum(array_column($contribList, 'amount'));
         <!-- Compact Navigation Group -->
         <div class="btn-group shadow-sm border rounded-2 overflow-hidden bg-white">
             <a href="?block=<?= max(0, $block - 1) ?>" class="btn btn-light border-0 px-2 px-md-3" title="Previous"><i class="bi bi-chevron-left"></i></a>
-            <span class="btn btn-white border-0 disabled fw-bold py-2 d-none d-md-inline-block shadow-none"><?= $columns[0]['label'] ?> — <?= $columns[3]['label'] ?></span>
-            <span class="btn btn-white border-0 disabled fw-bold py-2 d-md-none small shadow-none px-1"><?= substr($columns[0]['label'],0,3) ?>-<?= substr($columns[3]['label'],0,3) ?></span>
+            <span class="btn btn-white border-0 disabled fw-bold py-2 shadow-none"><?= htmlspecialchars($block_label) ?></span>
             <a href="?block=<?= $block + 1 ?>" class="btn btn-light border-0 px-2 px-md-3" title="Next"><i class="bi bi-chevron-right"></i></a>
         </div>
-        
+
+        <?php if ($is_leader): ?>
+        <button type="button" class="btn btn-outline-primary rounded-2 shadow-sm" style="min-height:42px;" data-bs-toggle="modal" data-bs-target="#statementModal" title="<?= $isSw ? 'Taarifa ya Miamala' : 'Transactions Statement' ?>">
+            <i class="bi bi-file-earmark-text"></i>
+            <span class="d-none d-md-inline ms-1"><?= $isSw ? 'Taarifa' : 'Statement' ?></span>
+        </button>
+        <?php endif; ?>
+
         <?php if ($is_leader): ?>
         <!-- Recording (manual + bulk + M-Koba) now lives on the Transactions page. -->
         <a href="<?= getUrl('transactions') ?>" class="btn btn-primary rounded-2 p-2 p-md-2 px-md-4 shadow-sm" style="min-height: 42px; width: auto;">
@@ -357,105 +349,119 @@ $contribListTotal = array_sum(array_column($contribList, 'amount'));
 </div>
 <?php endif; ?>
 
-<!-- SECTION 2: CONTRIBUTIONS LIST (filterable — this page's dedicated listing) -->
-<div class="card border-0 shadow-sm rounded-4 mb-5">
-    <div class="card-header bg-white py-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <h6 class="mb-0 fw-bold"><i class="bi bi-list-ul me-2 text-primary"></i><?= $isSw ? 'Orodha ya Michango' : 'Contributions List' ?></h6>
-        <span class="small text-muted"><?= count($contribList) ?> <?= $isSw ? 'kumbukumbu' : 'records' ?> · <?= number_format($contribListTotal, 0) ?> TZS</span>
+<?php
+// Cell colouring vs the monthly target.
+$cellClass = ['full' => 'vk-cell-full', 'partial' => 'vk-cell-partial', 'none' => 'vk-cell-none'];
+?>
+
+<!-- SUMMARY CARDS -->
+<div class="row g-3 mb-4">
+    <?php foreach ([
+        ['text-primary','bi-cash-coin', $isSw?'Zimekusanywa (Robo)':'Collected (block)', number_format($sum_collected,0).' TZS'],
+        ['text-secondary','bi-bullseye', $isSw?'Zinatarajiwa (Robo)':'Expected (block)', number_format($expected_block,0).' TZS'],
+        ['text-success','bi-graph-up-arrow', $isSw?'Kiwango cha Ukusanyaji':'Collection Rate', $collection_rate.'%'],
+        ['text-info','bi-people', $isSw?'Wamekamilisha / Nyuma':'Full / Behind', $members_full.' / '.$members_behind],
+    ] as [$color,$icon,$label,$val]): ?>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm h-100"><div class="card-body d-flex justify-content-between">
+            <div><h5 class="mb-0 fw-bold <?= $color ?>"><?= $val ?></h5><p class="mb-0 text-muted small"><?= $label ?></p></div>
+            <div class="align-self-center"><i class="bi <?= $icon ?> <?= $color ?>" style="font-size:1.8rem;opacity:.3;"></i></div>
+        </div></div>
     </div>
-    <div class="card-body">
-        <form method="get" class="row g-2 align-items-end mb-3">
-            <div class="col-6 col-md-2"><label class="form-label small mb-1 fw-bold"><?= $isSw ? 'Kuanzia' : 'From' ?></label><input type="date" name="from" value="<?= htmlspecialchars($f['from']) ?>" class="form-control form-control-sm"></div>
-            <div class="col-6 col-md-2"><label class="form-label small mb-1 fw-bold"><?= $isSw ? 'Hadi' : 'To' ?></label><input type="date" name="to" value="<?= htmlspecialchars($f['to']) ?>" class="form-control form-control-sm"></div>
-            <div class="col-12 col-md-3"><label class="form-label small mb-1 fw-bold"><?= $isSw ? 'Mwanachama' : 'Member' ?></label><input type="text" name="member" value="<?= htmlspecialchars($f['member']) ?>" class="form-control form-control-sm" placeholder="<?= $isSw ? 'Jina au simu' : 'Name or phone' ?>"></div>
-            <div class="col-6 col-md-1"><label class="form-label small mb-1 fw-bold"><?= $isSw ? 'Aina' : 'Type' ?></label>
-                <select name="type" class="form-select form-select-sm"><option value=""><?= $isSw ? 'Zote' : 'All' ?></option>
-                <?php foreach (['monthly', 'entrance', 'agm', 'fine', 'other'] as $t): ?><option value="<?= $t ?>" <?= $f['type'] === $t ? 'selected' : '' ?>><?= ucfirst($t) ?></option><?php endforeach; ?></select></div>
-            <div class="col-6 col-md-2"><label class="form-label small mb-1 fw-bold"><?= $isSw ? 'Hali' : 'Status' ?></label>
-                <select name="fstatus" class="form-select form-select-sm"><option value=""><?= $isSw ? 'Zote' : 'All' ?></option>
-                <?php foreach (['pending', 'reviewed', 'approved', 'cancelled'] as $s): ?><option value="<?= $s ?>" <?= $f['fstatus'] === $s ? 'selected' : '' ?>><?= ucfirst($s) ?></option><?php endforeach; ?></select></div>
-            <div class="col-6 col-md-2"><label class="form-label small mb-1 fw-bold"><?= $isSw ? 'Akaunti' : 'Account' ?></label>
-                <select name="account" class="form-select form-select-sm"><option value=""><?= $isSw ? 'Zote' : 'All' ?></option>
-                <?php foreach (['M-Koba', 'Bank', 'Cash', 'Mobile Money'] as $a): ?><option value="<?= $a ?>" <?= $f['account'] === $a ? 'selected' : '' ?>><?= $a ?></option><?php endforeach; ?></select></div>
-            <div class="col-12 col-md-2 d-flex gap-2">
-                <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3"><i class="bi bi-funnel me-1"></i><?= $isSw ? 'Chuja' : 'Filter' ?></button>
-                <a href="<?= getUrl('manage_contributions') ?>" class="btn btn-light btn-sm rounded-pill px-3"><?= $isSw ? 'Futa' : 'Clear' ?></a>
-            </div>
-        </form>
+    <?php endforeach; ?>
+</div>
+
+<!-- CONTRIBUTION ANALYSIS GRID (the single table) -->
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+    <div class="card-header bg-white py-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-grid-3x3-gap-fill me-2 text-primary"></i> <?= $isSw ? 'Jedwali la Michango' : 'Contribution Analysis Grid' ?>
+            <span class="badge bg-primary-subtle text-primary ms-2"><?= htmlspecialchars($block_label) ?></span></h6>
+        <div class="d-flex align-items-center gap-2 no-print">
+            <span class="small"><span class="vk-cell-full px-2 rounded">&nbsp;</span> <?= $isSw?'Imekamilika':'Full' ?>
+                &nbsp;<span class="vk-cell-partial px-2 rounded">&nbsp;</span> <?= $isSw?'Sehemu':'Partial' ?>
+                &nbsp;<span class="vk-cell-none px-2 rounded border">&nbsp;</span> <?= $isSw?'Hakuna':'None' ?></span>
+            <input type="text" id="gridSearch" class="form-control form-control-sm" style="width:160px;" placeholder="<?= $isSw?'Tafuta mwanachama...':'Search member...' ?>">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer"></i></button>
+        </div>
+    </div>
+    <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover align-middle small mb-0">
-                <thead class="table-light">
+            <table class="table table-bordered align-middle text-center mb-0 vk-grid" style="width:100%">
+                <thead class="small bg-light fw-bold text-uppercase">
                     <tr>
-                        <th><?= $isSw ? 'Tarehe' : 'Date' ?></th><th><?= $isSw ? 'Mwanachama' : 'Member' ?></th>
-                        <th><?= $isSw ? 'Risiti' : 'Receipt' ?></th><th><?= $isSw ? 'Akaunti' : 'Account' ?></th>
-                        <th><?= $isSw ? 'Aina' : 'Type' ?></th><th class="text-end"><?= $isSw ? 'Kiasi' : 'Amount' ?></th>
-                        <th class="text-center"><?= $isSw ? 'Hali' : 'Status' ?></th>
+                        <th class="py-3 px-2">#</th>
+                        <th class="text-start vk-sticky-col"><?= $isSw ? 'Mwanachama' : 'Member' ?></th>
+                        <?php foreach ($columns as $col): ?>
+                            <th class="bg-primary-subtle text-primary" style="min-width:92px;">
+                                <?= htmlspecialchars($col['month_label']) ?>
+                                <?php if (($col['year'] ?? '') !== ($columns[0]['year'] ?? '')): ?><small class="text-muted d-block" style="font-size:9px;">'<?= substr($col['year'],2) ?></small><?php endif; ?>
+                            </th>
+                        <?php endforeach; ?>
+                        <th class="fw-bolder" style="min-width:100px;"><?= $isSw ? 'Jumla ya Robo' : 'Block Total' ?></th>
+                        <th class="text-primary fw-bolder" style="min-width:110px;"><?= $isSw ? 'Jumla Kuu' : 'Grand Total' ?></th>
                     </tr>
                 </thead>
-                <tbody>
-                    <?php if (!$contribList): ?>
-                        <tr><td colspan="7" class="text-center text-muted py-4"><?= $isSw ? 'Hakuna michango inayolingana na vichujio.' : 'No contributions match the filters.' ?></td></tr>
-                    <?php else: foreach ($contribList as $r): $sb = ['pending' => 'warning', 'reviewed' => 'info', 'approved' => 'success', 'cancelled' => 'secondary']; ?>
-                        <tr>
-                            <td><?= safe_output($r['contribution_date'], '—') ?></td>
-                            <td><?= htmlspecialchars($r['customer_name'] ?: ($r['first_name'] . ' ' . $r['last_name'])) ?><div class="text-muted" style="font-size:.75rem;"><?= safe_output($r['phone'], '') ?></div></td>
-                            <td><?= safe_output($r['receipt_number'], '—') ?></td>
-                            <td><?= safe_output($r['account'], '—') ?></td>
-                            <td><?= safe_output(ucfirst($r['contribution_type']), '—') ?></td>
-                            <td class="text-end fw-semibold"><?= number_format((float) $r['amount'], 0) ?></td>
-                            <td class="text-center"><span class="badge bg-<?= $sb[$r['status']] ?? 'secondary' ?>"><?= safe_output($r['status']) ?></span></td>
+                <tbody class="small">
+                    <?php if (empty($ledger)): ?>
+                        <tr><td colspan="<?= $periods_per_block + 4 ?>" class="text-center text-muted py-4"><?= $isSw ? 'Hakuna wanachama wa kuonyesha.' : 'No members to display.' ?></td></tr>
+                    <?php else: $sno = 1; foreach ($ledger as $row):
+                        $mname = $row['member']['customer_name'] ?: trim($row['member']['first_name'].' '.$row['member']['last_name']); ?>
+                        <tr class="vk-grid-row" data-name="<?= htmlspecialchars(strtolower($mname.' '.($row['member']['phone']??''))) ?>">
+                            <td class="text-muted"><?= $sno++ ?></td>
+                            <td class="text-start vk-sticky-col">
+                                <div class="fw-semibold"><?= htmlspecialchars($mname) ?></div>
+                                <small class="text-muted"><?= htmlspecialchars($row['member']['phone'] ?? '') ?></small>
+                            </td>
+                            <?php foreach ($row['cells'] as $cell): ?>
+                                <td class="<?= $cellClass[$cell['status']] ?>"><?= $cell['paid'] > 0 ? number_format($cell['paid'], 0) : '<span class="opacity-25">—</span>' ?></td>
+                            <?php endforeach; ?>
+                            <td class="fw-bold"><?= number_format($row['block_total'], 0) ?></td>
+                            <td class="fw-bold text-primary"><?= number_format($row['grand_total'], 0) ?></td>
                         </tr>
                     <?php endforeach; endif; ?>
                 </tbody>
+                <?php if (!empty($ledger)): ?>
+                <tfoot class="bg-light fw-bold small">
+                    <tr>
+                        <td colspan="2" class="text-end"><?= $isSw ? 'Zimekusanywa' : 'Collected' ?></td>
+                        <?php foreach ($col_totals as $ct): ?><td><?= number_format($ct, 0) ?></td><?php endforeach; ?>
+                        <td><?= number_format($sum_collected, 0) ?></td><td></td>
+                    </tr>
+                    <tr class="text-muted">
+                        <td colspan="2" class="text-end"><?= $isSw ? 'Lengo' : 'Target' ?></td>
+                        <?php foreach ($columns as $col): ?><td><?= number_format(count($members) * $monthly_val, 0) ?></td><?php endforeach; ?>
+                        <td><?= number_format($expected_block, 0) ?></td><td></td>
+                    </tr>
+                </tfoot>
+                <?php endif; ?>
             </table>
         </div>
     </div>
 </div>
 
-<!-- SECTION 3: DYNAMIC GRID LEDGER -->
-<div class="card border-0 shadow-sm rounded-4 overflow-hidden">
-    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-        <h6 class="mb-0 fw-bold"><i class="bi bi-grid-3x3-gap-fill me-2 text-primary"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jedwali la Michango' : 'Contribution Analysis Grid' ?></h6>
-        <div class="small text-muted italic">* Confirmed totals for the selected 4-period block.</div>
-    </div>
-    <div class="card-body p-4">
-        <!-- STANDALONE TOOLS (WHITE & RECTANGULAR) -->
-        <div class="row g-1 g-md-2 mb-4 align-items-center no-print">
-            <div class="col-auto d-flex align-items-center gap-1" id="ledger-tools-left">
-                <!-- PRINT and CSV -->
-            </div>
-            <div class="col-auto" id="ledger-length-container">
-                <!-- SHOW Rows -->
-            </div>
-            <div class="col ms-auto text-end" id="ledger-search-container">
-                <!-- SEARCH -->
-            </div>
+<!-- Date-range statement modal -->
+<div class="modal fade" id="statementModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white border-0"><h5 class="modal-title"><i class="bi bi-file-earmark-text me-2"></i><?= $isSw ? 'Taarifa ya Miamala' : 'Transactions Statement' ?></h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+            <form id="statementForm" target="_blank" method="get" action="<?= getUrl('contribution_statement') ?>">
+                <div class="modal-body p-4"><div class="row g-3">
+                    <div class="col-md-6"><label class="form-label small fw-bold"><?= $isSw ? 'Kuanzia' : 'From' ?></label><input type="date" name="from" class="form-control" required></div>
+                    <div class="col-md-6"><label class="form-label small fw-bold"><?= $isSw ? 'Hadi' : 'To' ?></label><input type="date" name="to" class="form-control" required></div>
+                    <div class="col-md-6"><label class="form-label small fw-bold"><?= $isSw ? 'Mwanachama (si lazima)' : 'Member (optional)' ?></label>
+                        <select name="member_id" class="form-select"><option value=""><?= $isSw ? 'Wote (Kikundi)' : 'All (group-wide)' ?></option>
+                        <?php foreach ($statement_members as $sm): ?><option value="<?= (int)$sm['customer_id'] ?>"><?= htmlspecialchars($sm['name'] !== '' ? $sm['name'] : ('Member #'.$sm['customer_id'])) ?></option><?php endforeach; ?></select></div>
+                    <div class="col-md-6"><label class="form-label small fw-bold"><?= $isSw ? 'Hali (si lazima)' : 'Status (optional)' ?></label>
+                        <select name="status" class="form-select"><option value=""><?= $isSw ? 'Zote' : 'All' ?></option>
+                        <?php foreach (['pending','reviewed','approved','cancelled'] as $s): ?><option value="<?= $s ?>"><?= ucfirst($s) ?></option><?php endforeach; ?></select></div>
+                </div></div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary btn-sm rounded-pill px-3" data-bs-dismiss="modal"><?= $isSw ? 'Ghairi' : 'Cancel' ?></button>
+                    <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3"><i class="bi bi-printer me-1"></i><?= $isSw ? 'Chapisha' : 'Print' ?></button>
+                    <button type="button" class="btn btn-success btn-sm rounded-pill px-3" onclick="exportStatement()"><i class="bi bi-file-earmark-excel me-1"></i><?= $isSw ? 'Excel' : 'Export Excel' ?></button>
+                </div>
+            </form>
         </div>
-
-        <div class="table-responsive d-none d-md-block d-print-block">
-            <table class="table table-bordered align-middle text-center mb-0" id="ledgerTable" style="width: 100% !important;">
-                <thead class="small bg-light fw-bold text-uppercase">
-                    <tr>
-                        <th class="py-3 px-3 text-center">S/No</th>
-                        <th class="text-center"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mwanachama' : 'Member' ?></th>
-                        <th class="text-center" style="min-width: 110px;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Namba ya Simu' : 'Phone No' ?></th>
-                        
-                        <?php foreach ($columns as $idx => $col): ?>
-                            <th class="bg-primary-subtle text-primary border-primary border-opacity-25 text-center" style="min-width: 100px;"><?= $col['label'] ?></th>
-                        <?php endforeach; ?>
-                        
-                        <th class="bg-white text-dark text-center fw-bolder" style="min-width: 120px;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jumla ya Robo' : 'Block Total' ?></th>
-                        <th class="bg-white text-primary text-center fw-bolder" style="min-width: 130px;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jumla Kuu' : 'Grand Total' ?></th>
-                        <th class="bg-light text-center no-print"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Hatua' : 'Actions' ?></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Loaded via AJAX -->
-                </tbody>
-            </table>
-        </div>
-        <!-- ═══ CARD VIEW — Mobile Only ═══ -->
-        <div class="p-3 d-md-none d-print-none vk-cards-wrapper" id="ledgerCardsWrapper"></div>
     </div>
 </div>
 
@@ -487,208 +493,22 @@ $(document).ready(function() {
     });
 });
 
-// DataTables AJAX Initialization
-$(document).ready(function() {
-    const isSw = '<?= ($_SESSION['preferred_language'] ?? 'en') ?>' === 'sw';
-    const currentUsername = '<?= htmlspecialchars($username) ?>';
-    const currentUserRole = '<?= htmlspecialchars($user_role) ?>';
-    const currentDate = new Date().toLocaleDateString(isSw ? 'sw-TZ' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' });
-    const currentTime = new Date().toLocaleTimeString(isSw ? 'sw-TZ' : 'en-US', { hour: '2-digit', minute: '2-digit' });
 
-    let ledgerTable = $('#ledgerTable').DataTable({
-        "processing": true,
-        "serverSide": true,
-        "responsive": true,
-        "ajax": {
-            "url": "<?= getUrl('api/get_contribution_ledger') ?>?block=<?= $block ?>",
-            "type": "GET"
-        },
-        "columns": [
-            { "data": "sno", "width": "30px" },
-            { "data": "name", "className": "text-start fw-bold" }, /* Let name be flexible but dominant */
-            { "data": "phone", "className": "small text-muted", "width": "100px" },
-            { "data": "periods.0", "render": (v) => v > 0 ? '<b>'+v.toLocaleString()+'</b>' : '<span class="opacity-25">—</span>' },
-            { "data": "periods.1", "render": (v) => v > 0 ? '<b>'+v.toLocaleString()+'</b>' : '<span class="opacity-25">—</span>' },
-            { "data": "periods.2", "render": (v) => v > 0 ? '<b>'+v.toLocaleString()+'</b>' : '<span class="opacity-25">—</span>' },
-            { "data": "periods.3", "render": (v) => v > 0 ? '<b>'+v.toLocaleString()+'</b>' : '<span class="opacity-25">—</span>' },
-            { "data": "block_total", "render": (v) => '<b style="color:black; font-weight:900;">'+v.toLocaleString()+'</b>', "className": "bg-white text-center" },
-            { "data": "grand_total", "render": (v) => '<b style="color:#0d6efd; font-weight:900;">'+v.toLocaleString()+'</b>', "className": "bg-white text-center fs-6" },
-            { 
-                "data": "customer_id", 
-                "className": "no-print",
-                "render": (id) => `
-                    <div class="dropdown no-print">
-                        <button class="btn btn-white btn-sm border shadow-sm dropdown-toggle rounded-2 px-3" type="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-gear-fill me-1"></i>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end shadow border-0 p-2">
-                            <li><a class="dropdown-item py-2 rounded-2 small fw-bold" href="<?= getUrl('member_statement') ?>?id=${id}"><i class="bi bi-eye me-2 text-primary"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'View (Tazama)' : 'View Statement' ?></a></li>
-                        </ul>
-                    </div>
-                ` 
-            }
-        ],
-        "dom": 'Brtip', // Buttons, Table, Info, Pagination (Removed default Length 'l' and Filter 'f')
-        "buttons": [
-            {
-                extend: 'print',
-                title: '', /* Remove default title completely */
-                header: true,
-                text: '<i class="bi bi-printer me-1"></i> PRINT',
-                className: 'btn btn-white border shadow-sm rounded-2 px-3 py-1 small fw-bold text-dark',
-                exportOptions: {
-                    columns: ':not(.no-print)'
-                },
-                customize: function (win) {
-                    // 1. HIDDEN BROWSER HEADERS & CUSTOM VIRTUAL MARGINS
-                    // 1. Canonical page margins + shared footer CSS (mirrors includes/print_footer_css.php)
-                    $(win.document.head).append(`
-                        <style>
-                            @page { margin: 10mm 8mm 16mm 8mm; }
-                            * { box-sizing: border-box !important; }
-                            html, body { width: 100% !important; margin: 0 !important; }
-                            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important; font-size: 11pt !important; color: #1a252f !important; line-height: 1.5 !important; padding: 20px 20px 0 20px !important; background: white !important; }
-                            table { width: 100% !important; border-collapse: collapse !important; margin: 0 !important; page-break-after: auto !important; }
-                            table th, table td { border: 1px solid #000 !important; padding: 6px 4px !important; text-align: center !important; vertical-align: middle !important; font-size: 10.5pt !important; }
-                            table th { background-color: #f2f2f2 !important; -webkit-print-color-adjust: exact; text-transform: uppercase; font-size: 11pt !important; }
-                            table td { word-break: break-word !important; }
-                            .print-footer {
-                                position: fixed;
-                                bottom: 0; left: 0; right: 0;
-                                height: 16px;
-                                background: #fff;
-                                border-top: 1px solid #dee2e6;
-                                padding: 0 22px;
-                                text-align: center;
-                                display: flex;
-                                flex-direction: column;
-                                justify-content: flex-end;
-                                print-color-adjust: exact;
-                                -webkit-print-color-adjust: exact;
-                            }
-                            .print-footer p { margin: 0; font-size: 7px; color: #2c3e50; line-height: 1; }
-                            .print-footer .brand { font-size: 7px; color: #3498db; font-weight: 600; }
-                            tfoot.print-spacer { display: table-footer-group; }
-                            tfoot.print-spacer td { height: 12px !important; border: none !important; }
-                            .no-print { display: none !important; }
-                        </style><?php echo PrintHeader::popupCss(); ?>
-                    `);
-
-                    // 2. Clear out any browser-injected title
-                    $(win.document.body).find('h1').remove();
-
-                    // 3. Branded Header
-                    $(win.document.body).prepend(`<div class="vk-print-header">
-                        <img src="<?= !empty($logo_base64) ? $logo_base64 : '/assets/images/' . $group_logo ?>" alt="Logo" class="vk-ph-logo">
-                        <div class="vk-ph-org"><?= htmlspecialchars($group_name) ?></div>
-                        <div class="vk-ph-sys">VICOBA Group Management System</div>
-                        <div class="vk-ph-title"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'MCHANGANUO WA MICHANGO' : 'CONTRIBUTION ANALYSIS LEDGER' ?></div>
-                        <div class="vk-ph-ref">Block Period: <?= $columns[0]['label'] ?> — <?= $columns[3]['label'] ?></div>
-                        <div class="vk-ph-rule"></div>
-                    </div>`);
-
-                    // 4. Shared-style footer (bilingual — mirrors includes/print_footer_html.php)
-                    let mcNow = new Date();
-                    let _mcT = mcNow.getHours().toString().padStart(2,'0') + ':' +
-                               mcNow.getMinutes().toString().padStart(2,'0') + ':' +
-                               mcNow.getSeconds().toString().padStart(2,'0');
-                    let _mcD  = mcNow.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
-                    let _mcSw = <?= $isSw ? 'true' : 'false' ?>;
-                    let _mcBy = _mcSw ? 'Nyaraka hii imechapishwa na' : 'This document was Printed by';
-                    let _mcOn = _mcSw ? 'mnamo' : 'on';
-                    let _mcAt = _mcD + ' ' + (_mcSw ? 'saa' : 'at') + ' ' + _mcT;
-
-                    $(win.document.body).append(`
-                        <div class="print-footer">
-                            <p>${_mcBy} <strong><?= htmlspecialchars($username ?? $_SESSION['username']) ?></strong> &mdash; <strong><?= htmlspecialchars(ucfirst($user_role ?? 'Member')) ?></strong> ${_mcOn} ${_mcAt}</p>
-                            <p class="brand">Powered By BJP Technologies &copy; <?= date('Y') ?>, All Rights Reserved</p>
-                        </div>
-                    `);
-
-                    // 5. Spacer for multi-page data integrity
-                    $(win.document.body).find('table').append('<tfoot class="print-spacer"><tr><td colspan="10">&nbsp;</td></tr></tfoot>');
-                    
-                    $(win.document.body).find('.no-print').remove();
-                }
-            },
-            {
-                extend: 'csv',
-                text: '<i class="bi bi-filetype-csv me-1"></i> CSV',
-                className: 'btn btn-white border shadow-sm rounded-2 px-3 py-1 small fw-bold text-dark'
-            }
-        ],
-        "pageLength": 25,
-        "language": {
-            "url": 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/' + (isSw ? 'sw.json' : 'en-GB.json')
-        },
-        "drawCallback": function() {
-            renderLedgerCards(this.api());
-        }
-    });
-
-    function vkEscL(s) {
-        if (s == null) return '';
-        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-
-    function renderLedgerCards(api) {
-        var isSw = '<?= ($_SESSION['preferred_language'] ?? 'en') ?>' === 'sw';
-        var html = '';
-        api.rows({page:'current'}).data().each(function(row) {
-            if (!row) return;
-            var initial = row.name ? row.name.trim()[0].toUpperCase() : '?';
-            html += '<div class="vk-member-card">'
-                + '<div class="vk-card-header d-flex justify-content-between align-items-center gap-2">'
-                + '<div class="d-flex align-items-center gap-2">'
-                + '<div class="vk-card-avatar" style="background:linear-gradient(135deg,#0d6efd,#0a58ca);">'+initial+'</div>'
-                + '<div><div class="fw-bold text-dark" style="font-size:13px;">'+vkEscL(row.name)+'</div>'
-                + '<small class="text-muted">'+vkEscL(row.phone)+'</small></div></div>'
-                + '<span class="badge bg-primary rounded-pill px-2" style="font-size:10px;">'+vkEscL(row.grand_total ? row.grand_total.toLocaleString() : 0)+'</span>'
-                + '</div>'
-                + '<div class="vk-card-body">'
-                + '<div class="vk-card-row"><span class="vk-card-label">'+(isSw?'Jumla ya Robo':'Block Total')+'</span><span class="vk-card-value fw-bold">'+vkEscL(row.block_total ? row.block_total.toLocaleString() : '—')+'</span></div>'
-                + '<div class="vk-card-row"><span class="vk-card-label">'+(isSw?'Jumla Kuu':'Grand Total')+'</span><span class="vk-card-value fw-bold text-primary">'+vkEscL(row.grand_total ? row.grand_total.toLocaleString() : '—')+'</span></div>'
-                + '</div>'
-                + '<div class="vk-card-actions">'
-                + '<a href="<?= getUrl('member_statement') ?>?id='+vkEscL(row.customer_id)+'" class="btn vk-btn-action btn-primary" title="'+(isSw?'Taarifa':'Statement')+'"><i class="bi bi-file-earmark-person"></i></a>'
-                + '</div>'
-                + '</div>';
+// Grid: client-side member search + statement Excel export.
+$(document).ready(function () {
+    $('#gridSearch').on('keyup', function () {
+        var q = $(this).val().toLowerCase();
+        $('.vk-grid-row').each(function () {
+            $(this).toggle(('' + $(this).data('name')).indexOf(q) !== -1);
         });
-        $('#ledgerCardsWrapper').html(html || '<div class="text-center py-5 text-muted"><p>'+(isSw?'Hakuna data':'No data')+'</p></div>');
-    }
-
-    // Custom Length Menu for Ledger
-    let ledgerLength = $(`
-        <div class="input-group input-group-sm shadow-sm border rounded-2 bg-white overflow-hidden">
-            <span class="input-group-text bg-white border-0"><i class="bi bi-view-list"></i></span>
-            <select class="form-select border-0 bg-transparent fw-bold" style="cursor: pointer;">
-                <option value="10">10</option>
-                <option value="25" selected>25</option>
-                <option value="50">50</option>
-                <option value="100">100</option>
-                <option value="-1">All</option>
-            </select>
-        </div>
-    `);
-    $('#ledger-length-container').append(ledgerLength);
-    ledgerLength.find('select').on('change', function() {
-        ledgerTable.page.len($(this).val()).draw();
     });
-
-    // Custom Search for Ledger
-    let ledgerSearch = $(`<div class="input-group shadow-sm border rounded-2 bg-white overflow-hidden"><span class="input-group-text bg-white border-0"><i class="bi bi-search"></i></span><input type="text" class="form-control border-0 px-3" placeholder="${isSw ? 'Tafuta...' : 'Search...'}"></div>`);
-    $('#ledger-search-container').append(ledgerSearch);
-    ledgerSearch.find('input').on('keyup', function() {
-        ledgerTable.search($(this).val()).draw();
-    });
-
-    // Move buttons
-    setTimeout(() => {
-        $('.dt-buttons').appendTo('#ledger-tools-left');
-    }, 50);
 });
-
-// Removed auto-lookup keyup trigger to ensure modal stability
+function exportStatement() {
+    var f = document.getElementById('statementForm');
+    if (!f.from.value || !f.to.value) { Swal.fire('Error', '<?= $isSw ? "Weka tarehe za mwanzo na mwisho." : "Please choose the From and To dates." ?>', 'warning'); return; }
+    var qs = new URLSearchParams({ from: f.from.value, to: f.to.value, member_id: f.member_id.value, status: f.status.value }).toString();
+    window.open('<?= getUrl("api/export_contributions_statement") ?>?' + qs, '_blank');
+}
 
 function _wfPost(url, id, loadingMsg) {
     Swal.fire({ title: loadingMsg, didOpen: () => Swal.showLoading() });
@@ -746,14 +566,17 @@ function rejectContribution(id) {
 <style>
 .table-responsive { scrollbar-width: thin; }
 th { font-size: 0.7rem !important; }
-#ledgerTable td { font-size: 0.85rem; }
-#ledgerTable th:nth-child(2), #ledgerTable td:nth-child(2) {
-    min-width: 140px !important; /* Member column iwe na nafasi ya kutosha lakini isizidi */
-}
-#ledgerTable th:nth-child(3), #ledgerTable td:nth-child(3) {
-    white-space: nowrap !important; /* Phone No isikatwe */
-}
 .bg-primary-subtle { background-color: #e7f1ff !important; }
+
+/* Contribution grid: colour-coded cells vs the monthly target */
+.vk-grid td { font-size: 0.85rem; }
+.vk-cell-full    { background-color: #d1e7dd !important; color: #0f5132 !important; font-weight: 600; }
+.vk-cell-partial { background-color: #fff3cd !important; color: #664d03 !important; font-weight: 600; }
+.vk-cell-none    { background-color: #fff !important; }
+/* Sticky member column so it stays visible while scrolling months */
+.vk-grid .vk-sticky-col { position: sticky; left: 0; z-index: 2; background: #fff; min-width: 150px; box-shadow: 2px 0 4px -2px rgba(0,0,0,.12); }
+.vk-grid thead .vk-sticky-col { z-index: 3; background: #f8f9fa; }
+@media print { .vk-grid .vk-sticky-col { position: static; box-shadow: none; } }
 
 /* Autocomplete Premium Styles */
 #autocomplete_results .list-group-item {
