@@ -50,6 +50,8 @@ if (!function_exists('vk_member_hidden_keys')) {
             'edit_customer', 'edit_guarantor', 'edit_loan',
             // fines management (members see only their own via my_fines)
             'manage_fines',
+            // voting management (members vote via the 'voting' page, not this one)
+            'manage_voting',
         ];
     }
 }

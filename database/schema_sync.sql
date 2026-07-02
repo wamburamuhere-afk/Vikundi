@@ -1190,6 +1190,58 @@ CREATE TABLE IF NOT EXISTS `meeting_attendance` (
   UNIQUE KEY `meeting_member` (`meeting_id`,`member_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+CREATE TABLE IF NOT EXISTS `votes` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `vote_type` enum('candidate','motion') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'candidate',
+  `status` enum('draft','open','closed') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'draft',
+  `opens_at` datetime DEFAULT NULL,
+  `closes_at` datetime DEFAULT NULL,
+  `publish_results` tinyint(1) NOT NULL DEFAULT '0',
+  `created_by` int DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `vote_options` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `vote_id` int NOT NULL,
+  `label` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `member_id` int DEFAULT NULL,
+  `position` int NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `vote_id` (`vote_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `vote_eligibility` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `vote_id` int NOT NULL,
+  `member_id` int NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `vote_member_elig` (`vote_id`,`member_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `vote_participation` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `vote_id` int NOT NULL,
+  `member_id` int NOT NULL,
+  `voted_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `vote_member_part` (`vote_id`,`member_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `vote_ballots` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `vote_id` int NOT NULL,
+  `option_id` int NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `vote_id` (`vote_id`),
+  KEY `option_id` (`option_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 CREATE TABLE IF NOT EXISTS `group_settings` (
   `setting_key` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `setting_value` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,

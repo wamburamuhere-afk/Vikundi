@@ -4,6 +4,31 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-02 — Feat: Voting module (PR A) — model + leadership management
+**Branch:** `feat/voting-management`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** First half of the Voting module — the data model and the leadership side (create/run votes, results). Secret ballot by design. Member voting UI is PR B.
+
+### Secret-ballot data model
+- **`database/create_voting_tables.php` (new migration, before role seed; in `schema_sync.sql`):** `votes`, `vote_options`, `vote_eligibility` (UNIQUE vote+member), `vote_participation` (UNIQUE vote+member — records *that* a member voted), **`vote_ballots` (the anonymous choice — deliberately NO `member_id`)**. Also registers the `voting` + `manage_voting` permission keys and grants `manage_voting` to leadership directly (existing-DB pattern). Verified: ballot table has no member link; Member gets `voting` view-only, all leadership get `manage_voting`, Member excluded.
+- **`includes/role_grants.php`:** `manage_voting` added to member-hidden keys.
+
+### Backend
+- **`includes/vote_helpers.php` (new, pure):** type/status normalise, validation (candidate needs ≥2 options), fixed motion options (Yes/No/Abstain), tally builder, turnout %.
+- **Actions (full guard stack + `manage_voting`):** `save_vote` (create/edit draft + options; only draft editable), `set_vote_status` (open takes the eligibility snapshot of active members; close), `delete_vote` (not while open).
+- **APIs:** `get_votes` (list + turnout, auto-closes expired), `get_vote` (edit prefill), `get_vote_results` — **enforces secrecy: the tally is never returned while a vote is open**; after close, leadership always, members only if `publish_results`.
+
+### UI
+- **`app/constant/voting/manage_voting.php` (leadership):** list of votes with status/turnout, create/edit modal (election candidates or Yes/No/Abstain motion, closing time, publish toggle), Open/Close, delete, and a results modal (tally after close, turnout while open). **Manage Voting** added to the Management nav (gated on `canView('manage_voting')`).
+
+### Tests
+- **`tests/Unit/VotingTest.php` (new):** validation/normalise/tally/turnout, migration ordering, **ballot table has no member link**, member-hidden key, handler guard stack, open snapshot, results hide the tally while open.
+
+### Verification
+- `composer test-unit` → 822 tests pass. Migration + re-seed run locally (idempotent; anonymity + grants verified).
+
+---
+
 ## Session — 2026-07-02 — Cleanup: shared upload guard on all forms + meetings leadership grant
 **Branch:** `fix/upload-guard-followup-and-meetings-grant`
 **Developer:** Claude Code / Jabir Mussa
