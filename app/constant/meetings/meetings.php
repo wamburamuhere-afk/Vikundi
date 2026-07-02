@@ -12,6 +12,13 @@ $can_delete = canDelete('meetings');
 
 $is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
 $t = function ($en, $sw) use ($is_sw) { return $is_sw ? $sw : $en; };
+
+// Size the client-side upload guard to the server's real limits.
+require_once __DIR__ . '/../../../includes/meeting_helpers.php';
+$post_max_bytes   = vk_ini_bytes(ini_get('post_max_size') ?: '8M');
+$upload_max_bytes = vk_ini_bytes(ini_get('upload_max_filesize') ?: '2M');
+$post_max_mb   = max(1, (int) floor($post_max_bytes / 1048576));
+$upload_max_mb = max(1, (int) floor($upload_max_bytes / 1048576));
 ?>
 
 <div class="container-fluid py-4" id="main-content" style="background:#f8f9fa;min-height:90vh;overflow-x:hidden;">
@@ -170,7 +177,7 @@ $t = function ($en, $sw) use ($is_sw) { return $is_sw ? $sw : $en; };
                                 <div class="col-md-5"><input type="text" class="form-control form-control-sm" name="attachment_names[]" placeholder="<?= $t('Doc name', 'Jina la hati') ?>"></div>
                                 <div class="col-md-7"><input type="file" class="form-control form-control-sm" name="attachments[]"></div>
                             </div>
-                            <small class="text-muted"><?= $t('Optional. PDF, Word or image (max 10MB).', 'Si lazima. PDF, Word au picha (max 10MB).') ?></small>
+                            <small class="text-muted"><?= $t("Optional. PDF, Word or image — each file up to {$upload_max_mb}MB.", "Si lazima. PDF, Word au picha — kila faili hadi {$upload_max_mb}MB.") ?></small>
                         </div>
                     </div>
                 </div>
@@ -244,8 +251,24 @@ $(function(){
 
     $('#fStatus,#fType,#fFrom,#fTo').on('change', ()=>table.ajax.reload());
 
+    const POST_MAX = <?= (int) $post_max_bytes ?>, POST_MAX_MB = <?= (int) $post_max_mb ?>;
+    const FILE_MAX = <?= (int) $upload_max_bytes ?>, FILE_MAX_MB = <?= (int) $upload_max_mb ?>;
     $('#meetingForm').on('submit', function(e){
         e.preventDefault();
+        // Guard against the server's upload limits so the user gets a clear
+        // message instead of a silent drop (PHP discards $_POST when exceeded).
+        let totalBytes = 0, tooBig = [];
+        $(this).find('input[type=file]').each(function(){
+            if(this.files){ for(const f of this.files){ totalBytes += f.size; if (FILE_MAX > 0 && f.size > FILE_MAX) tooBig.push(f.name); } }
+        });
+        if (tooBig.length) {
+            Swal.fire('Error', (isSw ? 'Faili kubwa mno (zaidi ya ' : 'File too large (over ') + FILE_MAX_MB + 'MB): ' + tooBig.join(', '), 'error');
+            return;
+        }
+        if (POST_MAX > 0 && totalBytes > POST_MAX - 1048576) {
+            Swal.fire('Error', (isSw ? 'Jumla ya nyaraka ni kubwa mno. Ukomo ni ' : 'Total attachments too large. Limit is ') + POST_MAX_MB + 'MB.', 'error');
+            return;
+        }
         const $btn = $(this).find('button[type=submit]'); const old = $btn.html();
         $btn.prop('disabled',true).html('<span class="spinner-border spinner-border-sm"></span>');
         $.ajax({
