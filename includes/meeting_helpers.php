@@ -3,6 +3,8 @@
 //
 // Pure helpers for the Meetings module — no DB, so they can be unit tested.
 
+require_once __DIR__ . '/upload_guard.php'; // vk_ini_bytes() + upload overflow guard
+
 if (!function_exists('vk_meeting_types')) {
     function vk_meeting_types(): array { return ['regular', 'special', 'agm']; }
 }
@@ -58,21 +60,34 @@ if (!function_exists('vk_is_valid_date')) {
     }
 }
 
-if (!function_exists('vk_ini_bytes')) {
-    /**
-     * Convert a PHP ini size string ("8M", "512K", "1G", "1048576") to bytes.
-     * Used to size the client-side upload guard to the server's post_max_size.
-     */
-    function vk_ini_bytes($val): int {
-        $val = trim((string) $val);
-        if ($val === '') return 0;
-        $n = (int) $val;
-        switch (strtolower(substr($val, -1))) {
-            case 'g': return $n * 1073741824;
-            case 'm': return $n * 1048576;
-            case 'k': return $n * 1024;
-            default:  return $n;
+if (!function_exists('vk_meeting_reminder_message')) {
+    /** Build the SMS reminder text for a meeting (pure). */
+    function vk_meeting_reminder_message(array $m, bool $sw = false): string {
+        $date = date('d M Y', strtotime($m['meeting_date'] ?? 'now'));
+        $time = !empty($m['meeting_time']) ? date('h:i A', strtotime($m['meeting_time'])) : '';
+        $loc  = trim((string) ($m['location'] ?? ''));
+        $title = trim((string) ($m['title'] ?? ''));
+        if ($sw) {
+            $s = "Mkutano: {$title}, tarehe {$date}";
+            if ($time) $s .= " saa {$time}";
+            if ($loc)  $s .= ", mahali {$loc}";
+            return $s . '. Karibu.';
         }
+        $s = "Meeting: {$title} on {$date}";
+        if ($time) $s .= " at {$time}";
+        if ($loc)  $s .= ", venue {$loc}";
+        return $s . '. Please attend.';
+    }
+}
+
+if (!function_exists('vk_meeting_fine_reason')) {
+    /** Build the fine reason for missing a meeting (pure). */
+    function vk_meeting_fine_reason(array $m, bool $sw = false): string {
+        $date  = date('d M Y', strtotime($m['meeting_date'] ?? 'now'));
+        $title = trim((string) ($m['title'] ?? ''));
+        return $sw
+            ? "Faini ya kutohudhuria mkutano: {$title} ({$date})"
+            : "Meeting absence fine: {$title} ({$date})";
     }
 }
 

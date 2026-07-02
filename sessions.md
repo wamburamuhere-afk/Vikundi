@@ -4,6 +4,85 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-02 — Cleanup: shared upload guard on all forms + meetings leadership grant
+**Branch:** `fix/upload-guard-followup-and-meetings-grant`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Follow-up cleanup. (A) Applied the oversized-upload guard (from the meetings fix) to the general-expense and death-expense upload forms, via a shared helper. (B) Backfilled the `meetings` permission grant to Secretary/Treasurer on existing DBs (the same gap the fines PR fixed for `manage_fines`).
+
+### A · Shared upload guard
+- **`includes/upload_guard.php` (new):** `vk_ini_bytes()`, `vk_post_exceeded_limit()` (POST + empty `$_POST`/`$_FILES` + non-zero `Content-Length`), `vk_upload_limit_message()`. **`meeting_helpers.php` now uses it** and its duplicate `vk_ini_bytes` was removed.
+- **Server-side** clear "too large" message: `api/add_general_expense.php`, `actions/process_death_expense.php`.
+- **Client-side** per-file + total size guard (sized to the server's `upload_max_filesize` / `post_max_size`): the general-expense form (`general_expenses.php`) and the death-expense form (`expenses.php`).
+
+### B · Meetings leadership grant
+- **`database/grant_meetings_to_leadership.php` (new migration, registered):** grants the `meetings` key to leadership roles (chairperson/secretary/treasurer + admin variants) so it reaches Secretary/Treasurer on existing deployments. Idempotent (grants only when missing).
+
+### Tests
+- **`tests/Unit/UploadGuardTest.php` (new):** `vk_ini_bytes` + `vk_post_exceeded_limit` behaviour, the message helper, source-guards (both expense/death handlers use the guard, `meeting_helpers` uses the shared `vk_ini_bytes`, meetings-grant migration registered).
+
+### Verification
+- `composer test-unit` → 810 tests pass. Meetings-grant migration run locally (granted 4 roles, idempotent on re-run).
+
+---
+
+## Session — 2026-07-02 — Feat: Fines pages (manage + my fines) under Finance
+**Branch:** `feat/fines-pages`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Fines were being created (meeting absences + demo seed) but **had no UI** — the `manage_fines`/`my_fines` routes existed as "Coming Soon", no nav link, and the dashboard's fines total was dead code. Built the two pages under the **Finance** nav: leadership manage all fines; members view their own (view-only).
+
+### Database
+- **`database/add_fines_status_and_permission.php` (new migration, registered BEFORE `seed_vicoba_roles.php`; `schema_sync.sql` updated):**
+  - Widened `fines.status` → `enum('pending','paid','waived')` (committee can forgive a fine). Idempotent.
+  - Registered the `manage_fines` permission page-key.
+  - **Granted `manage_fines` to leadership roles directly** (chairperson/secretary/treasurer + admin variants) — because Secretary/Treasurer are **not** admin-bypassed and the seeder only seeds leadership when empty, so a new key would otherwise never reach them on existing deployments. Idempotent (only grants when missing).
+- **`includes/role_grants.php`:** added `manage_fines` to `vk_member_hidden_keys()` so members cannot view the management page.
+
+### Backend
+- **`includes/fine_helpers.php` (new, pure):** status list/normalise, badge colour, `vk_fine_summary()` (totals by status).
+- **`api/get_fines.php` (new):** server-side list for the leadership page — `require_auth` + explicit `canView('manage_fines')` (403 otherwise); joins member name + meeting title; per-status totals.
+- **`actions/update_fine_status.php` (new, full guard stack + `requirePermissionJson('edit','manage_fines')`):** mark a fine paid / waived / pending; validates the status; audit-logged.
+
+### UI
+- **`app/bms/customer/manage_fines.php` (leadership):** DataTable of all fines (member, reason, amount, date, status), filters (member/status), stat cards (pending/paid/waived totals), row actions **Mark Paid / Waive / Mark Pending** (edit-gated), mobile cards.
+- **`app/bms/customer/my_fines.php` (member, view-only):** the logged-in member's own fines (scoped via `customers.user_id`), with owing/paid/waived summary; no actions.
+- **Nav:** under **Finance** — "Fines" (gated on `canView('manage_fines')`, leadership only) + "My Fines" (all members).
+
+### Tests
+- **`tests/Unit/FinesTest.php` (new):** status helpers + summary, migration ordering, member-hidden key, manage list permission-gated, status action guard stack, my_fines scoped to the logged-in member.
+
+### Note (pre-existing, flagged)
+The `meetings` page-key (PR #165) has the same latent gap — on **existing** DBs, Secretary/Treasurer may not have been granted it (only Chairperson/Admin are bypassed). Worth a tiny follow-up grant.
+
+### Verification
+- `composer test-unit` → 804 tests pass. Migration + re-seed run locally: enum widened (idempotent), leadership granted (idempotent), Member correctly excluded.
+
+---
+
+## Session — 2026-07-02 — Feat: Meetings extras — absence fines + SMS reminder
+**Branch:** `feat/meetings-attendance-extras`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** PR 2 of the Meetings feature. From a meeting's detail view, leadership can now **fine the members marked absent** and **send an SMS reminder** to all members. Builds on the merged core (#165) + upload fix (#167).
+
+### Database
+- **`database/add_meeting_id_to_fines.php` (new migration, registered; in `schema_sync.sql`):** `fines.meeting_id INT NULL` — links an absence fine to its meeting, for traceability and dedup. Idempotent.
+
+### Backend
+- **`includes/meeting_helpers.php`:** added pure `vk_meeting_reminder_message()` (SMS text) and `vk_meeting_fine_reason()`.
+- **`actions/generate_absence_fines.php` (new, full guard stack):** creates `fines` (status `pending`) for every member saved as `absent` at the meeting, at a user-entered amount; **skips members already fined for that meeting** (dedup on `customer_id + meeting_id`); remembers the amount in `group_settings.meeting_absence_fine` as the next default; audit-logged.
+- **`actions/send_meeting_reminder.php` (new, full guard stack):** SMS every active member with a phone via `send_sms()`; reports sent/failed; clear message when the gateway isn't configured.
+- Both gated `requirePermissionJson('edit','meetings')` (leadership only; members view-only).
+
+### UI
+- **`app/constant/meetings/meeting_view.php`:** "Send SMS Reminder" button (top bar) + "Fine Absentees (N)" button (attendance card), leadership-only; the fine prompt prefills the saved default amount.
+
+### Tests
+- **`tests/Unit/MeetingsExtrasTest.php` (new):** pure message/reason builders + source-guards.
+
+### Verification
+- `composer test-unit` → 796 tests pass. Migration run locally (idempotent).
+
+---
+
 ## Session — 2026-07-02 — Feat: Meetings module (core) — record, attendance, documents
 **Branch:** `feat/meetings-core`
 **Developer:** Claude Code / Jabir Mussa

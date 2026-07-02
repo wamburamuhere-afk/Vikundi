@@ -35,6 +35,11 @@ $roster = $members->fetchAll(PDO::FETCH_ASSOC);
 require_once __DIR__ . '/../../../includes/meeting_helpers.php';
 $att = vk_attendance_summary(array_map(fn($r) => ['status' => $r['att_status']], $roster));
 
+// Default absence-fine amount (remembered from the last time fines were raised).
+$dfStmt = $pdo->prepare("SELECT setting_value FROM group_settings WHERE setting_key = 'meeting_absence_fine'");
+$dfStmt->execute();
+$default_fine = (float) ($dfStmt->fetchColumn() ?: 0);
+
 // Attached documents (reuses the #164 component; gated + access-filtered).
 require_once __DIR__ . '/../../../includes/expense_attachments.php';
 $__docs = vk_fetch_expense_attachments($pdo, 'meeting', $id);
@@ -46,9 +51,14 @@ includeHeader();
 ?>
 
 <div class="container-fluid py-4" id="main-content" style="background:#f8f9fa;min-height:90vh;">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
         <a href="<?= getUrl('meetings') ?>" class="btn btn-sm btn-outline-secondary rounded-pill"><i class="bi bi-arrow-left me-1"></i><?= $t('Back', 'Rudi') ?></a>
-        <span class="badge bg-<?= $statusBadge ?> px-3 py-2"><?= ucfirst($m['status']) ?></span>
+        <div class="d-flex align-items-center gap-2">
+            <?php if ($can_edit): ?>
+            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" id="btnReminder"><i class="bi bi-chat-dots me-1"></i><?= $t('Send SMS Reminder', 'Tuma Ukumbusho wa SMS') ?></button>
+            <?php endif; ?>
+            <span class="badge bg-<?= $statusBadge ?> px-3 py-2"><?= ucfirst($m['status']) ?></span>
+        </div>
     </div>
 
     <div class="row g-3">
@@ -101,6 +111,12 @@ includeHeader();
                         <button type="submit" class="btn btn-primary btn-sm w-100 mt-3 rounded-pill"><i class="bi bi-save me-1"></i><?= $t('Save Attendance', 'Hifadhi Mahudhurio') ?></button>
                         <?php endif; ?>
                     </form>
+                    <?php if ($can_edit && !empty($roster)): ?>
+                    <button type="button" id="btnFine" class="btn btn-outline-danger btn-sm w-100 mt-2 rounded-pill">
+                        <i class="bi bi-cash-coin me-1"></i><?= $t('Fine Absentees', 'Tozwa Faini Waliokosa') ?> (<span id="absentCount"><?= $att['absent'] ?></span>)
+                    </button>
+                    <small class="text-muted d-block mt-1"><?= $t('Fines the members currently saved as absent. Save attendance first.', 'Hutoza waliohifadhiwa kama hawakuhudhuria. Hifadhi mahudhurio kwanza.') ?></small>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -111,6 +127,34 @@ includeHeader();
 
 <script>
 const isSw = <?= $is_sw ? 'true' : 'false' ?>;
+const MEETING_ID = <?= (int) $id ?>;
+const DEFAULT_FINE = <?= json_encode((float) $default_fine) ?>;
+
+$('#btnReminder').on('click', function(){
+    Swal.fire({ title:isSw?'Tuma ukumbusho?':'Send reminder?', text:isSw?'SMS itatumwa kwa wanachama wote wenye namba ya simu.':'An SMS will be sent to every member with a phone number.', icon:'question', showCancelButton:true, confirmButtonText:isSw?'Ndio, Tuma':'Yes, send' })
+    .then(r=>{ if(!r.isConfirmed) return;
+        Swal.fire({ title:isSw?'Inatuma...':'Sending...', didOpen:()=>Swal.showLoading(), allowOutsideClick:false });
+        $.post('/actions/send_meeting_reminder', { meeting_id: MEETING_ID }, res=>{
+            if(res.success) Swal.fire({ icon:'success', title:isSw?'Imetumwa':'Sent', text:res.message });
+            else Swal.fire('Error', res.message||'Error', 'error');
+        }, 'json').fail(()=>Swal.fire('Error','Server error','error'));
+    });
+});
+
+$('#btnFine').on('click', function(){
+    Swal.fire({ title:isSw?'Tozwa faini waliokosa':'Fine absentees', input:'number',
+        inputLabel:isSw?'Kiasi cha faini (TZS)':'Fine amount (TZS)',
+        inputValue: DEFAULT_FINE>0 ? DEFAULT_FINE : '',
+        showCancelButton:true, confirmButtonText:isSw?'Tozwa':'Create fines', confirmButtonColor:'#dc3545',
+        inputValidator:v=>(!v||parseFloat(v)<=0)?(isSw?'Weka kiasi sahihi':'Enter a valid amount'):undefined
+    }).then(r=>{ if(!r.isConfirmed) return;
+        $.post('/actions/generate_absence_fines', { meeting_id: MEETING_ID, amount: r.value }, res=>{
+            if(res.success) Swal.fire({ icon:'success', title:isSw?'Imefanyika':'Done', text:res.message });
+            else Swal.fire('Error', res.message||'Error', 'error');
+        }, 'json').fail(()=>Swal.fire('Error','Server error','error'));
+    });
+});
+
 $('.att-box').on('change', function(){
     const total = $('.att-box').length, present = $('.att-box:checked').length;
     $('#attCount').text(present + '/' + total);
