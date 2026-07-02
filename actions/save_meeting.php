@@ -16,6 +16,19 @@ $meeting_id = isset($_POST['meeting_id']) && ctype_digit((string) $_POST['meetin
 // audit H3: authorization — create vs edit.
 requirePermissionJson($meeting_id > 0 ? 'edit' : 'create', 'meetings');
 
+// If an upload exceeds the server's post_max_size, PHP silently discards the
+// ENTIRE $_POST and $_FILES (the request still runs). Detect that and report the
+// real problem instead of a misleading "field required".
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
+    && empty($_POST) && empty($_FILES)
+    && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+    $limit = ini_get('post_max_size') ?: '?';
+    echo json_encode(['success' => false, 'message' => $is_sw
+        ? "Nyaraka ulizoambatisha ni kubwa mno (ukomo wa seva ni $limit). Tafadhali tumia faili ndogo zaidi."
+        : "The attached document(s) are too large (server limit is $limit). Please attach smaller files."]);
+    exit;
+}
+
 $errors = vk_meeting_input_errors($_POST, $is_sw);
 if ($errors) {
     echo json_encode(['success' => false, 'message' => implode("\n", $errors)]);

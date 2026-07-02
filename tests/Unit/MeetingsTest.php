@@ -50,6 +50,24 @@ class MeetingsTest extends TestCase
         $this->assertSame('scheduled', vk_normalize_meeting_status(''));
     }
 
+    public function testIniBytesParsing(): void
+    {
+        $this->assertSame(8 * 1048576, vk_ini_bytes('8M'));
+        $this->assertSame(512 * 1024, vk_ini_bytes('512K'));
+        $this->assertSame(1073741824, vk_ini_bytes('1G'));
+        $this->assertSame(1048576, vk_ini_bytes('1048576'));
+        $this->assertSame(0, vk_ini_bytes(''));
+    }
+
+    public function testUploadOverflowGuardPresent(): void
+    {
+        // The handler must catch a post_max_size overflow (empty $_POST/$_FILES
+        // with a non-zero body) instead of showing "field required".
+        $save = $this->src('actions/save_meeting.php');
+        $this->assertStringContainsString('CONTENT_LENGTH', $save);
+        $this->assertStringContainsString('post_max_size', $save);
+    }
+
     public function testAttendanceSummary(): void
     {
         $rows = [['status' => 'present'], ['status' => 'absent'], ['status' => 'present'], ['status' => '']];
