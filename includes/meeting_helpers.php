@@ -76,6 +76,37 @@ if (!function_exists('vk_ini_bytes')) {
     }
 }
 
+if (!function_exists('vk_meeting_reminder_message')) {
+    /** Build the SMS reminder text for a meeting (pure). */
+    function vk_meeting_reminder_message(array $m, bool $sw = false): string {
+        $date = date('d M Y', strtotime($m['meeting_date'] ?? 'now'));
+        $time = !empty($m['meeting_time']) ? date('h:i A', strtotime($m['meeting_time'])) : '';
+        $loc  = trim((string) ($m['location'] ?? ''));
+        $title = trim((string) ($m['title'] ?? ''));
+        if ($sw) {
+            $s = "Mkutano: {$title}, tarehe {$date}";
+            if ($time) $s .= " saa {$time}";
+            if ($loc)  $s .= ", mahali {$loc}";
+            return $s . '. Karibu.';
+        }
+        $s = "Meeting: {$title} on {$date}";
+        if ($time) $s .= " at {$time}";
+        if ($loc)  $s .= ", venue {$loc}";
+        return $s . '. Please attend.';
+    }
+}
+
+if (!function_exists('vk_meeting_fine_reason')) {
+    /** Build the fine reason for missing a meeting (pure). */
+    function vk_meeting_fine_reason(array $m, bool $sw = false): string {
+        $date  = date('d M Y', strtotime($m['meeting_date'] ?? 'now'));
+        $title = trim((string) ($m['title'] ?? ''));
+        return $sw
+            ? "Faini ya kutohudhuria mkutano: {$title} ({$date})"
+            : "Meeting absence fine: {$title} ({$date})";
+    }
+}
+
 if (!function_exists('vk_attendance_summary')) {
     /**
      * Summarise attendance rows into present/absent/total counts.

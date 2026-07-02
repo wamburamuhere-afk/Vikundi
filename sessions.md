@@ -4,6 +4,31 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-02 — Feat: Meetings extras — absence fines + SMS reminder
+**Branch:** `feat/meetings-attendance-extras`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** PR 2 of the Meetings feature. From a meeting's detail view, leadership can now **fine the members marked absent** and **send an SMS reminder** to all members. Builds on the merged core (#165) + upload fix (#167).
+
+### Database
+- **`database/add_meeting_id_to_fines.php` (new migration, registered; in `schema_sync.sql`):** `fines.meeting_id INT NULL` — links an absence fine to its meeting, for traceability and dedup. Idempotent.
+
+### Backend
+- **`includes/meeting_helpers.php`:** added pure `vk_meeting_reminder_message()` (SMS text) and `vk_meeting_fine_reason()`.
+- **`actions/generate_absence_fines.php` (new, full guard stack):** creates `fines` (status `pending`) for every member saved as `absent` at the meeting, at a user-entered amount; **skips members already fined for that meeting** (dedup on `customer_id + meeting_id`); remembers the amount in `group_settings.meeting_absence_fine` as the next default; audit-logged.
+- **`actions/send_meeting_reminder.php` (new, full guard stack):** SMS every active member with a phone via `send_sms()`; reports sent/failed; clear message when the gateway isn't configured.
+- Both gated `requirePermissionJson('edit','meetings')` (leadership only; members view-only).
+
+### UI
+- **`app/constant/meetings/meeting_view.php`:** "Send SMS Reminder" button (top bar) + "Fine Absentees (N)" button (attendance card), leadership-only; the fine prompt prefills the saved default amount.
+
+### Tests
+- **`tests/Unit/MeetingsExtrasTest.php` (new):** pure message/reason builders + source-guards.
+
+### Verification
+- `composer test-unit` → 796 tests pass. Migration run locally (idempotent).
+
+---
+
 ## Session — 2026-07-02 — Feat: Meetings module (core) — record, attendance, documents
 **Branch:** `feat/meetings-core`
 **Developer:** Claude Code / Jabir Mussa
