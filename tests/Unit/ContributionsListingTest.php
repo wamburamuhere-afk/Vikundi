@@ -5,8 +5,10 @@ namespace Tests\Unit;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Finance PR-3: Contributions becomes the dedicated, filterable listing — the
- * recording UI (manual form + bulk/M-Koba modals) moved to the Transactions page.
+ * Contributions page: recording lives on the Transactions page; the page shows
+ * the Contribution Analysis Grid as the single table (the old itemised list was
+ * removed per the chairman's request), with a date-range statement on demand.
+ * (Grid data + statement behaviour are covered by ContributionGridTest.)
  */
 class ContributionsListingTest extends TestCase
 {
@@ -30,13 +32,6 @@ class ContributionsListingTest extends TestCase
         $this->assertStringContainsString("getUrl('transactions')", $this->src);
     }
 
-    public function testHasFilterControls(): void
-    {
-        foreach (['from', 'to', 'member', 'type', 'fstatus', 'account'] as $filter) {
-            $this->assertStringContainsString('name="' . $filter . '"', $this->src, "filter $filter present");
-        }
-    }
-
     public function testApprovalQueueIncludesReviewedItems(): void
     {
         // The Approve button renders only for 'reviewed' rows, so the queue must
@@ -45,14 +40,12 @@ class ContributionsListingTest extends TestCase
         $this->assertStringNotContainsString("WHERE con.status = 'pending'", $this->src);
     }
 
-    public function testFilteredListIsParameterised(): void
+    public function testItemisedListRemoved(): void
     {
-        // The list query is built with bound params, never string-interpolated input.
-        $this->assertStringContainsString('$contribList', $this->src);
-        $this->assertStringContainsString('$stmtList->execute($params)', $this->src);
-        $this->assertStringContainsString('con.contribution_date >= ?', $this->src);
-        // Filter values validated against allow-lists before use.
-        $this->assertStringContainsString("['entrance', 'monthly', 'agm', 'fine', 'other']", $this->src);
-        $this->assertStringContainsString("['pending', 'reviewed', 'approved', 'cancelled']", $this->src);
+        // The old always-on list (and its filtered query) is gone; the grid is
+        // the single table and the date-range statement covers ad-hoc filtering.
+        $this->assertStringNotContainsString('$contribList', $this->src);
+        $this->assertStringNotContainsString('Contributions List', $this->src);
+        $this->assertStringContainsString("getUrl('contribution_statement')", $this->src);
     }
 }
