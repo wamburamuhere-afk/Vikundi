@@ -40,6 +40,13 @@ $user_role = $u_data['role_name'] ?? 'Staff';
 $lang = $_SESSION['preferred_language'] ?? 'en';
 $is_sw = ($lang === 'sw');
 
+// Upload limits for the client-side attachment guard.
+require_once __DIR__ . '/../../../includes/upload_guard.php';
+$post_max_bytes   = vk_ini_bytes(ini_get('post_max_size') ?: '8M');
+$upload_max_bytes = vk_ini_bytes(ini_get('upload_max_filesize') ?: '2M');
+$post_max_mb   = max(1, (int) floor($post_max_bytes / 1048576));
+$upload_max_mb = max(1, (int) floor($upload_max_bytes / 1048576));
+
 // Pre-select the Status filter from the URL (?status=pending) so the dashboard
 // "Action Required" chip lands here showing ONLY the pending expenses.
 $valid_statuses = ['pending', 'reviewed', 'approved', 'rejected'];
@@ -440,13 +447,20 @@ $(document).ready(function() {
         $(this).closest('.attachment-row').remove();
     });
 
+    const FILE_MAX = <?= (int) $upload_max_bytes ?>, FILE_MAX_MB = <?= (int) $upload_max_mb ?>, POST_MAX = <?= (int) $post_max_bytes ?>, POST_MAX_MB = <?= (int) $post_max_mb ?>;
     $('#addExpenseForm').on('submit', function(e) {
         e.preventDefault();
+        // Guard against the server's upload limits so a too-big file gives a
+        // clear message instead of a silent drop (PHP empties $_POST when exceeded).
+        let _tot = 0, _big = [];
+        $(this).find('input[type=file]').each(function(){ if(this.files){ for(const f of this.files){ _tot += f.size; if(FILE_MAX>0 && f.size>FILE_MAX) _big.push(f.name); } } });
+        if(_big.length){ Swal.fire('Error', (isSw?'Faili kubwa mno (zaidi ya ':'File too large (over ')+FILE_MAX_MB+'MB): '+_big.join(', '), 'error'); return; }
+        if(POST_MAX>0 && _tot>POST_MAX-1048576){ Swal.fire('Error', (isSw?'Jumla ya nyaraka ni kubwa mno. Ukomo ni ':'Total attachments too large. Limit is ')+POST_MAX_MB+'MB.', 'error'); return; }
         const $btn = $(this).find('button[type="submit"]');
         const originalHtml = $btn.html();
-        
+
         $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span> Saving...');
-        
+
         const formData = new FormData(this);
         
         $.ajax({

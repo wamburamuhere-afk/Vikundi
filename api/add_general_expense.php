@@ -1,12 +1,21 @@
 <?php
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/expense_helpers.php';
+require_once __DIR__ . '/../includes/upload_guard.php';
 global $pdo;
 
 header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['success' => false, 'message' => 'Invalid request method.']);
+    exit();
+}
+
+// A too-large attachment makes PHP drop $_POST/$_FILES — report it clearly
+// instead of a misleading "fill description and amount".
+if (vk_post_exceeded_limit()) {
+    $is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
+    echo json_encode(['success' => false, 'message' => vk_upload_limit_message($is_sw)]);
     exit();
 }
 

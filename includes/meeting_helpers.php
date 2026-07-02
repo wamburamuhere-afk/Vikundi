@@ -3,6 +3,8 @@
 //
 // Pure helpers for the Meetings module — no DB, so they can be unit tested.
 
+require_once __DIR__ . '/upload_guard.php'; // vk_ini_bytes() + upload overflow guard
+
 if (!function_exists('vk_meeting_types')) {
     function vk_meeting_types(): array { return ['regular', 'special', 'agm']; }
 }
@@ -55,24 +57,6 @@ if (!function_exists('vk_is_valid_date')) {
     function vk_is_valid_date(string $d): bool {
         $dt = \DateTime::createFromFormat('Y-m-d', $d);
         return $dt !== false && $dt->format('Y-m-d') === $d;
-    }
-}
-
-if (!function_exists('vk_ini_bytes')) {
-    /**
-     * Convert a PHP ini size string ("8M", "512K", "1G", "1048576") to bytes.
-     * Used to size the client-side upload guard to the server's post_max_size.
-     */
-    function vk_ini_bytes($val): int {
-        $val = trim((string) $val);
-        if ($val === '') return 0;
-        $n = (int) $val;
-        switch (strtolower(substr($val, -1))) {
-            case 'g': return $n * 1073741824;
-            case 'm': return $n * 1048576;
-            case 'k': return $n * 1024;
-            default:  return $n;
-        }
     }
 }
 
