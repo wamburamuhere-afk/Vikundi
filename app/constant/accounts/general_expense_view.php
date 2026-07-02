@@ -171,6 +171,14 @@ includeHeader();
             </div>
         </div>
     </div>
+
+    <?php
+        // Attached documents (detail view only). Reusable component — pass true
+        // to $show here; the print page keeps them off.
+        require_once __DIR__ . '/../../../includes/expense_attachments.php';
+        $__ge_docs = vk_fetch_expense_attachments($pdo, 'general_expense', (int) $ge['id']);
+        echo vk_render_attachments_section($__ge_docs, true, $is_sw);
+    ?>
 </div>
 
 <script>

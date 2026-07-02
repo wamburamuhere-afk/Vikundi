@@ -19,11 +19,13 @@ $migrations = [
     'add_parent_detail_columns.php',// parent structured name + 6-field location + photo (registration PR-B)
     'add_guarantor_detail_columns.php', // guarantor member link + 6-field location (registration PR-C)
     'add_spouse_photo_column.php',   // optional spouse passport photo
+    'create_meetings_tables.php',   // meetings + attendance tables + 'meetings' permission (before role seed)
     'seed_vicoba_roles.php',        // the four VICOBA system roles + remove BMS roles
     'add_transaction_fields.php',   // contributions.receipt_number + account (Transactions form)
     'fix_death_expense_schema.php', // widen deceased_type, add 'dormant' + customers.is_active
     'ai_assistant_setup.php',       // AI tables, prompts and permissions
     'add_member_expense_column.php',// general_expenses.member_id (per-member vs whole-org expense)
+    'add_document_relation_columns.php', // documents.related_type/related_id (attach docs to a record)
 ];
 
 echo "== Vikundi database migrations ==\n";
