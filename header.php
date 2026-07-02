@@ -482,6 +482,10 @@ try {
                                 <li><a class="dropdown-item" href="<?= getUrl('customers') ?>"><i class="bi bi-people text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Wanachama' : 'Members' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('dormant_members') ?>"><i class="bi bi-person-x text-warning me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Wanachama Wasiofanya Kazi' : 'Dormant Members' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('meetings') ?>"><i class="bi bi-calendar-event text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mikutano' : 'Meetings' ?></a></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('voting') ?>"><i class="bi bi-check2-square me-2" style="color:#6f42c1;"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Kura' : 'Voting' ?></a></li>
+                                <?php if (canView('manage_voting')): ?>
+                                <li><a class="dropdown-item" href="<?= getUrl('manage_voting') ?>"><i class="bi bi-sliders me-2" style="color:#6f42c1;"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Simamia Kura' : 'Manage Voting' ?></a></li>
+                                <?php endif; ?>
                             </ul>
                         </li>
 

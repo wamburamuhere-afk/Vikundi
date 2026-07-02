@@ -4,6 +4,50 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-02 — Feat: Voting module (PR B) — member secret ballot
+**Branch:** `feat/voting-member-ballot`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Second half of Voting — the member-facing ballot. Members see the open votes they're eligible for, cast **one secret vote**, and see published results after close. Completes the module end-to-end.
+
+### Backend
+- **`actions/cast_vote.php` (new):** `require_auth` + `require_csrf`. Resolves the user → member (`customers.user_id`), checks the vote is **open**, the member is in the **eligibility snapshot**, hasn't already voted, and the option belongs to the vote. Then in one transaction: inserts `vote_participation` (UNIQUE → a second vote throws and is reported as "already voted") and the **anonymous** `vote_ballots` row (no member_id). **Deliberately writes no activity-log entry naming the choice**, so secrecy holds.
+
+### UI
+- **`app/constant/voting/voting.php` (all members):** open votes with radio options + "Cast Vote" (confirm dialog); a "You have voted" state once cast; and **published results** (tally + turnout) for closed votes with `publish_results` on. "Voting" added to the Management nav (all members); route registered.
+
+### Tests
+- **`tests/Unit/CastVoteTest.php` (new):** source-guards for the guard stack, eligibility + open check, one-vote enforcement (unique + duplicate handling), anonymous ballot insert, no choice in the audit log, and the member page/route.
+
+### Verification
+- `composer test-unit` → 827 tests pass. **End-to-end run on the dev DB:** opened a vote (7 eligible), cast once (ok), second cast **blocked by the unique constraint**, ballot row confirmed to have **no member_id**, tally + turnout correct.
+
+---
+
+## Session — 2026-07-02 — Feat: Voting module (PR A) — model + leadership management
+**Branch:** `feat/voting-management`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** First half of the Voting module — the data model and the leadership side (create/run votes, results). Secret ballot by design. Member voting UI is PR B.
+
+### Secret-ballot data model
+- **`database/create_voting_tables.php` (new migration, before role seed; in `schema_sync.sql`):** `votes`, `vote_options`, `vote_eligibility` (UNIQUE vote+member), `vote_participation` (UNIQUE vote+member — records *that* a member voted), **`vote_ballots` (the anonymous choice — deliberately NO `member_id`)**. Also registers the `voting` + `manage_voting` permission keys and grants `manage_voting` to leadership directly (existing-DB pattern). Verified: ballot table has no member link; Member gets `voting` view-only, all leadership get `manage_voting`, Member excluded.
+- **`includes/role_grants.php`:** `manage_voting` added to member-hidden keys.
+
+### Backend
+- **`includes/vote_helpers.php` (new, pure):** type/status normalise, validation (candidate needs ≥2 options), fixed motion options (Yes/No/Abstain), tally builder, turnout %.
+- **Actions (full guard stack + `manage_voting`):** `save_vote` (create/edit draft + options; only draft editable), `set_vote_status` (open takes the eligibility snapshot of active members; close), `delete_vote` (not while open).
+- **APIs:** `get_votes` (list + turnout, auto-closes expired), `get_vote` (edit prefill), `get_vote_results` — **enforces secrecy: the tally is never returned while a vote is open**; after close, leadership always, members only if `publish_results`.
+
+### UI
+- **`app/constant/voting/manage_voting.php` (leadership):** list of votes with status/turnout, create/edit modal (election candidates or Yes/No/Abstain motion, closing time, publish toggle), Open/Close, delete, and a results modal (tally after close, turnout while open). **Manage Voting** added to the Management nav (gated on `canView('manage_voting')`).
+
+### Tests
+- **`tests/Unit/VotingTest.php` (new):** validation/normalise/tally/turnout, migration ordering, **ballot table has no member link**, member-hidden key, handler guard stack, open snapshot, results hide the tally while open.
+
+### Verification
+- `composer test-unit` → 822 tests pass. Migration + re-seed run locally (idempotent; anonymity + grants verified).
+
+---
+
 ## Session — 2026-07-02 — Cleanup: shared upload guard on all forms + meetings leadership grant
 **Branch:** `fix/upload-guard-followup-and-meetings-grant`
 **Developer:** Claude Code / Jabir Mussa

@@ -52,6 +52,7 @@ define('RESOURCES_DIR', ROOT_DIR . '/app/constant/resources');
 define('REPORTS_DIR', ROOT_DIR . '/app/constant/reports');
 define('SETTINGS_DIR', ROOT_DIR . '/app/constant/settings');
 define('MEETINGS_DIR', ROOT_DIR . '/app/constant/meetings');
+define('VOTING_DIR', ROOT_DIR . '/app/constant/voting');
 
 // BMS Modules (Core Business)
 define('BMS_DIR', ROOT_DIR . '/app/bms');
@@ -316,6 +317,11 @@ $routes = [
     'meetings.php' => MEETINGS_DIR . '/meetings.php',
     'meeting_view' => MEETINGS_DIR . '/meeting_view.php',
     'meeting_view.php' => MEETINGS_DIR . '/meeting_view.php',
+    // Voting module
+    'manage_voting' => VOTING_DIR . '/manage_voting.php',
+    'manage_voting.php' => VOTING_DIR . '/manage_voting.php',
+    'voting' => VOTING_DIR . '/voting.php',
+    'voting.php' => VOTING_DIR . '/voting.php',
     'library' => ROOT_DIR . '/app/constant/library/library.php',
     'library' => ROOT_DIR . '/app/constant/library/library.php',
     'messaging' => ROOT_DIR . '/app/constant/messaging/messaging.php',
