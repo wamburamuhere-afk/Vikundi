@@ -4,6 +4,39 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-02 — Feat: Fines pages (manage + my fines) under Finance
+**Branch:** `feat/fines-pages`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Fines were being created (meeting absences + demo seed) but **had no UI** — the `manage_fines`/`my_fines` routes existed as "Coming Soon", no nav link, and the dashboard's fines total was dead code. Built the two pages under the **Finance** nav: leadership manage all fines; members view their own (view-only).
+
+### Database
+- **`database/add_fines_status_and_permission.php` (new migration, registered BEFORE `seed_vicoba_roles.php`; `schema_sync.sql` updated):**
+  - Widened `fines.status` → `enum('pending','paid','waived')` (committee can forgive a fine). Idempotent.
+  - Registered the `manage_fines` permission page-key.
+  - **Granted `manage_fines` to leadership roles directly** (chairperson/secretary/treasurer + admin variants) — because Secretary/Treasurer are **not** admin-bypassed and the seeder only seeds leadership when empty, so a new key would otherwise never reach them on existing deployments. Idempotent (only grants when missing).
+- **`includes/role_grants.php`:** added `manage_fines` to `vk_member_hidden_keys()` so members cannot view the management page.
+
+### Backend
+- **`includes/fine_helpers.php` (new, pure):** status list/normalise, badge colour, `vk_fine_summary()` (totals by status).
+- **`api/get_fines.php` (new):** server-side list for the leadership page — `require_auth` + explicit `canView('manage_fines')` (403 otherwise); joins member name + meeting title; per-status totals.
+- **`actions/update_fine_status.php` (new, full guard stack + `requirePermissionJson('edit','manage_fines')`):** mark a fine paid / waived / pending; validates the status; audit-logged.
+
+### UI
+- **`app/bms/customer/manage_fines.php` (leadership):** DataTable of all fines (member, reason, amount, date, status), filters (member/status), stat cards (pending/paid/waived totals), row actions **Mark Paid / Waive / Mark Pending** (edit-gated), mobile cards.
+- **`app/bms/customer/my_fines.php` (member, view-only):** the logged-in member's own fines (scoped via `customers.user_id`), with owing/paid/waived summary; no actions.
+- **Nav:** under **Finance** — "Fines" (gated on `canView('manage_fines')`, leadership only) + "My Fines" (all members).
+
+### Tests
+- **`tests/Unit/FinesTest.php` (new):** status helpers + summary, migration ordering, member-hidden key, manage list permission-gated, status action guard stack, my_fines scoped to the logged-in member.
+
+### Note (pre-existing, flagged)
+The `meetings` page-key (PR #165) has the same latent gap — on **existing** DBs, Secretary/Treasurer may not have been granted it (only Chairperson/Admin are bypassed). Worth a tiny follow-up grant.
+
+### Verification
+- `composer test-unit` → 804 tests pass. Migration + re-seed run locally: enum widened (idempotent), leadership granted (idempotent), Member correctly excluded.
+
+---
+
 ## Session — 2026-07-02 — Feat: Meetings extras — absence fines + SMS reminder
 **Branch:** `feat/meetings-attendance-extras`
 **Developer:** Claude Code / Jabir Mussa

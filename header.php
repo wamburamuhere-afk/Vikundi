@@ -497,6 +497,10 @@ try {
                                 <li><a class="dropdown-item" href="<?= getUrl('expenses') ?>"><i class="bi bi-cart-dash-fill text-danger me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Matumizi' : 'Expenses' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('petty_cash') ?>"><i class="bi bi-receipt text-info me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Miamala ya Vocha' : 'Petty Cash Voucher' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('budget') ?>"><i class="bi bi-calculator text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Bajeti' : 'Budget' ?></a></li>
+                                <?php if (canView('manage_fines')): ?>
+                                <li><a class="dropdown-item" href="<?= getUrl('manage_fines') ?>"><i class="bi bi-cash-coin text-danger me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Faini' : 'Fines' ?></a></li>
+                                <?php endif; ?>
+                                <li><a class="dropdown-item" href="<?= getUrl('my_fines') ?>"><i class="bi bi-person-badge text-warning me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Faini Zangu' : 'My Fines' ?></a></li>
                             </ul>
                         </li>
                         

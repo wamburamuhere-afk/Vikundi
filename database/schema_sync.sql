@@ -1132,7 +1132,7 @@ CREATE TABLE IF NOT EXISTS `fines` (
   `customer_id` int NOT NULL,
   `amount` decimal(15,2) NOT NULL,
   `reason` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `status` enum('pending','paid') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'pending',
+  `status` enum('pending','paid','waived') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'pending',
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `meeting_id` int DEFAULT NULL,

@@ -20,6 +20,7 @@ $migrations = [
     'add_guarantor_detail_columns.php', // guarantor member link + 6-field location (registration PR-C)
     'add_spouse_photo_column.php',   // optional spouse passport photo
     'create_meetings_tables.php',   // meetings + attendance tables + 'meetings' permission (before role seed)
+    'add_fines_status_and_permission.php', // fines 'waived' status + 'manage_fines' permission (before role seed)
     'seed_vicoba_roles.php',        // the four VICOBA system roles + remove BMS roles
     'add_transaction_fields.php',   // contributions.receipt_number + account (Transactions form)
     'fix_death_expense_schema.php', // widen deceased_type, add 'dormant' + customers.is_active

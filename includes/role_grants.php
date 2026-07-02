@@ -48,6 +48,8 @@ if (!function_exists('vk_member_hidden_keys')) {
             'payment_processing', 'forfeit_collateral', 'release_collateral',
             // dedicated edit pages
             'edit_customer', 'edit_guarantor', 'edit_loan',
+            // fines management (members see only their own via my_fines)
+            'manage_fines',
         ];
     }
 }
