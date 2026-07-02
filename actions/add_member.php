@@ -67,6 +67,8 @@ $status     = $_POST['status'] ?? 'active';
 $gender     = $_POST['gender'] ?? '';
 $dob        = $_POST['dob'] ?? null;
 $nida_number = $_POST['nida_number'] ?? '';
+// Leadership-assigned registration number (optional at admin creation).
+$registration_number = trim($_POST['registration_number'] ?? '');
 $country    = $_POST['country'] ?? 'Tanzania';
 $state      = $_POST['state'] ?? '';
 $district   = $_POST['district'] ?? '';
@@ -230,6 +232,18 @@ try {
         exit();
     }
 
+    // Registration number (if the admin typed one) must be unique across members.
+    if ($registration_number !== '') {
+        $stmt = $pdo->prepare("SELECT customer_id FROM customers WHERE registration_number = ?");
+        $stmt->execute([$registration_number]);
+        if ($stmt->fetch()) {
+            echo json_encode(['success' => false, 'message' => ($val_lang === 'sw')
+                ? 'Namba hii ya usajili tayari inatumiwa na mwanachama mwingine.'
+                : 'This registration number is already used by another member.']);
+            exit();
+        }
+    }
+
     // Handle Passport Photo Upload
     $avatar = null;
     if (isset($_FILES['passport_photo']) && $_FILES['passport_photo']['error'] === UPLOAD_ERR_OK) {
@@ -284,7 +298,7 @@ try {
     $customer_full_name = trim("$first_name $middle_name $last_name");
     $stmt = $pdo->prepare("
         INSERT INTO customers (
-            user_id, first_name, middle_name, last_name, customer_name, email, phone, gender, religion, birth_region, dob, nida_number,
+            user_id, first_name, middle_name, last_name, customer_name, email, phone, gender, religion, birth_region, dob, nida_number, registration_number,
             country, state, district, ward, street, house_number,
             marital_status,
             spouse_first_name, spouse_middle_name, spouse_last_name, spouse_email, spouse_phone, spouse_gender, spouse_dob, spouse_nida,
@@ -300,7 +314,7 @@ try {
             guarantor_country, guarantor_state, guarantor_district, guarantor_ward, guarantor_street, guarantor_house_number,
             status, initial_savings, created_at
         ) VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
             ?,
             ?, ?, ?, ?, ?, ?, ?, ?,
@@ -314,7 +328,7 @@ try {
         )
     ");
     $stmt->execute([
-        $new_user_id, $first_name, $middle_name, $last_name, $customer_full_name, $email, $phone, $gender, $religion, $birth_region, $dob, $nida_number,
+        $new_user_id, $first_name, $middle_name, $last_name, $customer_full_name, $email, $phone, $gender, $religion, $birth_region, $dob, $nida_number, ($registration_number !== '' ? $registration_number : null),
         $country, $state, $district, $ward, $street, $house_number,
         $_POST['marital_status'] ?? 'Single',
         $spouse_first_name, $spouse_middle_name, $spouse_last_name, $spouse_email, $spouse_phone, $spouse_gender, $spouse_dob, $spouse_nida,

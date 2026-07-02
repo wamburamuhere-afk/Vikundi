@@ -30,6 +30,7 @@ $migrations = [
     'add_document_relation_columns.php', // documents.related_type/related_id (attach docs to a record)
     'add_meeting_id_to_fines.php',   // fines.meeting_id (meeting absence fines)
     'grant_meetings_to_leadership.php', // backfill 'meetings' grant for Secretary/Treasurer on existing DBs
+    'add_registration_number.php',   // customers.registration_number (leadership-assigned)
 ];
 
 echo "== Vikundi database migrations ==\n";

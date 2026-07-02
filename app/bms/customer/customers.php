@@ -22,7 +22,7 @@ require_once __DIR__ . '/../../../includes/csrf.php';
 $query = "
     SELECT 
         u.user_id, u.username, u.email, u.first_name, u.middle_name, u.last_name, u.status as user_status, u.user_role, u.created_at,
-        c.customer_id, c.phone, c.address, c.city, c.nida_number, c.state, c.district, c.initial_savings, c.is_deceased
+        c.customer_id, c.phone, c.address, c.city, c.nida_number, c.registration_number, c.state, c.district, c.initial_savings, c.is_deceased
     FROM users u
     LEFT JOIN customers c ON u.user_id = c.user_id
     WHERE u.status IN ('active', 'pending', 'suspended') 
@@ -230,6 +230,7 @@ if (!canSeeMemberSensitiveData()) {
                             <td><?= safe_output(trim(($m['first_name'] ?? '') . ' ' . ($m['middle_name'] ?? '') . ' ' . ($m['last_name'] ?? ''))) ?></td>
                             <td>
                                 <div class="badge bg-light text-dark border mb-1"><i class="bi bi-card-text me-1"></i> ID: <?= safe_output($m['nida_number'] ?? 'N/A') ?></div>
+                                <?php if (!empty($m['registration_number'])): ?><div class="badge bg-primary-subtle text-primary border border-primary-subtle mb-1"><i class="bi bi-hash me-1"></i><?= safe_output($m['registration_number']) ?></div><?php endif; ?>
                                 <div><i class="bi bi-envelope-at me-1"></i> <?= safe_output($m['email']) ?></div>
                                 <div><i class="bi bi-phone me-1"></i> <?= safe_output($m['phone'] ?? 'N/A') ?></div>
                             </td>
@@ -275,6 +276,7 @@ if (!canSeeMemberSensitiveData()) {
                                                 <!-- Edit Member - Only if canEdit is true -->
                                                 <li><a class="dropdown-item py-2 rounded" href="<?= getUrl('profile') ?>?id=<?= $m['user_id'] ?>&edit=1&ref=list"><i class="bi bi-pencil-square text-info me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Badili Taarifa (Edit)' : 'Edit Member' ?></a></li>
                                                 <li><a class="dropdown-item py-2 text-primary fw-bold rounded" href="javascript:void(0)" onclick="openStatusModal(<?= $m['user_id'] ?>, '<?= $m['user_status'] ?>')"><i class="bi bi-check-circle-fill me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Badili Hali (Status)' : 'Change Status' ?></a></li>
+                                                <li><a class="dropdown-item py-2 rounded" href="javascript:void(0)" onclick='assignRegNumber(<?= (int) $m['user_id'] ?>, <?= json_encode($m['registration_number'] ?? '') ?>)'><i class="bi bi-hash text-secondary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Namba ya Usajili' : 'Registration No.' ?></a></li>
                                             <?php endif; ?>
 
                                             <?php if ($can_delete_members): ?>
@@ -533,6 +535,10 @@ if (!canSeeMemberSensitiveData()) {
                                 <div class="col-md-6">
                                     <label class="form-label fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Namba ya NIDA' : 'NIDA Number' ?></label>
                                     <input type="text" name="nida_number" class="form-control" placeholder="20XXXXXXXXXXXXX">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Namba ya Usajili' : 'Registration Number' ?></label>
+                                    <input type="text" name="registration_number" class="form-control" placeholder="<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Itapewa na uongozi' : 'Assigned by leadership' ?>">
                                 </div>
                             </div>
                             <div class="d-flex justify-content-end mt-4">
@@ -1108,7 +1114,57 @@ function submitRole(newRole) {
     });
 }
 
+const REG_IS_SW = <?= json_encode(($_SESSION['preferred_language'] ?? 'en') === 'sw') ?>;
+const REG_SAVE_URL = '<?= getUrl("actions/save_registration_number") ?>';
+
 function updateMemberStatus(userId, newStatus) {
+    // Activating = the "preview/approval" moment — prompt for the registration
+    // number (optional; leaving it blank still activates).
+    if (newStatus === 'active') { return promptRegThenActivate(userId); }
+    doStatusUpdate(userId, newStatus);
+}
+
+function promptRegThenActivate(userId) {
+    Swal.fire({
+        title: REG_IS_SW ? 'Idhinisha Mwanachama' : 'Approve Member',
+        input: 'text',
+        inputLabel: REG_IS_SW ? 'Namba ya Usajili (si lazima)' : 'Registration Number (optional)',
+        inputPlaceholder: REG_IS_SW ? 'Acha wazi kuipa baadaye' : 'Leave blank to assign later',
+        showCancelButton: true,
+        confirmButtonText: REG_IS_SW ? 'Idhinisha' : 'Activate Member',
+        cancelButtonText: REG_IS_SW ? 'Ghairi' : 'Cancel'
+    }).then(r => {
+        if (!r.isConfirmed) return;
+        const reg = (r.value || '').trim();
+        if (reg) {
+            $.post(REG_SAVE_URL, { user_id: userId, registration_number: reg }, function(res){
+                if (res.success) { doStatusUpdate(userId, 'active'); }
+                else { Swal.fire('Error', res.message, 'error'); }
+            }, 'json').fail(() => Swal.fire('Error', 'Server error', 'error'));
+        } else {
+            doStatusUpdate(userId, 'active');
+        }
+    });
+}
+
+function assignRegNumber(userId, currentReg) {
+    Swal.fire({
+        title: REG_IS_SW ? 'Namba ya Usajili' : 'Registration Number',
+        input: 'text',
+        inputValue: currentReg || '',
+        inputLabel: REG_IS_SW ? 'Weka namba ya usajili (uongozi pekee)' : 'Enter the registration number (leadership only)',
+        showCancelButton: true,
+        confirmButtonText: REG_IS_SW ? 'Hifadhi' : 'Save'
+    }).then(r => {
+        if (!r.isConfirmed) return;
+        $.post(REG_SAVE_URL, { user_id: userId, registration_number: (r.value || '').trim() }, function(res){
+            if (res.success) { Swal.fire({ icon:'success', title: REG_IS_SW ? 'Imehifadhiwa' : 'Saved', timer:1300, showConfirmButton:false }).then(() => location.reload()); }
+            else { Swal.fire('Error', res.message, 'error'); }
+        }, 'json').fail(() => Swal.fire('Error', 'Server error', 'error'));
+    });
+}
+
+function doStatusUpdate(userId, newStatus) {
     $.ajax({
         url: '<?= getUrl("actions/update_user_status") ?>',
         method: 'POST',

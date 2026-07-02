@@ -170,6 +170,13 @@ if (isset($_SESSION['user_id'])) {
                                 <input type="text" name="nida_number" class="form-control" placeholder="Your NIDA number">
                             </div>
                             <div class="col-md-6">
+                                <label class="form-label fw-bold">Registration Number</label>
+                                <div class="form-control bg-light text-muted d-flex align-items-center" style="min-height:38px;">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    Assigned by the administration after your registration is reviewed.
+                                </div>
+                            </div>
+                            <div class="col-md-6">
                                 <label class="form-label fw-bold"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Dini ya Mwanachama' : 'Member Religion' ?></label>
                                 <div id="religion_field_wrapper">
                                     <select name="religion" id="religion_select" class="form-select" onchange="handleReligionChange(this)">
