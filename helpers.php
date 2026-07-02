@@ -612,7 +612,7 @@ function vk_upload_photo(string $field, string $dir): ?string {
 function vk_member_sensitive_keys(): array {
     $keys = [
         // contact + identity
-        'phone', 'email', 'nida_number',
+        'phone', 'email', 'nida_number', 'registration_number',
         // precise address (region/district kept as general area)
         'address', 'city', 'street', 'house_number',
         // financial
