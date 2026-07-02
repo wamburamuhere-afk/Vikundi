@@ -28,8 +28,11 @@ This file tracks every development session, modification, and significant change
 ### Tests
 - **`tests/Unit/MeetingsTest.php` (new):** pure validators/normalisation/attendance summary + source-guards (migration ordered before role seed, handlers carry the guard stack, route/nav present, docs use the structured link).
 
+### Upload-limit fix (found in testing)
+Attaching a large file (16.5 MB, over `post_max_size=8M`) made PHP silently discard the whole `$_POST`/`$_FILES`, so `save_meeting` reported a misleading "title/date required." Fixed: the handler now detects the overflow (POST + empty `$_POST`/`$_FILES` + non-zero `Content-Length`) and returns a clear "too large (limit N)" message; the form guards uploads client-side against the server's real `upload_max_filesize` (per file) and `post_max_size` (total), with the limits shown in the hint. Added `vk_ini_bytes()` (pure, tested). Server can raise `upload_max_filesize`/`post_max_size` in php.ini for larger meeting documents.
+
 ### Verification
-- `composer test-unit` → 788 tests pass. Migration + role re-seed run locally: tables created (idempotent), Member granted view-only on `meetings`.
+- `composer test-unit` → 790 tests pass. Migration + role re-seed run locally: tables created (idempotent), Member granted view-only on `meetings`.
 
 ---
 

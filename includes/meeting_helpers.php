@@ -58,6 +58,24 @@ if (!function_exists('vk_is_valid_date')) {
     }
 }
 
+if (!function_exists('vk_ini_bytes')) {
+    /**
+     * Convert a PHP ini size string ("8M", "512K", "1G", "1048576") to bytes.
+     * Used to size the client-side upload guard to the server's post_max_size.
+     */
+    function vk_ini_bytes($val): int {
+        $val = trim((string) $val);
+        if ($val === '') return 0;
+        $n = (int) $val;
+        switch (strtolower(substr($val, -1))) {
+            case 'g': return $n * 1073741824;
+            case 'm': return $n * 1048576;
+            case 'k': return $n * 1024;
+            default:  return $n;
+        }
+    }
+}
+
 if (!function_exists('vk_attendance_summary')) {
     /**
      * Summarise attendance rows into present/absent/total counts.
