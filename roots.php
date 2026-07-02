@@ -320,6 +320,8 @@ $routes = [
     // Voting module
     'manage_voting' => VOTING_DIR . '/manage_voting.php',
     'manage_voting.php' => VOTING_DIR . '/manage_voting.php',
+    'voting' => VOTING_DIR . '/voting.php',
+    'voting.php' => VOTING_DIR . '/voting.php',
     'library' => ROOT_DIR . '/app/constant/library/library.php',
     'library' => ROOT_DIR . '/app/constant/library/library.php',
     'messaging' => ROOT_DIR . '/app/constant/messaging/messaging.php',

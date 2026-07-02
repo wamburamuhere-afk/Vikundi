@@ -4,6 +4,25 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-02 — Feat: Voting module (PR B) — member secret ballot
+**Branch:** `feat/voting-member-ballot`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Second half of Voting — the member-facing ballot. Members see the open votes they're eligible for, cast **one secret vote**, and see published results after close. Completes the module end-to-end.
+
+### Backend
+- **`actions/cast_vote.php` (new):** `require_auth` + `require_csrf`. Resolves the user → member (`customers.user_id`), checks the vote is **open**, the member is in the **eligibility snapshot**, hasn't already voted, and the option belongs to the vote. Then in one transaction: inserts `vote_participation` (UNIQUE → a second vote throws and is reported as "already voted") and the **anonymous** `vote_ballots` row (no member_id). **Deliberately writes no activity-log entry naming the choice**, so secrecy holds.
+
+### UI
+- **`app/constant/voting/voting.php` (all members):** open votes with radio options + "Cast Vote" (confirm dialog); a "You have voted" state once cast; and **published results** (tally + turnout) for closed votes with `publish_results` on. "Voting" added to the Management nav (all members); route registered.
+
+### Tests
+- **`tests/Unit/CastVoteTest.php` (new):** source-guards for the guard stack, eligibility + open check, one-vote enforcement (unique + duplicate handling), anonymous ballot insert, no choice in the audit log, and the member page/route.
+
+### Verification
+- `composer test-unit` → 827 tests pass. **End-to-end run on the dev DB:** opened a vote (7 eligible), cast once (ok), second cast **blocked by the unique constraint**, ballot row confirmed to have **no member_id**, tally + turnout correct.
+
+---
+
 ## Session — 2026-07-02 — Feat: Voting module (PR A) — model + leadership management
 **Branch:** `feat/voting-management`
 **Developer:** Claude Code / Jabir Mussa
