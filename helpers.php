@@ -652,6 +652,26 @@ function safe_output($value, $default = 'N/A') {
     return !empty($value) ? htmlspecialchars($value) : $default;
 }
 
+if (!function_exists('vk_registration_number_taken')) {
+    /**
+     * True when a (non-empty) member registration number is already used by
+     * another member. Shared by every place that assigns it (admin create, the
+     * quick action, the edit form) so the uniqueness rule lives in one spot.
+     *
+     * @param int $exceptCustomerId skip this member (0 = a brand-new member)
+     */
+    function vk_registration_number_taken(PDO $pdo, string $reg, int $exceptCustomerId = 0): bool {
+        $reg = trim($reg);
+        if ($reg === '') return false;
+        $sql = "SELECT COUNT(*) FROM customers WHERE registration_number = ?";
+        $params = [$reg];
+        if ($exceptCustomerId > 0) { $sql .= " AND customer_id <> ?"; $params[] = $exceptCustomerId; }
+        $st = $pdo->prepare($sql);
+        $st->execute($params);
+        return (int) $st->fetchColumn() > 0;
+    }
+}
+
 function format_date($date, $format = 'd M Y') {
     if (!$date) return 'N/A';
     return date($format, strtotime($date));

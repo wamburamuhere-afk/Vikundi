@@ -6,6 +6,7 @@ require_once __DIR__ . '/../includes/require_auth.php';  // audit B3
 require_once __DIR__ . '/../includes/require_csrf.php';  // audit H6
 require_once __DIR__ . '/../core/permissions.php';
 require_once __DIR__ . '/../includes/activity_logger.php';
+require_once __DIR__ . '/../helpers.php'; // vk_registration_number_taken()
 
 header('Content-Type: application/json');
 requirePermissionJson('edit', 'customers'); // audit H3 — leadership only
@@ -35,15 +36,11 @@ try {
     }
 
     // Unique across members (blank clears it; a non-empty value must be unused).
-    if ($reg !== '') {
-        $dup = $pdo->prepare("SELECT COUNT(*) FROM customers WHERE registration_number = ? AND customer_id <> ?");
-        $dup->execute([$reg, $customer_id]);
-        if ((int) $dup->fetchColumn() > 0) {
-            echo json_encode(['success' => false, 'message' => $is_sw
-                ? 'Namba hii ya usajili tayari inatumiwa na mwanachama mwingine.'
-                : 'This registration number is already used by another member.']);
-            exit;
-        }
+    if (vk_registration_number_taken($pdo, $reg, $customer_id)) {
+        echo json_encode(['success' => false, 'message' => $is_sw
+            ? 'Namba hii ya usajili tayari inatumiwa na mwanachama mwingine.'
+            : 'This registration number is already used by another member.']);
+        exit;
     }
 
     $pdo->prepare("UPDATE customers SET registration_number = ? WHERE customer_id = ?")
