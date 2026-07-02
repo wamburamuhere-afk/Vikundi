@@ -161,6 +161,9 @@ if ($_POST) {
             $last_name = trim($_POST['last_name']);
             $email = trim($_POST['email']);
             $phone = trim($_POST['phone']);
+            // Leadership-assigned registration number (this edit form is already
+            // leadership-only). Blank clears it.
+            $registration_number = trim($_POST['registration_number'] ?? '');
 
             // ---- CSRF + same FORMAT rules as registration (for the entered parts) ----
             if (!csrf_verify($_POST['csrf_token'] ?? null)) {
@@ -203,9 +206,21 @@ if ($_POST) {
             }
             
             $old_email = $member['email'];
-            
+
+            // Registration number must be unique across members (excluding this one).
+            if ($registration_number !== '') {
+                $__cidStmt = $pdo->prepare("SELECT customer_id FROM customers WHERE email = ? LIMIT 1");
+                $__cidStmt->execute([$old_email]);
+                $__cid = (int) ($__cidStmt->fetchColumn() ?: 0);
+                if (vk_registration_number_taken($pdo, $registration_number, $__cid)) {
+                    throw new Exception((($_SESSION['preferred_language'] ?? 'en') === 'sw')
+                        ? 'Namba hii ya usajili tayari inatumiwa na mwanachama mwingine.'
+                        : 'This registration number is already used by another member.');
+                }
+            }
+
             $stmt = $pdo->prepare("
-                UPDATE users 
+                UPDATE users
                 SET first_name = ?, middle_name = ?, last_name = ?, email = ?, phone = ?, updated_at = NOW() 
                 WHERE user_id = ?
             ");
@@ -222,9 +237,9 @@ if ($_POST) {
 
                 if ($exists) {
                     $stmt = $pdo->prepare("
-                        UPDATE customers 
+                        UPDATE customers
                         SET first_name = ?, middle_name = ?, last_name = ?, customer_name = ?, phone = ?, email = ?,
-                            nida_number = ?, gender = ?, dob = ?, religion = ?, birth_region = ?,
+                            nida_number = ?, registration_number = ?, gender = ?, dob = ?, religion = ?, birth_region = ?,
                             country = ?, state = ?, district = ?, ward = ?, street = ?, house_number = ?,
                             marital_status = ?,
                             spouse_first_name = ?, spouse_middle_name = ?, spouse_last_name = ?, spouse_email = ?, 
@@ -296,7 +311,7 @@ if ($_POST) {
 
                     $stmt->execute([
                         $first_name, $middle_name, $last_name, $full_cust_name, $phone, $email,
-                        $_POST['nida_number'] ?? '', $_POST['gender'] ?? '', $_POST['dob'] ?? null, $_POST['religion'] ?? '', $_POST['birth_region'] ?? '',
+                        $_POST['nida_number'] ?? '', ($registration_number !== '' ? $registration_number : null), $_POST['gender'] ?? '', $_POST['dob'] ?? null, $_POST['religion'] ?? '', $_POST['birth_region'] ?? '',
                         $_POST['country'] ?? '', $_POST['state'] ?? '', $_POST['district'] ?? '', $_POST['ward'] ?? '', $_POST['street'] ?? '', $_POST['house_number'] ?? '',
                         $_POST['marital_status'] ?? 'Single',
                         $_POST['spouse_first_name'] ?? '', $_POST['spouse_middle_name'] ?? '', $_POST['spouse_last_name'] ?? '', $_POST['spouse_email'] ?? '',
@@ -1048,6 +1063,10 @@ require_once 'header.php';
                                                         <div class="col-md-6">
                                                             <label class="form-label fw-bold small">NIDA Number</label>
                                                             <input type="text" name="nida_number" class="form-control" value="<?= $member['nida_number'] ?>">
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <label class="form-label fw-bold small">Registration Number</label>
+                                                            <input type="text" name="registration_number" class="form-control" value="<?= htmlspecialchars($member['registration_number'] ?? '') ?>" placeholder="Assigned by leadership">
                                                         </div>
                                                         <div class="col-md-6">
                                                             <label class="form-label fw-bold small"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Dini' : 'Religion' ?></label>

@@ -4,6 +4,24 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-02 — Feat: registration number in the member edit form
+**Branch:** `feat/registration-number-edit-form`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Follow-up to the registration-number feature (#176). Adds the field to the full **Edit Member** form (`profile.php` edit mode), so leadership can view/change it alongside the other details — the one place it was missing. Also de-duplicated the uniqueness check into a shared helper.
+
+### Changes
+- **`helpers.php`:** new `vk_registration_number_taken(PDO, $reg, $exceptCustomerId=0)` — one home for the uniqueness rule.
+- **`actions/save_registration_number.php`** and **`actions/add_member.php`:** now use the shared helper (removed their inline duplicate checks).
+- **`app/constant/profile/profile.php`:** Registration Number input added to the edit form (near NIDA); the customers UPDATE writes it; a uniqueness check (excluding this member) throws the same way the email/phone dup checks do. The edit form is already leadership-only, so this stays leadership-only.
+
+### Tests
+- **`tests/Unit/RegistrationNumberTest.php`:** updated the writer test to assert the shared helper; added tests for the helper (excludes self, used by all three writers) and the edit-form field + UPDATE.
+
+### Verification
+- `composer test-unit` → 835 tests pass. Confirmed the large profile customers UPDATE stays balanced (82 placeholders = 82 values).
+
+---
+
 ## Session — 2026-07-02 — Feat: member Registration Number (leadership-assigned)
 **Branch:** `feat/member-registration-number`
 **Developer:** Claude Code / Jabir Mussa

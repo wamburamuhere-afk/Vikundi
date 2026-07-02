@@ -233,15 +233,11 @@ try {
     }
 
     // Registration number (if the admin typed one) must be unique across members.
-    if ($registration_number !== '') {
-        $stmt = $pdo->prepare("SELECT customer_id FROM customers WHERE registration_number = ?");
-        $stmt->execute([$registration_number]);
-        if ($stmt->fetch()) {
-            echo json_encode(['success' => false, 'message' => ($val_lang === 'sw')
-                ? 'Namba hii ya usajili tayari inatumiwa na mwanachama mwingine.'
-                : 'This registration number is already used by another member.']);
-            exit();
-        }
+    if (vk_registration_number_taken($pdo, $registration_number)) {
+        echo json_encode(['success' => false, 'message' => ($val_lang === 'sw')
+            ? 'Namba hii ya usajili tayari inatumiwa na mwanachama mwingine.'
+            : 'This registration number is already used by another member.']);
+        exit();
     }
 
     // Handle Passport Photo Upload
