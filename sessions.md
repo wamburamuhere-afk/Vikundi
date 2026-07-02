@@ -4,6 +4,33 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-02 — Feat: member Registration Number (leadership-assigned)
+**Branch:** `feat/member-registration-number`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** New per-member **Registration Number**, assigned by leadership (never random). Public self-registrants don't enter it — they see an informational note that one will be assigned; the admin assigns it when previewing/approving. Admins can also type it directly when creating a member. Unique across members; leadership-only to set/edit; a member sees their own but it's hidden from other members.
+
+### Database
+- **`database/add_registration_number.php` (new migration, registered; in `schema_sync.sql`):** `customers.registration_number VARCHAR(50) NULL`. Empty by default (the self-registration state until assigned). Idempotent.
+
+### Backend
+- **`actions/save_registration_number.php` (new):** the single leadership-gated writer — `require_auth` + `require_csrf` + `requirePermissionJson('edit','customers')`; accepts `customer_id` **or** `user_id` (the approval prompt has user_id); **uniqueness check** (blocks a duplicate); audit-logged. Reused by the approval prompt and the edit action.
+- **`actions/add_member.php`:** admin create accepts an optional registration number, uniqueness-checked, stored on the customers insert.
+- **`process_registration.php`:** unchanged — self-registrants never submit one (column stays NULL until assigned).
+- **`helpers.php`:** `registration_number` added to `vk_member_sensitive_keys()` so it's masked from other members in the list.
+
+### UI
+- **`register.php` (public):** a read-only "Registration Number" note — *"Assigned by the administration after your registration is reviewed."* (no input).
+- **`app/bms/customer/customers.php`:** field on the admin Add Member form; a **"Registration No." dropdown action** (leadership) to set/edit; the **approval prompt** — activating a pending member (`updateMemberStatus` → `promptRegThenActivate`) asks for the number (optional; blank still activates); a badge in the member card (leadership see it; masked for members).
+- **`app/constant/profile/profile.php`:** shows the member's registration number (self or leadership only can reach this page).
+
+### Tests
+- **`tests/Unit/RegistrationNumberTest.php` (new):** migration + column; masked from other members; writer leadership-gated + unique; admin-create stores it; public form shows the note (no input); approval prompts for it.
+
+### Verification
+- `composer test-unit` → 833 tests pass. Migration run locally (idempotent).
+
+---
+
 ## Session — 2026-07-02 — Feat: Voting module (PR B) — member secret ballot
 **Branch:** `feat/voting-member-ballot`
 **Developer:** Claude Code / Jabir Mussa

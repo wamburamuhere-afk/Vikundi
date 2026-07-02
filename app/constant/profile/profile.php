@@ -32,7 +32,7 @@ if (!$is_own_profile && !in_array($user_role, $viongozi_roles)) {
 
 $stmt = $pdo->prepare("
     SELECT u.*, r.role_name, d.department_name,
-           c.nida_number, c.country, c.state, c.district, c.ward, c.street, c.house_number, 
+           c.nida_number, c.registration_number, c.country, c.state, c.district, c.ward, c.street, c.house_number,
            c.gender as cust_gender, c.dob as cust_dob, c.religion, c.birth_region as cust_birth_region,
            c.marital_status, c.spouse_first_name, c.spouse_middle_name, c.spouse_last_name, c.spouse_email, 
            c.spouse_phone, c.spouse_gender, c.spouse_dob, c.spouse_nida, c.spouse_religion, c.spouse_birth_region, c.spouse_photo,
@@ -1353,6 +1353,10 @@ require_once 'header.php';
                                                     <tr>
                                                         <td class="text-muted" style="width:160px;"><?= $isSw_b ? 'Namba ya NIDA:' : 'NIDA Number:' ?></td>
                                                         <td class="fw-bold text-primary"><?= htmlspecialchars($member['nida_number'] ?: 'N/A') ?></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="text-muted"><?= $isSw_b ? 'Namba ya Usajili:' : 'Registration No.:' ?></td>
+                                                        <td class="fw-bold text-primary"><?= htmlspecialchars($member['registration_number'] ?: ($isSw_b ? 'Bado haijapewa' : 'Not yet assigned')) ?></td>
                                                     </tr>
                                                     <tr>
                                                         <td class="text-muted"><?= $isSw_b ? 'Dini:' : 'Religion:' ?></td>
