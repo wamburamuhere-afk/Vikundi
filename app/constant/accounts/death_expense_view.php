@@ -172,6 +172,15 @@ includeHeader();
             </div>
         </div>
     </div>
+
+    <?php
+        // Attached documents (detail view only). Reusable component — $show=true
+        // here; the print page keeps them off. Passes member_id for the legacy
+        // fallback on records created before the structured link existed.
+        require_once __DIR__ . '/../../../includes/expense_attachments.php';
+        $__de_docs = vk_fetch_expense_attachments($pdo, 'death_expense', (int) $de['id'], (int) ($de['member_id'] ?? 0));
+        echo vk_render_attachments_section($__de_docs, true, $is_sw);
+    ?>
 </div>
 
 <script>

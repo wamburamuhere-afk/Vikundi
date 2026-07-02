@@ -74,10 +74,11 @@ try {
 
                         // 2. Insert into documents table for Library
                         $stmt_doc = $pdo->prepare("INSERT INTO documents (
-                            document_name, description, file_path, original_filename, 
-                            file_size, file_type, category_id, access_level, uploaded_by, tags
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'private', ?, ?)");
-                        
+                            document_name, description, file_path, original_filename,
+                            file_size, file_type, category_id, access_level, uploaded_by, tags,
+                            related_type, related_id
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'private', ?, ?, 'general_expense', ?)");
+
                         $stmt_doc->execute([
                             $custom_name,
                             "Receipt for expense: $description (Expense ID: $new_id)",
@@ -87,7 +88,8 @@ try {
                             $file_ext,
                             $category_id,
                             $user_id,
-                            "General, Expense, Receipt"
+                            "General, Expense, Receipt",
+                            $new_id
                         ]);
                     }
                 }
