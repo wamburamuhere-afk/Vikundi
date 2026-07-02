@@ -4,6 +4,27 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-02 — Cleanup: shared upload guard on all forms + meetings leadership grant
+**Branch:** `fix/upload-guard-followup-and-meetings-grant`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Follow-up cleanup. (A) Applied the oversized-upload guard (from the meetings fix) to the general-expense and death-expense upload forms, via a shared helper. (B) Backfilled the `meetings` permission grant to Secretary/Treasurer on existing DBs (the same gap the fines PR fixed for `manage_fines`).
+
+### A · Shared upload guard
+- **`includes/upload_guard.php` (new):** `vk_ini_bytes()`, `vk_post_exceeded_limit()` (POST + empty `$_POST`/`$_FILES` + non-zero `Content-Length`), `vk_upload_limit_message()`. **`meeting_helpers.php` now uses it** and its duplicate `vk_ini_bytes` was removed.
+- **Server-side** clear "too large" message: `api/add_general_expense.php`, `actions/process_death_expense.php`.
+- **Client-side** per-file + total size guard (sized to the server's `upload_max_filesize` / `post_max_size`): the general-expense form (`general_expenses.php`) and the death-expense form (`expenses.php`).
+
+### B · Meetings leadership grant
+- **`database/grant_meetings_to_leadership.php` (new migration, registered):** grants the `meetings` key to leadership roles (chairperson/secretary/treasurer + admin variants) so it reaches Secretary/Treasurer on existing deployments. Idempotent (grants only when missing).
+
+### Tests
+- **`tests/Unit/UploadGuardTest.php` (new):** `vk_ini_bytes` + `vk_post_exceeded_limit` behaviour, the message helper, source-guards (both expense/death handlers use the guard, `meeting_helpers` uses the shared `vk_ini_bytes`, meetings-grant migration registered).
+
+### Verification
+- `composer test-unit` → 810 tests pass. Meetings-grant migration run locally (granted 4 roles, idempotent on re-run).
+
+---
+
 ## Session — 2026-07-02 — Feat: Fines pages (manage + my fines) under Finance
 **Branch:** `feat/fines-pages`
 **Developer:** Claude Code / Jabir Mussa

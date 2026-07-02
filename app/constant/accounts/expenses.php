@@ -44,6 +44,13 @@ $can_approve_death= canApprove('death_expenses');
 $lang = $_SESSION['preferred_language'] ?? 'en';
 $is_sw = ($lang === 'sw');
 
+// Upload limits for the client-side attachment guard.
+require_once __DIR__ . '/../../../includes/upload_guard.php';
+$post_max_bytes   = vk_ini_bytes(ini_get('post_max_size') ?: '8M');
+$upload_max_bytes = vk_ini_bytes(ini_get('upload_max_filesize') ?: '2M');
+$post_max_mb   = max(1, (int) floor($post_max_bytes / 1048576));
+$upload_max_mb = max(1, (int) floor($upload_max_bytes / 1048576));
+
 $title = $is_sw ? 'Misaada ya Misiba' : 'Death Assistance Expenses';
 $subtitle = $is_sw ? 'Rekodi na dhibiti misaada kwa wanachama waliofiwa' : 'Record and manage assistance for bereaved members';
 ?>
@@ -524,14 +531,22 @@ $(document).ready(function() {
     });
     $(document).on('click', '.remove-attachment', function() { $(this).closest('.attachment-row').remove(); });
 
+    const FILE_MAX = <?= (int) $upload_max_bytes ?>, FILE_MAX_MB = <?= (int) $upload_max_mb ?>, POST_MAX = <?= (int) $post_max_bytes ?>, POST_MAX_MB = <?= (int) $post_max_mb ?>;
     $('#recordDeathForm').on('submit', function(e) {
         e.preventDefault();
-        
+
         // Manual validation for the hidden field
         if (!$('#selected_deceased').val()) {
             Swal.fire(isSw ? 'Makosa' : 'Validation Error', isSw ? 'Tafadhali chagua aliyefariki kwanza!' : 'Please select the deceased person first!', 'warning');
             return;
         }
+
+        // Guard against the server's upload limits (a too-big attachment makes
+        // PHP silently empty $_POST — show a clear message instead).
+        let _tot = 0, _big = [];
+        $(this).find('input[type=file]').each(function(){ if(this.files){ for(const f of this.files){ _tot += f.size; if(FILE_MAX>0 && f.size>FILE_MAX) _big.push(f.name); } } });
+        if(_big.length){ Swal.fire('Error', (isSw?'Faili kubwa mno (zaidi ya ':'File too large (over ')+FILE_MAX_MB+'MB): '+_big.join(', '), 'error'); return; }
+        if(POST_MAX>0 && _tot>POST_MAX-1048576){ Swal.fire('Error', (isSw?'Jumla ya nyaraka ni kubwa mno. Ukomo ni ':'Total attachments too large. Limit is ')+POST_MAX_MB+'MB.', 'error'); return; }
 
         const btn = $(this).find('button[submit]'); // Try to find btn
         const saveBtn = $(this).find('button[type="submit"]');
