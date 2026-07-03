@@ -91,4 +91,17 @@ class RegistrationNumberTest extends TestCase
         $this->assertStringContainsString('promptRegThenActivate', $s);
         $this->assertStringContainsString('save_registration_number', $s);
     }
+
+    public function testListingHasStandaloneRegColumn(): void
+    {
+        // The member listing shows the registration number as its own column
+        // (desktop table header + mobile card row), not just a badge tucked in
+        // the NIDA cell. Masking still applies — vk_mask_member_row nulls it, so
+        // non-leadership viewers see '—'.
+        $s = $this->src('app/bms/customer/customers.php');
+        $this->assertStringContainsString('Reg. No.', $s);              // desktop + mobile label
+        $this->assertStringContainsString('Namba ya Usajili', $s);      // swahili label
+        // the print spacer spans every column, so the colspan must track the new count
+        $this->assertStringContainsString('colspan="9"', $s);
+    }
 }
