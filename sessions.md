@@ -4,6 +4,23 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-03 — Feat: registration number as a standalone column in the member listing
+**Branch:** `feat/registration-number-listing-column`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Follow-up gap from the registration-number work (#176/#178). The number was only a small badge tucked inside the "NIDA & Contact" cell on desktop and **missing entirely from the mobile card view**. It is now a **first-class standalone column**.
+
+### Changes
+- **`app/bms/customer/customers.php`:**
+  - Desktop table: new **"Reg. No."** column (after Full Name); shows the number as a badge, or a muted `—` when unassigned. Removed the redundant badge from the NIDA cell. Print-spacer `colspan` bumped 8 → 9.
+  - Mobile cards: new **"Reg. No."** row (after Full Name).
+  - Masking unchanged — `registration_number` is already in `vk_member_sensitive_keys()`, so non-leadership viewers get a nulled value rendered as `—`.
+- **`tests/Unit/RegistrationNumberTest.php`:** added `testListingHasStandaloneRegColumn` (column label EN/SW present, colspan tracks the new count).
+
+### Verification
+- `composer test-unit` → 843 tests pass.
+
+---
+
 ## Session — 2026-07-02 — Feat: contributions page — single grid (real data) + date-range statement
 **Branch:** `feat/contributions-grid-and-statement`
 **Developer:** Claude Code / Jabir Mussa

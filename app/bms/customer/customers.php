@@ -210,6 +210,7 @@ if (!canSeeMemberSensitiveData()) {
                             <th class="ps-4" style="width: 60px;">S/NO</th>
                             <th><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mwanachama' : 'Member' ?></th>
                             <th><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jina Kamili' : 'Full Name' ?></th>
+                            <th><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Namba ya Usajili' : 'Reg. No.' ?></th>
                             <th><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'NIDA & Mawasiliano' : 'NIDA & Contact' ?></th>
                             <th><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Makazi (Mkoa/Wilaya)' : 'Residence (Region/District)' ?></th>
                             <th><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Michango (Kianzio)' : 'Initial Savings' ?></th>
@@ -229,8 +230,14 @@ if (!canSeeMemberSensitiveData()) {
                             </td>
                             <td><?= safe_output(trim(($m['first_name'] ?? '') . ' ' . ($m['middle_name'] ?? '') . ' ' . ($m['last_name'] ?? ''))) ?></td>
                             <td>
+                                <?php if (!empty($m['registration_number'])): ?>
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle"><i class="bi bi-hash me-1"></i><?= safe_output($m['registration_number']) ?></span>
+                                <?php else: ?>
+                                    <span class="text-muted">&mdash;</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
                                 <div class="badge bg-light text-dark border mb-1"><i class="bi bi-card-text me-1"></i> ID: <?= safe_output($m['nida_number'] ?? 'N/A') ?></div>
-                                <?php if (!empty($m['registration_number'])): ?><div class="badge bg-primary-subtle text-primary border border-primary-subtle mb-1"><i class="bi bi-hash me-1"></i><?= safe_output($m['registration_number']) ?></div><?php endif; ?>
                                 <div><i class="bi bi-envelope-at me-1"></i> <?= safe_output($m['email']) ?></div>
                                 <div><i class="bi bi-phone me-1"></i> <?= safe_output($m['phone'] ?? 'N/A') ?></div>
                             </td>
@@ -297,7 +304,7 @@ if (!canSeeMemberSensitiveData()) {
                     </tbody>
                     <!-- Print Spacer: Reserves space so fixed footer doesn't overlap table rows -->
                     <tfoot class="d-none d-print-table-footer">
-                        <tr><td colspan="8" style="height: 2.2cm; border: none !important;">&nbsp;</td></tr>
+                        <tr><td colspan="9" style="height: 2.2cm; border: none !important;">&nbsp;</td></tr>
                     </tfoot>
                 </table>
             </div>
@@ -348,6 +355,10 @@ if (!canSeeMemberSensitiveData()) {
                     <div class="vk-card-row">
                         <span class="vk-card-label"><?= $_sw_c ? 'Jina Kamili' : 'Full Name' ?></span>
                         <span class="vk-card-value"><?= safe_output($full_name_c ?: '—') ?></span>
+                    </div>
+                    <div class="vk-card-row">
+                        <span class="vk-card-label"><?= $_sw_c ? 'Namba ya Usajili' : 'Reg. No.' ?></span>
+                        <span class="vk-card-value"><?= safe_output($m['registration_number'] ?? '—', '—') ?></span>
                     </div>
                     <div class="vk-card-row">
                         <span class="vk-card-label">NIDA</span>
