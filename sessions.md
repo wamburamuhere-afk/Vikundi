@@ -4,6 +4,29 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-04 — Feat: M-Koba-format statement export (reconciliation)
+**Branch:** `feat/mkoba-format-statement-export`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** The chairman reconciles our records against an M-Koba extract, so he wanted a Vikundi statement export that **resembles the M-Koba one — matching most columns, not necessarily all**. Added a **second Excel/CSV export** on the contributions statement that mirrors M-Koba's exact column layout for row-by-row diffing. The current statement export and the printable page are untouched.
+
+### How it works
+- The `contributions` table already carries **M-Koba mirror columns** (`mkoba_sno/trans_id/receipt/member_name/member_id_str/source/destination/trans_type`), populated by the existing M-Koba import. Rows imported from M-Koba therefore match **fully**; hand-recorded rows fall back to our own fields and leave the columns we never had (`SOURCE`, `DESTINATION`, `TRANS_ID`) blank — the "match most, not all" the chairman asked for. No data is fabricated.
+- **`includes/contribution_statement.php`:** new pure helpers `vk_mkoba_statement_columns()` (M-Koba's exact 10 headers, in order) and `vk_mkoba_statement_row($dbRow, $no)` (maps a row → M-Koba layout with the fallback logic; date `dd/mm/yyyy`, name UPPERCASE, amount `"5,000.00"`, our types mapped to friendly labels).
+- **`api/export_contributions_statement_mkoba.php` (new):** same filters (`vk_statement_filters`/`vk_statement_where`), same leadership gate, same UTF-8 BOM as the standard export. Emits M-Koba's `NO, TRANS_ID, RECEIPT, DATE, MEMBER NAME, MEMBER ID, SOURCE, DESTINATION, AMOUNT, TRANS TYPE`. **No grand-total footer** (an M-Koba extract has none — keeps the file diff-clean).
+- **`app/bms/customer/manage_contributions.php`:** second button in the statement modal — **"M-Koba format"** — beside the existing "Export Excel"; shares the same From/To (+ member/status) filters via `exportStatementMkoba()`.
+
+### Known gaps (accepted — "match most, not all")
+- **DATE** is date-only (`dd/mm/yyyy`); the original M-Koba time-of-day was never stored at import. Reconciliation keys are `RECEIPT`/`TRANS_ID`, not the timestamp.
+- CSV quoting differs cosmetically around fields with spaces — invisible when opened in Excel.
+
+### Tests
+- **`tests/Unit/MkobaStatementExportTest.php` (new):** exact column set; imported row matches fully; manual row falls back + leaves source/destination/trans_id blank; amount/date/name formatting; source-guards (endpoint gated + BOM + no total footer, second export button wired).
+
+### Verification
+- `composer test-unit` → 848 tests pass. Ran a real M-Koba CSV line through the mapper — output matches M-Koba's line on every column except the accepted date-time and quoting gaps.
+
+---
+
 ## Session — 2026-07-02 — Feat: contributions page — single grid (real data) + date-range statement
 **Branch:** `feat/contributions-grid-and-statement`
 **Developer:** Claude Code / Jabir Mussa
