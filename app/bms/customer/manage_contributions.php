@@ -459,6 +459,7 @@ $cellClass = ['full' => 'vk-cell-full', 'partial' => 'vk-cell-partial', 'none' =
                     <button type="button" class="btn btn-secondary btn-sm rounded-pill px-3" data-bs-dismiss="modal"><?= $isSw ? 'Ghairi' : 'Cancel' ?></button>
                     <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3"><i class="bi bi-printer me-1"></i><?= $isSw ? 'Chapisha' : 'Print' ?></button>
                     <button type="button" class="btn btn-success btn-sm rounded-pill px-3" onclick="exportStatement()"><i class="bi bi-file-earmark-excel me-1"></i><?= $isSw ? 'Excel' : 'Export Excel' ?></button>
+                    <button type="button" class="btn btn-outline-success btn-sm rounded-pill px-3" onclick="exportStatementMkoba()" title="<?= $isSw ? 'Muundo unaofanana na taarifa ya M-Koba (kwa ulinganishaji)' : 'Same column layout as an M-Koba extract (for reconciliation)' ?>"><i class="bi bi-arrow-left-right me-1"></i><?= $isSw ? 'Muundo wa M-Koba' : 'M-Koba format' ?></button>
                 </div>
             </form>
         </div>
@@ -503,11 +504,22 @@ $(document).ready(function () {
         });
     });
 });
-function exportStatement() {
+// Both exports share the same From/To (+ optional member/status) filters; only
+// the endpoint differs — the M-Koba one mirrors an M-Koba extract's columns.
+function _statementQs() {
     var f = document.getElementById('statementForm');
-    if (!f.from.value || !f.to.value) { Swal.fire('Error', '<?= $isSw ? "Weka tarehe za mwanzo na mwisho." : "Please choose the From and To dates." ?>', 'warning'); return; }
-    var qs = new URLSearchParams({ from: f.from.value, to: f.to.value, member_id: f.member_id.value, status: f.status.value }).toString();
+    if (!f.from.value || !f.to.value) { Swal.fire('Error', '<?= $isSw ? "Weka tarehe za mwanzo na mwisho." : "Please choose the From and To dates." ?>', 'warning'); return null; }
+    return new URLSearchParams({ from: f.from.value, to: f.to.value, member_id: f.member_id.value, status: f.status.value }).toString();
+}
+function exportStatement() {
+    var qs = _statementQs();
+    if (qs === null) return;
     window.open('<?= getUrl("api/export_contributions_statement") ?>?' + qs, '_blank');
+}
+function exportStatementMkoba() {
+    var qs = _statementQs();
+    if (qs === null) return;
+    window.open('<?= getUrl("api/export_contributions_statement_mkoba") ?>?' + qs, '_blank');
 }
 
 function _wfPost(url, id, loadingMsg) {
