@@ -573,10 +573,12 @@ require_once 'header.php';
         <h4 class="fw-bold text-dark text-uppercase border-top border-bottom py-2 mt-2">
             <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'WASIFU WA MWANACHAMA' : 'MEMBER PROFILE' ?>
         </h4>
+        <?php $__ph_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw'; $__ph_active = ($member['is_active'] ?? 1) == 1; ?>
         <div class="d-flex justify-content-center gap-4 mt-2 small text-muted">
-            <span><strong><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mwanachama:' : 'Member:' ?></strong> <?= htmlspecialchars($member['first_name'] . ' ' . $member['last_name']) ?></span>
-            <span><strong><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Namba ya Uanachama:' : 'Membership ID:' ?></strong> #<?= $member['customer_id'] ?? 'N/A' ?></span>
-            <span><strong><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Idara:' : 'Department:' ?></strong> <?= htmlspecialchars($member['department_name'] ?? 'N/A') ?></span>
+            <span><strong><?= $__ph_sw ? 'Mwanachama:' : 'Member:' ?></strong> <?= htmlspecialchars(trim(($member['first_name'] ?? '') . ' ' . ($member['last_name'] ?? ''))) ?></span>
+            <span><strong><?= $__ph_sw ? 'Namba ya Usajili:' : 'Reg No:' ?></strong> <?= htmlspecialchars($member['registration_number'] ?: ($__ph_sw ? 'Bado haijapewa' : 'Not yet assigned')) ?></span>
+            <span><strong><?= $__ph_sw ? 'Mwanachama tangu:' : 'Member Since:' ?></strong> <?= !empty($member['created_at']) ? date('j M, Y', strtotime($member['created_at'])) : 'N/A' ?></span>
+            <span><strong><?= $__ph_sw ? 'Hali:' : 'Status:' ?></strong> <?= $__ph_active ? ($__ph_sw ? 'Hai' : 'Active') : ($__ph_sw ? 'Haitumiki' : 'Inactive') ?></span>
         </div>
     </div>
 </div>
@@ -664,8 +666,12 @@ require_once 'header.php';
                squeezes each label/value pair to a few millimetres. Giving each
                block the full page width makes the details readable. The inner
                col-md-6 pairs still sit side-by-side within that full width. */
-            .row { display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; align-items: flex-start !important; gap: 8px 15px !important; }
+            .row { display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; align-items: flex-start !important; gap: 0 !important; }
             .col-lg-4, .col-md-5, .col-lg-8, .col-md-7 { width: 100% !important; flex: 0 0 100% !important; max-width: 100% !important; }
+            /* Give columns a real gutter via padding (border-box) instead of a flex
+               gap, so the inner two-column label tables fit at 50/50 side by side
+               rather than overflowing and stacking with a hole between them. */
+            .row > [class*="col-"] { padding-left: 6px !important; padding-right: 6px !important; }
             
             /* SAFETY ZONE FOR FOOTER - handled by @page 16mm bottom in print_footer_css.php */
             
@@ -709,6 +715,21 @@ require_once 'header.php';
             /* Section management - force break if needed to keep segments together */
             .col-12.border-top { page-break-before: auto; margin-top: 10px; }
             .contribution-print-chunk { page-break-inside: avoid; margin-bottom: 20px; }
+
+            /* Keep the contribution legend with its table instead of orphaning it
+               on a page of its own. */
+            .card-footer { page-break-before: avoid !important; padding: 6px 10px !important; }
+
+            /* Tighten the card chrome so the sheet flows compactly. */
+            .card-body { padding: 10px 14px !important; }
+            .card { margin-bottom: 8px !important; }
+
+            /* Re-assert print-hidden elements LAST. The `.row { display:flex }`
+               rule above otherwise resurrects hidden `.row.d-print-none` blocks
+               (e.g. the on-screen page title), and this also enforces the hidden
+               sidebar and empty tab-bar header. This must be the final rule so it
+               wins the cascade. */
+            .d-print-none { display: none !important; }
         }
     </style>
 
@@ -812,8 +833,9 @@ require_once 'header.php';
     <?php endif; ?>
 
     <div class="row">
-        <!-- Left Sidebar - Profile Summary -->
-        <div class="col-lg-4 col-md-5">
+        <!-- Left Sidebar - Profile Summary (screen only; print carries the identity
+             in the branded header, so the avatar/activity/account cards are hidden) -->
+        <div class="col-lg-4 col-md-5 d-print-none">
             <!-- Profile Card -->
             <div class="card shadow-sm border-0 mb-4 overflow-hidden">
                 <div class="card-body text-center py-4">
@@ -905,7 +927,7 @@ require_once 'header.php';
             <!-- Profile Tabs -->
             <div class="card shadow-sm border-0 h-100">
                 <!-- Navigation Tabs (Dynamic) -->
-                <div class="card-header bg-transparent border-0 pt-4 px-4">
+                <div class="card-header bg-transparent border-0 pt-4 px-4 d-print-none">
                     <ul class="nav nav-tabs card-header-tabs border-bottom" id="profileTabs" role="tablist">
                         <li class="nav-item" role="presentation">
                             <button class="nav-link active fw-bold border-0 border-bottom border-primary border-3" id="details-tab" data-bs-toggle="tab" 
@@ -1455,6 +1477,20 @@ require_once 'header.php';
                                 $view_children = json_decode($member['children_data'] ?? '[]', true);
                                 if (!is_array($view_children)) $view_children = [];
                                 $isSw_p = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
+
+                                // Whether each relationship block actually carries data. When it
+                                // doesn't we print one clean "none recorded" line instead of a table
+                                // full of N/A, so the sheet documents the gap without the clutter.
+                                $vk_has = function (...$keys) use ($member): bool {
+                                    foreach ($keys as $k) { if (trim((string)($member[$k] ?? '')) !== '') return true; }
+                                    return false;
+                                };
+                                $has_parents   = $vk_has('father_name', 'father_phone', 'father_location', 'mother_name', 'mother_phone', 'mother_location');
+                                $has_spouse    = $vk_has('spouse_first_name', 'spouse_middle_name', 'spouse_last_name', 'spouse_email', 'spouse_phone', 'spouse_nida');
+                                $has_guarantor = $vk_has('guarantor_name', 'guarantor_phone', 'guarantor_rel', 'guarantor_location');
+                                $vk_none = function (string $text): string {
+                                    return '<p class="text-muted small mb-0"><i class="bi bi-info-circle me-1"></i>' . $text . '</p>';
+                                };
                                 ?>
 
 
@@ -1468,6 +1504,7 @@ require_once 'header.php';
                                     <!-- 1. Wazazi / Parents -->
                                     <div class="mb-4">
                                         <p class="text-muted small fw-bold text-uppercase mb-2" style="font-size: 0.7rem;"><i class="bi bi-person-heart text-warning me-1"></i> 1. <?= $isSw_p ? 'TAARIFA ZA WAZAZI' : 'MEMBER\'S PARENTS INFORMATION' ?></p>
+                                        <?php if ($has_parents): ?>
                                         <div class="row g-3">
                                             <div class="col-md-6 border-end">
                                                 <p class="fw-bold small text-muted mb-1" style="font-size: 0.65rem;"><?= $isSw_p ? 'TAARIFA ZA BABA' : "FATHER'S DETAILS" ?></p>
@@ -1486,12 +1523,13 @@ require_once 'header.php';
                                                 </table>
                                             </div>
                                         </div>
+                                        <?php else: echo $vk_none($isSw_p ? 'Hakuna taarifa za wazazi zilizosajiliwa.' : 'No parent information recorded.'); endif; ?>
                                     </div>
 
-                                    <?php if (($member['marital_status'] ?? 'Single') === 'Married'): ?>
                                     <!-- 2. Mwenzi / Spouse -->
                                     <div class="mb-4 pt-2">
                                         <p class="text-muted small fw-bold text-uppercase mb-2" style="font-size: 0.7rem;"><i class="bi bi-heart-fill text-danger me-1"></i> 2. <?= $isSw_p ? 'TAARIFA ZA MWENZI' : 'WIFE/HUSBAND INFORMATION' ?></p>
+                                        <?php if ($has_spouse): ?>
                                         <div class="row g-2" style="font-size: 0.82rem;">
                                             <div class="col-md-6">
                                                 <table class="table table-borderless table-sm mb-0">
@@ -1534,8 +1572,8 @@ require_once 'header.php';
                                                 </table>
                                             </div>
                                         </div>
+                                        <?php else: echo $vk_none($isSw_p ? 'Hakuna taarifa za mwenzi zilizosajiliwa.' : 'No spouse recorded.'); endif; ?>
                                     </div>
-                                    <?php endif; ?>
 
                                     <!-- 3. Watoto / Children -->
                                     <div class="mb-4 pt-2">
@@ -1562,12 +1600,14 @@ require_once 'header.php';
                                         <!-- Mdhamini -->
                                         <div class="col-md-6">
                                             <p class="text-uppercase fw-bold small mb-2" style="font-size: 0.7rem; color: #0dcaf0;"><i class="bi bi-shield-lock-fill me-1"></i> <?= $isSw_p ? 'MDHAMINI WA MWANACHAMA' : "MEMBER'S GUARANTOR" ?></p>
+                                            <?php if ($has_guarantor): ?>
                                             <table class="table table-borderless table-sm mb-0" style="font-size: 0.82rem;">
                                                 <tr><td class="text-muted" style="width:90px;"><?= $isSw_p ? 'Jina:' : 'Name:' ?></td><td class="fw-bold"><?= htmlspecialchars($member['guarantor_name'] ?? 'N/A') ?></td></tr>
                                                 <tr><td class="text-muted"><?= $isSw_p ? 'Simu:' : 'Phone:' ?></td><td class="fw-bold"><?= htmlspecialchars($member['guarantor_phone'] ?? 'N/A') ?></td></tr>
                                                 <tr><td class="text-muted"><?= $isSw_p ? 'Uhusiano:' : 'Relationship:' ?></td><td><?= htmlspecialchars($member['guarantor_rel'] ?? 'N/A') ?></td></tr>
                                                 <tr><td class="text-muted"><?= $isSw_p ? 'Mahali:' : 'Location:' ?></td><td><?= htmlspecialchars($member['guarantor_location'] ?? 'N/A') ?></td></tr>
                                             </table>
+                                            <?php else: echo $vk_none($isSw_p ? 'Hakuna mdhamini aliyesajiliwa.' : 'No guarantor on file.'); endif; ?>
                                         </div>
                                         <!-- Kiingilio / Entrance Fee -->
                                         <div class="col-md-6 border-start">
