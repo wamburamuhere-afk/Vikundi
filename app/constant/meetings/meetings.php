@@ -32,11 +32,16 @@ $upload_max_mb = max(1, (int) floor($upload_max_bytes / 1048576));
                         <h3 class="fw-bold mb-1 text-primary"><i class="bi bi-people-fill me-2"></i><?= $t('Meetings', 'Mikutano') ?></h3>
                         <p class="text-muted mb-0 small"><?= $t('Record group meetings, attendance and supporting documents', 'Rekodi mikutano ya kikundi, mahudhurio na nyaraka') ?></p>
                     </div>
-                    <?php if ($can_create): ?>
-                    <button type="button" class="btn btn-primary rounded-pill px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#meetingModal" onclick="openCreateMeeting()">
-                        <i class="bi bi-plus-lg me-2"></i><?= $t('New Meeting', 'Mkutano Mpya') ?>
-                    </button>
-                    <?php endif; ?>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-primary rounded-pill px-4 shadow-sm" onclick="printMeetingsList()">
+                            <i class="bi bi-printer me-2"></i><?= $t('Print', 'Chapisha') ?>
+                        </button>
+                        <?php if ($can_create): ?>
+                        <button type="button" class="btn btn-primary rounded-pill px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#meetingModal" onclick="openCreateMeeting()">
+                            <i class="bi bi-plus-lg me-2"></i><?= $t('New Meeting', 'Mkutano Mpya') ?>
+                        </button>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
         </div>
@@ -289,6 +294,16 @@ $(function(){
     window.__mtable = table;
 });
 
+function printMeetingsList(){
+    // Print the register honouring the current filters (opens the print page).
+    const p = new URLSearchParams({
+        status: document.getElementById('fStatus').value,
+        type: document.getElementById('fType').value,
+        date_from: document.getElementById('fFrom').value,
+        date_to: document.getElementById('fTo').value
+    });
+    window.open('<?= getUrl('meetings_print') ?>?' + p.toString(), '_blank');
+}
 function openCreateMeeting(){
     document.getElementById('meetingForm').reset();
     document.getElementById('meeting_id').value='';
