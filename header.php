@@ -404,6 +404,15 @@ try {
             body {
                 padding-top: 0 !important;
             }
+            /* The main content wrapper carries a screen-only top offset for the
+               fixed header (.container-fluid.px-4.mt-3 { margin-top: 25px }). That
+               rule is more specific than a per-page ".container-fluid" reset, so it
+               leaks into print as a blank band at the top. Zero it here, once, for
+               every in-page printout. */
+            .container-fluid.px-4.mt-3, .container.mt-4 {
+                margin-top: 0 !important;
+                padding-top: 0 !important;
+            }
         }
 
         .main-logo {
