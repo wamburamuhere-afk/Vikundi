@@ -4,6 +4,28 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-06 — Fix: member details printout — compact & professional
+**Branch:** `fix/member-details-print-compact`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Follow-up to #187 after reviewing a real printout (4 bloated pages). The previous pass sized the type but still printed the screen UI. This compacts it to a clean 1–2 page member sheet.
+
+### Fixes — `app/constant/profile/profile.php`
+- **Stop printing scaffolding:** the left sidebar (avatar hero + "Today Activities" widget + account card) is now `d-print-none`; the empty tab-bar card-header is hidden.
+- **Fixed the leaking page title:** #187's `.row { display:flex !important }` was resurrecting `.row.d-print-none` blocks (the on-screen "Member Profile" title printed). Re-assert `.d-print-none { display:none !important }` as the **last** print rule so it wins.
+- **Header line made meaningful:** dropped "Membership ID: #N/A" and "Department: N/A"; now shows **Reg No · Member Since · Status**.
+- **Two-column gap fixed:** replaced the flex `gap` (which overflowed 50/50 and stacked the label tables with a hole) with border-box column padding, so Basic Info / Residence pairs sit side by side.
+- **Empty relationship sections** (parents / spouse / guarantor) now print one clean "none recorded" line instead of a table of N/A — via `$has_*` flags + a `$vk_none()` helper (bilingual). Removes ~1.5 pages of N/A.
+- **Orphan legend fixed:** `.card-footer { page-break-before: avoid }` keeps the contribution legend with its table.
+- Tightened card padding/margins for a compact flow.
+
+### Tests
+- **`tests/Unit/ProfilePrintLayoutTest.php`:** added guards — d-print-none re-asserted after the `.row` rule, sidebar hidden, and empty-section "none recorded" notes present.
+
+### Verification
+- `composer test-unit` → 857 pass; `php -l` clean (nested if/else/endif balanced). Visual result to be eyeballed on WAMP (target: 1–2 pages, no wasted page 1, no N/A walls, no orphan page).
+
+---
+
 ## Session — 2026-07-06 — Fix: member details (profile) print layout
 **Branch:** `fix/member-details-print-layout`
 **Developer:** Claude Code / Jabir Mussa
