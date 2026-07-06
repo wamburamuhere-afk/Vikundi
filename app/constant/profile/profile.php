@@ -652,27 +652,36 @@ require_once 'header.php';
             .header-wrapper, .navbar, .top-header, .bottom-header, .d-print-none, .no-print, .btn, footer, .modal, .step-indicator, .back-to-list, .alert, .breadcrumb {
                 display: none !important;
             }
-            body { padding-top: 0 !important; margin: 0 !important; background: white !important; font-size: 16px !important; color: black !important; line-height: 1.4 !important; }
+            body { padding-top: 0 !important; margin: 0 !important; background: white !important; font-size: 12px !important; color: black !important; line-height: 1.35 !important; }
             .container-fluid, .container { width: 100% !important; max-width: none !important; padding: 0 !important; margin: 0 !important; border: none !important; }
             
             /* Remove all top gaps for print */
             .container-fluid.mt-4, .d-print-m-0 { margin-top: 0 !important; padding-top: 0 !important; }
             .mb-4, .my-4, .mt-4 { margin-top: 4px !important; margin-bottom: 4px !important; }
             
-            /* ULTRA-STABLE GRID FOR PRINT (Portrait & Landscape) */
-            .row { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; align-items: flex-start !important; gap: 15px !important; }
-            .col-lg-4, .col-md-5 { width: 32% !important; flex: 0 0 32% !important; max-width: 32% !important; }
-            .col-lg-8, .col-md-7 { width: 68% !important; flex: 0 0 68% !important; max-width: 68% !important; }
+            /* Stack the identity sidebar and the details full-width. The screen
+               layout nests two-column tables inside a 68% column, which on paper
+               squeezes each label/value pair to a few millimetres. Giving each
+               block the full page width makes the details readable. The inner
+               col-md-6 pairs still sit side-by-side within that full width. */
+            .row { display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; align-items: flex-start !important; gap: 8px 15px !important; }
+            .col-lg-4, .col-md-5, .col-lg-8, .col-md-7 { width: 100% !important; flex: 0 0 100% !important; max-width: 100% !important; }
             
             /* SAFETY ZONE FOR FOOTER - handled by @page 16mm bottom in print_footer_css.php */
             
             /* ALLOW MAIN CARDS TO SPLIT - Prevents the whole profile jumping to Page 2 */
             .card { border: 1px solid #ddd !important; box-shadow: none !important; margin-bottom: 12px !important; border-radius: 8px !important; background: transparent !important; page-break-inside: auto !important; }
             .card-header { background: #eee !important; -webkit-print-color-adjust: exact; font-weight: bold !important; border-bottom: 1px solid #ddd !important; }
+            /* Flatten screen depth on paper: no shadows, smaller avatar. */
+            .shadow, .shadow-sm, .shadow-lg { box-shadow: none !important; }
+            .avatar-lg, .rounded-circle[style*="120px"] { width: 84px !important; height: 84px !important; font-size: 2rem !important; }
             
             .table { width: 100% !important; border-collapse: collapse !important; margin-bottom: 8px !important; page-break-inside: auto !important; }
             .table tr { page-break-inside: avoid !important; page-break-after: auto !important; }
-            .table th, .table td { padding: 6px 8px !important; border: 1px solid #ddd !important; font-size: 14px !important; }
+            .table th, .table td { padding: 4px 8px !important; border: 1px solid #ddd !important; font-size: 11.5px !important; vertical-align: top !important; }
+            /* Borderless label/value tables in the details view read cleaner
+               without a grid on paper — keep only a hairline row separator. */
+            .table-borderless th, .table-borderless td { border: 0 !important; border-bottom: 1px solid #f0f0f0 !important; padding: 3px 6px !important; }
             
             /* Protection for block headers to not be isolated */
             h6, h5, .text-uppercase { page-break-after: avoid !important; page-break-inside: avoid !important; }
@@ -685,8 +694,11 @@ require_once 'header.php';
             
             /* Footer Positioning + @page handled by includes/print_footer_css.php */
             
-            /* Ensure tabs content is visible */
-            .tab-content > .tab-pane { display: block !important; opacity: 1 !important; visibility: visible !important; }
+            /* Print ONLY the member-details pane. The old rule showed every pane,
+               so an own-profile print dumped Security / Preferences / Activity too.
+               Show just #details and hide the tab bar. */
+            .tab-content > .tab-pane { display: none !important; }
+            #details { display: block !important; opacity: 1 !important; visibility: visible !important; }
             .nav-tabs { display: none !important; }
 
             /* Fix 'hanging'/empty spaces on Page 1 */

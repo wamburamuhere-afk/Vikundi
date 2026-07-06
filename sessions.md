@@ -4,6 +4,26 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-06 — Fix: member details (profile) print layout
+**Branch:** `fix/member-details-print-layout`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Second printout-review fix. The member-profile printout looked poor. Root cause: the print CSS forced a **cramped nested two-column grid** (a 68%-wide details column that itself nested two more columns, squeezing each label/value pair to a few millimetres) on top of a **16px base font**, and it printed **every tab stacked** (Security/Preferences/Activity leaked into an own-profile print). No content changes — the read-only detail view is already well structured; this is a print-CSS pass.
+
+### Changes — `app/constant/profile/profile.php` (`@media print` only)
+- **Stack full-width:** identity sidebar and details columns (`col-lg-4/col-md-5` + `col-lg-8/col-md-7`) now print at 100% width (row wraps), so label/value tables get the whole page. Inner `col-md-6` pairs still sit side-by-side within that width.
+- **Type sizing:** base font 16px → 12px; table cells 14px → 11.5px; borderless label/value tables lose the grid for a hairline row separator (cleaner on paper).
+- **Print only the details pane:** was `.tab-pane { display:block }` for *all* panes → now hides all and re-shows `#details`, so Security/Preferences/Activity never print.
+- **Flatten depth:** remove shadows in print; shrink the 120px avatar to 84px.
+- Branded print header (logo, org, "MEMBER PROFILE", member/ID/department) and footer unchanged. The top blank-space is already handled globally (#185).
+
+### Tests
+- **`tests/Unit/ProfilePrintLayoutTest.php` (new):** guards that print shows only `#details` (not the settings tabs) and stacks columns full-width (no `32%` cramped grid).
+
+### Verification
+- `composer test-unit` → 854 tests pass. Visual print quality to be eyeballed on WAMP (CSS-only; can't render an authenticated print here).
+
+---
+
 ## Session — 2026-07-06 — Fix: members page DataTable column count + print blank space
 **Branch:** `fix/members-page-datatables-and-print`
 **Developer:** Claude Code / Jabir Mussa
