@@ -57,6 +57,20 @@ class ProfilePrintLayoutTest extends TestCase
         $this->assertStringContainsString('col-lg-4 col-md-5 d-print-none', $this->src);
     }
 
+    public function testPassportPhotoBoxIsPrintOnlyBesideBasicInfo(): void
+    {
+        // A passport-size box prints beside Basic Information: shows the member's
+        // photo when present, else an "affix photo" frame. Print-only so the
+        // on-screen sidebar avatar isn't duplicated.
+        $this->assertStringContainsString('vk-passport d-none d-print-block', $this->src);
+        $this->assertStringContainsString('uploads/avatars/', $this->src);
+        $this->assertStringContainsString('Affix photo here', $this->src);
+        $this->assertStringContainsString('Passport Photo', $this->src);
+        // sized as a portrait passport frame in the print stylesheet
+        $this->assertStringContainsString('.vk-passport-frame', $this->src);
+        $this->assertStringContainsString('height: 42mm', $this->src);
+    }
+
     public function testEmptyRelationSectionsShowCleanNote(): void
     {
         // Empty beneficiary blocks print a single "none recorded" line, not a
