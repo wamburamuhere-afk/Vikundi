@@ -162,3 +162,60 @@ if (!function_exists('vk_render_attachments_section')) {
             . '</div><div class="card-body"><div class="row g-2">' . $cards . '</div></div></div>';
     }
 }
+
+if (!function_exists('vk_render_attachments_print')) {
+    /**
+     * Print-oriented rendering of attached documents: images are shown INLINE
+     * (full, contained — not cropped thumbnails), and every non-image file is
+     * LISTED by name/type/size (a browser print can't render a PDF/Word page
+     * inside the sheet). Image <img> and the list both point at the gated
+     * download route, so access control + the download audit still apply.
+     *
+     * Uses the `.vk-print-docs` / `.vk-doc-*` classes the meeting print pages
+     * style. Returns '' when there are no accessible documents.
+     */
+    function vk_render_attachments_print(array $docs, bool $isSw = false): string {
+        if (empty($docs)) {
+            return '';
+        }
+        $base   = function_exists('getUrl') ? getUrl('document_library') : '/document_library';
+        $imgExt = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+        $images = [];
+        $others = [];
+        foreach ($docs as $d) {
+            $ext = strtolower($d['file_type'] ?? pathinfo($d['original_filename'] ?? '', PATHINFO_EXTENSION));
+            if (in_array($ext, $imgExt, true)) {
+                $images[] = [$d, $ext];
+            } else {
+                $others[] = [$d, $ext];
+            }
+        }
+
+        $title = $isSw ? 'Nyaraka Zilizoambatishwa' : 'Attached Documents';
+        $h  = '<div class="vk-print-docs">';
+        $h .= '<h6 class="vk-docs-title">' . htmlspecialchars($title) . ' (' . count($docs) . ')</h6>';
+
+        foreach ($images as [$d, $ext]) {
+            $url  = htmlspecialchars($base . '?action=download&document_id=' . (int) $d['id']);
+            $name = htmlspecialchars($d['document_name'] ?: ($d['original_filename'] ?? 'Image'));
+            $h .= '<figure class="vk-doc-img"><img src="' . $url . '" alt="' . $name . '">'
+                . '<figcaption>' . $name . '</figcaption></figure>';
+        }
+
+        if ($others) {
+            $lbl = $isSw ? 'Faili nyingine zilizoambatishwa' : 'Other attached files';
+            $h .= '<div class="vk-doc-list"><div class="vk-doc-list-h">' . htmlspecialchars($lbl) . '</div><ul>';
+            foreach ($others as [$d, $ext]) {
+                $name = htmlspecialchars($d['document_name'] ?: ($d['original_filename'] ?? 'Document'));
+                $size = vk_format_filesize($d['file_size'] ?? 0);
+                $h .= '<li>' . $name . ' <span class="vk-doc-meta">&mdash; '
+                    . htmlspecialchars(strtoupper((string) $ext)) . ' &middot; ' . $size . '</span></li>';
+            }
+            $h .= '</ul></div>';
+        }
+
+        $h .= '</div>';
+        return $h;
+    }
+}
