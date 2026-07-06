@@ -319,6 +319,10 @@ $routes = [
     'meetings.php' => MEETINGS_DIR . '/meetings.php',
     'meeting_view' => MEETINGS_DIR . '/meeting_view.php',
     'meeting_view.php' => MEETINGS_DIR . '/meeting_view.php',
+    'meetings_print' => MEETINGS_DIR . '/meetings_print.php',
+    'meetings_print.php' => MEETINGS_DIR . '/meetings_print.php',
+    'meeting_print' => MEETINGS_DIR . '/meeting_print.php',
+    'meeting_print.php' => MEETINGS_DIR . '/meeting_print.php',
     // Voting module
     'manage_voting' => VOTING_DIR . '/manage_voting.php',
     'manage_voting.php' => VOTING_DIR . '/manage_voting.php',

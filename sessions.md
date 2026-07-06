@@ -4,6 +4,31 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-06 — Feat: meetings print (register + single meeting w/ documents)
+**Branch:** `feat/meetings-print`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Added printing to the Meetings module (chairman request). Two dedicated print pages — a **meetings register** (the list) and a **single-meeting record** — following the `contribution_statement` print-page pattern (PrintHeader + `.no-print` buttons + shared footer). Attached documents are included: **images inline, other file types listed**.
+
+### New pages (routes `meetings_print`, `meeting_print`)
+- **`app/constant/meetings/meetings_print.php`:** printable register honouring the list filters (status / type / date range); table of #, Title, Date, Type, Present count, Status; scope + totals line. The list itself is a server-side AJAX DataTable, so a dedicated server-rendered page is the right tool (can't print the AJAX DOM).
+- **`app/constant/meetings/meeting_print.php`:** one meeting's record — details (date/location/status/recorded-by), agenda, minutes, a full **attendance table** (present/absent + summary), then the attached documents.
+- Both are gated with the existing `requireViewPermission('meetings')` (no new permission key), use `PrintHeader::render()` for the branded header and `PRINT_FOOTER_*` for the footer.
+
+### Attachments (shared, reusable)
+- **`includes/expense_attachments.php`:** new `vk_render_attachments_print($docs, $isSw)` — images shown **inline** (full/contained, not cropped thumbnails) via the gated download route; every non-image file **listed** by name · type · size. Reusable by the expense print pages later.
+
+### Buttons
+- **`meetings.php`:** a **Print** button that opens the register with the current filters (`printMeetingsList()`).
+- **`meeting_view.php`:** a **Print** button opening that meeting's record.
+
+### Tests
+- **`tests/Unit/MeetingsPrintTest.php` (new):** pure test of the print attachments renderer (image → inline `<img>` via gated route; PDF → listed, not imaged; empty → ''); source-guards for the routes, permission gate, PrintHeader/footer, and the Print buttons.
+
+### Verification
+- `composer test-unit` → 862 pass; `php -l` clean. Print output to be eyeballed on WAMP.
+
+---
+
 ## Session — 2026-07-06 — Feat: passport photo on the member details printout
 **Branch:** `feat/member-print-passport-photo`
 **Developer:** Claude Code / Jabir Mussa

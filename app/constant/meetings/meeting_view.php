@@ -54,6 +54,7 @@ includeHeader();
     <div class="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
         <a href="<?= getUrl('meetings') ?>" class="btn btn-sm btn-outline-secondary rounded-pill"><i class="bi bi-arrow-left me-1"></i><?= $t('Back', 'Rudi') ?></a>
         <div class="d-flex align-items-center gap-2">
+            <a href="<?= getUrl('meeting_print') ?>?id=<?= $id ?>" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill"><i class="bi bi-printer me-1"></i><?= $t('Print', 'Chapisha') ?></a>
             <?php if ($can_edit): ?>
             <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" id="btnReminder"><i class="bi bi-chat-dots me-1"></i><?= $t('Send SMS Reminder', 'Tuma Ukumbusho wa SMS') ?></button>
             <?php endif; ?>
