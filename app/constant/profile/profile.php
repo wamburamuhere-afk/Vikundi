@@ -724,6 +724,20 @@ require_once 'header.php';
             .card-body { padding: 10px 14px !important; }
             .card { margin-bottom: 8px !important; }
 
+            /* Passport-size photo beside Basic Information (print only). Portrait
+               ~35x45mm frame; shows the member's photo, or an empty bordered box
+               to affix a physical one. */
+            .vk-passport { flex: 0 0 32mm; width: 32mm; text-align: center; }
+            .vk-passport-frame {
+                width: 32mm; height: 42mm; margin: 0 auto;
+                border: 1px solid #333; border-radius: 2px; overflow: hidden;
+                display: flex; align-items: center; justify-content: center;
+                background: #fafafa; -webkit-print-color-adjust: exact; print-color-adjust: exact;
+            }
+            .vk-passport-frame img { width: 100%; height: 100%; object-fit: cover; }
+            .vk-passport-hint { font-size: 8px; color: #adb5bd; padding: 2px; line-height: 1.2; }
+            .vk-passport-caption { font-size: 8px; color: #555; margin-top: 3px; text-transform: uppercase; letter-spacing: .4px; }
+
             /* Re-assert print-hidden elements LAST. The `.row { display:flex }`
                rule above otherwise resurrects hidden `.row.d-print-none` blocks
                (e.g. the on-screen page title), and this also enforces the hidden
@@ -1376,6 +1390,8 @@ require_once 'header.php';
                                             <i class="bi bi-person-fill me-1 text-primary"></i>
                                             <?= $isSw_b ? 'Taarifa za Msingi' : 'Basic Information' ?>
                                         </h6>
+                                        <div class="d-flex align-items-start">
+                                          <div class="flex-grow-1">
                                         <div class="row g-0">
                                             <div class="col-md-6">
                                                 <table class="table table-borderless table-sm" style="font-size: 0.85rem;">
@@ -1426,6 +1442,19 @@ require_once 'header.php';
                                                 </table>
                                             </div>
                                         </div>
+                                          </div><!-- /flex-grow-1 -->
+                                          <?php // Passport-size photo — PRINT ONLY (the on-screen view keeps the sidebar avatar) ?>
+                                          <div class="vk-passport d-none d-print-block ms-3">
+                                              <div class="vk-passport-frame">
+                                                  <?php if (!empty($member['avatar'])): ?>
+                                                      <img src="uploads/avatars/<?= htmlspecialchars($member['avatar']) ?>" alt="Passport photo">
+                                                  <?php else: ?>
+                                                      <span class="vk-passport-hint"><?= $isSw_b ? 'Ambatanisha picha hapa' : 'Affix photo here' ?></span>
+                                                  <?php endif; ?>
+                                              </div>
+                                              <div class="vk-passport-caption"><?= $isSw_b ? 'Picha ya Pasipoti' : 'Passport Photo' ?></div>
+                                          </div>
+                                        </div><!-- /d-flex -->
                                     </div>
 
                                     <!-- Residence Information -->

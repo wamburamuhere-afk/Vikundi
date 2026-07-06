@@ -4,6 +4,25 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-06 — Feat: passport photo on the member details printout
+**Branch:** `feat/member-print-passport-photo`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Added a **passport-size photo area** beside the Basic Information block on the member-details printout (chairman request), so the printed sheet reads like a membership/ID card.
+
+### Change — `app/constant/profile/profile.php`
+- Basic Information now prints as a flex row: fields on the left (`flex-grow-1`), a **portrait passport frame (~32×42mm)** on the right, top-aligned.
+- The frame shows the member's uploaded photo (`avatar`, same `uploads/avatars/` source as the sidebar) when present; otherwise a clean bordered **"affix photo here"** box with a "Passport Photo / Picha ya Pasipoti" caption (bilingual) — a paste-in spot for a physical photo.
+- **Print-only** (`d-none d-print-block`): on screen the box is hidden and the fields stay full-width, so the existing sidebar avatar isn't duplicated and the screen view is unchanged.
+- Frame styling lives in the `@media print` block.
+
+### Tests
+- **`tests/Unit/ProfilePrintLayoutTest.php`:** added a guard that the passport box is print-only, uses the avatar source, has the affix-photo fallback, and is sized as a portrait frame.
+
+### Verification
+- `composer test-unit` → 858 pass; `php -l` clean (flex/col nesting balanced). Visual result (photo vs affix frame, placement beside Basic Info) to be eyeballed on WAMP.
+
+---
+
 ## Session — 2026-07-06 — Fix: member details printout — compact & professional
 **Branch:** `fix/member-details-print-compact`
 **Developer:** Claude Code / Jabir Mussa
