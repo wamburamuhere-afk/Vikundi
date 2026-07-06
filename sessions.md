@@ -4,6 +4,25 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-06 — Fix: members page DataTable column count + print blank space
+**Branch:** `fix/members-page-datatables-and-print`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** First of the printout-review fixes. Cleared the **"DataTables: Incorrect column count" (tn/18)** warning on the members page and a silent status-filter bug — both regressions from the Reg. No. column (#182) — and removed the **blank band at the top of in-page printouts** at its source.
+
+### Root causes
+- The Reg. No. column took the members table from 8 → 9 columns, but the DataTable `columns:` config still declared **8** (→ tn/18), and the status filter still called `table.column(6)` — which, after the column shift, filtered *Initial Savings* instead of *Status*.
+- The print blank space was a **specificity leak**: `header.php`'s screen rule `.container-fluid.px-4.mt-3 { margin-top: 25px !important }` outranks a per-page `.container-fluid` reset, so the 25px offset survived into print. (Dormant members prints clean because it uses a separate print window, so screen CSS never applies.)
+
+### Changes
+- **`app/bms/customer/customers.php`:** added the 9th `columns` descriptor (Reg. No., index 3) with an index map comment; status filter `column(6)` → `column(7)`.
+- **`header.php`:** in the global `@media print` block, zero the content wrapper's top offset (`.container-fluid.px-4.mt-3, .container.mt-4 { margin-top:0; padding-top:0 }`) — **one fix for every in-page printout**, not just members.
+- **`tests/Unit/MembersListingDataTableTest.php` (new):** asserts the `columns` config count matches the thead `<th>` count (9), the status filter targets `column(7)`, and the global print reset is present — a net that would have caught the #182 regression.
+
+### Verification
+- `composer test-unit` → 852 tests pass. Column-count parity now asserted by test (the exact tn/18 condition). Visual print confirmation (no top band; header at page margin) to be eyeballed on WAMP.
+
+---
+
 ## Session — 2026-07-03 — Feat: registration number as a standalone column in the member listing
 **Branch:** `feat/registration-number-listing-column`
 **Developer:** Claude Code / Jabir Mussa

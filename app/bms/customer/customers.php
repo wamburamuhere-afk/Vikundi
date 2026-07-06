@@ -953,15 +953,18 @@ $(document).ready(function() {
         "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
         "order": [[0, "asc"]],
         "dom": "lrtip",
+        // One entry PER <th> in the members thead — keep in sync when a column is
+        // added/removed, or DataTables throws "Incorrect column count" (tn/18).
         "columns": [
-            { "orderable": true,  "searchable": false },
-            { "orderable": true,  "searchable": true  },
-            { "orderable": true,  "searchable": true  },
-            { "orderable": false, "searchable": true  },
-            { "orderable": true,  "searchable": true  },
-            { "orderable": true,  "searchable": false },
-            { "orderable": true,  "searchable": true  },
-            { "orderable": false, "searchable": false }
+            { "orderable": true,  "searchable": false }, // 0 S/NO
+            { "orderable": true,  "searchable": true  }, // 1 Member
+            { "orderable": true,  "searchable": true  }, // 2 Full Name
+            { "orderable": true,  "searchable": true  }, // 3 Reg. No.
+            { "orderable": false, "searchable": true  }, // 4 NIDA & Contact
+            { "orderable": true,  "searchable": true  }, // 5 Residence
+            { "orderable": true,  "searchable": false }, // 6 Initial Savings
+            { "orderable": true,  "searchable": true  }, // 7 Status
+            { "orderable": false, "searchable": false }  // 8 Action
         ],
         "language": {
             "search": "",
@@ -1007,10 +1010,11 @@ $(document).ready(function() {
         filterMemberCards(v, $('#statusFilter').val());
     });
 
-    // Custom Status Filter — filters both DataTable and mobile card view
+    // Custom Status Filter — filters both DataTable and mobile card view.
+    // Column 7 is Status (see the "columns" map above — shifted by the Reg. No. column).
     $('#statusFilter').on('change', function() {
         var v = $(this).val();
-        table.column(6).search(v).draw();
+        table.column(7).search(v).draw();
         filterMemberCards($('#searchMembers').val(), v);
     });
 });
