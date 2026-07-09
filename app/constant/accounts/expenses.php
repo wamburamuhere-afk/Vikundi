@@ -212,8 +212,8 @@ $subtitle = $is_sw ? 'Rekodi na dhibiti misaada kwa wanachama waliofiwa' : 'Reco
             </div>
         </div>
 
-        <!-- Mobile Prev / Next — after card view, mobile only -->
-        <div class="d-flex d-md-none justify-content-end align-items-center gap-2 px-3 py-2 border-top">
+        <!-- Mobile Prev / Next — after card view, mobile only (and never printed) -->
+        <div class="d-flex d-md-none d-print-none justify-content-end align-items-center gap-2 px-3 py-2 border-top">
             <button class="btn btn-sm btn-outline-secondary px-3 fw-semibold" id="deathPrevBtn" onclick="deathTablePage('previous')" disabled>
                 <i class="bi bi-chevron-left"></i> <?= $is_sw ? 'Nyuma' : 'Prev' ?>
             </button>
@@ -346,6 +346,11 @@ $subtitle = $is_sw ? 'Rekodi na dhibiti misaada kwa wanachama waliofiwa' : 'Reco
 @media print {
     /* @page margin handled by includes/print_footer_css.php */
     .no-print, .modal, .dataTables_length, .dataTables_filter, .dataTables_info, .dataTables_paginate, nav, header, .navbar, .header-wrapper, .sidebar-wrapper, .main-footer { display: none !important; }
+    /* The custom mobile Prev/Next pager must never print (it's d-md-none, which
+       print media doesn't reliably honour). */
+    #deathPrevBtn, #deathNextBtn, #deathPageInfo { display: none !important; }
+    /* Keep the date on a single line instead of wrapping to two. */
+    #deathExpensesTable td:nth-child(2) { white-space: nowrap !important; }
     body { background-color: white !important; margin: 0 !important; overflow: visible !important; }
     .container-fluid { padding: 0 !important; max-width: 100% !important; margin: 0 !important; width: 100% !important; overflow: visible !important; }
     .card, .table-responsive { page-break-inside: auto !important; border: none !important; box-shadow: none !important; overflow: visible !important; }

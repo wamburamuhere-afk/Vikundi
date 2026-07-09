@@ -4,6 +4,23 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-09 — Fix: expenses (Death Assistance) printout — hide mobile pager
+**Branch:** `fix/expenses-print-pager`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** On the expenses page (`app/constant/accounts/expenses.php`, Death Assistance) the printout was otherwise well-styled (branded header, summary cards, table, footer) but the **"‹ Prev 1/1 Next ›" pager printed**. It wasn't the DataTables pager (that's already hidden) — it was the **custom mobile Prev/Next pager**, marked `d-md-none` (which print media doesn't reliably honour) but **not `d-print-none`**.
+
+### Fix — `app/constant/accounts/expenses.php`
+- Added `d-print-none` to the mobile pager (matching the card wrapper above it), plus a belt-and-suspenders print rule hiding `#deathPrevBtn / #deathNextBtn / #deathPageInfo`.
+- Small polish: keep the DATE column on one line in print (`white-space: nowrap`) instead of wrapping "2026-06-27" onto two lines.
+
+### Tests
+- **`tests/Unit/ExpensesCardButtonsTest.php`:** added a guard that the mobile pager is `d-print-none` and hidden in the print CSS.
+
+### Verification
+- `composer test-unit` → 872 pass; `php -l` clean. Print to be eyeballed on WAMP.
+
+---
+
 ## Session — 2026-07-09 — Fix: contributions grid printout styling
 **Branch:** `fix/contributions-grid-print`
 **Developer:** Claude Code / Jabir Mussa

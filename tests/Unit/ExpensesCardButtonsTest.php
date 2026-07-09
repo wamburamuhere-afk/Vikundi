@@ -69,4 +69,12 @@ class ExpensesCardButtonsTest extends TestCase
     {
         $this->assertStringContainsString('deleteDeathExpense(', $this->src);
     }
+
+    public function test_mobile_pager_hidden_in_print(): void
+    {
+        // The custom mobile Prev/Next pager leaked onto the printed sheet — it was
+        // d-md-none (which print media doesn't honour) but not d-print-none.
+        $this->assertStringContainsString('d-md-none d-print-none justify-content-end', $this->src);
+        $this->assertStringContainsString('#deathPrevBtn, #deathNextBtn, #deathPageInfo { display: none', $this->src);
+    }
 }
