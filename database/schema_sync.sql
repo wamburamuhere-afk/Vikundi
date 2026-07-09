@@ -566,7 +566,11 @@ CREATE TABLE IF NOT EXISTS `contributions` (
   `approved_by` int DEFAULT NULL,
   `approved_at` datetime DEFAULT NULL,
   PRIMARY KEY (`contribution_id`),
-  KEY `member_id` (`member_id`)
+  KEY `member_id` (`member_id`),
+  KEY `idx_contrib_date` (`contribution_date`),
+  KEY `idx_contrib_status` (`status`),
+  KEY `idx_contrib_created` (`created_at`),
+  KEY `idx_contrib_status_date` (`status`,`contribution_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `countries` (

@@ -4,6 +4,29 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-09 — Feat: transactions table → server-side (paginated) DataTable
+**Branch:** `feat/transactions-datatable`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** First finance-area item. The Transactions page (`app/bms/customer/transactions.php`) showed the latest 15 rows in a plain table. Replaced it with a **server-side (paginated) DataTable** so it scales — the `contributions` table grows without bound (a 1,000-member group at a few transactions/day reaches ~1M rows/year, where a client-side "load all" would kill the browser). Paging, filtering and sorting all happen in the DB; the browser only ever holds one page.
+
+### Changes
+- **`api/get_transactions.php` (new):** DataTables server-side endpoint (draw/start/length). Gated (`require_auth` + `isAdmin()||canView('manage_contributions')`, 403 JSON). Page size **clamped** (≤200). Filters: status / type / account / member / date range. **Smart search** — receipt via the (date-bounded) contributions scope, member name resolved against the small `customers` table (never a `LIKE` across the huge table). **Whitelisted sort** (index→column map; the request's order column is never interpolated). Counts are **bounded by the date window** (`recordsTotal` over the base date scope) so no `COUNT(*)` over the whole table per request. PDO prepared throughout.
+- **`database/add_contributions_indexes.php` (new migration):** idempotent; adds indexes on `contributions(contribution_date)`, `(status)`, `(created_at)`, and composite `(status, contribution_date)` — without these, server-side paging = full-table scans. Registered in `database/migrate.php`; reflected in `database/schema_sync.sql`. Ran on the dev DB (added 4, second run no-op).
+- **`app/bms/customer/transactions.php`:** removed the preloaded `LIMIT 15` query; the table is now `#transactionsTable` (serverSide) with a filter bar (From/To/Status/Type/Account + Reset) and a **recent-window default** (last 90 days) so the first load is cheap even at scale. Recording form + bulk-import cards untouched.
+
+### Tests
+- **`tests/Unit/TransactionsTableTest.php` (new):** endpoint gated + page-size clamp + whitelisted sort + date-bounded counts; page is server-side with no preload; index migration registered + reflected in schema.
+
+### Verification
+- `composer test-unit` → 868 pass; `php -l` clean. Migration idempotency + the endpoint's count/join/paged SQL both smoke-tested against the live dev DB. Browser render to be eyeballed on WAMP.
+
+### Notes / follow-ups
+- Deep `LIMIT/OFFSET` degrades at extreme page depth; fine for newest-first browsing within the bounded window + indexes. Keyset (seek) pagination is the future upgrade if deep paging becomes a real pattern.
+- Pre-existing: `roots.php` defines `'transactions'` twice (accounts vs customer page) — the customer page wins. Left as-is (separate cleanup).
+- **PR 2 (next):** transactions printout — reuse the existing (date-bounded) contributions statement via a Statement/Print button.
+
+---
+
 ## Session — 2026-07-09 — Fix: meetings print polish (buttons, image size, attendance layout)
 **Branch:** `fix/meetings-print-polish`
 **Developer:** Claude Code / Jabir Mussa
