@@ -4,6 +4,34 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-09 — Fix: contributions grid printout styling
+**Branch:** `fix/contributions-grid-print`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** The contributions page (`manage_contributions.php`) print button just did `window.print()` with a single `.no-print{display:none}` rule, so the printout was poor. Rebuilt it into a proper printout.
+
+### What was wrong
+- **The colour-coding was dropped** — the green (full) / amber (partial) cells rely on background colours, which browsers strip in print unless `print-color-adjust: exact` is set (it wasn't). The grid printed as a meaningless white table.
+- The Full/Partial/None **legend was inside a `no-print` toolbar** (hidden in print).
+- **No branded header or footer** (unlike the statement/meetings prints).
+- The **Pending Approvals** table printed too (`d-print-block`).
+- **Portrait + a wide member × month grid** = cramped/cut columns.
+
+### Fix — `app/bms/customer/manage_contributions.php` (print CSS + structure)
+- **Colours kept on paper** (`print-color-adjust: exact` on cells + legend swatches); grid compacted (font/padding) and the sticky column dropped to static.
+- **Branded print header** (`d-none d-print-block`): logo · org · "CONTRIBUTION ANALYSIS GRID" · period (block label) · Collected/Expected/Rate summary · a printing **legend**.
+- **Shared print footer** included (the "printed by …" line), matching the other printouts.
+- **Landscape** `@page` so no month columns are cut.
+- Screen chrome hidden in print: the header/toolbar row (`no-print`) and the **Pending Approvals** card (`d-print-none`). Printout = branded header + summary cards + grid.
+- Decisions per the chairman: **landscape**, **grid + summary only**.
+
+### Tests
+- **`tests/Unit/ContributionGridTest.php`:** added a guard (colours survive print, landscape, branded header + footer, pending hidden).
+
+### Verification
+- `composer test-unit` → 871 pass; `php -l` clean. Print to be eyeballed on WAMP.
+
+---
+
 ## Session — 2026-07-09 — Fix: statement Total prints once (not on every page)
 **Branch:** `fix/statement-total-once`
 **Developer:** Claude Code / Jabir Mussa
