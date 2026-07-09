@@ -83,26 +83,39 @@ includeHeader();
                 <span class="fw-normal">— <?= $t('Present', 'Waliohudhuria') ?>: <b><?= $att['present'] ?></b> / <?= $att['total'] ?>
                 &nbsp;·&nbsp; <?= $t('Absent', 'Waliokosa') ?>: <b><?= $att['absent'] ?></b></span>
             </h6>
+            <?php
+            // Compact 2-column register: members flow down the left column, then
+            // continue down the right — half the height of one-row-per-member.
+            $att_cell = function (?array $r, int $idx) use ($t): string {
+                if ($r === null) return '<td></td><td></td><td></td>';
+                $present = $r['att_status'] === 'present';
+                $name = safe_output($r['name'] !== '' ? $r['name'] : ('Member #' . (int) $r['customer_id']));
+                $badge = '<span class="badge bg-' . ($present ? 'success' : 'secondary') . '">'
+                       . ($present ? $t('Present', 'Yupo') : $t('Absent', 'Hayupo')) . '</span>';
+                return '<td class="text-muted">' . $idx . '</td><td>' . $name . '</td><td class="text-center">' . $badge . '</td>';
+            };
+            $n = count($roster);
+            $half = (int) ceil($n / 2);
+            ?>
             <table class="table table-bordered table-sm align-middle">
-                <thead class="table-light">
+                <thead class="table-light text-center small">
                     <tr>
-                        <th style="width:40px">#</th>
-                        <th><?= $t('Member', 'Mwanachama') ?></th>
-                        <th class="text-center" style="width:120px"><?= $t('Attendance', 'Mahudhurio') ?></th>
+                        <th style="width:34px">#</th><th class="text-start"><?= $t('Member', 'Mwanachama') ?></th><th style="width:78px"><?= $t('Att.', 'Mahud.') ?></th>
+                        <th style="width:34px">#</th><th class="text-start"><?= $t('Member', 'Mwanachama') ?></th><th style="width:78px"><?= $t('Att.', 'Mahud.') ?></th>
                     </tr>
                 </thead>
                 <tbody class="small">
                     <?php if (!$roster): ?>
-                        <tr><td colspan="3" class="text-center text-muted py-3"><?= $t('No members yet.', 'Hakuna wanachama bado.') ?></td></tr>
-                    <?php else: $i = 1; foreach ($roster as $r): $present = $r['att_status'] === 'present'; ?>
+                        <tr><td colspan="6" class="text-center text-muted py-3"><?= $t('No members yet.', 'Hakuna wanachama bado.') ?></td></tr>
+                    <?php else: for ($i = 0; $i < $half; $i++):
+                        $left  = $roster[$i] ?? null;
+                        $right = $roster[$i + $half] ?? null;
+                    ?>
                         <tr>
-                            <td><?= $i++ ?></td>
-                            <td><?= safe_output($r['name'] !== '' ? $r['name'] : ('Member #' . (int) $r['customer_id'])) ?></td>
-                            <td class="text-center">
-                                <span class="badge bg-<?= $present ? 'success' : 'secondary' ?>"><?= $present ? $t('Present', 'Amehudhuria') : $t('Absent', 'Hakuhudhuria') ?></span>
-                            </td>
+                            <?= $att_cell($left, $i + 1) ?>
+                            <?= $att_cell($right, $right !== null ? $i + $half + 1 : 0) ?>
                         </tr>
-                    <?php endforeach; endif; ?>
+                    <?php endfor; endif; ?>
                 </tbody>
             </table>
 
@@ -115,8 +128,10 @@ includeHeader();
 <style>
     .vk-print-docs { margin-top: 14px; }
     .vk-docs-title { font-weight: 700; text-transform: uppercase; font-size: 12px; color: #34435a; border-bottom: 1px solid #dde3ea; padding-bottom: 4px; margin-bottom: 8px; }
-    .vk-doc-img { margin: 0 0 10px; text-align: center; page-break-inside: avoid; }
-    .vk-doc-img img { max-width: 100%; max-height: 85mm; object-fit: contain; border: 1px solid #ccd3dc; border-radius: 4px; }
+    .vk-doc-img { margin: 0 0 12px; text-align: center; page-break-inside: avoid; }
+    /* Show the whole image large enough to read (e.g. a scanned attendance sheet),
+       capped so one image never overflows a printed page. */
+    .vk-doc-img img { max-width: 100%; max-height: 165mm; object-fit: contain; border: 1px solid #ccd3dc; border-radius: 4px; }
     .vk-doc-img figcaption { font-size: 10px; color: #5b6776; margin-top: 3px; }
     .vk-doc-list { margin-top: 6px; }
     .vk-doc-list-h { font-weight: 700; font-size: 11px; text-transform: uppercase; color: #5b6776; margin-bottom: 3px; }
