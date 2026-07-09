@@ -31,6 +31,7 @@ $migrations = [
     'add_meeting_id_to_fines.php',   // fines.meeting_id (meeting absence fines)
     'grant_meetings_to_leadership.php', // backfill 'meetings' grant for Secretary/Treasurer on existing DBs
     'add_registration_number.php',   // customers.registration_number (leadership-assigned)
+    'add_contributions_indexes.php', // indexes for the server-side Transactions DataTable
 ];
 
 echo "== Vikundi database migrations ==\n";
