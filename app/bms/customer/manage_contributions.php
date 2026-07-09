@@ -153,7 +153,7 @@ $statement_members = $pdo->query("
 ?>
 
 <!-- Header Section -->
-<div class="row align-items-center mb-4 g-3">
+<div class="row align-items-center mb-4 g-3 no-print">
     <!-- Success/Error Feedback from Import -->
     <?php if (isset($_SESSION['import_response'])): 
         $res = $_SESSION['import_response'];
@@ -212,9 +212,9 @@ $statement_members = $pdo->query("
     </div>
 </div>
 
-<!-- SECTION 1: PENDING APPROVALS -->
+<!-- SECTION 1: PENDING APPROVALS (screen only — the printout is the grid + summary) -->
 <?php if (!empty($pending_list)): ?>
-<div class="card border border-primary-subtle shadow-sm rounded-4 overflow-hidden mb-5">
+<div class="card border border-primary-subtle shadow-sm rounded-4 overflow-hidden mb-5 d-print-none">
     <div class="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center">
         <h6 class="mb-0 fw-bold"><i class="bi bi-hourglass-split me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Michango Inayosubiri Uhakiki' : 'Pending Approvals' ?></h6>
         <div class="d-flex align-items-center gap-2">
@@ -353,6 +353,27 @@ $statement_members = $pdo->query("
 // Cell colouring vs the monthly target.
 $cellClass = ['full' => 'vk-cell-full', 'partial' => 'vk-cell-partial', 'none' => 'vk-cell-none'];
 ?>
+
+<!-- Branded print header (print only) -->
+<div class="d-none d-print-block">
+    <div class="text-center mb-3">
+        <img src="/assets/images/<?= htmlspecialchars($group_logo ?? 'logo1.png') ?>" alt="Logo" style="height: 66px; width: auto; margin-bottom: 8px; object-fit: contain;">
+        <h2 class="fw-bold mb-1 text-uppercase" style="color:#0d6efd !important;"><?= htmlspecialchars($group_name ?? 'KIKUNDI') ?></h2>
+        <h4 class="fw-bold text-dark text-uppercase border-top border-bottom py-2 mt-2">
+            <?= $isSw ? 'JEDWALI LA MICHANGO' : 'CONTRIBUTION ANALYSIS GRID' ?>
+        </h4>
+        <div class="d-flex justify-content-center flex-wrap gap-3 mt-2 small text-muted">
+            <span><strong><?= $isSw ? 'Kipindi' : 'Period' ?>:</strong> <?= htmlspecialchars($block_label) ?></span>
+            <span><strong><?= $isSw ? 'Zimekusanywa' : 'Collected' ?>:</strong> <?= number_format($sum_collected, 0) ?> / <?= number_format($expected_block, 0) ?> TZS</span>
+            <span><strong><?= $isSw ? 'Kiwango' : 'Rate' ?>:</strong> <?= $collection_rate ?>%</span>
+        </div>
+        <div class="mt-2 small">
+            <span class="vk-cell-full px-2 rounded">&nbsp;</span> <?= $isSw ? 'Imekamilika' : 'Full' ?>
+            &nbsp;<span class="vk-cell-partial px-2 rounded">&nbsp;</span> <?= $isSw ? 'Sehemu' : 'Partial' ?>
+            &nbsp;<span class="vk-cell-none px-2 rounded border">&nbsp;</span> <?= $isSw ? 'Hakuna' : 'None' ?>
+        </div>
+    </div>
+</div>
 
 <!-- SUMMARY CARDS -->
 <div class="row g-3 mb-4">
@@ -643,7 +664,28 @@ th { font-size: 0.7rem !important; }
     margin: 0 !important;
 }
 @media print {
-    .no-print { display: none !important; }
+    /* A member × month grid is wide — print it sideways so no columns are cut. */
+    @page { size: landscape; }
+    .no-print, .d-print-none { display: none !important; }
+
+    /* Keep the paid/partial cell colours (and the legend swatches) on paper —
+       browsers drop backgrounds in print unless told to keep them. This is what
+       makes the grid readable at all. */
+    .vk-cell-full, .vk-cell-partial, .vk-cell-none,
+    .vk-grid thead th, .vk-grid tfoot td {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* Compact the grid + drop the sticky column back into the flow. */
+    .vk-grid { font-size: 9.5px; }
+    .vk-grid th, .vk-grid td { padding: 3px 4px !important; }
+    .vk-grid .vk-sticky-col { position: static !important; box-shadow: none !important; }
+
+    /* Flatten the on-screen cards for paper; keep the summary row together. */
+    .card { box-shadow: none !important; border: 1px solid #dee2e6 !important; }
+    .card-header { background: #fff !important; }
+    .row.g-3 { page-break-inside: avoid; }
 }
 
 /* Mobile View Optimization (Kwa ajili ya simu tu) */
@@ -738,5 +780,9 @@ th { font-size: 0.7rem !important; }
 <?php
 $content = ob_get_clean();
 echo $content;
+// Shared print footer (the "printed by … / Powered By BJP" line), matching the
+// statement and meetings printouts.
+include PRINT_FOOTER_CSS_FILE;
+include PRINT_FOOTER_FILE;
 require_once 'footer.php';
 ?>

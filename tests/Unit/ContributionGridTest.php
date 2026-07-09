@@ -113,4 +113,19 @@ class ContributionGridTest extends TestCase
         $page = $this->src('app/bms/customer/contribution_statement.php');
         $this->assertStringContainsString('tfoot { display: table-row-group', $page);
     }
+
+    public function testGridPrintIsStyledForPaper(): void
+    {
+        $p = $this->src('app/bms/customer/manage_contributions.php');
+        // the paid/partial colours must survive print — the grid is meaningless
+        // without them
+        $this->assertStringContainsString('print-color-adjust: exact', $p);
+        // a wide member × month grid prints landscape
+        $this->assertStringContainsString('size: landscape', $p);
+        // branded header + the shared print footer, like the other printouts
+        $this->assertStringContainsString('CONTRIBUTION ANALYSIS GRID', $p);
+        $this->assertStringContainsString('PRINT_FOOTER_FILE', $p);
+        // the pending-approvals queue is screen-only
+        $this->assertStringContainsString('mb-5 d-print-none', $p);
+    }
 }
