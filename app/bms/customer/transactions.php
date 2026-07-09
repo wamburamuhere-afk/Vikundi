@@ -168,6 +168,12 @@ $statusBadge = [
     <div class="card border-0 shadow-sm rounded-4 mt-3">
         <div class="card-header bg-white rounded-top-4 py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
             <h6 class="mb-0 fw-bold"><i class="bi bi-clock-history me-2 text-muted"></i><?= $isSw ? 'Miamala' : 'Transactions' ?></h6>
+            <!-- Statement of the current date range (+ status): reuses the shared
+                 contributions statement (print) and CSV/Excel export. -->
+            <div class="btn-group">
+                <button type="button" class="btn btn-sm btn-primary rounded-start-pill" onclick="txnStatement('print')"><i class="bi bi-printer me-1"></i><?= $isSw ? 'Taarifa' : 'Statement' ?></button>
+                <button type="button" class="btn btn-sm btn-success rounded-end-pill" onclick="txnStatement('excel')"><i class="bi bi-file-earmark-excel me-1"></i><?= $isSw ? 'Excel' : 'Excel' ?></button>
+            </div>
         </div>
         <div class="card-body">
             <!-- Filters -->
@@ -369,6 +375,21 @@ $(function () {
         $('#fFrom').val('<?= $default_from ?>');
         txnTable.ajax.reload();
     });
+
+    // Statement of the current date range (+ status) — reuses the shared,
+    // date-bounded contributions statement (print) and CSV/Excel export.
+    window.txnStatement = function (mode) {
+        var from = $('#fFrom').val(), to = $('#fTo').val();
+        if (!from && !to) {
+            Swal.fire('<?= $isSw ? "Kosa" : "Error" ?>', '<?= $isSw ? "Chagua angalau tarehe ya kuanzia au mwisho." : "Pick at least a From or To date." ?>', 'warning');
+            return;
+        }
+        var qs = new URLSearchParams({ from: from, to: to, status: $('#fStatus').val() }).toString();
+        var url = (mode === 'excel')
+            ? '<?= getUrl("api/export_contributions_statement") ?>?' + qs
+            : '<?= getUrl("contribution_statement") ?>?' + qs;
+        window.open(url, '_blank');
+    };
 });
 </script>
 

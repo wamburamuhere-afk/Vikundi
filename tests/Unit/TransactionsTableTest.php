@@ -50,6 +50,16 @@ class TransactionsTableTest extends TestCase
         $this->assertStringContainsString('$default_from', $p); // bounded default window
     }
 
+    public function testStatementButtonsReuseTheSharedStatement(): void
+    {
+        // The transactions printout reuses the existing date-bounded contributions
+        // statement (print) and CSV/Excel export — no duplicate print logic.
+        $p = $this->src('app/bms/customer/transactions.php');
+        $this->assertStringContainsString('txnStatement', $p);
+        $this->assertStringContainsString("getUrl(\"contribution_statement\")", $p);       // print
+        $this->assertStringContainsString("getUrl(\"api/export_contributions_statement\")", $p); // Excel/CSV
+    }
+
     public function testIndexMigrationRegisteredAndReflected(): void
     {
         $this->assertStringContainsString('add_contributions_indexes.php', $this->src('database/migrate.php'));
