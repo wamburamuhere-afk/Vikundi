@@ -4,6 +4,23 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-09 — Fix: statement Total prints once (not on every page)
+**Branch:** `fix/statement-total-once`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** On a multi-page contributions statement, the grand **Total** row appeared at the bottom of **every** page (misleading — it read as a per-page total) and on the middle pages it **overlapped the fixed print footer** (a garbled line). Cause: the total lives in a `<tfoot>`, which browsers render as `table-footer-group` and repeat + anchor to the page bottom.
+
+### Fix — `app/bms/customer/contribution_statement.php`
+- Print-only CSS (scoped to this page): `.table tfoot { display: table-row-group }` so the total drops back into the flow and prints **once**, after the last row; a top border keeps it visually separated. Also `.table tbody tr { page-break-inside: avoid }` so a transaction (name + phone in one cell) doesn't split across a page break.
+- Scoped to the statement page — does not touch `customers.php`'s print-spacer `<tfoot>` (which deliberately uses `table-footer-group` and wins via `!important`).
+
+### Tests
+- **`tests/Unit/ContributionGridTest.php`:** added a guard that the statement renders the total as a row group (prints once).
+
+### Verification
+- `composer test-unit` → 870 pass; `php -l` clean. Print to be re-eyeballed on WAMP.
+
+---
+
 ## Session — 2026-07-09 — Feat: transactions printout (reuse the contributions statement)
 **Branch:** `feat/transactions-statement-button`
 **Developer:** Claude Code / Jabir Mussa

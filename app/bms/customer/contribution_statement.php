@@ -40,6 +40,21 @@ $sb = ['pending' => 'warning', 'reviewed' => 'info', 'approved' => 'success', 'c
 
 <div class="container-fluid py-4" id="main-content" style="background:#f8f9fa;min-height:90vh;">
     <?php PrintHeader::css(); ?>
+    <style>
+    @media print {
+        /* Print the grand Total ONCE, at the end. A <tfoot> defaults to
+           display:table-footer-group, which the browser repeats at the bottom of
+           every page (misleading — it's the grand total, not a per-page one) and
+           anchors to the page bottom where it overlapped the fixed print footer.
+           Rendering it as a normal row group drops it back into the flow, so it
+           appears a single time after the last row. */
+        .table tfoot { display: table-row-group; }
+        .table tfoot td { border-top: 2px solid #333 !important; }
+        /* Keep each transaction (name + phone in one cell) from splitting across a
+           page break. */
+        .table tbody tr { page-break-inside: avoid; }
+    }
+    </style>
     <div class="d-none d-print-block">
         <?php PrintHeader::render($pdo, $is_sw ? 'TAARIFA YA MIAMALA' : 'CONTRIBUTIONS STATEMENT'); ?>
     </div>
