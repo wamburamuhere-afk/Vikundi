@@ -4,6 +4,24 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-09 — Fix: meetings print polish (buttons, image size, attendance layout)
+**Branch:** `fix/meetings-print-polish`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Three fixes after reviewing the printed meeting output.
+
+### Fixes
+- **Back / Print buttons were showing on the printed sheet.** Root cause: `.no-print` was not hidden by any shared print CSS — the PrintHeader print pages carry no `@media print` block of their own. Added `.no-print, .d-print-none { display:none !important }` to the shared **`includes/print_footer_css.php`** `@media print` block, so **every** print page benefits (the meetings prints *and* the contributions statement, which had the same latent bug).
+- **Embedded document images were small.** Bumped the inline image cap in `meeting_print.php` from 85mm → 165mm so a scanned attendance sheet / minutes reads clearly. (Per the chairman's choice, images embed inline and PDF/Word files stay listed by name — a browser can't paint PDF pages into an HTML sheet, and the live shared host has no rasteriser.)
+- **Attendance list was one full-width row per member (very tall).** Rebuilt it in `meeting_print.php` as a **compact 2-column register** — members flow down the left column then the right (2 members per row, ~half the height) with a short Present/Absent (SW: Yupo/Hayupo) badge.
+
+### Tests
+- **`tests/Unit/MeetingsPrintTest.php`:** added guards that the shared CSS hides `.no-print`, and that the attendance table is the two-column register.
+
+### Verification
+- `composer test-unit` → 864 pass; `php -l` clean. Print output to be eyeballed on WAMP.
+
+---
+
 ## Session — 2026-07-06 — Feat: meetings print (register + single meeting w/ documents)
 **Branch:** `feat/meetings-print`
 **Developer:** Claude Code / Jabir Mussa

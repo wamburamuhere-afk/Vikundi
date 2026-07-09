@@ -77,4 +77,23 @@ class MeetingsPrintTest extends TestCase
         $view = $this->src('app/constant/meetings/meeting_view.php');
         $this->assertStringContainsString("getUrl('meeting_print')", $view);
     }
+
+    public function testNoPrintControlsHiddenInSharedCss(): void
+    {
+        // The PrintHeader print pages carry no @media print block of their own, so
+        // the shared print footer CSS must hide .no-print — otherwise the Back /
+        // Print buttons show up on the printed sheet.
+        $css = $this->src('includes/print_footer_css.php');
+        $this->assertMatchesRegularExpression('/\.no-print[^{]*\{[^}]*display:\s*none/', $css);
+    }
+
+    public function testAttendanceIsTwoColumnRegister(): void
+    {
+        // The attendance list prints as a compact two-member-per-row register
+        // (half the height), not one full-width row per member.
+        $one = $this->src('app/constant/meetings/meeting_print.php');
+        $this->assertStringContainsString('$att_cell', $one);
+        $this->assertStringContainsString('ceil($n / 2)', $one);
+        $this->assertStringContainsString('colspan="6"', $one); // 3 cols × 2 members
+    }
 }

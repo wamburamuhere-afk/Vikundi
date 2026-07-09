@@ -31,5 +31,10 @@
         @media print {
             body { padding-bottom: 4mm !important; }
             .footer-spacer { display: none !important; }
+            /* Screen-only controls (Back / Print buttons, etc.) must never appear
+               on the printed sheet. Declared here so every page that includes the
+               shared print footer gets it — the PrintHeader print pages don't carry
+               their own @media print block. */
+            .no-print, .d-print-none { display: none !important; }
         }
 </style>
