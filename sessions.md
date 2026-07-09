@@ -4,6 +4,24 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-09 — Feat: transactions printout (reuse the contributions statement)
+**Branch:** `feat/transactions-statement-button`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** PR 2 of the transactions work — the printout. Rather than build a new print page, the Transactions page now **surfaces the existing, date-bounded contributions statement**: a **Statement** (print) and **Excel** button that hand the current date range (+ status) to `contribution_statement` and `export_contributions_statement`.
+
+### Change — `app/bms/customer/transactions.php`
+- Two buttons in the transactions card header: **Statement** (print) → `contribution_statement`, and **Excel** → `api/export_contributions_statement`.
+- `txnStatement(mode)` reads the table's own **From / To / Status** filters and opens the statement/export with them (guards against an accidental all-time run — requires at least one date).
+- No new print/export code — reuses the proven, already date-bounded statement (so the printout doesn't have the unbounded-load problem either).
+
+### Tests
+- **`tests/Unit/TransactionsTableTest.php`:** added a guard that the statement buttons target the shared `contribution_statement` + `export_contributions_statement` routes.
+
+### Verification
+- `composer test-unit` → 869 pass; `php -l` clean.
+
+---
+
 ## Session — 2026-07-09 — Feat: transactions table → server-side (paginated) DataTable
 **Branch:** `feat/transactions-datatable`
 **Developer:** Claude Code / Jabir Mussa
