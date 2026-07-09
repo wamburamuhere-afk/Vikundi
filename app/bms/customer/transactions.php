@@ -23,16 +23,11 @@ $members = $pdo->query("
     ORDER BY c.first_name ASC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
-// Recent transactions (all statuses) for quick confirmation after recording.
-$recent = $pdo->query("
-    SELECT con.contribution_id, con.amount, con.contribution_type, con.contribution_date,
-           con.receipt_number, con.account, con.status, con.created_at,
-           c.customer_name, c.first_name, c.last_name, c.phone
-    FROM contributions con
-    JOIN customers c ON con.member_id = c.customer_id
-    ORDER BY con.created_at DESC, con.contribution_id DESC
-    LIMIT 15
-")->fetchAll(PDO::FETCH_ASSOC);
+// The transactions list is a server-side DataTable (api/get_transactions.php):
+// it pages, filters and sorts in the database, so nothing is preloaded here.
+// Default the view to a recent window so the first load stays cheap even when the
+// table holds a very large history.
+$default_from = date('Y-m-d', strtotime('-90 days'));
 
 $accounts = ['M-Koba', 'Bank', 'Cash', 'Mobile Money'];
 $types = [
@@ -169,14 +164,50 @@ $statusBadge = [
         </div>
     </div>
 
-    <!-- Recent transactions -->
+    <!-- Transactions (server-side DataTable) -->
     <div class="card border-0 shadow-sm rounded-4 mt-3">
-        <div class="card-header bg-white rounded-top-4 py-3">
-            <h6 class="mb-0 fw-bold"><i class="bi bi-clock-history me-2 text-muted"></i><?= $isSw ? 'Miamala ya Hivi Karibuni' : 'Recent Transactions' ?></h6>
+        <div class="card-header bg-white rounded-top-4 py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <h6 class="mb-0 fw-bold"><i class="bi bi-clock-history me-2 text-muted"></i><?= $isSw ? 'Miamala' : 'Transactions' ?></h6>
         </div>
-        <div class="card-body p-0">
+        <div class="card-body">
+            <!-- Filters -->
+            <div class="row g-2 mb-3">
+                <div class="col-6 col-md-2">
+                    <label class="form-label small fw-bold mb-1"><?= $isSw ? 'Kuanzia' : 'From' ?></label>
+                    <input type="date" id="fFrom" class="form-control form-control-sm" value="<?= $default_from ?>">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small fw-bold mb-1"><?= $isSw ? 'Hadi' : 'To' ?></label>
+                    <input type="date" id="fTo" class="form-control form-control-sm">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small fw-bold mb-1"><?= $isSw ? 'Hali' : 'Status' ?></label>
+                    <select id="fStatus" class="form-select form-select-sm">
+                        <option value=""><?= $isSw ? 'Zote' : 'All' ?></option>
+                        <?php foreach (['pending', 'reviewed', 'approved', 'cancelled'] as $s): ?><option value="<?= $s ?>"><?= ucfirst($s) ?></option><?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small fw-bold mb-1"><?= $isSw ? 'Aina' : 'Type' ?></label>
+                    <select id="fType" class="form-select form-select-sm">
+                        <option value=""><?= $isSw ? 'Zote' : 'All' ?></option>
+                        <?php foreach ($types as $k => $label): ?><option value="<?= $k ?>"><?= $label ?></option><?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small fw-bold mb-1"><?= $isSw ? 'Akaunti' : 'Account' ?></label>
+                    <select id="fAccount" class="form-select form-select-sm">
+                        <option value=""><?= $isSw ? 'Zote' : 'All' ?></option>
+                        <?php foreach ($accounts as $a): ?><option value="<?= $a ?>"><?= $a ?></option><?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2 d-flex align-items-end">
+                    <button type="button" id="fReset" class="btn btn-outline-secondary btn-sm w-100"><i class="bi bi-arrow-counterclockwise me-1"></i><?= $isSw ? 'Weka upya' : 'Reset' ?></button>
+                </div>
+            </div>
+
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
+                <table id="transactionsTable" class="table table-hover align-middle mb-0" style="width:100%">
                     <thead class="table-light small">
                         <tr>
                             <th><?= $isSw ? 'Tarehe' : 'Date' ?></th>
@@ -188,21 +219,7 @@ $statusBadge = [
                             <th class="text-center"><?= $isSw ? 'Hali' : 'Status' ?></th>
                         </tr>
                     </thead>
-                    <tbody class="small">
-                        <?php if (!$recent): ?>
-                            <tr><td colspan="7" class="text-center text-muted py-4"><?= $isSw ? 'Hakuna miamala bado.' : 'No transactions yet.' ?></td></tr>
-                        <?php else: foreach ($recent as $r): ?>
-                            <tr>
-                                <td><?= safe_output($r['contribution_date'], '—') ?></td>
-                                <td><?= htmlspecialchars($r['customer_name'] ?: ($r['first_name'] . ' ' . $r['last_name'])) ?></td>
-                                <td><?= safe_output($r['receipt_number'], '—') ?></td>
-                                <td><?= safe_output($r['account'], '—') ?></td>
-                                <td><?= safe_output($types[$r['contribution_type']] ?? $r['contribution_type'], '—') ?></td>
-                                <td class="text-end fw-semibold"><?= number_format((float) $r['amount'], 0) ?></td>
-                                <td class="text-center"><span class="badge bg-<?= $statusBadge[$r['status']] ?? 'secondary' ?>"><?= safe_output($r['status']) ?></span></td>
-                            </tr>
-                        <?php endforeach; endif; ?>
-                    </tbody>
+                    <tbody class="small"></tbody>
                 </table>
             </div>
         </div>
@@ -298,6 +315,59 @@ $(function () {
             },
             error: function () { Swal.fire('<?= $isSw ? "Kosa" : "Error" ?>', 'Server error', 'error'); }
         });
+    });
+
+    // --- Transactions table: server-side, so the DB does the paging/filtering
+    //     and the browser only ever holds one page (scales to a huge history). ---
+    const TXN_TYPES = <?= json_encode($types) ?>;
+    const TXN_STATUS_BADGE = <?= json_encode($statusBadge) ?>;
+    function txnEsc(s){ return s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    const txnTable = $('#transactionsTable').DataTable({
+        serverSide: true,
+        processing: true,
+        searchDelay: 400,
+        deferRender: true,
+        order: [[0, 'desc']],
+        pageLength: 25,
+        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+        ajax: {
+            url: '<?= getUrl("api/get_transactions") ?>',
+            data: function (d) {
+                d.status    = $('#fStatus').val();
+                d.type      = $('#fType').val();
+                d.account   = $('#fAccount').val();
+                d.date_from = $('#fFrom').val();
+                d.date_to   = $('#fTo').val();
+            }
+        },
+        columns: [
+            { data: 'contribution_date', render: d => d || '—' },
+            { data: 'member_name',       render: d => txnEsc(d || '—') },
+            { data: 'receipt_number',    render: d => txnEsc(d || '—') },
+            { data: 'account',           render: d => txnEsc(d || '—') },
+            { data: 'contribution_type', render: d => txnEsc(TXN_TYPES[d] || d || '—') },
+            { data: 'amount', className: 'text-end fw-semibold', render: d => new Intl.NumberFormat().format(Math.round(d || 0)) },
+            { data: 'status', className: 'text-center', render: d => '<span class="badge bg-' + (TXN_STATUS_BADGE[d] || 'secondary') + '">' + txnEsc(d) + '</span>' }
+        ],
+        language: {
+            processing:   '<?= $isSw ? "Inachakata..." : "Processing..." ?>',
+            search:       '<?= $isSw ? "Tafuta:" : "Search:" ?>',
+            emptyTable:   '<?= $isSw ? "Hakuna miamala." : "No transactions." ?>',
+            zeroRecords:  '<?= $isSw ? "Hakuna matokeo ya utafutaji huu." : "No matching transactions." ?>',
+            info:         '<?= $isSw ? "Inaonyesha _START_&ndash;_END_ kati ya _TOTAL_" : "Showing _START_&ndash;_END_ of _TOTAL_" ?>',
+            infoFiltered: '<?= $isSw ? "(imechujwa kutoka _MAX_)" : "(filtered from _MAX_)" ?>',
+            infoEmpty:    '<?= $isSw ? "Hakuna miamala" : "No transactions" ?>',
+            lengthMenu:   '<?= $isSw ? "Onyesha _MENU_" : "Show _MENU_" ?>',
+            paginate:     { next: '<?= $isSw ? "Mbele" : "Next" ?>', previous: '<?= $isSw ? "Nyuma" : "Previous" ?>' }
+        }
+    });
+
+    $('#fStatus, #fType, #fAccount, #fFrom, #fTo').on('change', () => txnTable.ajax.reload());
+    $('#fReset').on('click', function () {
+        $('#fStatus, #fType, #fAccount, #fTo').val('');
+        $('#fFrom').val('<?= $default_from ?>');
+        txnTable.ajax.reload();
     });
 });
 </script>
