@@ -104,4 +104,13 @@ class ContributionGridTest extends TestCase
         $this->assertStringContainsString('\xEF\xBB\xBF', $exp);                    // Excel BOM (source literal)
         $this->assertStringContainsString("canView('manage_contributions')", $exp); // leadership-gated
     }
+
+    public function testStatementTotalPrintsOnceNotEveryPage(): void
+    {
+        // A <tfoot> repeats on every printed page (the grand total looked per-page
+        // and collided with the fixed footer). The print CSS renders it as a
+        // normal row group so it prints once, in flow, at the end.
+        $page = $this->src('app/bms/customer/contribution_statement.php');
+        $this->assertStringContainsString('tfoot { display: table-row-group', $page);
+    }
 }
