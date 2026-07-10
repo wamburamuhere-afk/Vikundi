@@ -227,8 +227,8 @@ $total_all = $stmt_total_all->fetchColumn() ?? 0;
         </div>
         <!-- ═══ END CARD VIEW ═══ -->
 
-        <!-- Mobile Prev / Next — after card view, mobile only -->
-        <div class="d-flex d-md-none justify-content-end align-items-center gap-2 px-3 py-2 border-top">
+        <!-- Mobile Prev / Next — after card view, mobile only (and never printed) -->
+        <div class="d-flex d-md-none d-print-none justify-content-end align-items-center gap-2 px-3 py-2 border-top">
             <button class="btn btn-sm btn-outline-secondary px-3 fw-semibold" id="pettyCashPrevBtn" onclick="pettyCashTablePage('previous')" disabled>
                 <i class="bi bi-chevron-left"></i> <?= $isSwahili ? 'Nyuma' : 'Prev' ?>
             </button>
@@ -349,6 +349,14 @@ $total_all = $stmt_total_all->fetchColumn() ?? 0;
     @media print {
         /* @page margin handled by includes/print_footer_css.php */
         .no-print, .dt-buttons, .dataTables_length, .dataTables_filter, .dataTables_info, .dataTables_paginate, nav, header, .navbar, .header-wrapper, .sidebar-wrapper, .main-footer, .modal, #filterForm, .py-3.border-bottom, #action-tools, #custom-search { display: none !important; }
+        /* The custom mobile Prev/Next pager is d-md-none, which print media does
+           not reliably honour — hide it explicitly. */
+        #pettyCashPrevBtn, #pettyCashNextBtn, #pettyCashPageInfo { display: none !important; }
+        /* Drop the DataTables column sort arrows on paper. */
+        table.dataTable thead th.sorting:before,  table.dataTable thead th.sorting:after,
+        table.dataTable thead th.sorting_asc:before,  table.dataTable thead th.sorting_asc:after,
+        table.dataTable thead th.sorting_desc:before, table.dataTable thead th.sorting_desc:after,
+        .dt-column-order { display: none !important; }
         body { background-color: white !important; margin: 0 !important; overflow: visible !important; }
         .container-fluid { padding: 0 !important; max-width: 100% !important; margin: 0 !important; width: 100% !important; overflow: visible !important; }
         .card, .table-responsive { page-break-inside: auto !important; border: none !important; box-shadow: none !important; overflow: visible !important; }
@@ -435,6 +443,8 @@ $(document).ready(function() {
             searchPlaceholder: "<?= $isSwahili ? 'Tafuta Vocha...' : 'Search Vouchers...' ?>",
             lengthMenu: '<div class="length-menu-wrapper"><div class="length-menu-icon"><i class="bi bi-list-ul"></i></div> _MENU_</div>',
             info: "<?= $isSwahili ? '_START_ - _END_ ya _TOTAL_' : 'Showing _START_ to _END_ of _TOTAL_' ?>",
+            emptyTable: "<?= $isSwahili ? 'Hakuna vocha za fedha bado.' : 'No petty cash vouchers yet.' ?>",
+            zeroRecords: "<?= $isSwahili ? 'Hakuna vocha zinazolingana.' : 'No matching vouchers.' ?>",
             paginate: { previous: "<?= $isSwahili ? 'Nyuma' : 'Prev' ?>", next: "<?= $isSwahili ? 'Mbele' : 'Next' ?>" }
         },
         order: [[2, 'desc']],
