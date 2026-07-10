@@ -4,6 +4,27 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-10 — Fix: petty cash list printout (pager + sort arrows + empty state)
+**Branch:** `fix/petty-cash-list-print`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** The petty cash vouchers **list** printout (`petty_cash.php`) leaked the custom mobile Prev/Next pager and the DataTables column sort arrows onto the page. Polished it (same class of fix as the expenses page). The **per-voucher document** already exists and is properly reachable — left untouched per the chairman's choice.
+
+### Finding
+Two printouts exist: (1) the **list** print (the screenshots) and (2) a dedicated single-voucher document `print_petty_cash.php` (bordered voucher box, payee/date/category, description, amount, workflow signatures, status watermark). The per-voucher **Print** button on each row (`printVoucher`), the detail view (`printFromView`) and `petty_cash_view.php` all already open that document — reachability was already correct.
+
+### Fix — `app/constant/accounts/petty_cash.php` (list print only)
+- Added `d-print-none` to the mobile Prev/Next pager (it was `d-md-none`, which print media doesn't honour), plus an explicit print rule hiding `#pettyCashPrevBtn/#pettyCashNextBtn/#pettyCashPageInfo`.
+- Hid the DataTables **column sort arrows** in print (`.dt-column-order` + the `.sorting*` pseudo-elements).
+- Added an **empty-state** message ("No petty cash vouchers yet.") so an empty list no longer prints a bare header row.
+
+### Tests
+- **`tests/Unit/PettyCashPrintTest.php` (new):** pager hidden in print, sort arrows hidden, empty-state present, and the per-voucher Print button opens the voucher document.
+
+### Verification
+- `composer test-unit` → 876 pass; `php -l` clean. Print to be eyeballed on WAMP.
+
+---
+
 ## Session — 2026-07-09 — Fix: expenses (Death Assistance) printout — hide mobile pager
 **Branch:** `fix/expenses-print-pager`
 **Developer:** Claude Code / Jabir Mussa
