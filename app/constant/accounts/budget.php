@@ -164,10 +164,6 @@ $performance_data = $performance_stmt->fetchAll(PDO::FETCH_ASSOC);
     .select2-container--default .select2-results__option--highlighted[aria-selected] { background-color: #0d6efd; }
 </style>
 
-<!-- PDF LIBRARIES (CRITICAL) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
-
 <div class="container-fluid px-3 px-md-4 py-4">
     <?php PrintHeader::css(); ?>
     <!-- PRINT HEADER (Visible only during print) -->
@@ -276,9 +272,6 @@ $performance_data = $performance_stmt->fetchAll(PDO::FETCH_ASSOC);
             <div class="d-flex d-md-none flex-nowrap gap-1 mb-2 align-items-center">
                 <button class="btn btn-outline-secondary btn-sm px-3 py-2" title="Print" onclick="$('#budgetTable').DataTable().button('.buttons-print').trigger()">
                     <i class="bi bi-printer"></i>
-                </button>
-                <button class="btn btn-outline-secondary btn-sm px-3 py-2" title="Export Excel" onclick="$('#budgetTable').DataTable().button('.buttons-excel').trigger()">
-                    <i class="bi bi-file-excel"></i>
                 </button>
                 <div class="dropdown ms-auto">
                     <button class="btn btn-outline-secondary btn-sm px-3 py-2 dropdown-toggle" type="button" data-bs-toggle="dropdown">
@@ -434,45 +427,6 @@ $(document).ready(function() {
             updateBudgetPageInfo();
         },
         buttons: [
-            { 
-                extend: 'collection', text: '<i class="bi bi-download me-1"></i> Export', className: 'btn btn-sm btn-primary rounded-pill px-3 d-md-none mb-2 me-2', 
-                buttons: [
-                    { extend: 'copyHtml5', text: 'Copy', exportOptions: { columns: [0, 1, 2, 3, 4] } }, 
-                    { extend: 'excelHtml5', text: 'Excel', exportOptions: { columns: [0, 1, 2, 3, 4] } }, 
-                    { extend: 'pdfHtml5', text: 'PDF', exportOptions: { columns: [0, 1, 2, 3, 4] } }, 
-                    { extend: 'print', text: 'Print', exportOptions: { columns: [0, 1, 2, 3, 4] } }
-                ] 
-            },
-            { extend: 'copyHtml5', className: 'btn btn-sm btn-white-pure border px-3 me-1 text-dark d-none d-md-inline-block', text: '<i class="bi bi-clipboard"></i> Copy', exportOptions: { columns: [0, 1, 2, 3, 4] } },
-            { extend: 'excelHtml5', className: 'btn btn-sm btn-white-pure border px-3 me-1 text-dark d-none d-md-inline-block', text: '<i class="bi bi-file-excel"></i> Excel', exportOptions: { columns: [0, 1, 2, 3, 4] } },
-            { 
-                extend: 'pdfHtml5', 
-                className: 'btn btn-sm btn-white-pure border px-3 me-1 text-dark d-none d-md-inline-block', text: '<i class="bi bi-file-pdf"></i> PDF', title: '',
-                exportOptions: { columns: [0, 1, 2, 3, 4] },
-                customize: function(doc) { 
-                    const now = new Date();
-                    const options = { day: '2-digit', month: 'short', year: 'numeric' };
-                    const datePart = now.toLocaleDateString('en-GB', options);
-                    const timePart = now.toLocaleTimeString('en-GB', { hour12: false });
-                    const printTime = datePart + ' at ' + timePart;
-                    doc.pageMargins = [40, 120, 40, 60]; 
-                    doc.header = function(currentPage, pageCount) {
-                        let headerStack = [];
-                        if (groupLogo && groupLogo.length > 50) { headerStack.push({ alignment: 'center', image: groupLogo, width: 70 }); }
-                        headerStack.push({ text: '<?= strtoupper($group_name) ?>', alignment: 'center', color: '#0d6efd', bold: true, fontSize: 16, margin: [0, 10, 0, 0] });
-                        headerStack.push({ text: 'LIST OF BUDGETS', alignment: 'center', bold: true, fontSize: 12, margin: [0, 2, 0, 10] });
-                        return { stack: headerStack, margin: [0, 20] };
-                    };
-                    doc.footer = function(currentPage, pageCount) {
-                        return { stack: [
-                            { text: 'This document was Printed by <?= $username ?> - <?= $user_role ?> on ' + printTime, alignment: 'center', fontSize: 8 },
-                            { text: 'Powered By BJP Technologies @ ' + now.getFullYear() + ', All Rights Reserved', alignment: 'center', color: '#0d6efd', bold: true, fontSize: 8, margin: [0, 5, 0, 0] }
-                        ], margin: [0, 10] };
-                    };
-                    var tableNode; for (var i = 0; i < doc.content.length; i++) { if (doc.content[i].table) { tableNode = doc.content[i]; break; } } 
-                    if (tableNode) { tableNode.table.widths = ['10%', '35%', '25%', '30%']; tableNode.layout = 'lightHorizontalLines'; } 
-                }
-            },
             { 
                 extend: 'print', title: '', className: 'btn btn-sm btn-white-pure border shadow-sm px-3 me-2 text-dark d-none d-md-inline-block', text: '<i class="bi bi-printer"></i> Print', 
                 exportOptions: { columns: [0, 1, 2, 3, 4] },
