@@ -86,16 +86,16 @@ $total_all = $stmt_total_all->fetchColumn() ?? 0;
         <!-- Pending Card -->
         <div class="col-md-4">
             <div class="card border-0 shadow-sm" style="background-color: #d1e7dd; border-radius: 12px;">
-                <div class="card-body p-3">
+                <div class="card-body py-2 px-3">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0 me-3">
                             <i class="bi bi-clock-history fs-3" style="color: #0f5132;"></i>
                         </div>
                         <div>
-                            <p class="text-muted small mb-0 fw-bold text-uppercase border-bottom pb-1" style="color: #0f5132 !important; opacity: 0.8; letter-spacing: 0.5px;">
+                            <p class="text-muted small mb-0 fw-bold text-uppercase" style="color: #0f5132 !important; opacity: 0.8; letter-spacing: 0.5px;">
                                 <?= $isSwahili ? 'Zinasubiri Uhakiki' : 'Pending Verification' ?>
                             </p>
-                            <h3 class="fw-bold mb-0 mt-1" style="color: #0f5132;"><?= $pending_count ?></h3>
+                            <h3 class="fw-bold mb-0" style="color: #0f5132;"><?= $pending_count ?></h3>
                         </div>
                     </div>
                 </div>
@@ -104,16 +104,16 @@ $total_all = $stmt_total_all->fetchColumn() ?? 0;
         <!-- This Month Card -->
         <div class="col-md-4">
             <div class="card border-0 shadow-sm" style="background-color: #d1e7dd; border-radius: 12px;">
-                <div class="card-body p-3">
+                <div class="card-body py-2 px-3">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0 me-3">
                             <i class="bi bi-calendar-check fs-3" style="color: #0f5132;"></i>
                         </div>
                         <div>
-                            <p class="text-muted small mb-0 fw-bold text-uppercase border-bottom pb-1" style="color: #0f5132 !important; opacity: 0.8; letter-spacing: 0.5px;">
+                            <p class="text-muted small mb-0 fw-bold text-uppercase" style="color: #0f5132 !important; opacity: 0.8; letter-spacing: 0.5px;">
                                 <?= $isSwahili ? 'Matumizi ya Mwezi Huu' : 'Expenses This Month' ?>
                             </p>
-                            <h3 class="fw-bold mb-0 mt-1" style="color: #0f5132;">TSh <?= format_number($total_month, 0) ?></h3>
+                            <h3 class="fw-bold mb-0" style="color: #0f5132;">TSh <?= format_number($total_month, 0) ?></h3>
                         </div>
                     </div>
                 </div>
@@ -122,16 +122,16 @@ $total_all = $stmt_total_all->fetchColumn() ?? 0;
         <!-- Total Approved Card -->
         <div class="col-md-4">
             <div class="card border-0 shadow-sm" style="background-color: #d1e7dd; border-radius: 12px;">
-                <div class="card-body p-3">
+                <div class="card-body py-2 px-3">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0 me-3">
                             <i class="bi bi-check-all fs-2" style="color: #0f5132;"></i>
                         </div>
                         <div>
-                            <p class="text-muted small mb-0 fw-bold text-uppercase border-bottom pb-1" style="color: #0f5132 !important; opacity: 0.8; letter-spacing: 0.5px;">
+                            <p class="text-muted small mb-0 fw-bold text-uppercase" style="color: #0f5132 !important; opacity: 0.8; letter-spacing: 0.5px;">
                                 <?= $isSwahili ? 'Jumla Iliyoidhinishwa' : 'Total Approved' ?>
                             </p>
-                            <h3 class="fw-bold mb-0 mt-1" style="color: #0f5132;">TSh <?= format_number($total_all, 0) ?></h3>
+                            <h3 class="fw-bold mb-0" style="color: #0f5132;">TSh <?= format_number($total_all, 0) ?></h3>
                         </div>
                     </div>
                 </div>
