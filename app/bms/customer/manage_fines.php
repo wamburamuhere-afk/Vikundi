@@ -22,9 +22,12 @@ $members_list = $pdo->query("
     <div class="row mb-4">
         <div class="col-12">
             <div class="card border-0 shadow-sm" style="border-left:5px solid #dc3545 !important;">
-                <div class="card-body p-3 p-md-4 bg-white">
-                    <h3 class="fw-bold mb-1 text-danger"><i class="bi bi-cash-coin me-2"></i><?= $t('Fines', 'Faini') ?></h3>
-                    <p class="text-muted mb-0 small"><?= $t('View member fines, mark them paid or waive them', 'Angalia faini za wanachama, weka zimelipwa au zisamehe') ?></p>
+                <div class="card-body p-3 p-md-4 bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div>
+                        <h3 class="fw-bold mb-1 text-danger"><i class="bi bi-cash-coin me-2"></i><?= $t('Fines', 'Faini') ?></h3>
+                        <p class="text-muted mb-0 small"><?= $t('View member fines, mark them paid or waive them', 'Angalia faini za wanachama, weka zimelipwa au zisamehe') ?></p>
+                    </div>
+                    <button type="button" class="btn btn-outline-primary rounded-pill px-4" onclick="printFinesRegister()"><i class="bi bi-printer me-2"></i><?= $t('Print', 'Chapisha') ?></button>
                 </div>
             </div>
         </div>
@@ -97,6 +100,11 @@ const CAN_EDIT = <?= $can_edit ? 'true' : 'false' ?>;
 function money(v){ return parseFloat(v||0).toLocaleString('en-US',{minimumFractionDigits:2}); }
 function badge(s){ return s==='paid'?'success':(s==='waived'?'secondary':'warning'); }
 function esc(s){ return s==null?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function printFinesRegister(){
+    // Open the printable register honouring the current Member + Status filters.
+    const p = new URLSearchParams({ member_id: $('#fMember').val(), status: $('#fStatus').val() });
+    window.open('<?= getUrl('fines_print') ?>?' + p.toString(), '_blank');
+}
 
 $(function(){
     const table = $('#finesTable').DataTable({
