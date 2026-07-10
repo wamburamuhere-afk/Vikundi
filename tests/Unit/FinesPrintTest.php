@@ -29,6 +29,8 @@ class FinesPrintTest extends TestCase
         $this->assertStringContainsString('f.customer_id = :mid', $p);
         // total prints once, not repeated per page
         $this->assertStringContainsString('tfoot { display: table-row-group', $p);
+        // the date stays on one line (the long Reason column was making it wrap)
+        $this->assertStringContainsString('<td class="text-nowrap"><?= $r[\'created_at\']', $p);
     }
 
     public function testManageFinesHasRegisterPrintButton(): void

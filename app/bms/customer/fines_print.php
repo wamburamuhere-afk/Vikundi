@@ -80,7 +80,7 @@ includeHeader();
                         <th><?= $t('Member', 'Mwanachama') ?></th>
                         <th><?= $t('Reason', 'Sababu') ?></th>
                         <th class="text-end"><?= $t('Amount', 'Kiasi') ?></th>
-                        <th><?= $t('Date', 'Tarehe') ?></th>
+                        <th class="text-nowrap"><?= $t('Date', 'Tarehe') ?></th>
                         <th class="text-center"><?= $t('Status', 'Hali') ?></th>
                     </tr>
                 </thead>
@@ -93,7 +93,7 @@ includeHeader();
                             <td><?= htmlspecialchars($r['member_name'] ?: '—') ?></td>
                             <td><?= safe_output($r['reason'] ?: ($r['meeting_title'] ? ($t('Meeting absence', 'Kukosa mkutano') . ': ' . $r['meeting_title']) : '—'), '—') ?></td>
                             <td class="text-end fw-semibold"><?= number_format((float) $r['amount'], 0) ?></td>
-                            <td><?= $r['created_at'] ? date('d M Y', strtotime($r['created_at'])) : '—' ?></td>
+                            <td class="text-nowrap"><?= $r['created_at'] ? date('d M Y', strtotime($r['created_at'])) : '—' ?></td>
                             <td class="text-center"><span class="badge bg-<?= $sb[$r['status']] ?? 'secondary' ?>"><?= safe_output($r['status']) ?></span></td>
                         </tr>
                     <?php endforeach; endif; ?>
