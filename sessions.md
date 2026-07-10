@@ -4,6 +4,24 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-10 — Feat: fines printouts (leadership register + member's own)
+**Branch:** `feat/fines-printouts`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** The fines area had **no printout at all**. Added two, matching the other finance pages. (No export buttons existed here, so nothing to remove.)
+
+### New / changed
+- **`app/bms/customer/fines_print.php` (new, route `fines_print`):** printable **fines register** for leadership, honouring the Member + Status filters. Server-rendered (the list is a server-side DataTable, so the AJAX DOM can't be printed). Branded `PrintHeader` ("FINES REGISTER") + shared footer; table # · Member · Reason · Amount · Date · Status, a grand-total row, and a Pending/Paid/Waived breakdown. Gated `requireViewPermission('manage_fines')`. Uses the `tfoot { display: table-row-group }` fix so the total prints once.
+- **`app/bms/customer/manage_fines.php`:** a **Print** button that opens the register with the current filters (`printFinesRegister()`).
+- **`app/bms/customer/my_fines.php`:** a **Print** button + in-page print — branded `PrintHeader` ("MY FINES", with the member's name) + shared footer; the on-screen title card is `d-print-none` so it isn't duplicated. A member prints a clean statement of their own fines.
+
+### Tests
+- **`tests/Unit/FinesPrintTest.php` (new):** register routed + gated + branded + filter pass-through + total-once; both Print buttons wired.
+
+### Verification
+- `composer test-unit` → 885 pass; `php -l` clean. The register's join/filter SQL was smoke-tested against the live dev DB.
+
+---
+
 ## Session — 2026-07-10 — Chore: remove the Excel button on petty cash
 **Branch:** `fix/petty-cash-remove-excel`
 **Developer:** Claude Code / Jabir Mussa
