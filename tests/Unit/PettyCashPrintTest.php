@@ -44,4 +44,12 @@ class PettyCashPrintTest extends TestCase
         $this->assertStringContainsString('onclick="printVoucher(${id})"', $this->src);
         $this->assertStringContainsString("getUrl('print_petty_cash') ?>?id=' + id", $this->src);
     }
+
+    public function testSummaryCardsAreCompact(): void
+    {
+        // The three stat cards were bulky (p-3 padding + a divider line and a gap
+        // under each label); tightened to reclaim the wasted space.
+        $this->assertStringContainsString('card-body py-2 px-3', $this->src);
+        $this->assertStringNotContainsString('text-uppercase border-bottom pb-1', $this->src);
+    }
 }
