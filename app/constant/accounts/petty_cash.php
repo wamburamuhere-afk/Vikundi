@@ -434,8 +434,7 @@ $(document).ready(function() {
                 action: function ( e, dt, node, config ) {
                     window.print();
                 }
-            },
-            { extend: 'excel', text: '<i class="bi bi-file-earmark-excel me-1"></i> Excel', className: 'btn btn-sm btn-white' }
+            }
         ],
         lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "<?= $is_sw ? 'Zote' : 'All' ?>"]],
         language: {
