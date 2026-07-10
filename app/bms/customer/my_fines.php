@@ -14,6 +14,13 @@ $cstmt = $pdo->prepare("SELECT customer_id FROM customers WHERE user_id = ? LIMI
 $cstmt->execute([$uid]);
 $customer_id = (int) ($cstmt->fetchColumn() ?: 0);
 
+$member_name = '';
+if ($customer_id > 0) {
+    $nm = $pdo->prepare("SELECT TRIM(CONCAT_WS(' ', first_name, middle_name, last_name)) FROM customers WHERE customer_id = ?");
+    $nm->execute([$customer_id]);
+    $member_name = (string) $nm->fetchColumn();
+}
+
 $fines = [];
 if ($customer_id > 0) {
     $fstmt = $pdo->prepare("
@@ -31,10 +38,18 @@ includeHeader();
 ?>
 
 <div class="container-fluid py-4" id="main-content" style="background:#f8f9fa;min-height:90vh;">
-    <div class="card border-0 shadow-sm mb-4" style="border-left:5px solid #dc3545 !important;">
-        <div class="card-body p-3 p-md-4 bg-white">
-            <h3 class="fw-bold mb-1 text-danger"><i class="bi bi-cash-coin me-2"></i><?= $t('My Fines', 'Faini Zangu') ?></h3>
-            <p class="text-muted mb-0 small"><?= $t('Fines recorded against your account', 'Faini zilizorekodiwa kwenye akaunti yako') ?></p>
+    <?php PrintHeader::css(); ?>
+    <div class="d-none d-print-block">
+        <?php PrintHeader::render($pdo, $is_sw ? 'FAINI ZANGU' : 'MY FINES', $member_name); ?>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4 d-print-none" style="border-left:5px solid #dc3545 !important;">
+        <div class="card-body p-3 p-md-4 bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <h3 class="fw-bold mb-1 text-danger"><i class="bi bi-cash-coin me-2"></i><?= $t('My Fines', 'Faini Zangu') ?></h3>
+                <p class="text-muted mb-0 small"><?= $t('Fines recorded against your account', 'Faini zilizorekodiwa kwenye akaunti yako') ?></p>
+            </div>
+            <button type="button" class="btn btn-outline-primary rounded-pill px-4" onclick="window.print()"><i class="bi bi-printer me-2"></i><?= $t('Print', 'Chapisha') ?></button>
         </div>
     </div>
 
@@ -89,4 +104,5 @@ includeHeader();
     </div></div>
 </div>
 
+<?php include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE; ?>
 <?php includeFooter(); ob_end_flush(); ?>
