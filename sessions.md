@@ -4,6 +4,22 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-10 — Chore: remove the Excel button on petty cash
+**Branch:** `fix/petty-cash-remove-excel`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** For consistency with the budget page (and the rest), removed the **Excel** export button from the petty cash vouchers list. **Print stays.**
+
+### Change — `app/constant/accounts/petty_cash.php`
+- Removed the `{ extend: 'excel', … }` button from the DataTable `buttons` array (fixed the trailing comma); only the Print button remains.
+
+### Tests
+- **`tests/Unit/PettyCashPrintTest.php`:** added a guard that the Excel export is gone and Print is kept.
+
+### Verification
+- `composer test-unit` → 882 pass; `php -l` clean.
+
+---
+
 ## Session — 2026-07-10 — Chore: budget page — remove Copy/Excel/PDF exports
 **Branch:** `fix/budget-remove-exports`
 **Developer:** Claude Code / Jabir Mussa

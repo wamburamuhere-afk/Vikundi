@@ -45,6 +45,15 @@ class PettyCashPrintTest extends TestCase
         $this->assertStringContainsString("getUrl('print_petty_cash') ?>?id=' + id", $this->src);
     }
 
+    public function testExcelExportRemoved(): void
+    {
+        // The Excel export was dropped for consistency with the other pages;
+        // only Print remains.
+        $this->assertStringNotContainsString("extend: 'excel'", $this->src);
+        $this->assertStringNotContainsString('file-earmark-excel', $this->src);
+        $this->assertStringContainsString('window.print()', $this->src); // Print kept
+    }
+
     public function testSummaryCardsAreCompact(): void
     {
         // The three stat cards were bulky (p-3 padding + a divider line and a gap
