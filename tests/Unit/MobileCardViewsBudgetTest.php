@@ -64,10 +64,12 @@ class MobileCardViewsBudgetTest extends TestCase
         $this->assertStringContainsString('bi-printer', $this->src);
     }
 
-    public function test_mobile_export_icon_button_exists(): void
+    public function test_mobile_export_icon_button_removed(): void
     {
-        $this->assertStringContainsString("button('.buttons-excel').trigger()", $this->src);
-        $this->assertStringContainsString('bi-file-excel', $this->src);
+        // The Copy/Excel/PDF exports were removed from the budget page (no clear
+        // purpose; other pages don't carry them) — only Print remains.
+        $this->assertStringNotContainsString("button('.buttons-excel').trigger()", $this->src);
+        $this->assertStringNotContainsString('bi-file-excel', $this->src);
     }
 
     public function test_mobile_show_dropdown_exists(): void
