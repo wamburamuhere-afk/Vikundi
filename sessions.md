@@ -4,6 +4,25 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-10 — Chore: budget page — remove Copy/Excel/PDF exports
+**Branch:** `fix/budget-remove-exports`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Per the chairman, removed the **Copy / Excel / PDF** export buttons from the budget page (no clear purpose; other pages don't carry them). **Print is kept.** The budget *print* itself is well-built and unchanged — it uses the popup-window approach with a branded header + footer (same pattern as the members list) and there's also a per-budget document (`print_budget.php`).
+
+### Change — `app/constant/accounts/budget.php`
+- DataTable `buttons` array: dropped the Copy/Excel/PDF entries and the mobile "Export" collection dropdown; only the **Print** button remains.
+- Removed the standalone mobile **Export Excel** icon button.
+- Removed the **pdfmake** library `<script>` tags (only the PDF export used them).
+
+### Tests
+- **`tests/Unit/BudgetExportButtonsTest.php` (new):** Copy/Excel/PDF + pdfmake gone; Print + the per-budget document print kept.
+- **`tests/Unit/MobileCardViewsBudgetTest.php`:** flipped the now-obsolete `test_mobile_export_icon_button_exists` to assert the Excel button is removed.
+
+### Verification
+- `composer test-unit` → 881 pass; `php -l` clean.
+
+---
+
 ## Session — 2026-07-10 — Fix: compact the petty cash summary cards
 **Branch:** `fix/petty-cash-summary-cards`
 **Developer:** Claude Code / Jabir Mussa
