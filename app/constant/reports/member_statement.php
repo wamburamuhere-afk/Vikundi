@@ -182,7 +182,7 @@ $total_expenses = array_sum(array_column($expenses, 'amount'));
 </div>
 
 <!-- FINANCIAL GRID -->
-<div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4 vk-grid-card">
     <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
         <h6 class="mb-0 fw-bold"><i class="bi bi-calendar-check me-2 text-primary"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mchanganuo wa Michango ya Kila Mwezi' : 'Monthly Contribution Analysis' ?></h6>
         <span class="badge bg-light text-dark border"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mchango: ' : 'Monthly: ' ?> <?= number_format($monthly_amt, 0) ?> TZS</span>
@@ -230,10 +230,6 @@ $total_expenses = array_sum(array_column($expenses, 'amount'));
                         <td class="small text-muted bg-light">—</td>
                     </tr>
                 </tbody>
-                <!-- 2. TABLE SPACER (<tfoot>) -->
-                <tfoot class="d-none d-print-table-footer">
-                    <tr><td colspan="<?= count($distribution) + 2 ?>" style="height: 2.2cm; border: none !important;">&nbsp;</td></tr>
-                </tfoot>
             </table>
         </div>
     </div>
@@ -319,13 +315,18 @@ $total_expenses = array_sum(array_column($expenses, 'amount'));
     body { padding-top: 0 !important; margin: 0 !important; background: white !important; font-size: 12px; color: black !important; }
     .container-fluid, .container { width: 100% !important; max-width: none !important; padding: 0 15px !important; margin: 0 !important; }
 
-    /* Safety Zone Logic */
-    .d-print-table-footer { display: table-footer-group !important; }
-
     /* Layout Flexibility */
     .card { border: 1px solid #ccc !important; box-shadow: none !important; margin-bottom: 5px !important; page-break-inside: avoid; background: transparent !important; }
     .row { display: flex !important; flex-wrap: wrap !important; }
     .col-md-3 { flex: 1 1 23% !important; width: 23% !important; }
+
+    /* The monthly grid was jumping whole to page 2 (leaving page 1 half-empty)
+       because page-break-inside:avoid + the old tfoot spacer made it too tall to
+       fit under the cards. Let it flow up onto page 1 and keep its rows intact. */
+    .vk-grid-card { page-break-inside: auto !important; }
+    .vk-grid-card tr { page-break-inside: avoid !important; }
+    /* tighten the gap between the summary cards and the grid */
+    .mb-4 { margin-bottom: 8px !important; }
     
     /* Default Table Optimization */
     table { 
