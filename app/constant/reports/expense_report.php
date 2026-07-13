@@ -74,7 +74,12 @@ $trend_query = "
 ";
 $trend_data = $pdo->query($trend_query)->fetchAll(PDO::FETCH_ASSOC);
 $trend_labels = array_column($trend_data, 'month');
-$trend_values = array_column($trend_data, 'total');
+$trend_values = array_map('floatval', array_column($trend_data, 'total'));
+// 'YYYY-MM' -> short "Mon YY" for the trend chart axis
+$trend_fmt_labels = array_map(fn($m) => date('M y', strtotime($m . '-01')), $trend_labels);
+
+$pct_general = $total_overall > 0 ? round(($total_general / $total_overall) * 100) : 0;
+$pct_death   = $total_overall > 0 ? round(($total_death   / $total_overall) * 100) : 0;
 
 ?>
 
@@ -220,17 +225,45 @@ $trend_values = array_column($trend_data, 'total');
                     <h6 class="mb-0 fw-bold"><?= $is_sw ? 'Uwiano wa Matumizi' : 'Expenditure Proportion' ?></h6>
                 </div>
                 <div class="card-body">
-                    <canvas id="propChart" height="250"></canvas>
-                    <div class="mt-4">
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="small text-muted"><?= $is_sw ? 'Ya Kawaida :' : 'General :' ?></span>
-                            <span class="small fw-bold"><?= round(($total_general / max($total_overall, 1)) * 100) ?>%</span>
+                    <?php if ($total_overall > 0): ?>
+                        <div class="position-relative mx-auto" style="height:220px;max-width:260px;">
+                            <canvas id="propChart"></canvas>
                         </div>
-                        <div class="d-flex justify-content-between">
-                            <span class="small text-muted"><?= $is_sw ? 'Ya Misiba :' : 'Funeral Aid :' ?></span>
-                            <span class="small fw-bold"><?= round(($total_death / max($total_overall, 1)) * 100) ?>%</span>
+                        <div class="mt-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="small"><span class="d-inline-block rounded-circle me-2 align-middle" style="width:10px;height:10px;background:#0dcaf0;"></span><?= $is_sw ? 'Ya Kawaida' : 'General' ?></span>
+                                <span class="small fw-bold text-nowrap">TZS <?= number_format($total_general) ?> <span class="text-muted fw-normal">· <?= $pct_general ?>%</span></span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="small"><span class="d-inline-block rounded-circle me-2 align-middle" style="width:10px;height:10px;background:#dc3545;"></span><?= $is_sw ? 'Ya Misiba' : 'Funeral Aid' ?></span>
+                                <span class="small fw-bold text-nowrap">TZS <?= number_format($total_death) ?> <span class="text-muted fw-normal">· <?= $pct_death ?>%</span></span>
+                            </div>
                         </div>
-                    </div>
+                    <?php else: ?>
+                        <div class="text-center text-muted py-5">
+                            <i class="bi bi-pie-chart fs-1 d-block mb-2 opacity-50"></i>
+                            <div class="small"><?= $is_sw ? 'Hakuna matumizi bado' : 'No expenses yet' ?></div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- 6-Month Trend -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h6 class="mb-0 fw-bold"><?= $is_sw ? 'Miezi 6 Iliyopita' : 'Last 6 Months' ?></h6>
+                </div>
+                <div class="card-body">
+                    <?php if (!empty($trend_data)): ?>
+                        <div class="position-relative" style="height:180px;">
+                            <canvas id="trendChart"></canvas>
+                        </div>
+                    <?php else: ?>
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-bar-chart fs-1 d-block mb-2 opacity-50"></i>
+                            <div class="small"><?= $is_sw ? 'Hakuna data ya mwelekeo' : 'No trend data yet' ?></div>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -261,20 +294,85 @@ $(document).ready(function() {
     };
     $('#expenseDetailTable').DataTable({ language: lang, pageLength: 15, order:[[1,'desc']] });
 
-    // Proportion Chart
+    // Compact money formatter (e.g. 1,200,000 -> "1.2M", 800,000 -> "800K")
+    const fmtCompact = v => {
+        if (v >= 1e6) return (v / 1e6).toFixed(v >= 1e7 ? 0 : 1).replace(/\.0$/, '') + 'M';
+        if (v >= 1e3) return Math.round(v / 1e3) + 'K';
+        return Math.round(v).toLocaleString('en-US');
+    };
+
+    // ---- Expenditure proportion doughnut (with a total in the centre) ----
     const propCtx = document.getElementById('propChart');
     if (propCtx) {
+        const totalOverall = <?= (float) $total_overall ?>;
+        const centreTotal = {
+            id: 'centreTotal',
+            afterDraw(chart) {
+                const { ctx, chartArea: { left, right, top, bottom } } = chart;
+                const cx = (left + right) / 2, cy = (top + bottom) / 2;
+                ctx.save();
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#212529';
+                ctx.font = "700 17px system-ui, -apple-system, sans-serif";
+                ctx.fillText('TZS ' + fmtCompact(totalOverall), cx, cy - 6);
+                ctx.fillStyle = '#6c757d';
+                ctx.font = "600 11px system-ui, -apple-system, sans-serif";
+                ctx.fillText('<?= $is_sw ? "Jumla" : "Total" ?>', cx, cy + 13);
+                ctx.restore();
+            }
+        };
         new Chart(propCtx, {
             type: 'doughnut',
             data: {
-                labels: ['<?= $is_sw ? "Kawaida" : "General" ?>', '<?= $is_sw ? "Vifo" : "Death" ?>'],
+                labels: ['<?= $is_sw ? "Ya Kawaida" : "General" ?>', '<?= $is_sw ? "Ya Misiba" : "Funeral Aid" ?>'],
                 datasets: [{
-                    data: [<?= $total_general ?>, <?= $total_death ?>],
+                    data: [<?= (float) $total_general ?>, <?= (float) $total_death ?>],
                     backgroundColor: ['#0dcaf0', '#dc3545'],
-                    borderWidth: 0, cutout: '70%'
+                    borderColor: '#fff', borderWidth: 2, borderRadius: 6, spacing: 3, cutout: '68%'
                 }]
             },
-            options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, font: { size: 10 } } } } }
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label(c) {
+                                const v = c.parsed || 0;
+                                const pct = totalOverall ? Math.round(v / totalOverall * 100) : 0;
+                                return ' ' + c.label + ': TZS ' + v.toLocaleString('en-US') + ' (' + pct + '%)';
+                            }
+                        }
+                    }
+                }
+            },
+            plugins: [centreTotal]
+        });
+    }
+
+    // ---- Last 6 months trend (bar) ----
+    const trendCtx = document.getElementById('trendChart');
+    if (trendCtx) {
+        new Chart(trendCtx, {
+            type: 'bar',
+            data: {
+                labels: <?= json_encode($trend_fmt_labels) ?>,
+                datasets: [{
+                    data: <?= json_encode($trend_values) ?>,
+                    backgroundColor: '#0d6efd', borderRadius: 4, maxBarThickness: 30
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: c => ' TZS ' + (c.parsed.y || 0).toLocaleString('en-US') } }
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+                    y: { beginAtZero: true, grid: { color: '#f1f1f1' }, ticks: { font: { size: 10 }, callback: v => fmtCompact(v) } }
+                }
+            }
         });
     }
 
