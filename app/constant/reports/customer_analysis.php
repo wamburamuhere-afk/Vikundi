@@ -47,32 +47,47 @@ $is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
 // ============================================================
 
 // 1) General Stats
-$total_members  = $pdo->query("SELECT COUNT(*) FROM users WHERE user_role != 'Admin' AND status != 'deleted'")->fetchColumn();
+// A member is a non-admin user that is neither deleted nor rejected — a rejected
+// applicant never became a member, so it must not inflate the totals.
+$member_where   = "user_role != 'Admin' AND status NOT IN ('deleted', 'rejected')";
+$total_members  = $pdo->query("SELECT COUNT(*) FROM users WHERE $member_where")->fetchColumn();
 $active_members = $pdo->query("SELECT COUNT(*) FROM users WHERE user_role != 'Admin' AND status = 'active'")->fetchColumn();
 $deceased_count = $pdo->query("SELECT COUNT(*) FROM customers WHERE is_deceased = 1")->fetchColumn() ?: 0;
-$new_last_30    = $pdo->query("SELECT COUNT(*) FROM users WHERE user_role != 'Admin' AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)")->fetchColumn();
+$new_last_30    = $pdo->query("SELECT COUNT(*) FROM users WHERE $member_where AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)")->fetchColumn();
 
-// 2) Regional Distribution (Top 8)
+// 2) Regional Distribution (Top 8). Blank states become "Unspecified"; the
+// percentage is taken over the region total (customers), not the member count.
 $regions_data = $pdo->query("
-    SELECT state as region, COUNT(*) as count 
-    FROM customers 
-    GROUP BY state 
-    ORDER BY count DESC 
+    SELECT state as region, COUNT(*) as count
+    FROM customers
+    GROUP BY state
+    ORDER BY count DESC
     LIMIT 8
 ")->fetchAll(PDO::FETCH_ASSOC);
+$region_labels = array_map(
+    fn($r) => ($r['region'] !== null && $r['region'] !== '') ? $r['region'] : ($is_sw ? 'Haijabainishwa' : 'Unspecified'),
+    $regions_data
+);
+$region_counts = array_map('intval', array_column($regions_data, 'count'));
+$region_total  = array_sum($region_counts);
 
-// 3) Growth Trend (Last 6 Months)
+// 3) Growth Trend (Last 6 Months). ORDER BY month ASC LIMIT 6 returns the
+// EARLIEST months; take the latest 6 (DESC) then re-sort chronologically.
 $growth_data = $pdo->query("
-    SELECT DATE_FORMAT(created_at, '%Y-%m') as month, COUNT(*) as count 
-    FROM users 
-    WHERE user_role != 'Admin' 
-    GROUP BY month 
-    ORDER BY month ASC 
-    LIMIT 6
+    SELECT month, count FROM (
+        SELECT DATE_FORMAT(created_at, '%Y-%m') as month, COUNT(*) as count
+        FROM users
+        WHERE $member_where
+        GROUP BY month
+        ORDER BY month DESC
+        LIMIT 6
+    ) t
+    ORDER BY month ASC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
 $months_labels = array_column($growth_data, 'month');
-$months_counts = array_column($growth_data, 'count');
+$months_counts = array_map('intval', array_column($growth_data, 'count'));
+$months_fmt    = array_map(fn($m) => date('M y', strtotime($m . '-01')), $months_labels);
 
 // 4) Latest Members (Joined with customers to track deceased/dormant state)
 $latest_members = $pdo->query("
@@ -152,7 +167,16 @@ $latest_members = $pdo->query("
                     <h6 class="mb-0 fw-bold"><?= $is_sw ? 'Mwelekeo wa Ukuaji wa Wanachama' : 'Member Registration Trend' ?></h6>
                 </div>
                 <div class="card-body">
-                    <canvas id="growthChart" height="150"></canvas>
+                    <?php if (!empty($months_counts)): ?>
+                        <div class="position-relative" style="height:200px;">
+                            <canvas id="growthChart"></canvas>
+                        </div>
+                    <?php else: ?>
+                        <div class="text-center text-muted py-5">
+                            <i class="bi bi-graph-up fs-1 d-block mb-2 opacity-50"></i>
+                            <div class="small"><?= $is_sw ? 'Hakuna data ya ukuaji bado' : 'No growth data yet' ?></div>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -204,20 +228,30 @@ $latest_members = $pdo->query("
                     <h6 class="mb-0 fw-bold"><?= $is_sw ? 'Usambazaji wa Mikoa (Top 8)' : 'Regional Distribution' ?></h6>
                 </div>
                 <div class="card-body">
-                    <canvas id="regionChart" height="300"></canvas>
-                    <div class="mt-4">
-                        <?php foreach ($regions_data as $r): 
-                            $perc = ($total_members > 0) ? round(($r['count'] / $total_members) * 100, 1) : 0;
-                        ?>
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="small fw-semibold text-muted"><?= htmlspecialchars($r['region'] ?: 'N/A') ?></span>
-                            <span class="small badge bg-primary bg-opacity-10 text-primary border border-primary-subtle"><?= $perc ?>%</span>
+                    <?php if ($region_total > 0): ?>
+                        <div class="position-relative mx-auto" style="height:240px;max-width:260px;">
+                            <canvas id="regionChart"></canvas>
                         </div>
-                        <div class="progress rounded-pill mb-3" style="height: 6px;">
-                            <div class="progress-bar bg-primary" style="width: <?= $perc ?>%"></div>
+                        <div class="mt-4">
+                            <?php foreach ($regions_data as $i => $r):
+                                $label = $region_labels[$i];
+                                $perc  = round(($region_counts[$i] / $region_total) * 100, 1);
+                            ?>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="small fw-semibold text-muted"><?= htmlspecialchars($label) ?></span>
+                                <span class="small badge bg-primary bg-opacity-10 text-primary border border-primary-subtle"><?= $region_counts[$i] ?> · <?= $perc ?>%</span>
+                            </div>
+                            <div class="progress rounded-pill mb-3" style="height: 6px;">
+                                <div class="progress-bar bg-primary" style="width: <?= $perc ?>%"></div>
+                            </div>
+                            <?php endforeach; ?>
                         </div>
-                        <?php endforeach; ?>
-                    </div>
+                    <?php else: ?>
+                        <div class="text-center text-muted py-5">
+                            <i class="bi bi-pie-chart fs-1 d-block mb-2 opacity-50"></i>
+                            <div class="small"><?= $is_sw ? 'Hakuna data ya mikoa bado' : 'No region data yet' ?></div>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -226,14 +260,19 @@ $latest_members = $pdo->query("
 
 <style>
     @media print {
-        body { background: white !important; font-size: 10px; }
+        body { background: white !important; font-size: 12.5px; }
         .card { border: 1px solid #ddd !important; box-shadow: none !important; margin-bottom: 10px !important; page-break-inside: avoid; }
-        .card-body { padding: 10px !important; }
-        .fs-3 { font-size: 1.1rem !important; }
+        .card-body { padding: 12px !important; }
+        .fs-3 { font-size: 1.3rem !important; }
         .nav-pills, .btn, .d-print-none { display: none !important; }
         .col-6 { width: 50% !important; flex: 0 0 50% !important; }
         .row { display: flex !important; flex-wrap: wrap !important; }
-        canvas { max-width: 100% !important; height: auto !important; }
+        /* charts are re-rendered at a fixed paper size in JS (beforeprint); just
+           centre them and keep the coloured badges/progress bars. */
+        #growthChart, #regionChart { margin: 0 auto !important; max-width: 100% !important; }
+        .badge, .progress, .progress-bar { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        /* tighten big margins so page 1 isn't left half-empty */
+        .mb-4 { margin-bottom: 12px !important; }
     }
 </style>
 
@@ -241,13 +280,15 @@ $latest_members = $pdo->query("
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 $(document).ready(function() {
+    let growthChart = null, regionChart = null;
+
     // Growth Trend Chart
     const growthCtx = document.getElementById('growthChart');
     if (growthCtx) {
-        new Chart(growthCtx, {
+        growthChart = new Chart(growthCtx, {
             type: 'line',
             data: {
-                labels: <?= json_encode($months_labels) ?>,
+                labels: <?= json_encode($months_fmt) ?>,
                 datasets: [{
                     label: '<?= $is_sw ? "Wapya" : "New Members" ?>',
                     data: <?= json_encode($months_counts) ?>,
@@ -258,10 +299,10 @@ $(document).ready(function() {
                 }]
             },
             options: {
-                responsive: true,
+                responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
-                scales: { 
-                    y: { beginAtZero: true, grid: { borderDash: [5, 5] }, ticks: { stepSize: 1 } },
+                scales: {
+                    y: { beginAtZero: true, grid: { borderDash: [5, 5] }, ticks: { stepSize: 1, precision: 0 } },
                     x: { grid: { display: false } }
                 }
             }
@@ -271,22 +312,45 @@ $(document).ready(function() {
     // Regional Doughnut
     const regionCtx = document.getElementById('regionChart');
     if (regionCtx) {
-        new Chart(regionCtx, {
+        const regionTotal = <?= (int) $region_total ?>;
+        regionChart = new Chart(regionCtx, {
             type: 'doughnut',
             data: {
-                labels: <?= json_encode(array_column($regions_data, 'region')) ?>,
+                labels: <?= json_encode($region_labels) ?>,
                 datasets: [{
-                    data: <?= json_encode(array_column($regions_data, 'count')) ?>,
+                    data: <?= json_encode($region_counts) ?>,
                     backgroundColor: ['#0d6efd', '#0dcaf0', '#198754', '#ffc107', '#fd7e14', '#dc3545', '#6610f2', '#6f42c1'],
-                    borderWidth: 0, hoverOffset: 15
+                    borderColor: '#fff', borderWidth: 2, hoverOffset: 12
                 }]
             },
             options: {
-                responsive: true, cutout: '75%',
-                plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 15, font: { size: 10 } } } }
+                responsive: true, maintainAspectRatio: false, cutout: '70%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { usePointStyle: true, padding: 12, font: { size: 10 } } },
+                    tooltip: {
+                        callbacks: {
+                            label(c) {
+                                const v = c.parsed || 0;
+                                const pct = regionTotal ? Math.round(v / regionTotal * 100) : 0;
+                                return ' ' + c.label + ': ' + v + ' (' + pct + '%)';
+                            }
+                        }
+                    }
+                }
             }
         });
     }
+
+    // Re-render both charts at a fixed paper size for print (crisp, not clipped),
+    // then restore to responsive screen sizing afterwards.
+    window.addEventListener('beforeprint', function () {
+        if (growthChart) growthChart.resize(460, 170);
+        if (regionChart) regionChart.resize(220, 220);
+    });
+    window.addEventListener('afterprint', function () {
+        if (growthChart) growthChart.resize();
+        if (regionChart) regionChart.resize();
+    });
 });
 </script>
 
