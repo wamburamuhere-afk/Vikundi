@@ -51,5 +51,11 @@ class FinesPrintTest extends TestCase
         $this->assertStringContainsString('PRINT_FOOTER_FILE', $p);     // shared footer
         // the on-screen title card is not duplicated in print
         $this->assertStringContainsString('mb-4 d-print-none', $p);
+        // summary chips stay 3-across even on phones (col-4, not stacking col-md-4)
+        $this->assertStringContainsString('<div class="col-4">', $p);
+        $this->assertStringNotContainsString('col-md-4', $p);
+        // the table shows a single "Total owing" footer, printed once
+        $this->assertStringContainsString('Total owing', $p);
+        $this->assertStringContainsString('tfoot { display: table-row-group', $p);
     }
 }
