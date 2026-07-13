@@ -134,8 +134,9 @@ try {
     }
 
     // ── AUTO-MOVE MEMBER TO DORMANT ON SUBMISSION (backup — main logic is on approval) ──
-    // deceased_type is 'mwanachama' when the main member is the deceased
-    if (strtolower($deceased_type) === 'mwanachama') {
+    // The deceased is the member when deceased_id === 'member' (the stable
+    // signal); the 'mwanachama' type label is also accepted for compatibility.
+    if ($deceased_id === 'member' || strtolower($deceased_type) === 'mwanachama') {
         // Mark as deceased immediately on submission
         $stmt_cust = $pdo->prepare("UPDATE customers SET is_deceased = 1 WHERE customer_id = ?");
         $stmt_cust->execute([$member_id]);

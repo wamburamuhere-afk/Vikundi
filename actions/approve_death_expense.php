@@ -51,7 +51,11 @@ try {
         $user_id, $actor['name'], $actor['role']);
 
     // 5. REMOVE DECEASED FROM CUSTOMERS TABLE
-    if ($deceased_type === 'mwanachama') {
+    // The deceased is the member when deceased_id === 'member' (the stable
+    // signal). Also accept the 'mwanachama' type label for older records; the
+    // beneficiaries endpoint sends type='member', so keying only on the label
+    // would silently miss those and never flag the member as deceased.
+    if ($deceased_id === 'member' || $deceased_type === 'mwanachama') {
         // Get member email first to update users table
         $stmt = $pdo->prepare("SELECT email FROM customers WHERE customer_id = ?");
         $stmt->execute([$member_id]);
