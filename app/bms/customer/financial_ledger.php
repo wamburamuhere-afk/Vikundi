@@ -71,10 +71,14 @@ $stmt = $pdo->query("SELECT customer_id, first_name, last_name, mpesa_name, stat
 $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // 4. Fetch All Confirmed Contributions in Range
+// NOTE: this system approves contributions to status 'approved' (the Pending
+// Approvals workflow), so filtering only on 'confirmed' matched nothing and the
+// whole ledger read as zero. Accept the same status set the rest of the system
+// treats as valid (see the funeral-aid report and death analysis).
 $stmt = $pdo->prepare("
-    SELECT member_id, amount, contribution_type, contribution_date 
-    FROM contributions 
-    WHERE status = 'confirmed' 
+    SELECT member_id, amount, contribution_type, contribution_date
+    FROM contributions
+    WHERE status IN ('confirmed', 'approved', '')
     AND contribution_date BETWEEN ? AND ?
 ");
 $stmt->execute([$start_date, $end_date]);
