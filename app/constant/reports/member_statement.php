@@ -97,7 +97,9 @@ if ($remaining_pot > 0) {
 }
 
 // 7. Expenses (Death Benefits)
-$stmt = $pdo->prepare("SELECT * FROM death_expenses WHERE member_id = ? ORDER BY expense_date DESC");
+// Only APPROVED (disbursed) benefits count as "received" — pending/rejected
+// claims must not inflate the Benefits Received total or the history table.
+$stmt = $pdo->prepare("SELECT * FROM death_expenses WHERE member_id = ? AND status = 'approved' ORDER BY expense_date DESC");
 $stmt->execute([$member_id]);
 $expenses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $total_expenses = array_sum(array_column($expenses, 'amount'));
@@ -305,12 +307,16 @@ $total_expenses = array_sum(array_column($expenses, 'amount'));
 
 <style>
 @media print {
+    /* The monthly grid grows one column per covered month, so print landscape
+       to keep it legible as the group accumulates months. */
+    @page { size: A4 landscape; }
+
     /* Hide UI elements */
     .header-wrapper, .navbar, .top-header, .bottom-header, .d-print-none, .no-print, .btn, footer, .modal {
         display: none !important;
     }
-    
-    body { padding-top: 0 !important; margin: 0 !important; background: white !important; font-size: 10px; color: black !important; }
+
+    body { padding-top: 0 !important; margin: 0 !important; background: white !important; font-size: 12px; color: black !important; }
     .container-fluid, .container { width: 100% !important; max-width: none !important; padding: 0 15px !important; margin: 0 !important; }
 
     /* Safety Zone Logic */
@@ -327,25 +333,26 @@ $total_expenses = array_sum(array_column($expenses, 'amount'));
         border-collapse: collapse !important; 
     }
     tr { page-break-inside: avoid; page-break-after: auto; }
-    .table th, .table td { 
-        padding: 5px 4px !important; 
-        border: 1px solid #ccc !important; 
-        -webkit-print-color-adjust: exact; 
-        font-size: 10px !important; /* Larger font for standard tables */
-        white-space: normal !important; 
+    .table th, .table td {
+        padding: 5px 4px !important;
+        border: 1px solid #ccc !important;
+        -webkit-print-color-adjust: exact;
+        font-size: 12px !important; /* Readable font for the standard tables */
+        white-space: normal !important;
         word-wrap: break-word !important;
         overflow-wrap: break-word !important;
     }
 
-    /* SPECIFIC Optimization for the dense Monthly Analysis Table (12+ columns) */
+    /* SPECIFIC Optimization for the dense Monthly Analysis Table (12+ columns).
+       Landscape gives the width; keep it compact but legible. */
     #monthly-analysis-table {
         table-layout: fixed !important;
         width: 100% !important;
     }
-    #monthly-analysis-table th, 
+    #monthly-analysis-table th,
     #monthly-analysis-table td {
-        font-size: 7.5px !important; /* Smaller font ONLY for the wide 12-month table */
-        padding: 3px 1px !important;
+        font-size: 9px !important; /* smaller only for the wide many-month grid */
+        padding: 4px 2px !important;
     }
     
     /* Headers specific adjustment */
