@@ -34,6 +34,14 @@ class FuneralAidPrintTest extends TestCase
         $this->assertStringNotContainsString('rounded-4 mb-5 d-print-none', $this->src);
         // and it is nudged to redraw at paper size
         $this->assertStringContainsString('comparisonChart.resize()', $this->src);
+        // it scales to the paper width so the last case is never clipped
+        $this->assertStringContainsString('#comparisonBarChart { width: 100% !important; height: auto', $this->src);
+    }
+
+    public function testPrintFontIsReadable(): void
+    {
+        // the old tiny 10px base is gone
+        $this->assertStringNotContainsString('font-size: 10px', $this->src);
     }
 
     public function testColouredBadgesSurvivePrint(): void
