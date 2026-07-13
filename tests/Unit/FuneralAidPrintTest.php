@@ -32,10 +32,19 @@ class FuneralAidPrintTest extends TestCase
         // the chart card is no longer screen-only
         $this->assertStringContainsString('<!-- Comparative Chart (screen + print) -->', $this->src);
         $this->assertStringNotContainsString('rounded-4 mb-5 d-print-none', $this->src);
-        // and it is nudged to redraw at paper size
-        $this->assertStringContainsString('comparisonChart.resize()', $this->src);
-        // it scales to the paper width so the last case is never clipped
-        $this->assertStringContainsString('#comparisonBarChart { width: 100% !important; height: auto', $this->src);
+        // it is re-rendered at a fixed paper size for print (crisp, never clipped)
+        // and restored to responsive afterwards
+        $this->assertStringContainsString('comparisonChart.resize(660, 200)', $this->src);
+        $this->assertStringContainsString('comparisonChart.resize();', $this->src);
+    }
+
+    public function testChartCapIsPrintOnlyNotScreen(): void
+    {
+        // the on-screen chart fills its card (professional); the width cap that
+        // made it look small must not live on the inline style
+        $this->assertStringNotContainsString('max-width:720px', $this->src);
+        // page 1 is not left half-empty: big margins are tightened for print
+        $this->assertStringContainsString('.mb-4, .mb-5 { margin-bottom: 14px', $this->src);
     }
 
     public function testPrintFontIsReadable(): void

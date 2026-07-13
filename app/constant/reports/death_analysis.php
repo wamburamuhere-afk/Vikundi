@@ -150,7 +150,7 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
             <h6 class="mb-0 fw-bold"><?= $is_sw ? 'Mlinganisho wa Michango vs Msaada (Visa 15 vya mwisho)' : 'Contribution vs Benefit Comparison (Top 15 Cases)' ?></h6>
         </div>
         <div class="card-body">
-            <div class="position-relative mx-auto" style="height:260px;max-width:720px;">
+            <div class="position-relative vk-chart-box" style="height:300px;">
                 <canvas id="comparisonBarChart"></canvas>
             </div>
             <div class="mt-3 text-center small text-muted">
@@ -307,8 +307,13 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
         .row { display: flex !important; flex-wrap: wrap !important; }
         /* keep the coloured variance/status badges when printing */
         .badge { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        /* scale the comparison chart to the paper width so it is never cut off */
-        #comparisonBarChart { width: 100% !important; height: auto !important; max-height: 250px !important; }
+        /* the chart is re-rendered at a fixed paper size in JS (beforeprint);
+           just collapse the screen height box and centre it here. */
+        .vk-chart-box { height: auto !important; }
+        #comparisonBarChart { margin: 0 auto !important; max-width: 100% !important; }
+        /* tighten the big screen margins so the chart fits on page 1 under the
+           stat cards instead of being pushed to a near-empty second page */
+        .mb-4, .mb-5 { margin-bottom: 14px !important; }
     }
 </style>
 
@@ -379,12 +384,14 @@ $(document).ready(function() {
         const t = $('#deathSustainabilityTable').DataTable();
         __restoreLen = t.page.len();
         t.page.len(-1).draw();
-        if (comparisonChart) comparisonChart.resize();
+        // Re-render (not CSS-scale) at a fixed paper size so labels stay crisp
+        // and the whole chart fits the page width without being clipped.
+        if (comparisonChart) comparisonChart.resize(660, 200);
     });
     window.addEventListener('afterprint', function () {
         const t = $('#deathSustainabilityTable').DataTable();
         if (__restoreLen !== null) { t.page.len(__restoreLen).draw(); __restoreLen = null; }
-        if (comparisonChart) comparisonChart.resize();
+        if (comparisonChart) comparisonChart.resize(); // back to responsive screen size
     });
 });
 </script>
