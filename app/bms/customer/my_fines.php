@@ -108,7 +108,7 @@ includeHeader();
                     </tfoot>
                 </table>
             </div>
-            <p class="text-muted small mt-3 mb-0"><i class="bi bi-info-circle me-1"></i><?= $t('Payments are confirmed by the group leadership.', 'Malipo huthibitishwa na uongozi wa kikundi.') ?></p>
+            <p class="text-muted small mt-3 mb-0 d-print-none"><i class="bi bi-info-circle me-1"></i><?= $t('Payments are confirmed by the group leadership.', 'Malipo huthibitishwa na uongozi wa kikundi.') ?></p>
         <?php endif; ?>
     </div></div>
 </div>

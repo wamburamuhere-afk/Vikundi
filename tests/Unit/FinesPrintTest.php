@@ -57,5 +57,7 @@ class FinesPrintTest extends TestCase
         // the table shows a single "Total owing" footer, printed once
         $this->assertStringContainsString('Total owing', $p);
         $this->assertStringContainsString('tfoot { display: table-row-group', $p);
+        // the on-screen "confirmed by leadership" note is not printed
+        $this->assertStringContainsString('mb-0 d-print-none"><i class="bi bi-info-circle', $p);
     }
 }
