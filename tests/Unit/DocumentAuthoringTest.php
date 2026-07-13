@@ -41,6 +41,40 @@ class DocumentAuthoringTest extends TestCase
         $this->assertStringNotContainsString('onerror', $clean);
     }
 
+    public function testDependencyFreeFallbackSanitises(): void
+    {
+        // This is the path production runs when HTMLPurifier is not installed.
+        require_once __DIR__ . '/../../includes/document_sanitizer.php';
+        $clean = vk_dom_sanitize_html(
+            '<h1>Notice</h1><p>hi <b>x</b></p><ul><li>a</li></ul>'
+            . '<script>alert(1)</script>'
+            . '<a href="javascript:x">l</a><a href="https://x.com" target="_blank">ok</a>'
+            . '<div onclick="y()">d</div><iframe src="x"></iframe>'
+            . '<span style="color:red;position:fixed">c</span>'
+        );
+        // formatting kept
+        $this->assertStringContainsString('<b>x</b>', $clean);
+        $this->assertStringContainsString('<h1>Notice</h1>', $clean);
+        $this->assertStringContainsString('<li>a</li>', $clean);
+        $this->assertStringContainsString('color: red', $clean);
+        $this->assertStringContainsString('href="https://x.com"', $clean);
+        // dangerous stripped
+        $this->assertStringNotContainsString('<script', $clean);
+        $this->assertStringNotContainsString('javascript:', $clean);
+        $this->assertStringNotContainsString('onclick', $clean);
+        $this->assertStringNotContainsString('<iframe', $clean);
+        $this->assertStringNotContainsString('position:fixed', $clean);
+    }
+
+    public function testSanitiserDoesNotHardRequireHtmlpurifier(): void
+    {
+        $src = $this->src('includes/document_sanitizer.php');
+        // autoload include is guarded, and there is a dependency-free fallback
+        $this->assertStringContainsString('is_file($__vk_autoload)', $src);
+        $this->assertStringContainsString("class_exists('HTMLPurifier_Config')", $src);
+        $this->assertStringContainsString('return vk_dom_sanitize_html($html)', $src);
+    }
+
     // ── Actions gated + sanitised ─────────────────────────────────────────────
 
     public function testSaveActionGatedAndSanitises(): void
