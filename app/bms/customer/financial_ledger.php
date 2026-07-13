@@ -392,6 +392,21 @@ $(document).ready(function() {
             }
         });
     }
+
+    // Print the FULL ledger: DataTables keeps only the current page in the DOM,
+    // so without this a group with 26+ members would print a truncated list.
+    // Expand to all rows before printing and restore the page length after.
+    let __ledgerRestoreLen = null;
+    window.addEventListener('beforeprint', function () {
+        if (!window.ledgerTable) return;
+        __ledgerRestoreLen = window.ledgerTable.page.len();
+        window.ledgerTable.page.len(-1).draw();
+    });
+    window.addEventListener('afterprint', function () {
+        if (!window.ledgerTable || __ledgerRestoreLen === null) return;
+        window.ledgerTable.page.len(__ledgerRestoreLen).draw();
+        __ledgerRestoreLen = null;
+    });
 });
 
 function exportLedger(type) {
@@ -411,14 +426,29 @@ function exportLedger(type) {
 .dataTables_wrapper .dataTables_filter input { border-radius: 5px; padding: 5px 15px; border: 1px solid #dee2e6; outline: none; margin-left: 10px; }
 
 @media print {
+    /* A 23+ column ledger cannot fit portrait A4 — the right-hand columns
+       (Target, Surplus/Deficit) were spilling off the page. Print landscape. */
+    @page { size: A4 landscape; }
+
     .table-responsive { overflow: visible !important; }
     .btn, .btn-group, form, .dataTables_length, .dataTables_filter, .dataTables_paginate, .dataTables_info { display: none !important; }
     .card { border: none !important; box-shadow: none !important; }
     .container-fluid { width: 100% !important; max-width: none !important; padding: 0 !important; }
-    table { font-size: 0.75rem !important; border: 1px solid #eee !important; width: 100% !important; table-layout: auto !important; }
-    th, td { border: 1px solid #eee !important; padding: 4px !important; white-space: normal !important; text-align: center !important; }
+
+    /* Compact enough that every column fits the landscape width. */
+    #ledgerTable { font-size: 0.6rem !important; border: 1px solid #eee !important; width: 100% !important; table-layout: auto !important; }
+    #ledgerTable th, #ledgerTable td { border: 1px solid #eee !important; padding: 2px 3px !important; text-align: center !important; white-space: nowrap !important; }
+    /* Only the member name is allowed to wrap; everything else stays on one line. */
+    #ledgerTable td:nth-child(2), #ledgerTable th:nth-child(2) { white-space: normal !important; text-align: left !important; }
+
+    /* Repeat the two-row header on every printed page. */
+    #ledgerTable thead { display: table-header-group; }
+    #ledgerTable tbody tr { page-break-inside: avoid; }
+    /* Light zebra striping so long member lists stay readable. */
+    #ledgerTable tbody tr:nth-child(even) { background-color: #f6f8fb !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
     .text-primary { color: #000 !important; }
-    .bg-light { background-color: #f9f9f9 !important; -webkit-print-color-adjust: exact; }
+    .bg-light { background-color: #f9f9f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .text-end { text-align: right !important; }
 }
 </style>
