@@ -150,7 +150,7 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
             <h6 class="mb-0 fw-bold"><?= $is_sw ? 'Mlinganisho wa Michango vs Msaada (Visa 15 vya mwisho)' : 'Contribution vs Benefit Comparison (Top 15 Cases)' ?></h6>
         </div>
         <div class="card-body">
-            <div class="position-relative" style="height:260px;">
+            <div class="position-relative mx-auto" style="height:260px;max-width:720px;">
                 <canvas id="comparisonBarChart"></canvas>
             </div>
             <div class="mt-3 text-center small text-muted">
@@ -294,18 +294,21 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
 
 <style>
     @media print {
-        body { background: white !important; font-size: 10px; color: black; }
+        body { background: white !important; font-size: 12.5px; color: black; }
         .card { border: 1px solid #ddd !important; box-shadow: none !important; margin-bottom: 10px !important; page-break-inside: avoid; }
-        .card-body { padding: 10px !important; }
-        .fs-4 { font-size: 1rem !important; }
+        .card-body { padding: 12px !important; }
+        .fs-4 { font-size: 1.3rem !important; }
+        /* readable table on paper (the old 10px base made everything tiny) */
+        .table { font-size: 12px !important; }
+        .table th, .table td { padding: 6px 8px !important; }
         /* .d-print-none is already hidden by the shared print CSS */
         .btn, .dataTables_filter, .dataTables_length, .dataTables_info, .dataTables_paginate { display: none !important; }
         .col-6 { width: 50% !important; flex: 0 0 50% !important; }
         .row { display: flex !important; flex-wrap: wrap !important; }
         /* keep the coloured variance/status badges when printing */
         .badge { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        /* cap the comparison chart so it fits above the table on paper */
-        #comparisonBarChart { max-height: 240px !important; }
+        /* scale the comparison chart to the paper width so it is never cut off */
+        #comparisonBarChart { width: 100% !important; height: auto !important; max-height: 250px !important; }
     }
 </style>
 
