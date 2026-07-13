@@ -73,6 +73,11 @@ $total_inbound = array_sum(array_column($recipients, 'total_contributed'));
 $net_fund_impact = $total_paid - $total_inbound;
 $case_count    = count($recipients);
 
+// Fund Impact sign/colour: the fund is drained (−, red) when aid paid exceeds
+// contributions received; it gains (+, green) when contributions exceed aid.
+$impact_sign = $net_fund_impact > 0 ? '- ' : ($net_fund_impact < 0 ? '+ ' : '');
+$impact_col  = $net_fund_impact > 0 ? 'danger' : ($net_fund_impact < 0 ? 'success' : 'secondary');
+
 // Prepare Chart Data (Top 15 latest cases)
 $chart_cases = array_slice($recipients, 0, 15);
 $chart_labels = array_map(fn($r) => explode(' ', $r['customer_name'] ?? ($is_sw ? 'Mwanachama' : 'Member'))[0], $chart_cases);
@@ -123,9 +128,9 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
         </div>
         <div class="col-6 col-md-3">
             <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
-                <div class="card-body p-4 bg-white border-bottom border-4 border-danger">
+                <div class="card-body p-4 bg-white border-bottom border-4 border-<?= $impact_col ?>">
                     <div class="text-uppercase small fw-bold text-muted mb-2 tracking-wider"><?= $is_sw ? 'Impact ya Mfuko' : 'Fund Impact' ?></div>
-                    <div class="fs-4 fw-bold text-danger">- TZS <?= number_format($net_fund_impact) ?></div>
+                    <div class="fs-4 fw-bold text-<?= $impact_col ?>"><?= $impact_sign ?>TZS <?= number_format(abs($net_fund_impact)) ?></div>
                 </div>
             </div>
         </div>
@@ -139,13 +144,15 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
         </div>
     </div>
 
-    <!-- Comparative Chart (screen only) -->
-    <div class="card border-0 shadow-sm rounded-4 mb-5 d-print-none">
+    <!-- Comparative Chart (screen + print) -->
+    <div class="card border-0 shadow-sm rounded-4 mb-5">
         <div class="card-header bg-white py-3 border-bottom">
             <h6 class="mb-0 fw-bold"><?= $is_sw ? 'Mlinganisho wa Michango vs Msaada (Visa 15 vya mwisho)' : 'Contribution vs Benefit Comparison (Top 15 Cases)' ?></h6>
         </div>
         <div class="card-body">
-            <canvas id="comparisonBarChart" height="120"></canvas>
+            <div class="position-relative" style="height:260px;">
+                <canvas id="comparisonBarChart"></canvas>
+            </div>
             <div class="mt-3 text-center small text-muted">
                 <span class="badge bg-success bg-opacity-25 text-success p-2 px-3 mx-2"><i class="bi bi-graph-up me-1"></i> <?= $is_sw ? 'Michango' : 'Contribution' ?></span>
                 <span class="badge bg-primary bg-opacity-25 text-primary p-2 px-3 mx-2"><i class="bi bi-cash-stack me-1"></i> <?= $is_sw ? 'Msaada' : 'Benefit Paid' ?></span>
@@ -291,9 +298,14 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
         .card { border: 1px solid #ddd !important; box-shadow: none !important; margin-bottom: 10px !important; page-break-inside: avoid; }
         .card-body { padding: 10px !important; }
         .fs-4 { font-size: 1rem !important; }
-        .d-print-none, .btn, .dataTables_filter, .dataTables_length, .dataTables_info, .dataTables_paginate { display: none !important; }
+        /* .d-print-none is already hidden by the shared print CSS */
+        .btn, .dataTables_filter, .dataTables_length, .dataTables_info, .dataTables_paginate { display: none !important; }
         .col-6 { width: 50% !important; flex: 0 0 50% !important; }
         .row { display: flex !important; flex-wrap: wrap !important; }
+        /* keep the coloured variance/status badges when printing */
+        .badge { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        /* cap the comparison chart so it fits above the table on paper */
+        #comparisonBarChart { max-height: 240px !important; }
     }
 </style>
 
@@ -316,8 +328,9 @@ $(document).ready(function() {
     });
 
     const ctx = document.getElementById('comparisonBarChart');
+    let comparisonChart = null;
     if (ctx) {
-        new Chart(ctx, {
+        comparisonChart = new Chart(ctx, {
             data: {
                 labels: <?= json_encode($chart_labels) ?>,
                 datasets: [
@@ -344,15 +357,32 @@ $(document).ready(function() {
                 ]
             },
             options: {
-                responsive: true,
+                responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
-                scales: { 
+                scales: {
                     y: { beginAtZero: true, grid: { borderDash: [5, 5] }, ticks: { callback: v => 'TZS ' + v.toLocaleString(), font: { size: 10 } } },
                     x: { grid: { display: false }, ticks: { font: { size: 10 } } }
                 }
             }
         });
     }
+
+    // Print the FULL register: DataTables keeps only the current page in the DOM,
+    // so without this a group with 26+ cases would print a truncated table.
+    // Expand to all rows before printing, restore after, and nudge the chart to
+    // redraw at paper size.
+    let __restoreLen = null;
+    window.addEventListener('beforeprint', function () {
+        const t = $('#deathSustainabilityTable').DataTable();
+        __restoreLen = t.page.len();
+        t.page.len(-1).draw();
+        if (comparisonChart) comparisonChart.resize();
+    });
+    window.addEventListener('afterprint', function () {
+        const t = $('#deathSustainabilityTable').DataTable();
+        if (__restoreLen !== null) { t.page.len(__restoreLen).draw(); __restoreLen = null; }
+        if (comparisonChart) comparisonChart.resize();
+    });
 });
 </script>
 
