@@ -53,16 +53,18 @@ includeHeader();
         </div>
     </div>
 
-    <div class="row g-3 mb-4">
+    <!-- Compact 3-across summary chips: stay side-by-side even on phones so they
+         don't stack into three tall cards and push the table down. -->
+    <div class="row g-2 mb-4">
         <?php foreach ([
-            ['warning', 'bi-hourglass-split', $t('Owing (Pending)', 'Deni (Zinasubiri)'), $summary['pending']],
+            ['warning', 'bi-hourglass-split', $t('Owing', 'Deni'), $summary['pending']],
             ['success', 'bi-check2-circle', $t('Paid', 'Zilizolipwa'), $summary['paid']],
             ['secondary', 'bi-slash-circle', $t('Waived', 'Zilizosamehewa'), $summary['waived']],
         ] as [$color, $icon, $label, $val]): ?>
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm h-100"><div class="card-body d-flex justify-content-between">
-                <div><h4 class="mb-0 fw-bold text-<?= $color ?>"><?= number_format($val, 2) ?> <small class="text-muted">TZS</small></h4><p class="mb-0 text-muted small"><?= $label ?></p></div>
-                <div class="align-self-center"><i class="bi <?= $icon ?> text-<?= $color ?>" style="font-size:2rem;opacity:.3;"></i></div>
+        <div class="col-4">
+            <div class="card border-0 shadow-sm h-100"><div class="card-body py-2 px-1 text-center">
+                <div class="fw-bold text-<?= $color ?>" style="font-size:1rem;line-height:1.15;"><?= number_format($val, 0) ?></div>
+                <div class="text-muted text-truncate" style="font-size:.7rem;"><i class="bi <?= $icon ?>"></i> <?= $label ?> <span class="d-none d-sm-inline">TZS</span></div>
             </div></div>
         </div>
         <?php endforeach; ?>
@@ -76,33 +78,50 @@ includeHeader();
             </div>
         <?php else: ?>
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="bg-light text-muted small text-center">
+                <table class="table table-sm table-striped align-middle mb-0">
+                    <thead class="table-light text-muted small">
                         <tr>
-                            <th style="width:50px">#</th>
-                            <th class="text-start"><?= $t('Reason', 'Sababu') ?></th>
-                            <th><?= $t('Amount', 'Kiasi') ?></th>
-                            <th><?= $t('Date', 'Tarehe') ?></th>
-                            <th><?= $t('Status', 'Hali') ?></th>
+                            <th style="width:44px">#</th>
+                            <th><?= $t('Reason', 'Sababu') ?></th>
+                            <th class="text-end text-nowrap"><?= $t('Amount', 'Kiasi') ?></th>
+                            <th class="text-nowrap"><?= $t('Date', 'Tarehe') ?></th>
+                            <th class="text-center"><?= $t('Status', 'Hali') ?></th>
                         </tr>
                     </thead>
                     <tbody class="small">
                         <?php foreach ($fines as $i => $f): $badge = vk_fine_status_badge($f['status']); ?>
                         <tr>
-                            <td class="text-center"><strong><?= $i + 1 ?></strong></td>
+                            <td class="text-muted"><?= $i + 1 ?></td>
                             <td><?= safe_output($f['reason'] ?: '—') ?></td>
-                            <td class="text-center fw-bold text-danger"><?= number_format($f['amount'], 2) ?></td>
-                            <td class="text-center"><?= $f['created_at'] ? date('d M Y', strtotime($f['created_at'])) : '—' ?></td>
+                            <td class="text-end fw-bold text-danger text-nowrap"><?= number_format($f['amount'], 0) ?></td>
+                            <td class="text-nowrap"><?= $f['created_at'] ? date('d M Y', strtotime($f['created_at'])) : '—' ?></td>
                             <td class="text-center"><span class="badge bg-<?= $badge ?>"><?= ucfirst($f['status']) ?></span></td>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
+                    <tfoot>
+                        <tr class="fw-bold">
+                            <td colspan="2" class="text-end"><?= $t('Total owing', 'Jumla ya deni') ?></td>
+                            <td class="text-end text-danger text-nowrap"><?= number_format($summary['pending'], 0) ?></td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
             <p class="text-muted small mt-3 mb-0"><i class="bi bi-info-circle me-1"></i><?= $t('Payments are confirmed by the group leadership.', 'Malipo huthibitishwa na uongozi wa kikundi.') ?></p>
         <?php endif; ?>
     </div></div>
 </div>
+
+<style>
+    /* Print the "Total owing" row once at the end; a <tfoot> otherwise repeats on
+       every page and overlaps the fixed footer. Keep each row intact across breaks. */
+    @media print {
+        .table tfoot { display: table-row-group; }
+        .table tfoot td { border-top: 2px solid #333 !important; }
+        .table tbody tr { page-break-inside: avoid; }
+    }
+</style>
 
 <?php include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE; ?>
 <?php includeFooter(); ob_end_flush(); ?>
