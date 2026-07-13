@@ -66,6 +66,7 @@ $type_labels = [
                         <td><?= htmlspecialchars($d['author'] ?: '—') ?></td>
                         <td class="text-nowrap text-muted"><?= $d['updated_at'] ? date('d M Y', strtotime($d['updated_at'])) : '—' ?></td>
                         <td class="text-end text-nowrap">
+                            <a href="<?= getUrl('view_document') ?>?id=<?= (int) $d['id'] ?>" class="btn btn-sm btn-outline-secondary" title="<?= $t('View / Print', 'Angalia / Chapisha') ?>"><i class="bi bi-eye"></i></a>
                             <?php if ($can_edit): ?>
                             <a href="<?= getUrl('edit_document') ?>?id=<?= (int) $d['id'] ?>" class="btn btn-sm btn-outline-primary" title="<?= $t('Edit', 'Hariri') ?>"><i class="bi bi-pencil"></i></a>
                             <?php endif; ?>

@@ -548,6 +548,7 @@ try {
                             </a>
                             <ul class="dropdown-menu shadow border-0 mt-0" aria-labelledby="documentsDropdown">
                                 <li><h6 class="dropdown-header"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Usimamizi wa Nyaraka' : 'Document Management' ?></h6></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('documents_authored') ?>"><i class="bi bi-file-earmark-text"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Andika Nyaraka' : 'Document Writer' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('library') ?>"><i class="bi bi-folder"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Maktaba' : 'Library' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('document-templates') ?>"><i class="bi bi-file-earmark-text"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Violezo' : 'Templates' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('e_signatures') ?>"><i class="bi bi-pen"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Saini za Kielektroniki' : 'E-Sign' ?></a></li>
