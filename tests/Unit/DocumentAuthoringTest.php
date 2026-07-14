@@ -112,6 +112,15 @@ class DocumentAuthoringTest extends TestCase
         $this->assertStringContainsString('docLetterhead', $p); // letterhead on/off
     }
 
+    public function testEditorRewiresDropdownsForBootstrap5(): void
+    {
+        // Summernote 0.8 emits Bootstrap-4 data-toggle; BS5 needs data-bs-toggle,
+        // otherwise the font-size / paragraph / alignment menus never open.
+        $p = $this->src('app/constant/document/edit_document.php');
+        $this->assertStringContainsString('[data-toggle="dropdown"]', $p);
+        $this->assertStringContainsString("setAttribute('data-bs-toggle', 'dropdown')", $p);
+    }
+
     // ── Wiring ────────────────────────────────────────────────────────────────
 
     public function testRoutesAndMigrationRegistered(): void
