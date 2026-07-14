@@ -66,6 +66,24 @@ class DocumentAuthoringTest extends TestCase
         $this->assertStringNotContainsString('position:fixed', $clean);
     }
 
+    public function testSanitiserKeepsTextAlignmentOnBlocks(): void
+    {
+        // Summernote stores alignment as text-align on <p> / headings; the
+        // sanitiser must keep it (both paths) while dropping unsafe CSS.
+        require_once __DIR__ . '/../../includes/document_sanitizer.php';
+        $in = '<p style="text-align:center">Subject</p>'
+            . '<p style="text-align:right;position:fixed">Sender</p>';
+
+        $dom = vk_dom_sanitize_html($in);
+        $this->assertStringContainsString('text-align: center', $dom);
+        $this->assertStringContainsString('text-align: right', $dom);
+        $this->assertStringNotContainsString('position', $dom);
+
+        $any = vk_sanitize_document_html($in);
+        $this->assertMatchesRegularExpression('/text-align:\s*center/', $any);
+        $this->assertStringNotContainsString('position', $any);
+    }
+
     public function testSanitiserDoesNotHardRequireHtmlpurifier(): void
     {
         $src = $this->src('includes/document_sanitizer.php');
