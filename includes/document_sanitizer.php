@@ -40,13 +40,18 @@ if (!function_exists('vk_document_allowed_tags')) {
     /** tag => list of attributes kept on that tag. */
     function vk_document_allowed_tags(): array
     {
+        // `style` is allowed on block elements too, because Summernote stores
+        // text alignment (and font size/colour) as inline styles on p / headings
+        // / list items. The value is still filtered to the safe CSS property
+        // allow-list, so keeping it here does not widen the attack surface.
         return [
-            'p' => [], 'br' => [], 'span' => ['style'], 'div' => ['style'],
+            'p' => ['style'], 'br' => [], 'span' => ['style'], 'div' => ['style'],
             'b' => [], 'strong' => [], 'i' => [], 'em' => [], 'u' => [], 's' => [], 'strike' => [], 'sub' => [], 'sup' => [],
-            'h1' => [], 'h2' => [], 'h3' => [], 'h4' => [], 'h5' => [], 'h6' => [], 'blockquote' => [], 'pre' => [], 'code' => [], 'hr' => [],
-            'ul' => [], 'ol' => [], 'li' => [],
+            'h1' => ['style'], 'h2' => ['style'], 'h3' => ['style'], 'h4' => ['style'], 'h5' => ['style'], 'h6' => ['style'],
+            'blockquote' => ['style'], 'pre' => ['style'], 'code' => [], 'hr' => [],
+            'ul' => ['style'], 'ol' => ['style'], 'li' => ['style'],
             'a' => ['href', 'title', 'target'],
-            'table' => [], 'thead' => [], 'tbody' => [], 'tfoot' => [], 'tr' => [],
+            'table' => ['style'], 'thead' => [], 'tbody' => [], 'tfoot' => [], 'tr' => ['style'],
             'th' => ['colspan', 'rowspan', 'style'], 'td' => ['colspan', 'rowspan', 'style'],
             'img' => ['src', 'alt', 'width', 'height', 'style'],
         ];
@@ -71,12 +76,12 @@ if (!function_exists('vk_htmlpurifier_sanitize')) {
             $config = HTMLPurifier_Config::createDefault();
             $config->set('HTML.Doctype', 'HTML 4.01 Transitional');
             $config->set('HTML.Allowed',
-                'p,br,span[style],div[style],'
+                'p[style],br,span[style],div[style],'
                 . 'b,strong,i,em,u,s,strike,sub,sup,'
-                . 'h1,h2,h3,h4,h5,h6,blockquote,pre,code,hr,'
-                . 'ul,ol,li,'
+                . 'h1[style],h2[style],h3[style],h4[style],h5[style],h6[style],blockquote[style],pre[style],code,hr,'
+                . 'ul[style],ol[style],li[style],'
                 . 'a[href|title|target],'
-                . 'table,thead,tbody,tfoot,tr,'
+                . 'table[style],thead,tbody,tfoot,tr[style],'
                 . 'th[colspan|rowspan|style],td[colspan|rowspan|style],'
                 . 'img[src|alt|width|height|style]'
             );
