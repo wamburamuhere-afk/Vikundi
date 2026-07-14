@@ -97,6 +97,18 @@ $(function () {
         ]
     });
 
+    // Summernote 0.8 tags its font-size / paragraph / alignment dropdowns with
+    // the Bootstrap-4 attribute `data-toggle="dropdown"`, which Bootstrap 5.3
+    // ignores — so those menus never open. Re-point them at Bootstrap 5 and
+    // instantiate so they drop down. (Colour/table use Summernote's own popups.)
+    $('.note-editor [data-toggle="dropdown"]').each(function () {
+        this.setAttribute('data-bs-toggle', 'dropdown');
+        this.removeAttribute('data-toggle');
+        if (window.bootstrap && bootstrap.Dropdown) {
+            try { bootstrap.Dropdown.getOrCreateInstance(this); } catch (e) {}
+        }
+    });
+
     $('#documentForm').on('submit', function (e) {
         e.preventDefault();
         const title = $('#docTitle').val().trim();
