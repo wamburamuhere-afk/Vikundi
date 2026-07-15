@@ -128,4 +128,17 @@ class ContributionGridTest extends TestCase
         // the pending-approvals queue is screen-only
         $this->assertStringContainsString('mb-5 d-print-none', $p);
     }
+
+    public function testGridPrintUsesLedgerStylePolish(): void
+    {
+        // Same print polish as the financial ledger: the column header repeats on
+        // every printed page, member rows are not split across a break, and the
+        // totals print once at the end rather than on every page.
+        $p = $this->src('app/bms/customer/manage_contributions.php');
+        $this->assertStringContainsString('.vk-grid thead { display: table-header-group', $p);
+        $this->assertStringContainsString('.vk-grid tbody tr { page-break-inside: avoid', $p);
+        $this->assertStringContainsString('.vk-grid tfoot { display: table-row-group', $p);
+        // numbers stay on one line; only the member name wraps
+        $this->assertStringContainsString('white-space: nowrap !important', $p);
+    }
 }

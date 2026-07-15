@@ -677,10 +677,18 @@ th { font-size: 0.7rem !important; }
         print-color-adjust: exact !important;
     }
 
-    /* Compact the grid + drop the sticky column back into the flow. */
-    .vk-grid { font-size: 9.5px; }
-    .vk-grid th, .vk-grid td { padding: 3px 4px !important; }
-    .vk-grid .vk-sticky-col { position: static !important; box-shadow: none !important; }
+    /* Ledger-style print polish: compact cells, the column header repeats on
+       every printed page, member rows never split across a page break, and
+       numbers stay on one line while only the member name is allowed to wrap. */
+    .vk-grid { font-size: 9px; table-layout: auto !important; }
+    .vk-grid th, .vk-grid td { padding: 2px 4px !important; white-space: nowrap !important; }
+    .vk-grid thead { display: table-header-group; }         /* repeat header on each page */
+    .vk-grid tbody tr { page-break-inside: avoid; }          /* keep each member row intact */
+    .vk-grid tfoot { display: table-row-group; }             /* totals print once at the end */
+    .vk-grid .vk-sticky-col {
+        position: static !important; box-shadow: none !important;
+        white-space: normal !important; text-align: left !important;
+    }
 
     /* Flatten the on-screen cards for paper; keep the summary row together. */
     .card { box-shadow: none !important; border: 1px solid #dee2e6 !important; }
