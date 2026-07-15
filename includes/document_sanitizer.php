@@ -63,7 +63,8 @@ if (!function_exists('vk_document_allowed_styles')) {
     {
         return [
             'color', 'background-color', 'text-align', 'text-decoration', 'font-weight',
-            'font-style', 'font-size', 'width', 'height', 'margin', 'padding', 'vertical-align',
+            'font-style', 'font-family', 'font-size', 'line-height', 'width', 'height',
+            'margin', 'padding', 'vertical-align',
         ];
     }
 }

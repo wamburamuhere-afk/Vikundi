@@ -85,12 +85,19 @@ $(function () {
     $('#docBody').summernote({
         placeholder: docIsSw ? 'Andika nyaraka hapa...' : 'Write your document here...',
         height: 460,
+        fontNames: ['Arial', 'Calibri', 'Cambria', 'Courier New', 'Georgia', 'Times New Roman', 'Verdana'],
+        // Summernote hides fonts the current machine can't confirm are installed —
+        // force the Windows-bundled ones to stay in the list on Linux / Mac.
+        fontNamesIgnoreCheck: ['Calibri', 'Cambria'],
         toolbar: [
             ['style', ['style']],
-            ['font', ['bold', 'italic', 'underline', 'strikethrough', 'clear']],
+            ['fontname', ['fontname']],
+            ['font', ['bold', 'italic', 'underline', 'strikethrough', 'superscript', 'subscript', 'clear']],
             ['fontsize', ['fontsize']],
+            ['height', ['height']],
             ['color', ['color']],
             ['para', ['ul', 'ol', 'paragraph']],
+            ['align', ['justifyLeft', 'justifyCenter', 'justifyRight', 'justifyFull']],
             ['table', ['table']],
             ['insert', ['link', 'hr']],
             ['view', ['codeview', 'fullscreen']]

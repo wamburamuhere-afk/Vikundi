@@ -84,6 +84,24 @@ class DocumentAuthoringTest extends TestCase
         $this->assertStringNotContainsString('position', $any);
     }
 
+    public function testSanitiserKeepsFontFamilyAndLineHeight(): void
+    {
+        // The font-family picker (Calibri / Times New Roman) and the line-spacing
+        // control store inline styles on spans / paragraphs. Like alignment, the
+        // sanitiser must keep them on both paths or the choice is lost on save.
+        require_once __DIR__ . '/../../includes/document_sanitizer.php';
+        $in = '<p style="line-height:2"><span style="font-family:\'Times New Roman\'">Dear Sir</span></p>';
+
+        $dom = vk_dom_sanitize_html($in);
+        $this->assertStringContainsString('font-family', $dom);
+        $this->assertStringContainsString('Times New Roman', $dom);
+        $this->assertStringContainsString('line-height', $dom);
+
+        $any = vk_sanitize_document_html($in);
+        $this->assertStringContainsString('font-family', $any);
+        $this->assertStringContainsString('line-height', $any);
+    }
+
     public function testSanitiserDoesNotHardRequireHtmlpurifier(): void
     {
         $src = $this->src('includes/document_sanitizer.php');
@@ -137,6 +155,18 @@ class DocumentAuthoringTest extends TestCase
         $p = $this->src('app/constant/document/edit_document.php');
         $this->assertStringContainsString('[data-toggle="dropdown"]', $p);
         $this->assertStringContainsString("setAttribute('data-bs-toggle', 'dropdown')", $p);
+    }
+
+    public function testEditorHasFontFamilyAndAlignmentButtons(): void
+    {
+        $p = $this->src('app/constant/document/edit_document.php');
+        // font-family picker, with the Windows-only fonts forced to stay visible
+        $this->assertStringContainsString("['fontname', ['fontname']]", $p);
+        $this->assertStringContainsString('fontNamesIgnoreCheck', $p);
+        $this->assertStringContainsString('Times New Roman', $p);
+        // explicit alignment buttons (not only the paragraph dropdown), plus line height
+        $this->assertStringContainsString('justifyCenter', $p);
+        $this->assertStringContainsString("['height', ['height']]", $p);
     }
 
     // ── Wiring ────────────────────────────────────────────────────────────────
