@@ -35,6 +35,7 @@ $migrations = [
     'create_authored_documents_table.php', // in-system letters/contracts + 'manage_documents' permission
     'add_signed_to_workflow_signatures.php', // 'signed' action so documents can be e-signed
     'grant_manage_documents_leadership.php', // backfill 'manage_documents' for Secretary/Treasurer; drop it from Member
+    'create_document_signatories_table.php', // multi-party signing: per-document signatory slots
 ];
 
 echo "== Vikundi database migrations ==\n";
