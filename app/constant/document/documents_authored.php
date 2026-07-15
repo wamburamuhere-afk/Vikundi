@@ -3,23 +3,40 @@
 // documents (letters / contracts / notices) with create / edit / delete.
 ob_start();
 require_once __DIR__ . '/../../../roots.php';
-requireViewPermission('manage_documents');
-require_once 'header.php';
+require_once __DIR__ . '/../../../includes/document_signatories.php';
 
 global $pdo;
+if (!isAuthenticated()) { redirectTo('login'); }
+
+$user_id  = (int) ($_SESSION['user_id'] ?? 0);
+$can_docs = canView('manage_documents');
+// Someone who was assigned to sign gets a scoped view of just those documents,
+// even without the manage_documents permission.
+$is_signer = !$can_docs && vk_user_has_signatory_rows($pdo, $user_id);
+if (!$can_docs && !$is_signer) {
+    http_response_code(403);
+    redirectTo('unauthorized');
+}
+
+require_once 'header.php';
+
 $is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
 $t = function ($en, $sw) use ($is_sw) { return $is_sw ? $sw : $en; };
 $can_create = canCreate('manage_documents');
 $can_edit   = canEdit('manage_documents');
 $can_delete = canDelete('manage_documents');
 
-$docs = $pdo->query("
+[$signerJoin, $signerParams] = vk_signer_documents_join($can_docs, $user_id);
+$stmt = $pdo->prepare("
     SELECT d.id, d.title, d.doc_type, d.status, d.use_letterhead, d.updated_at,
            TRIM(CONCAT_WS(' ', u.first_name, u.last_name)) AS author
       FROM authored_documents d
       LEFT JOIN users u ON u.user_id = d.created_by
+      $signerJoin
      ORDER BY d.updated_at DESC, d.id DESC
-")->fetchAll(PDO::FETCH_ASSOC);
+");
+$stmt->execute($signerParams);
+$docs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $type_labels = [
     'letter'   => $t('Letter', 'Barua'),
@@ -33,8 +50,10 @@ $type_labels = [
     <div class="card border-0 shadow-sm mb-4" style="border-left:5px solid #0d6efd !important;">
         <div class="card-body p-3 p-md-4 bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
             <div>
-                <h3 class="fw-bold mb-1 text-primary"><i class="bi bi-file-earmark-text me-2"></i><?= $t('Document Writer', 'Uandishi wa Nyaraka') ?></h3>
-                <p class="text-muted mb-0 small"><?= $t('Write, print and sign letters, contracts and notices', 'Andika, chapisha na saini barua, mikataba na matangazo') ?></p>
+                <h3 class="fw-bold mb-1 text-primary"><i class="bi bi-file-earmark-text me-2"></i><?= $is_signer ? $t('Documents to Sign', 'Nyaraka za Kusaini') : $t('Document Writer', 'Uandishi wa Nyaraka') ?></h3>
+                <p class="text-muted mb-0 small"><?= $is_signer
+                    ? $t('Documents you have been asked to sign', 'Nyaraka ulizoombwa kusaini')
+                    : $t('Write, print and sign letters, contracts and notices', 'Andika, chapisha na saini barua, mikataba na matangazo') ?></p>
             </div>
             <?php if ($can_create): ?>
             <a href="<?= getUrl('edit_document') ?>" class="btn btn-primary rounded-pill px-4"><i class="bi bi-plus-lg me-2"></i><?= $t('New Document', 'Nyaraka Mpya') ?></a>
