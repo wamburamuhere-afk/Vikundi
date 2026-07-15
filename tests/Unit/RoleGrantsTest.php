@@ -32,9 +32,18 @@ class RoleGrantsTest extends TestCase
         foreach (['users', 'add_user', 'edit_user', 'user_roles', 'system_settings',
                   'policy_management', 'customer_import', 'campaign_management',
                   'approve_loan', 'disburse_loan', 'reject_loan', 'payment_processing',
-                  'edit_customer', 'edit_loan', 'loan_application'] as $key) {
+                  'edit_customer', 'edit_loan', 'loan_application',
+                  'manage_documents'] as $key) { // Document Writer is leadership-only
             $this->assertNull(vk_role_grants('view', $key), "Member must NOT see '$key'");
         }
+    }
+
+    public function test_leadership_gets_document_writer_but_member_does_not(): void
+    {
+        // Secretary/Treasurer (operational) author documents; Member is excluded.
+        $this->assertSame([1, 1, 1, 1, 1, 1], vk_role_grants('operational', 'manage_documents'));
+        $this->assertSame([1, 1, 1, 1, 1, 1], vk_role_grants('admin', 'manage_documents'));
+        $this->assertNull(vk_role_grants('view', 'manage_documents'));
     }
 
     public function test_member_never_gets_create_edit_or_delete_on_any_page(): void
