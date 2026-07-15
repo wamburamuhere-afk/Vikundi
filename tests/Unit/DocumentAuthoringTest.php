@@ -160,18 +160,31 @@ class DocumentAuthoringTest extends TestCase
         $this->assertStringNotContainsString('getOrCreateInstance', $p);
     }
 
-    public function testEditorHasFontFamilyAlignmentAndHistory(): void
+    public function testEditorHasFontFamilyHistoryAndSafeAlignment(): void
     {
         $p = $this->src('app/constant/document/edit_document.php');
         // font-family picker, with the Windows-only fonts forced to stay visible
         $this->assertStringContainsString("['fontname', ['fontname']]", $p);
         $this->assertStringContainsString('fontNamesIgnoreCheck', $p);
         $this->assertStringContainsString('Times New Roman', $p);
-        // explicit alignment buttons (not only the paragraph dropdown), plus line height
-        $this->assertStringContainsString('justifyCenter', $p);
+        // line height + undo / redo
         $this->assertStringContainsString("['height', ['height']]", $p);
-        // undo / redo
         $this->assertStringContainsString("['history', ['undo', 'redo']]", $p);
+        // alignment comes from the paragraph dropdown, which is safe
+        $this->assertStringContainsString("['para', ['ul', 'ol', 'paragraph']]", $p);
+    }
+
+    public function testEditorAvoidsCrashingStandaloneJustifyButtons(): void
+    {
+        // Summernote 0.8.20 + jQuery 3.7 throws "t.append is not a function" when
+        // a standalone justify* button is placed in the toolbar, which aborts the
+        // whole editor init. Verified live in-browser. Never reintroduce them —
+        // alignment is provided by the paragraph dropdown instead.
+        $p = $this->src('app/constant/document/edit_document.php');
+        $this->assertStringNotContainsString("['justifyLeft'", $p);
+        $this->assertStringNotContainsString("'justifyCenter'", $p);
+        $this->assertStringNotContainsString("'justifyRight'", $p);
+        $this->assertStringNotContainsString("'justifyFull'", $p);
     }
 
     // ── Wiring ────────────────────────────────────────────────────────────────
