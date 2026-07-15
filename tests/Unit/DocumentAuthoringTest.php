@@ -148,16 +148,19 @@ class DocumentAuthoringTest extends TestCase
         $this->assertStringContainsString('docLetterhead', $p); // letterhead on/off
     }
 
-    public function testEditorRewiresDropdownsForBootstrap5(): void
+    public function testEditorTogglesDropdownsWithoutBootstrapDependency(): void
     {
-        // Summernote 0.8 emits Bootstrap-4 data-toggle; BS5 needs data-bs-toggle,
-        // otherwise the font-size / paragraph / alignment menus never open.
+        // Summernote 0.8 emits Bootstrap-4 dropdown markup. Re-pointing it at
+        // Bootstrap 5's Dropdown component regressed whenever the toolbar changed,
+        // so the editor now toggles the menus itself — no dependency on Bootstrap.
         $p = $this->src('app/constant/document/edit_document.php');
-        $this->assertStringContainsString('[data-toggle="dropdown"]', $p);
-        $this->assertStringContainsString("setAttribute('data-bs-toggle', 'dropdown')", $p);
+        $this->assertStringContainsString('.note-btn.dropdown-toggle', $p);
+        $this->assertStringContainsString("classList.add('show')", $p);
+        // the brittle Bootstrap-instance approach must be gone
+        $this->assertStringNotContainsString('getOrCreateInstance', $p);
     }
 
-    public function testEditorHasFontFamilyAndAlignmentButtons(): void
+    public function testEditorHasFontFamilyAlignmentAndHistory(): void
     {
         $p = $this->src('app/constant/document/edit_document.php');
         // font-family picker, with the Windows-only fonts forced to stay visible
@@ -167,6 +170,8 @@ class DocumentAuthoringTest extends TestCase
         // explicit alignment buttons (not only the paragraph dropdown), plus line height
         $this->assertStringContainsString('justifyCenter', $p);
         $this->assertStringContainsString("['height', ['height']]", $p);
+        // undo / redo
+        $this->assertStringContainsString("['history', ['undo', 'redo']]", $p);
     }
 
     // ── Wiring ────────────────────────────────────────────────────────────────
