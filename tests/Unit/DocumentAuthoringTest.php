@@ -155,7 +155,10 @@ class DocumentAuthoringTest extends TestCase
         // so the editor now toggles the menus itself — no dependency on Bootstrap.
         $p = $this->src('app/constant/document/edit_document.php');
         $this->assertStringContainsString('.note-btn.dropdown-toggle', $p);
-        $this->assertStringContainsString("classList.add('show')", $p);
+        // toggles a private open-state class (not Bootstrap's `.show`, which would
+        // collide with the global outside-click handler in header.php)
+        $this->assertStringContainsString("classList.add('vk-open')", $p);
+        $this->assertStringNotContainsString("note-dropdown-menu.show", $p);
         // the brittle Bootstrap-instance approach must be gone
         $this->assertStringNotContainsString('getOrCreateInstance', $p);
     }
