@@ -22,9 +22,12 @@ if ($doc_id > 0) {
 
 <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-bs5.min.css" rel="stylesheet">
 <style>
-    /* Guarantee the (manually toggled) Summernote dropdown menus actually show,
-       independent of whichever Bootstrap version's .dropdown-menu rules apply. */
-    .note-editor .note-dropdown-menu.show { display: block; }
+    /* Show the (manually toggled) Summernote dropdown menus. We mark them with a
+       private `vk-open` class rather than Bootstrap's `.show`, so they don't get
+       picked up by the global outside-click handler in header.php, which closes
+       `.dropdown-menu.show` via bootstrap.Dropdown.getInstance() — that returns
+       null for these non-Bootstrap menus and would throw. */
+    .note-editor .note-dropdown-menu.vk-open { display: block; }
     /* Give the font-family / size buttons a sensible minimum width so their
        current-value label is visible instead of collapsing to a bare caret. */
     .note-editor .note-btn.dropdown-toggle { min-width: 42px; }
@@ -124,17 +127,17 @@ $(function () {
     // buttons can never break it again. (Summernote builds each menu as the
     // toggle button's immediate next sibling — verified against the library.)
     function vkCloseDocMenus() {
-        document.querySelectorAll('.note-editor .note-dropdown-menu.show')
-            .forEach(function (m) { m.classList.remove('show'); });
+        document.querySelectorAll('.note-editor .note-dropdown-menu.vk-open')
+            .forEach(function (m) { m.classList.remove('vk-open'); });
     }
     $(document).off('click.vkDoc').on('click.vkDoc', function (e) {
         var toggle = e.target.closest('.note-editor .note-btn.dropdown-toggle');
         if (toggle) {
             e.preventDefault();
             var menu = toggle.nextElementSibling;
-            var willOpen = menu && menu.classList.contains('note-dropdown-menu') && !menu.classList.contains('show');
+            var willOpen = menu && menu.classList.contains('note-dropdown-menu') && !menu.classList.contains('vk-open');
             vkCloseDocMenus();               // close any other open menu first
-            if (willOpen) { menu.classList.add('show'); }
+            if (willOpen) { menu.classList.add('vk-open'); }
             return;
         }
         vkCloseDocMenus();                   // a click anywhere else closes the menus
