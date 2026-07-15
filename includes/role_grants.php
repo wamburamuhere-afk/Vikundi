@@ -39,6 +39,10 @@ if (!function_exists('vk_member_hidden_keys')) {
             // communications config / sending
             'campaign_management', 'email_templates', 'sms_templates', 'sms_alerts',
             'document_templates', 'document_workflow',
+            // the in-system Document Writer is a leadership tool (letters, contracts,
+            // notices). Ordinary members do not author or read these; a member who
+            // must sign one is granted scoped access to that document instead.
+            'manage_documents',
             // bulk data import
             'customer_import',
             // create / registration / lead flows
