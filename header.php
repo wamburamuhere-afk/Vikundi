@@ -548,7 +548,23 @@ try {
                             </a>
                             <ul class="dropdown-menu shadow border-0 mt-0" aria-labelledby="documentsDropdown">
                                 <li><h6 class="dropdown-header"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Usimamizi wa Nyaraka' : 'Document Management' ?></h6></li>
+                                <?php
+                                // Document Writer is leadership-only. Someone without the
+                                // permission still sees a scoped entry when a document is
+                                // waiting on their signature — otherwise the link would be
+                                // a dead end into "unauthorized".
+                                $vk_can_docs = canView('manage_documents');
+                                $vk_pending_sigs = 0;
+                                if (!$vk_can_docs) {
+                                    require_once ROOT_DIR . '/includes/document_signatories.php';
+                                    $vk_pending_sigs = vk_user_pending_signature_count($pdo, (int) ($_SESSION['user_id'] ?? 0));
+                                }
+                                ?>
+                                <?php if ($vk_can_docs): ?>
                                 <li><a class="dropdown-item" href="<?= getUrl('documents_authored') ?>"><i class="bi bi-file-earmark-text"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Andika Nyaraka' : 'Document Writer' ?></a></li>
+                                <?php elseif ($vk_pending_sigs > 0): ?>
+                                <li><a class="dropdown-item" href="<?= getUrl('documents_authored') ?>"><i class="bi bi-pen"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nyaraka za Kusaini' : 'Documents to Sign' ?> <span class="badge bg-danger rounded-pill ms-1"><?= (int) $vk_pending_sigs ?></span></a></li>
+                                <?php endif; ?>
                                 <li><a class="dropdown-item" href="<?= getUrl('library') ?>"><i class="bi bi-folder"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Maktaba' : 'Library' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('document-templates') ?>"><i class="bi bi-file-earmark-text"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Violezo' : 'Templates' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('e_signatures') ?>"><i class="bi bi-pen"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Saini za Kielektroniki' : 'E-Sign' ?></a></li>
