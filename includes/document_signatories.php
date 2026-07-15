@@ -113,6 +113,43 @@ if (!function_exists('vk_find_doc_signatory')) {
     }
 }
 
+if (!function_exists('vk_user_has_signatory_rows')) {
+    /**
+     * Is this user a signatory on ANY document? Drives scoped access to the
+     * document list for people who do not hold manage_documents.
+     */
+    function vk_user_has_signatory_rows(PDO $pdo, int $userId): bool
+    {
+        if ($userId <= 0) { return false; }
+        $stmt = $pdo->prepare('SELECT 1 FROM document_signatories WHERE user_id = ? LIMIT 1');
+        $stmt->execute([$userId]);
+        return (bool) $stmt->fetchColumn();
+    }
+}
+
+if (!function_exists('vk_user_pending_signature_count')) {
+    /** How many documents are waiting on this user's signature (indexed count). */
+    function vk_user_pending_signature_count(PDO $pdo, int $userId): int
+    {
+        if ($userId <= 0) { return 0; }
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM document_signatories WHERE user_id = ? AND status = 'pending'");
+        $stmt->execute([$userId]);
+        return (int) $stmt->fetchColumn();
+    }
+}
+
+if (!function_exists('vk_signer_documents_where')) {
+    /**
+     * Pure: the extra FROM/WHERE a non-leadership signer needs so the document
+     * list shows ONLY documents they were assigned to. Returns [sqlJoin, params].
+     */
+    function vk_signer_documents_join(bool $isLeadership, int $userId): array
+    {
+        if ($isLeadership) { return ['', []]; }
+        return [' JOIN document_signatories ds ON ds.document_id = d.id AND ds.user_id = ? ', [$userId]];
+    }
+}
+
 if (!function_exists('vk_notify')) {
     /** Create an in-app notification (reuses the existing notifications table). */
     function vk_notify(PDO $pdo, int $userId, string $title, string $message, ?string $actionUrl = null, string $priority = 'medium'): void

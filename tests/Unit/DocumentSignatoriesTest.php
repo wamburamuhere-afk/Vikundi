@@ -117,6 +117,43 @@ class DocumentSignatoriesTest extends TestCase
         $this->assertStringContainsString('INSERT INTO notifications', $p);
     }
 
+    // ── Signer (member) access ────────────────────────────────────────────────
+
+    public function testSignerDocumentsJoinScopesTheListToAssignedDocsOnly(): void
+    {
+        // Leadership sees everything — no extra join.
+        [$sql, $params] = vk_signer_documents_join(true, 7);
+        $this->assertSame('', $sql);
+        $this->assertSame([], $params);
+
+        // A signer without manage_documents only sees documents they're assigned to.
+        [$sql, $params] = vk_signer_documents_join(false, 7);
+        $this->assertStringContainsString('JOIN document_signatories ds', $sql);
+        $this->assertStringContainsString('ds.user_id = ?', $sql);
+        $this->assertSame([7], $params);
+    }
+
+    public function testNavLinkIsGatedAndOffersSignersAScopedEntry(): void
+    {
+        // The Document Writer link used to render for EVERYONE, so a member clicked
+        // it and hit "unauthorized". It is now leadership-only, with a scoped
+        // "Documents to Sign" entry when something awaits that user's signature.
+        $h = $this->src('header.php');
+        $this->assertStringContainsString("\$vk_can_docs = canView('manage_documents')", $h);
+        $this->assertStringContainsString('vk_user_pending_signature_count', $h);
+        $this->assertStringContainsString('Documents to Sign', $h);
+    }
+
+    public function testListPageAllowsAssignedSignerWithScopedQuery(): void
+    {
+        $p = $this->src('app/constant/document/documents_authored.php');
+        // no longer a blanket requireViewPermission that 403s an assigned member
+        $this->assertStringNotContainsString("requireViewPermission('manage_documents')", $p);
+        $this->assertStringContainsString('vk_user_has_signatory_rows', $p);
+        $this->assertStringContainsString('vk_signer_documents_join', $p);
+        $this->assertStringContainsString('$is_signer', $p);
+    }
+
     // ── Wiring ────────────────────────────────────────────────────────────────
 
     public function testMigrationAndRouteRegistered(): void

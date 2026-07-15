@@ -136,8 +136,14 @@ class DocumentAuthoringTest extends TestCase
 
     public function testPagesGatedByPermission(): void
     {
-        $this->assertStringContainsString("requireViewPermission('manage_documents')", $this->src('app/constant/document/documents_authored.php'));
+        // Writing is leadership-only.
         $this->assertStringContainsString("requireViewPermission('manage_documents')", $this->src('app/constant/document/edit_document.php'));
+        // The list is scoped rather than blanket-gated: leadership sees everything,
+        // an assigned signer sees only the documents awaiting them.
+        $list = $this->src('app/constant/document/documents_authored.php');
+        $this->assertStringContainsString("canView('manage_documents')", $list);
+        $this->assertStringContainsString('vk_user_has_signatory_rows', $list);
+        $this->assertStringContainsString("redirectTo('unauthorized')", $list);
     }
 
     public function testEditorUsesSummernoteAndLetterheadToggle(): void
