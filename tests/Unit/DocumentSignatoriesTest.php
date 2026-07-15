@@ -154,6 +154,34 @@ class DocumentSignatoriesTest extends TestCase
         $this->assertStringContainsString('$is_signer', $p);
     }
 
+    // ── E-signatures are personal ─────────────────────────────────────────────
+
+    public function testESignaturePageIsPersonalNotLibraryGated(): void
+    {
+        // A member assigned to sign must be able to upload a signature image, or
+        // their signature prints blank. The page manages only YOUR OWN signature,
+        // so it is auth-gated, not gated on the 'documents' (library) permission.
+        $p = $this->src('app/constant/document/e_signatures.php');
+        $this->assertStringNotContainsString("requireViewPermission('documents')", $p);
+        $this->assertStringContainsString('if (!isAuthenticated()) { redirectTo(\'login\'); }', $p);
+        // upload / draw are no longer behind canCreate('documents')
+        $this->assertStringContainsString('openUploadSignatureModal()', $p);
+        $this->assertStringContainsString('openDrawSignatureModal()', $p);
+        $this->assertStringNotContainsString("canCreate('documents')", $p);
+        // the library flow stays gated so members don't get a dead link
+        $this->assertStringContainsString("canView('documents')", $p);
+    }
+
+    public function testSignatureEndpointsStaySelfScoped(): void
+    {
+        // The reason opening the page up is safe: every endpoint is auth-only and
+        // scoped to the session user. Pin that so it can't silently regress.
+        $this->assertStringContainsString('WHERE user_id = ? AND status = \'active\'', $this->src('api/document/get_user_signatures_list.php'));
+        $this->assertStringContainsString('WHERE id = ? AND user_id = ?', $this->src('api/document/delete_signature.php'));
+        $this->assertStringContainsString("\$_SESSION['user_id']", $this->src('api/document/upload_signature.php'));
+        $this->assertStringContainsString("\$_SESSION['user_id']", $this->src('ajax/save_drawn_signature.php'));
+    }
+
     // ── Wiring ────────────────────────────────────────────────────────────────
 
     public function testMigrationAndRouteRegistered(): void

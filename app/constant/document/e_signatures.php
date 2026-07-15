@@ -3,7 +3,13 @@
 ob_start();
 
 require_once __DIR__ . '/../../../roots.php';
-requireViewPermission('documents');
+// Your own e-signature is personal, like a profile setting — every signed-in user
+// manages their own. Every endpoint behind this page is already auth-only and
+// self-scoped (WHERE user_id = session user), so there is nothing here to gate:
+// the 'documents' permission governs the document LIBRARY, not your signature.
+// This also matters for multi-party signing — a member assigned to sign a document
+// must be able to upload a signature image, or their signature prints blank.
+if (!isAuthenticated()) { redirectTo('login'); }
 require_once 'header.php';
 
 $lang = $_SESSION['preferred_language'] ?? 'en';
@@ -27,7 +33,7 @@ $sw   = ($lang === 'sw');
                     </p>
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
-                    <?php if (canCreate('documents')): ?>
+                    <!-- Managing your OWN signature needs no permission. -->
                     <button type="button" class="btn btn-sm btn-outline-primary" onclick="openUploadSignatureModal()">
                         <i class="bi bi-cloud-upload"></i>
                         <?= $sw ? 'Pakia Saini' : 'Upload Signature' ?>
@@ -36,6 +42,9 @@ $sw   = ($lang === 'sw');
                         <i class="bi bi-pencil"></i>
                         <?= $sw ? 'Chora Saini' : 'Draw Signature' ?>
                     </button>
+                    <?php if (canView('documents')): ?>
+                    <!-- This one goes into the document library, which IS permissioned —
+                         hide it rather than hand out a link that dead-ends. -->
                     <a href="<?= getUrl('select_document_add_esignature') ?>"
                        class="btn btn-sm btn-primary">
                         <i class="bi bi-file-earmark-check"></i>
@@ -434,8 +443,11 @@ $ajax_base = (!empty($base_path) ? '/' . $base_path : '') . '/ajax';
 
 <script>
 const _sw = <?= $sw ? 'true' : 'false' ?>;
-const _canCreate = <?= canCreate('documents') ? 'true' : 'false' ?>;
-const _canDelete = <?= canDelete('documents') ? 'true' : 'false' ?>;
+// Your own signature is yours to add or remove — no library permission involved.
+// The delete endpoint is self-scoped (WHERE id = ? AND user_id = ?), so a user can
+// only ever remove their own.
+const _canCreate = true;
+const _canDelete = true;
 
 // — Bilingual strings —
 const T = {
