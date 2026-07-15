@@ -20,7 +20,9 @@ class DocumentViewSignTest extends TestCase
     public function testViewPageGatedPrintsAndTogglesLetterhead(): void
     {
         $p = $this->src('app/constant/document/view_document.php');
-        $this->assertStringContainsString("requireViewPermission('manage_documents')", $p);
+        // access is scoped: leadership OR an assigned signatory may open it (PR B)
+        $this->assertStringContainsString("canView('manage_documents')", $p);
+        $this->assertStringContainsString('vk_find_doc_signatory', $p);
         // letterhead only rendered when the document opts in
         $this->assertStringContainsString("(int) \$doc['use_letterhead'] === 1", $p);
         $this->assertStringContainsString('PrintHeader::render($pdo, strtoupper($doc[\'title\']))', $p);
