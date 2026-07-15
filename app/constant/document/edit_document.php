@@ -104,8 +104,11 @@ $(function () {
             ['fontsize', ['fontsize']],
             ['height', ['height']],
             ['color', ['color']],
+            // NB: the standalone justify* buttons crash Summernote 0.8.20 under
+            // jQuery 3.7 ("t.append is not a function") and abort the whole init.
+            // Alignment is available inside the paragraph dropdown, so we rely on
+            // that instead of a separate align group. Verified in-browser.
             ['para', ['ul', 'ol', 'paragraph']],
-            ['align', ['justifyLeft', 'justifyCenter', 'justifyRight', 'justifyFull']],
             ['table', ['table']],
             ['insert', ['link', 'hr']],
             ['history', ['undo', 'redo']],
