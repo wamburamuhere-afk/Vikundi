@@ -21,6 +21,14 @@ if ($doc_id > 0) {
 ?>
 
 <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-bs5.min.css" rel="stylesheet">
+<style>
+    /* Guarantee the (manually toggled) Summernote dropdown menus actually show,
+       independent of whichever Bootstrap version's .dropdown-menu rules apply. */
+    .note-editor .note-dropdown-menu.show { display: block; }
+    /* Give the font-family / size buttons a sensible minimum width so their
+       current-value label is visible instead of collapsing to a bare caret. */
+    .note-editor .note-btn.dropdown-toggle { min-width: 42px; }
+</style>
 
 <div class="container-fluid py-4" id="main-content" style="background:#f8f9fa;min-height:90vh;">
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -100,21 +108,41 @@ $(function () {
             ['align', ['justifyLeft', 'justifyCenter', 'justifyRight', 'justifyFull']],
             ['table', ['table']],
             ['insert', ['link', 'hr']],
+            ['history', ['undo', 'redo']],
             ['view', ['codeview', 'fullscreen']]
         ]
     });
 
-    // Summernote 0.8 tags its font-size / paragraph / alignment dropdowns with
-    // the Bootstrap-4 attribute `data-toggle="dropdown"`, which Bootstrap 5.3
-    // ignores — so those menus never open. Re-point them at Bootstrap 5 and
-    // instantiate so they drop down. (Colour/table use Summernote's own popups.)
-    $('.note-editor [data-toggle="dropdown"]').each(function () {
-        this.setAttribute('data-bs-toggle', 'dropdown');
-        this.removeAttribute('data-toggle');
-        if (window.bootstrap && bootstrap.Dropdown) {
-            try { bootstrap.Dropdown.getOrCreateInstance(this); } catch (e) {}
+    // Summernote 0.8 renders Bootstrap-4 dropdown markup (data-toggle, never
+    // data-bs-toggle), so Bootstrap 5 never opens these menus. The previous fix
+    // handed them to Bootstrap 5's Dropdown component — which regressed twice as
+    // the toolbar changed. We no longer depend on Bootstrap at all: a single
+    // delegated handler toggles the menus itself, so adding or removing toolbar
+    // buttons can never break it again. (Summernote builds each menu as the
+    // toggle button's immediate next sibling — verified against the library.)
+    function vkCloseDocMenus() {
+        document.querySelectorAll('.note-editor .note-dropdown-menu.show')
+            .forEach(function (m) { m.classList.remove('show'); });
+    }
+    $(document).off('click.vkDoc').on('click.vkDoc', function (e) {
+        var toggle = e.target.closest('.note-editor .note-btn.dropdown-toggle');
+        if (toggle) {
+            e.preventDefault();
+            var menu = toggle.nextElementSibling;
+            var willOpen = menu && menu.classList.contains('note-dropdown-menu') && !menu.classList.contains('show');
+            vkCloseDocMenus();               // close any other open menu first
+            if (willOpen) { menu.classList.add('show'); }
+            return;
         }
+        vkCloseDocMenus();                   // a click anywhere else closes the menus
     });
+    // Choosing an item: Summernote stops the event bubbling, so close in the
+    // capture phase (on the next tick, after it has applied the choice).
+    document.addEventListener('click', function (e) {
+        if (e.target.closest('.note-editor .note-dropdown-menu')) {
+            setTimeout(vkCloseDocMenus, 0);
+        }
+    }, true);
 
     $('#documentForm').on('submit', function (e) {
         e.preventDefault();
