@@ -5,20 +5,37 @@ ob_start();
 require_once __DIR__ . '/../../../roots.php';
 requireViewPermission('manage_documents');
 require_once __DIR__ . '/../../../includes/document_editor_assets.php';
+require_once __DIR__ . '/../../../includes/authored_document_access.php';
+require_once __DIR__ . '/../../../includes/document_signatories.php';
 require_once 'header.php';
 
 global $pdo;
 $is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
 $t = function ($en, $sw) use ($is_sw) { return $is_sw ? $sw : $en; };
 
+$user_id = (int) ($_SESSION['user_id'] ?? 0);
 $doc_id = isset($_GET['id']) && ctype_digit((string) $_GET['id']) ? (int) $_GET['id'] : 0;
-$doc = ['title' => '', 'doc_type' => 'letter', 'body_html' => '', 'use_letterhead' => 1, 'status' => 'draft'];
+$doc = ['title' => '', 'doc_type' => 'letter', 'body_html' => '', 'use_letterhead' => 1, 'status' => 'draft', 'visibility' => 'shared', 'created_by' => $user_id];
 if ($doc_id > 0) {
-    $stmt = $pdo->prepare("SELECT title, doc_type, body_html, use_letterhead, status FROM authored_documents WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT title, doc_type, body_html, use_letterhead, status, visibility, created_by FROM authored_documents WHERE id = ?");
     $stmt->execute([$doc_id]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($row) { $doc = $row; }
+
+    // Someone else's private document is not theirs to open in the editor.
+    // (A signatory may READ a private document to sign it, but never edit it.)
+    if (!vk_can_view_authored_document(
+            (string) $doc['visibility'], isAdmin(),
+            (int) $doc['created_by'] === $user_id,
+            false,                       // signing access does not grant editing
+            true                         // reaching this page already required manage_documents
+        )) {
+        http_response_code(403);
+        redirectTo('unauthorized');
+    }
 }
+// Only the author (or an admin) may change the visibility setting.
+$can_set_visibility = $doc_id === 0 || isAdmin() || (int) $doc['created_by'] === $user_id;
 
 // A NEW document may start from a template (?tpl=ID — the "use this template"
 // button on the templates list). Editing an existing document never does, so a
@@ -98,6 +115,19 @@ $templates = ($doc_id === 0)
             </div>
 
             <div class="mb-3">
+                <label class="form-label fw-bold small"><i class="bi bi-eye me-1"></i><?= $t('Who can see this document', 'Nani anaweza kuona nyaraka hii') ?></label>
+                <select class="form-select" id="docVisibility" <?= $can_set_visibility ? '' : 'disabled' ?>>
+                    <option value="shared" <?= ($doc['visibility'] ?? 'shared') !== 'private' ? 'selected' : '' ?>><?= $t('All leadership', 'Uongozi wote') ?></option>
+                    <option value="private" <?= ($doc['visibility'] ?? 'shared') === 'private' ? 'selected' : '' ?>><?= $t('Only me (and admins)', 'Mimi tu (na wasimamizi)') ?></option>
+                </select>
+                <div class="form-text small">
+                    <?= $can_set_visibility
+                        ? $t('Anyone you assign to sign can always open it, even when private.', 'Yeyote unayemteua kusaini ataweza kuifungua, hata ikiwa ni ya binafsi.')
+                        : $t('Only the author can change this.', 'Mwandishi pekee ndiye anayeweza kubadilisha hili.') ?>
+                </div>
+            </div>
+
+            <div class="mb-3">
                 <label class="form-label fw-bold small"><?= $t('Document body', 'Maandishi ya nyaraka') ?></label>
                 <div id="docBody"><?= $doc['body_html'] ?></div>
             </div>
@@ -151,6 +181,7 @@ $(function () {
             title: title,
             doc_type: $('#docType').val(),
             status: $('#docStatus').val(),
+            visibility: $('#docVisibility').val(),
             use_letterhead: $('#docLetterhead').is(':checked') ? 1 : 0,
             body_html: $('#docBody').summernote('code')
         }, res => {

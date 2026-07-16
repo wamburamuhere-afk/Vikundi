@@ -8,6 +8,7 @@
 ob_start();
 require_once __DIR__ . '/../../../roots.php';
 require_once __DIR__ . '/../../../includes/document_signatories.php';
+require_once __DIR__ . '/../../../includes/authored_document_access.php';
 
 global $pdo;
 if (!isAuthenticated()) { redirectTo('login'); }
@@ -38,6 +39,24 @@ if (empty($doc)) {
     echo '<div class="alert alert-danger m-4">' . $t('Document not found.', 'Nyaraka haijapatikana.') . '</div>';
     include 'footer.php'; ob_end_flush(); return;
 }
+
+$is_author = (int) ($doc['created_by'] ?? 0) === $user_id;
+// A private document is only for its author, an admin, or someone assigned to
+// sign it — assignment must keep working regardless of visibility.
+if (!vk_can_view_authored_document(
+        (string) ($doc['visibility'] ?? 'shared'),
+        isAdmin(),
+        $is_author,
+        (bool) $mySlot,
+        $can_docs
+    )) {
+    http_response_code(403);
+    redirectTo('unauthorized');
+}
+// Editing someone else's private document is never allowed, and a signatory
+// reading a private document must not get an Edit button either.
+$can_edit = $can_edit && (isAdmin() || $is_author || ($doc['visibility'] ?? 'shared') !== 'private');
+$can_manage = $can_edit;
 
 // A single URL builder for stored signature images (same base logic as before).
 $sigBase = rtrim((function () {
