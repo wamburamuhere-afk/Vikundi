@@ -562,11 +562,16 @@ try {
                                 ?>
                                 <?php if ($vk_can_docs): ?>
                                 <li><a class="dropdown-item" href="<?= getUrl('documents_authored') ?>"><i class="bi bi-file-earmark-text"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Andika Nyaraka' : 'Document Writer' ?></a></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('writer_templates') ?>"><i class="bi bi-files"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Violezo vya Nyaraka' : 'Document Templates' ?></a></li>
                                 <?php elseif ($vk_pending_sigs > 0): ?>
                                 <li><a class="dropdown-item" href="<?= getUrl('documents_authored') ?>"><i class="bi bi-pen"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Nyaraka za Kusaini' : 'Documents to Sign' ?> <span class="badge bg-danger rounded-pill ms-1"><?= (int) $vk_pending_sigs ?></span></a></li>
                                 <?php endif; ?>
                                 <li><a class="dropdown-item" href="<?= getUrl('library') ?>"><i class="bi bi-folder"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Maktaba' : 'Library' ?></a></li>
+                                <?php if (canView('document_templates')): ?>
+                                <!-- Legacy BMS templates module — gated so it isn't a dead link
+                                     for members (its page requires the document_templates key). -->
                                 <li><a class="dropdown-item" href="<?= getUrl('document-templates') ?>"><i class="bi bi-file-earmark-text"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Violezo' : 'Templates' ?></a></li>
+                                <?php endif; ?>
                                 <li><a class="dropdown-item" href="<?= getUrl('e_signatures') ?>"><i class="bi bi-pen"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Saini za Kielektroniki' : 'E-Sign' ?></a></li>
                             </ul>
                         </li>
