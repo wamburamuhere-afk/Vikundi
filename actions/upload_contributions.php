@@ -1,6 +1,7 @@
 <?php
 // actions/upload_contributions.php
 require_once __DIR__ . '/../roots.php';
+require_once __DIR__ . '/../includes/require_csrf.php';  // valid CSRF token
 global $pdo;
 
 header('Content-Type: application/json');
@@ -10,6 +11,8 @@ if (!isset($_SESSION['user_id'])) {
     echo json_encode(['success' => false, 'message' => 'Unauthorized access']);
     exit();
 }
+// Bulk-importing contributions is a leadership action.
+requirePermissionJson('create', 'manage_contributions');
 
 // Check if file was uploaded
 if (!isset($_FILES['contribution_file']) || $_FILES['contribution_file']['error'] !== UPLOAD_ERR_OK) {
