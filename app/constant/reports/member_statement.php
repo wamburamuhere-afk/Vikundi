@@ -5,13 +5,19 @@ require_once HEADER_FILE;
 
 $member_id = intval($_GET['id'] ?? 0);
 
-// If the user has permission to view group reports, they can see any member's statement.
-// Otherwise, they are restricted to seeing only their own statement.
-if (!canView('vicoba_reports')) {
-    $cust_stmt = $pdo->prepare("SELECT customer_id FROM customers WHERE user_id = ?");
-    $cust_stmt->execute([$_SESSION['user_id']]);
-    $logged_cid = $cust_stmt->fetchColumn();
-    $member_id = $logged_cid;
+// Only leadership may view ANY member's statement (via ?id). Ordinary members —
+// who also hold view-only report access — must always see only their own, and
+// default to it when no id is given (e.g. the "My statement" link on their home).
+// Using canView('vicoba_reports') alone was wrong: members have it too, which both
+// broke the no-id case ("Member not found") and let a member read another
+// member's statement via ?id.
+$own_stmt = $pdo->prepare("SELECT customer_id FROM customers WHERE user_id = ?");
+$own_stmt->execute([$_SESSION['user_id']]);
+$own_cid = (int) ($own_stmt->fetchColumn() ?: 0);
+
+$is_leader = isAdmin() || canCreate('manage_contributions');
+if (!$is_leader || !$member_id) {
+    $member_id = $own_cid;
 }
 
 if (!$member_id) {
