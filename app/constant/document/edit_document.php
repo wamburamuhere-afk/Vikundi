@@ -57,11 +57,8 @@ $templates = ($doc_id === 0)
     ? $pdo->query("SELECT id, name FROM authored_document_templates ORDER BY name")->fetchAll(PDO::FETCH_ASSOC)
     : [];
 
-// Active members for the merge-field "generate for" picker.
-$members = $pdo->query(
-    "SELECT user_id, TRIM(CONCAT_WS(' ', first_name, last_name)) AS name, username
-       FROM users WHERE status = 'active' ORDER BY first_name, last_name"
-)->fetchAll(PDO::FETCH_ASSOC);
+// The "generate for member" picker searches members on demand (Select2 AJAX via
+// api/search_document_members), so the full membership is never loaded here.
 ?>
 
 <?php vk_document_editor_head(); ?>
@@ -136,11 +133,8 @@ $members = $pdo->query(
 
             <div class="mb-3">
                 <label class="form-label fw-bold small" for="docMember"><i class="bi bi-person me-1"></i><?= $t('Generate for member (optional)', 'Tengeneza kwa mwanachama (hiari)') ?></label>
-                <select class="form-select" id="docMember">
-                    <option value=""><?= $t('— none —', '— hakuna —') ?></option>
-                    <?php foreach ($members as $m): ?>
-                    <option value="<?= (int) $m['user_id'] ?>"><?= htmlspecialchars($m['name'] ?: $m['username']) ?></option>
-                    <?php endforeach; ?>
+                <select class="form-select" id="docMember" data-placeholder="<?= $t('Search a member by name…', 'Tafuta mwanachama kwa jina…') ?>">
+                    <option value=""></option>
                 </select>
                 <div class="form-text small"><?= $t('Member fields like {member_name} are filled in from this person when you save.', 'Uga kama {member_name} hujazwa kutoka kwa mtu huyu unapohifadhi.') ?></div>
             </div>
@@ -165,6 +159,24 @@ $members = $pdo->query(
 <script>
 const docIsSw = <?= $is_sw ? 'true' : 'false' ?>;
 $(function () {
+    // Searchable member picker — loads matches on demand instead of the whole
+    // membership. Shows the first 20 on open, filters as you type.
+    $('#docMember').select2({
+        theme: 'bootstrap-5',
+        width: '100%',
+        placeholder: $('#docMember').data('placeholder'),
+        allowClear: true,
+        minimumInputLength: 0,
+        ajax: {
+            url: '/api/search_document_members',
+            dataType: 'json',
+            delay: 250,
+            data: params => ({ q: params.term || '' }),
+            processResults: data => data,
+            cache: true
+        }
+    });
+
     // Start-from-template (new documents only). Never clobber typed content
     // without asking.
     $('#tplPicker').on('change', function () {
