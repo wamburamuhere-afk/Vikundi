@@ -95,8 +95,9 @@ class DocumentMergeFieldsTest extends TestCase
         $this->assertStringContainsString('htmlspecialchars', $p);
         // member values only when a member is chosen
         $this->assertStringContainsString('$memberId !== null && $memberId > 0', $p);
-        // contributions use the approved total, matching the ledger
-        $this->assertStringContainsString("status = 'approved'", $p);
+        // contributions come from the shared, customer-resolved savings total
+        // (the same figure as the statement / Member Home), not a raw user_id sum
+        $this->assertStringContainsString('vk_member_savings_total($pdo', $p);
     }
 
     // ── Editor UI ─────────────────────────────────────────────────────────────
