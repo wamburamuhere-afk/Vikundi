@@ -7,6 +7,7 @@ requireViewPermission('manage_documents');
 require_once __DIR__ . '/../../../includes/document_editor_assets.php';
 require_once __DIR__ . '/../../../includes/authored_document_access.php';
 require_once __DIR__ . '/../../../includes/document_signatories.php';
+require_once __DIR__ . '/../../../includes/document_merge_fields.php';
 require_once 'header.php';
 
 global $pdo;
@@ -55,6 +56,12 @@ if ($doc_id === 0 && $from_tpl > 0) {
 $templates = ($doc_id === 0)
     ? $pdo->query("SELECT id, name FROM authored_document_templates ORDER BY name")->fetchAll(PDO::FETCH_ASSOC)
     : [];
+
+// Active members for the merge-field "generate for" picker.
+$members = $pdo->query(
+    "SELECT user_id, TRIM(CONCAT_WS(' ', first_name, last_name)) AS name, username
+       FROM users WHERE status = 'active' ORDER BY first_name, last_name"
+)->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <?php vk_document_editor_head(); ?>
@@ -128,7 +135,21 @@ $templates = ($doc_id === 0)
             </div>
 
             <div class="mb-3">
-                <label class="form-label fw-bold small"><?= $t('Document body', 'Maandishi ya nyaraka') ?></label>
+                <label class="form-label fw-bold small" for="docMember"><i class="bi bi-person me-1"></i><?= $t('Generate for member (optional)', 'Tengeneza kwa mwanachama (hiari)') ?></label>
+                <select class="form-select" id="docMember">
+                    <option value=""><?= $t('— none —', '— hakuna —') ?></option>
+                    <?php foreach ($members as $m): ?>
+                    <option value="<?= (int) $m['user_id'] ?>"><?= htmlspecialchars($m['name'] ?: $m['username']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <div class="form-text small"><?= $t('Member fields like {member_name} are filled in from this person when you save.', 'Uga kama {member_name} hujazwa kutoka kwa mtu huyu unapohifadhi.') ?></div>
+            </div>
+
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <label class="form-label fw-bold small mb-0"><?= $t('Document body', 'Maandishi ya nyaraka') ?></label>
+                    <?php vk_render_merge_field_menu('#docBody', $is_sw); ?>
+                </div>
                 <div id="docBody"><?= $doc['body_html'] ?></div>
             </div>
 
@@ -170,11 +191,8 @@ $(function () {
         }).then(r => { if (r.isConfirmed) { apply(); } });
     });
 
-    $('#documentForm').on('submit', function (e) {
-        e.preventDefault();
+    function doSaveDocument() {
         const title = $('#docTitle').val().trim();
-        if (!title) { Swal.fire('', docIsSw ? 'Tafadhali weka kichwa.' : 'Please enter a title.', 'warning'); return; }
-
         const $btn = $('#docSaveBtn').prop('disabled', true);
         $.post('/actions/save_document', {
             doc_id: $('#docId').val(),
@@ -182,6 +200,7 @@ $(function () {
             doc_type: $('#docType').val(),
             status: $('#docStatus').val(),
             visibility: $('#docVisibility').val(),
+            member_id: $('#docMember').val() || '',
             use_letterhead: $('#docLetterhead').is(':checked') ? 1 : 0,
             body_html: $('#docBody').summernote('code')
         }, res => {
@@ -193,6 +212,29 @@ $(function () {
                 $btn.prop('disabled', false);
             }
         }, 'json').fail(() => { Swal.fire('Error', 'Server error', 'error'); $btn.prop('disabled', false); });
+    }
+
+    $('#documentForm').on('submit', function (e) {
+        e.preventDefault();
+        const title = $('#docTitle').val().trim();
+        if (!title) { Swal.fire('', docIsSw ? 'Tafadhali weka kichwa.' : 'Please enter a title.', 'warning'); return; }
+
+        // If the body uses {member_*} fields but no member is chosen, they can't be
+        // filled in — warn rather than silently freezing the raw tokens.
+        const usesMemberFields = /\{member_[a-z_]+\}/.test($('#docBody').summernote('code'));
+        if (usesMemberFields && !$('#docMember').val()) {
+            Swal.fire({
+                title: docIsSw ? 'Hakuna mwanachama' : 'No member selected',
+                text: docIsSw
+                    ? 'Nyaraka ina uga wa mwanachama lakini hujachagua mwanachama. Uga huo utabaki kama ulivyo.'
+                    : 'This document has member fields but no member is selected. Those fields will be left as-is.',
+                icon: 'warning', showCancelButton: true,
+                confirmButtonText: docIsSw ? 'Hifadhi hivyo' : 'Save anyway',
+                cancelButtonText: docIsSw ? 'Rudi' : 'Go back'
+            }).then(r => { if (r.isConfirmed) { doSaveDocument(); } });
+            return;
+        }
+        doSaveDocument();
     });
 });
 </script>
