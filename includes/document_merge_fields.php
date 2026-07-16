@@ -87,9 +87,13 @@ if (!function_exists('vk_build_merge_values')) {
             );
             $m->execute([$memberId]);
             if ($row = $m->fetch(PDO::FETCH_ASSOC)) {
-                $tot = $pdo->prepare("SELECT COALESCE(SUM(amount), 0) FROM contributions WHERE member_id = ? AND status = 'approved'");
-                $tot->execute([$memberId]);
-                $total = (float) $tot->fetchColumn();
+                // Contributions key on customers.customer_id, resolved from the
+                // login user_id — the SAME figure shown on the member statement
+                // and the Member Home. (Using user_id directly reads the wrong
+                // member's savings.)
+                require_once __DIR__ . '/member_savings.php';
+                $cid   = vk_member_customer_id($pdo, (int) $memberId);
+                $total = $cid !== null ? vk_member_savings_total($pdo, $cid) : 0.0;
 
                 $values['{member_name}']          = $esc($row['name'] !== '' ? $row['name'] : $row['username']);
                 $values['{member_username}']      = $esc($row['username']);

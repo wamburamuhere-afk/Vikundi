@@ -501,13 +501,14 @@ function autoEnforcePermission($pageKey = null)
  */
 function getLandingPage()
 {
-    // Admin goes to main dashboard
-    if (isAdmin()) {
+    // Leadership (admin/chairperson, and the operational Secretary/Treasurer who
+    // can create contributions) use the management dashboard.
+    if (isAdmin() || canCreate('manage_contributions')) {
         return 'dashboard';
     }
-    
-    // All other users go to their personalized dashboard
-    return 'loan-dashboard';
+
+    // Ordinary members land on their personal home — savings at a glance.
+    return 'my_home';
 }
 
 /**
