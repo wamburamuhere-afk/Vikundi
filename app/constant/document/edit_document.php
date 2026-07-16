@@ -4,6 +4,7 @@
 ob_start();
 require_once __DIR__ . '/../../../roots.php';
 requireViewPermission('manage_documents');
+require_once __DIR__ . '/../../../includes/document_editor_assets.php';
 require_once 'header.php';
 
 global $pdo;
@@ -18,20 +19,28 @@ if ($doc_id > 0) {
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($row) { $doc = $row; }
 }
+
+// A NEW document may start from a template (?tpl=ID — the "use this template"
+// button on the templates list). Editing an existing document never does, so a
+// stray ?tpl can't overwrite saved work.
+$from_tpl = isset($_GET['tpl']) && ctype_digit((string) $_GET['tpl']) ? (int) $_GET['tpl'] : 0;
+if ($doc_id === 0 && $from_tpl > 0) {
+    $ts = $pdo->prepare("SELECT doc_type, body_html, use_letterhead FROM authored_document_templates WHERE id = ?");
+    $ts->execute([$from_tpl]);
+    if ($trow = $ts->fetch(PDO::FETCH_ASSOC)) {
+        $doc['doc_type']       = $trow['doc_type'];
+        $doc['body_html']      = $trow['body_html']; // sanitised on save
+        $doc['use_letterhead'] = $trow['use_letterhead'];
+    }
+}
+
+// Templates offered in the in-editor picker (new documents only).
+$templates = ($doc_id === 0)
+    ? $pdo->query("SELECT id, name FROM authored_document_templates ORDER BY name")->fetchAll(PDO::FETCH_ASSOC)
+    : [];
 ?>
 
-<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-bs5.min.css" rel="stylesheet">
-<style>
-    /* Show the (manually toggled) Summernote dropdown menus. We mark them with a
-       private `vk-open` class rather than Bootstrap's `.show`, so they don't get
-       picked up by the global outside-click handler in header.php, which closes
-       `.dropdown-menu.show` via bootstrap.Dropdown.getInstance() — that returns
-       null for these non-Bootstrap menus and would throw. */
-    .note-editor .note-dropdown-menu.vk-open { display: block; }
-    /* Give the font-family / size buttons a sensible minimum width so their
-       current-value label is visible instead of collapsing to a bare caret. */
-    .note-editor .note-btn.dropdown-toggle { min-width: 42px; }
-</style>
+<?php vk_document_editor_head(); ?>
 
 <div class="container-fluid py-4" id="main-content" style="background:#f8f9fa;min-height:90vh;">
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -71,6 +80,18 @@ if ($doc_id > 0) {
                 </div>
             </div>
 
+            <?php if ($doc_id === 0 && $templates): ?>
+            <div class="mb-3">
+                <label class="form-label fw-bold small" for="tplPicker"><i class="bi bi-files me-1"></i><?= $t('Start from a template', 'Anza na kiolezo') ?></label>
+                <select class="form-select" id="tplPicker">
+                    <option value=""><?= $t('Blank document', 'Nyaraka tupu') ?></option>
+                    <?php foreach ($templates as $tp): ?>
+                    <option value="<?= (int) $tp['id'] ?>" <?= $from_tpl === (int) $tp['id'] ? 'selected' : '' ?>><?= htmlspecialchars($tp['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <?php endif; ?>
+
             <div class="form-check form-switch mb-3">
                 <input class="form-check-input" type="checkbox" id="docLetterhead" <?= (int) $doc['use_letterhead'] === 1 ? 'checked' : '' ?>>
                 <label class="form-check-label small fw-bold" for="docLetterhead"><?= $t('Print on group letterhead', 'Chapisha kwenye kichwa cha kikundi') ?></label>
@@ -89,66 +110,35 @@ if ($doc_id > 0) {
     </div></div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-bs5.min.js"></script>
+<?php vk_document_editor_init('#docBody', $t('Write your document here...', 'Andika nyaraka hapa...')); ?>
 <script>
 const docIsSw = <?= $is_sw ? 'true' : 'false' ?>;
 $(function () {
-    $('#docBody').summernote({
-        placeholder: docIsSw ? 'Andika nyaraka hapa...' : 'Write your document here...',
-        height: 460,
-        fontNames: ['Arial', 'Calibri', 'Cambria', 'Courier New', 'Georgia', 'Times New Roman', 'Verdana'],
-        // Summernote hides fonts the current machine can't confirm are installed —
-        // force the Windows-bundled ones to stay in the list on Linux / Mac.
-        fontNamesIgnoreCheck: ['Calibri', 'Cambria'],
-        toolbar: [
-            ['style', ['style']],
-            ['fontname', ['fontname']],
-            ['font', ['bold', 'italic', 'underline', 'strikethrough', 'superscript', 'subscript', 'clear']],
-            ['fontsize', ['fontsize']],
-            ['height', ['height']],
-            ['color', ['color']],
-            // NB: the standalone justify* buttons crash Summernote 0.8.20 under
-            // jQuery 3.7 ("t.append is not a function") and abort the whole init.
-            // Alignment is available inside the paragraph dropdown, so we rely on
-            // that instead of a separate align group. Verified in-browser.
-            ['para', ['ul', 'ol', 'paragraph']],
-            ['table', ['table']],
-            ['insert', ['link', 'hr']],
-            ['history', ['undo', 'redo']],
-            ['view', ['codeview', 'fullscreen']]
-        ]
+    // Start-from-template (new documents only). Never clobber typed content
+    // without asking.
+    $('#tplPicker').on('change', function () {
+        const id = $(this).val();
+        if (!id) { return; }
+        const current = $('#docBody').summernote('code').replace(/<[^>]*>/g, '').trim();
+        const apply = () => {
+            $.getJSON('/api/get_writer_template', { id: id }, res => {
+                if (res.status !== 'success' || !res.data) {
+                    Swal.fire('Error', (res && res.message) || 'Template not found', 'error');
+                    return;
+                }
+                $('#docBody').summernote('code', res.data.body_html || '');
+                $('#docType').val(res.data.doc_type || 'letter');
+                $('#docLetterhead').prop('checked', Number(res.data.use_letterhead) === 1);
+            }).fail(() => Swal.fire('Error', 'Server error', 'error'));
+        };
+        if (current === '') { apply(); return; }
+        Swal.fire({
+            title: docIsSw ? 'Badilisha maandishi?' : 'Replace the content?',
+            text: docIsSw ? 'Maandishi yaliyopo yatabadilishwa na kiolezo hiki.' : 'What you have written will be replaced by this template.',
+            icon: 'warning', showCancelButton: true,
+            confirmButtonText: docIsSw ? 'Ndio, tumia kiolezo' : 'Yes, use template'
+        }).then(r => { if (r.isConfirmed) { apply(); } });
     });
-
-    // Summernote 0.8 renders Bootstrap-4 dropdown markup (data-toggle, never
-    // data-bs-toggle), so Bootstrap 5 never opens these menus. The previous fix
-    // handed them to Bootstrap 5's Dropdown component — which regressed twice as
-    // the toolbar changed. We no longer depend on Bootstrap at all: a single
-    // delegated handler toggles the menus itself, so adding or removing toolbar
-    // buttons can never break it again. (Summernote builds each menu as the
-    // toggle button's immediate next sibling — verified against the library.)
-    function vkCloseDocMenus() {
-        document.querySelectorAll('.note-editor .note-dropdown-menu.vk-open')
-            .forEach(function (m) { m.classList.remove('vk-open'); });
-    }
-    $(document).off('click.vkDoc').on('click.vkDoc', function (e) {
-        var toggle = e.target.closest('.note-editor .note-btn.dropdown-toggle');
-        if (toggle) {
-            e.preventDefault();
-            var menu = toggle.nextElementSibling;
-            var willOpen = menu && menu.classList.contains('note-dropdown-menu') && !menu.classList.contains('vk-open');
-            vkCloseDocMenus();               // close any other open menu first
-            if (willOpen) { menu.classList.add('vk-open'); }
-            return;
-        }
-        vkCloseDocMenus();                   // a click anywhere else closes the menus
-    });
-    // Choosing an item: Summernote stops the event bubbling, so close in the
-    // capture phase (on the next tick, after it has applied the choice).
-    document.addEventListener('click', function (e) {
-        if (e.target.closest('.note-editor .note-dropdown-menu')) {
-            setTimeout(vkCloseDocMenus, 0);
-        }
-    }, true);
 
     $('#documentForm').on('submit', function (e) {
         e.preventDefault();

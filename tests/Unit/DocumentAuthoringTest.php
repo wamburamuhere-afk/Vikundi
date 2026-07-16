@@ -148,10 +148,30 @@ class DocumentAuthoringTest extends TestCase
 
     public function testEditorUsesSummernoteAndLetterheadToggle(): void
     {
+        // The editor itself now lives in one shared partial so the document and
+        // template editors can never drift apart.
+        $shared = $this->src('includes/document_editor_assets.php');
+        $this->assertStringContainsString('summernote-bs5.min.js', $shared);
+
         $p = $this->src('app/constant/document/edit_document.php');
-        $this->assertStringContainsString('summernote-bs5.min.js', $p);
+        $this->assertStringContainsString('vk_document_editor_init', $p);
         $this->assertStringContainsString("summernote('code')", $p);
         $this->assertStringContainsString('docLetterhead', $p); // letterhead on/off
+    }
+
+    public function testBothEditorsUseTheSharedPartial(): void
+    {
+        // Guards the reason the partial exists: a second copy of the Summernote
+        // setup would drift back into the crash/dropdown bugs it encodes.
+        foreach (['app/constant/document/edit_document.php',
+                  'app/constant/document/edit_writer_template.php'] as $page) {
+            $p = $this->src($page);
+            $this->assertStringContainsString('document_editor_assets.php', $p, "$page must include the shared editor");
+            $this->assertStringContainsString('vk_document_editor_head()', $p);
+            $this->assertStringContainsString('vk_document_editor_init(', $p);
+            // no local re-definition of the toolbar
+            $this->assertStringNotContainsString('fontNamesIgnoreCheck', $p, "$page must not redefine the toolbar");
+        }
     }
 
     public function testEditorTogglesDropdownsWithoutBootstrapDependency(): void
@@ -159,7 +179,7 @@ class DocumentAuthoringTest extends TestCase
         // Summernote 0.8 emits Bootstrap-4 dropdown markup. Re-pointing it at
         // Bootstrap 5's Dropdown component regressed whenever the toolbar changed,
         // so the editor now toggles the menus itself — no dependency on Bootstrap.
-        $p = $this->src('app/constant/document/edit_document.php');
+        $p = $this->src('includes/document_editor_assets.php');
         $this->assertStringContainsString('.note-btn.dropdown-toggle', $p);
         // toggles a private open-state class (not Bootstrap's `.show`, which would
         // collide with the global outside-click handler in header.php)
@@ -171,7 +191,7 @@ class DocumentAuthoringTest extends TestCase
 
     public function testEditorHasFontFamilyHistoryAndSafeAlignment(): void
     {
-        $p = $this->src('app/constant/document/edit_document.php');
+        $p = $this->src('includes/document_editor_assets.php');
         // font-family picker, with the Windows-only fonts forced to stay visible
         $this->assertStringContainsString("['fontname', ['fontname']]", $p);
         $this->assertStringContainsString('fontNamesIgnoreCheck', $p);
@@ -188,12 +208,17 @@ class DocumentAuthoringTest extends TestCase
         // Summernote 0.8.20 + jQuery 3.7 throws "t.append is not a function" when
         // a standalone justify* button is placed in the toolbar, which aborts the
         // whole editor init. Verified live in-browser. Never reintroduce them —
-        // alignment is provided by the paragraph dropdown instead.
-        $p = $this->src('app/constant/document/edit_document.php');
-        $this->assertStringNotContainsString("['justifyLeft'", $p);
-        $this->assertStringNotContainsString("'justifyCenter'", $p);
-        $this->assertStringNotContainsString("'justifyRight'", $p);
-        $this->assertStringNotContainsString("'justifyFull'", $p);
+        // alignment is provided by the paragraph dropdown instead. Guard the shared
+        // editor AND both pages that use it.
+        foreach (['includes/document_editor_assets.php',
+                  'app/constant/document/edit_document.php',
+                  'app/constant/document/edit_writer_template.php'] as $file) {
+            $p = $this->src($file);
+            $this->assertStringNotContainsString("'justifyLeft'", $p, "$file must not use justify buttons");
+            $this->assertStringNotContainsString("'justifyCenter'", $p, "$file must not use justify buttons");
+            $this->assertStringNotContainsString("'justifyRight'", $p, "$file must not use justify buttons");
+            $this->assertStringNotContainsString("'justifyFull'", $p, "$file must not use justify buttons");
+        }
     }
 
     // ── Wiring ────────────────────────────────────────────────────────────────
