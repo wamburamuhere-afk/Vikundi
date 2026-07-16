@@ -116,10 +116,14 @@ includeHeader();
             <div class="card border-0 shadow-sm h-100"><div class="card-body">
                 <h6 class="fw-bold mb-3"><i class="bi bi-graph-up-arrow me-2"></i><?= $t('Your savings over the last 12 months', 'Akiba yako kwa miezi 12 iliyopita') ?></h6>
                 <?php if ($spark): ?>
-                <div class="d-flex align-items-end gap-2" style="height:150px;">
+                <div class="d-flex align-items-end gap-2">
                     <?php foreach ($spark as $p): ?>
                     <div class="flex-fill text-center" title="<?= htmlspecialchars($p['ym'] . ' — ' . $fmt($p['val'])) ?>">
-                        <div class="mx-auto rounded-top" style="width:70%;background:#1769aa;height:<?= max(4, (int) $p['pct']) ?>%;"></div>
+                        <!-- Fixed-height track so the bar's percentage height resolves
+                             (a % height needs a parent with an explicit height). -->
+                        <div class="d-flex align-items-end justify-content-center mx-auto" style="height:130px;">
+                            <div class="rounded-top" style="width:70%;background:#1769aa;height:<?= max(4, (int) $p['pct']) ?>%;"></div>
+                        </div>
                         <div class="text-muted mt-1" style="font-size:10px;"><?= htmlspecialchars(date('M', strtotime($p['ym'] . '-01'))) ?></div>
                     </div>
                     <?php endforeach; ?>
