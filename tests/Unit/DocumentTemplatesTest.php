@@ -93,4 +93,26 @@ class DocumentTemplatesTest extends TestCase
             $this->assertStringContainsString($route, $roots, "route $route must be registered");
         }
     }
+
+    public function testStarterTemplatesSeederIsIdempotentBilingualAndUsesMergeFields(): void
+    {
+        $this->assertStringContainsString('seed_document_templates.php', $this->src('database/migrate.php'));
+        $s = $this->src('database/seed_document_templates.php');
+
+        // idempotent: only insert when a template of that name is absent
+        $this->assertStringContainsString('SELECT id FROM authored_document_templates WHERE name = ?', $s);
+        $this->assertStringContainsString('if ($find->fetchColumn()) { continue; }', $s);
+
+        // bodies are sanitised with the same sanitiser the editor uses
+        $this->assertStringContainsString('vk_sanitize_document_html', $s);
+
+        // English + Swahili versions
+        $this->assertStringContainsString('(English)', $s);
+        $this->assertStringContainsString('(Kiswahili)', $s);
+
+        // the personalising templates actually use merge fields
+        $this->assertStringContainsString('{member_name}', $s);
+        $this->assertStringContainsString('{member_contributions}', $s);
+        $this->assertStringContainsString('{group_name}', $s);
+    }
 }
