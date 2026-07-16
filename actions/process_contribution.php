@@ -3,14 +3,21 @@
 if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/require_csrf.php'; // audit H6: valid CSRF token required
+require_once __DIR__ . '/../core/permissions.php';
+require_once __DIR__ . '/../includes/member_savings.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($_SESSION['user_id'])) {
         echo json_encode(['success' => false, 'message' => 'Unauthorized submission.']);
         exit();
     }
-    
+
     $member_id = intval($_POST['member_id'] ?? 0);
+    // Leadership may record a contribution for any member; anyone else may only
+    // submit their OWN, so a member cannot file contributions against others.
+    if (!canCreate('manage_contributions')) {
+        $member_id = (int) (vk_member_customer_id($pdo, (int) $_SESSION['user_id']) ?? 0);
+    }
     $amount = floatval($_POST['amount'] ?? 0);
     $description = $_POST['description'] ?? '';
 

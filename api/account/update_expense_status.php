@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../roots.php';
+require_once __DIR__ . '/../../includes/require_csrf.php';  // valid CSRF token
 global $pdo;
 
 header('Content-Type: application/json');
@@ -8,6 +9,8 @@ if (!isAuthenticated()) {
     echo json_encode(['success' => false, 'message' => 'Unauthorized access']);
     exit;
 }
+// Only leadership may change an expense's status (e.g. approve it).
+requirePermissionJson('edit', 'expenses');
 
 try {
     $expense_id = $_POST['expense_id'] ?? 0;
