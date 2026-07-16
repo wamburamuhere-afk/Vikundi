@@ -70,8 +70,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (function_exists('loadUserPermissions')) {
                 loadUserPermissions($_SESSION['role_id']);
             }
-            
+
             $response['success'] = true;
+            // Send members to their personal home and leadership to the dashboard
+            // (getLandingPage decides). The login page navigates to this.
+            $response['redirect'] = function_exists('getLandingPage') ? getLandingPage() : 'dashboard';
         } else {
             // Found user but wrong password
             $response['message'] = 'Incorrect password. Please try again.';
