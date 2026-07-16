@@ -37,6 +37,7 @@ $migrations = [
     'grant_manage_documents_leadership.php', // backfill 'manage_documents' for Secretary/Treasurer; drop it from Member
     'create_document_signatories_table.php', // multi-party signing: per-document signatory slots
     'create_authored_document_templates_table.php', // reusable starting points for the Document Writer
+    'add_visibility_to_authored_documents.php', // per-author visibility: shared (default) vs private
 ];
 
 echo "== Vikundi database migrations ==\n";
