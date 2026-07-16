@@ -84,20 +84,9 @@ foreach ($sigs as $s) {
 }
 $showSign = $myPending || (!$hasSignatories && $can_edit);
 
-// Active users for the "add signatory" picker (leadership only), minus those
-// already on the list.
-$userOptions = [];
-if ($can_manage) {
-    $existing = array_map(fn($s) => (int) $s['user_id'], $sigs);
-    $rows = $pdo->query(
-        "SELECT user_id, TRIM(CONCAT_WS(' ', first_name, last_name)) AS name, username
-           FROM users WHERE status = 'active' ORDER BY first_name, last_name"
-    )->fetchAll(PDO::FETCH_ASSOC);
-    foreach ($rows as $r) {
-        if (in_array((int) $r['user_id'], $existing, true)) { continue; }
-        $userOptions[] = $r;
-    }
-}
+// The "add signatory" picker searches members on demand (Select2 AJAX via
+// api/search_document_members, excluding people already on this document), so the
+// whole membership is never loaded into the page.
 
 $statusBadge = function (string $st) use ($t) {
     return match ($st) {
@@ -163,11 +152,8 @@ $statusBadge = function (string $st) use ($t) {
             <div class="row g-2 align-items-end">
                 <div class="col-md-5">
                     <label class="form-label small fw-bold mb-1"><?= $t('Add signatory', 'Ongeza mwanaosaini') ?></label>
-                    <select class="form-select form-select-sm" id="sigUser">
-                        <option value=""><?= $t('Choose a user…', 'Chagua mtumiaji…') ?></option>
-                        <?php foreach ($userOptions as $u): ?>
-                        <option value="<?= (int) $u['user_id'] ?>"><?= htmlspecialchars($u['name'] ?: $u['username']) ?></option>
-                        <?php endforeach; ?>
+                    <select class="form-select form-select-sm" id="sigUser" data-placeholder="<?= $t('Search a member by name…', 'Tafuta mwanachama kwa jina…') ?>">
+                        <option value=""></option>
                     </select>
                 </div>
                 <div class="col-md-4">
@@ -256,6 +242,28 @@ $statusBadge = function (string $st) use ($t) {
 <script>
 const docIsSw = <?= $is_sw ? 'true' : 'false' ?>;
 const DOC_ID = <?= (int) $doc_id ?>;
+
+$(function () {
+    // Searchable signatory picker — searches members on demand and hides anyone
+    // already assigned to this document. First 20 on open, filters as you type.
+    if ($('#sigUser').length) {
+        $('#sigUser').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: $('#sigUser').data('placeholder'),
+            allowClear: true,
+            minimumInputLength: 0,
+            ajax: {
+                url: '/api/search_document_members',
+                dataType: 'json',
+                delay: 250,
+                data: params => ({ q: params.term || '', exclude_doc: DOC_ID }),
+                processResults: data => data,
+                cache: true
+            }
+        });
+    }
+});
 
 function signDocument() {
     Swal.fire({
