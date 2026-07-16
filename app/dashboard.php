@@ -246,12 +246,12 @@ $display_month = $is_sw ? $sw_months[date('n')] : $en_months[date('n')];
             </div>
             <!-- 5. Budget Allocated (NEW - Teal Color) -->
             <div class="col">
-                <div class="vk-kpi-card h-100 d-flex flex-column justify-content-between" style="background: linear-gradient(135deg, #06b6d4, #0891b2);">
+                <div class="vk-kpi-card vk-kpi-teal h-100 d-flex flex-column justify-content-between">
                     <div>
-                        <div class="vk-kpi-label text-white opacity-75"><?= et('dashboard.budget_allocated') ?></div>
-                        <div class="vk-kpi-val mt-1 text-white" style="font-size: 1.1rem;"><?= fmt_currency($dash_alloc) ?></div>
+                        <div class="vk-kpi-label"><?= et('dashboard.budget_allocated') ?></div>
+                        <div class="vk-kpi-val mt-1" style="font-size: 1.1rem;"><?= fmt_currency($dash_alloc) ?></div>
                     </div>
-                    <div class="vk-kpi-sub mt-2 text-white opacity-75"><?= $display_month ?></div>
+                    <div class="vk-kpi-sub mt-2"><?= $display_month ?></div>
                 </div>
             </div>
         </div>
@@ -349,10 +349,18 @@ new Chart(ctx, {
     type: 'bar',
     data: {
         labels: <?= json_encode($months_labels) ?>,
-        datasets: [{ label: 'Contributions (TZS)', data: <?= json_encode($months_data) ?>, backgroundColor: 'rgba(37,99,235,0.1)', borderColor: '#2563eb', borderWidth: 2, borderRadius: 5 }]
+        // Solid brand-blue rounded bars to match the member home chart.
+        datasets: [{ label: 'Contributions (TZS)', data: <?= json_encode($months_data) ?>, backgroundColor: '#1769aa', hoverBackgroundColor: '#0f4c81', borderWidth: 0, borderRadius: 6, maxBarThickness: 40 }]
     },
-    options: { responsive: true, plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true, ticks: { callback: v => 'TZS ' + v.toLocaleString() } }, x: { grid: { display: false } } }
+    options: { responsive: true,
+        plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: c => 'TZS ' + Number(c.raw).toLocaleString() } }
+        },
+        scales: {
+            y: { beginAtZero: true, grid: { color: '#eef2f6' }, border: { display: false }, ticks: { callback: v => 'TZS ' + v.toLocaleString() } },
+            x: { grid: { display: false }, border: { display: false } }
+        }
     }
 });
 </script>
@@ -361,14 +369,17 @@ new Chart(ctx, {
 .vk-dashboard { background: #f8fafc; min-height: 100vh; }
 .vk-alert-strip { background: #1e293b; border-bottom: 3px solid #f59e0b; }
 .vk-alert-chip { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); color: #fbbf24; border-radius: 20px; padding: 2px 12px; font-size: .8rem; text-decoration: none; }
-.vk-kpi-card { border-radius: 20px; padding: 25px; color: #fff; overflow: hidden; position: relative; transition: .3s; }
-.vk-kpi-card:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
-.vk-kpi-val { font-size: 1.8rem; font-weight: 800; }
-.vk-kpi-label { font-size: .8rem; opacity: .8; font-weight: 700; text-transform: uppercase; }
-.vk-kpi-blue { background: linear-gradient(135deg, #3b82f6, #2563eb); }
-.vk-kpi-green { background: linear-gradient(135deg, #10b981, #059669); }
-.vk-kpi-orange { background: linear-gradient(135deg, #f59e0b, #d97706); }
-.vk-kpi-purple { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+/* Clean white cards with a coloured left border — matching the member home. */
+.vk-kpi-card { background: #fff; border: 1px solid #e4e9ef; border-left: 5px solid #1769aa; border-radius: 12px; padding: 18px 20px; color: #1b2733; overflow: hidden; position: relative; transition: .3s; }
+.vk-kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 18px rgba(20,40,60,0.09); }
+.vk-kpi-val { font-size: 1.7rem; font-weight: 800; line-height: 1.1; color: #1769aa; }
+.vk-kpi-label { font-size: .72rem; color: #5b6b7a; opacity: 1; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.vk-kpi-sub { font-size: .72rem; color: #8794a3; font-weight: 600; }
+.vk-kpi-blue   { border-left-color: #1769aa; } .vk-kpi-blue   .vk-kpi-val { color: #1769aa; }
+.vk-kpi-green  { border-left-color: #1a7f4b; } .vk-kpi-green  .vk-kpi-val { color: #1a7f4b; }
+.vk-kpi-orange { border-left-color: #d97706; } .vk-kpi-orange .vk-kpi-val { color: #d97706; }
+.vk-kpi-purple { border-left-color: #7c3aed; } .vk-kpi-purple .vk-kpi-val { color: #7c3aed; }
+.vk-kpi-teal   { border-left-color: #0891b2; } .vk-kpi-teal   .vk-kpi-val { color: #0891b2; }
 .vk-quick-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 18px; border-radius: 12px; text-decoration: none; font-size: .85rem; font-weight: 600; background: #fff; border: 1px solid #e2e8f0; color: #475569; transition: all .3s; }
 .vk-quick-btn:hover { background: #3b82f6 !important; color: #fff !important; transform: translateY(-3px); }
 @media (max-width: 768px) {
