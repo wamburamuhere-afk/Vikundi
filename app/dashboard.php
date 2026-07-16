@@ -57,12 +57,18 @@ if (!$is_viongozi) {
 }
 
 // ── Monthly contributions trend (last 6 months) ───────────────────────────
-$months_labels = []; $months_data = [];
+$months_labels = []; $months_data = []; $months_expenses = [];
 for ($i = 5; $i >= 0; $i--) {
     $months_labels[] = date('M Y', strtotime("-$i months"));
     $y = date('Y', strtotime("-$i months")); $m = date('m', strtotime("-$i months"));
     $stmt = $pdo->prepare("SELECT COALESCE(SUM(amount),0) FROM contributions WHERE status IN ('confirmed', 'approved', '') AND YEAR(contribution_date)=? AND MONTH(contribution_date)=?");
     $stmt->execute([$y, $m]); $months_data[] = (float) $stmt->fetchColumn();
+
+    // Expenses that month = approved death + general expenses (matches the Expenses KPI).
+    $es = $pdo->prepare("SELECT
+          (SELECT COALESCE(SUM(amount),0) FROM death_expenses   WHERE status='approved' AND YEAR(expense_date)=? AND MONTH(expense_date)=?)
+        + (SELECT COALESCE(SUM(amount),0) FROM general_expenses WHERE status='approved' AND YEAR(expense_date)=? AND MONTH(expense_date)=?)");
+    $es->execute([$y, $m, $y, $m]); $months_expenses[] = (float) $es->fetchColumn();
 }
 
 // ── AUDIT LOGS - REAL DATA & TIME ──────────────────────────────────────────
@@ -349,13 +355,16 @@ new Chart(ctx, {
     type: 'bar',
     data: {
         labels: <?= json_encode($months_labels) ?>,
-        // Solid brand-blue rounded bars to match the member home chart.
-        datasets: [{ label: 'Contributions (TZS)', data: <?= json_encode($months_data) ?>, backgroundColor: '#1769aa', hoverBackgroundColor: '#0f4c81', borderWidth: 0, borderRadius: 6, maxBarThickness: 40 }]
+        // Money in vs money out per month: contributions (blue) and expenses (amber).
+        datasets: [
+            { label: 'Contributions', data: <?= json_encode($months_data) ?>, backgroundColor: '#1769aa', hoverBackgroundColor: '#0f4c81', borderWidth: 0, borderRadius: 6, maxBarThickness: 26 },
+            { label: 'Expenses', data: <?= json_encode($months_expenses) ?>, backgroundColor: '#d97706', hoverBackgroundColor: '#b45309', borderWidth: 0, borderRadius: 6, maxBarThickness: 26 }
+        ]
     },
     options: { responsive: true,
         plugins: {
-            legend: { display: false },
-            tooltip: { callbacks: { label: c => 'TZS ' + Number(c.raw).toLocaleString() } }
+            legend: { display: true, position: 'top', labels: { boxWidth: 12, usePointStyle: true, pointStyle: 'rectRounded' } },
+            tooltip: { callbacks: { label: c => c.dataset.label + ': TZS ' + Number(c.raw).toLocaleString() } }
         },
         scales: {
             y: { beginAtZero: true, grid: { color: '#eef2f6' }, border: { display: false }, ticks: { callback: v => 'TZS ' + v.toLocaleString() } },
