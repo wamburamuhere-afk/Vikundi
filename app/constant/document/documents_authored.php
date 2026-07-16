@@ -4,6 +4,7 @@
 ob_start();
 require_once __DIR__ . '/../../../roots.php';
 require_once __DIR__ . '/../../../includes/document_signatories.php';
+require_once __DIR__ . '/../../../includes/authored_document_access.php';
 
 global $pdo;
 if (!isAuthenticated()) { redirectTo('login'); }
@@ -27,15 +28,19 @@ $can_edit   = canEdit('manage_documents');
 $can_delete = canDelete('manage_documents');
 
 [$signerJoin, $signerParams] = vk_signer_documents_join($can_docs, $user_id);
+// Leadership sees shared documents, their own, and anything they must sign.
+// Admins are unrestricted; a signer-only list is already scoped by the join.
+[$visWhere, $visParams] = vk_authored_visibility_where(isAdmin(), $can_docs, $user_id, 'd');
 $stmt = $pdo->prepare("
-    SELECT d.id, d.title, d.doc_type, d.status, d.use_letterhead, d.updated_at,
+    SELECT d.id, d.title, d.doc_type, d.status, d.visibility, d.use_letterhead, d.updated_at,
            TRIM(CONCAT_WS(' ', u.first_name, u.last_name)) AS author
       FROM authored_documents d
       LEFT JOIN users u ON u.user_id = d.created_by
       $signerJoin
+      $visWhere
      ORDER BY d.updated_at DESC, d.id DESC
 ");
-$stmt->execute($signerParams);
+$stmt->execute(array_merge($signerParams, $visParams));
 $docs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $type_labels = [
@@ -81,7 +86,12 @@ $type_labels = [
                         <td><?= $i + 1 ?></td>
                         <td class="fw-semibold"><?= htmlspecialchars($d['title']) ?></td>
                         <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($type_labels[$d['doc_type']] ?? $d['doc_type']) ?></span></td>
-                        <td><span class="badge bg-<?= $d['status'] === 'final' ? 'success' : 'secondary' ?>"><?= $d['status'] === 'final' ? $t('Final', 'Kamili') : $t('Draft', 'Rasimu') ?></span></td>
+                        <td>
+                            <span class="badge bg-<?= $d['status'] === 'final' ? 'success' : 'secondary' ?>"><?= $d['status'] === 'final' ? $t('Final', 'Kamili') : $t('Draft', 'Rasimu') ?></span>
+                            <?php if (($d['visibility'] ?? 'shared') === 'private'): ?>
+                            <?= vk_authored_visibility_badge('private', $is_sw) ?>
+                            <?php endif; ?>
+                        </td>
                         <td><?= htmlspecialchars($d['author'] ?: '—') ?></td>
                         <td class="text-nowrap text-muted"><?= $d['updated_at'] ? date('d M Y', strtotime($d['updated_at'])) : '—' ?></td>
                         <td class="text-end text-nowrap">
