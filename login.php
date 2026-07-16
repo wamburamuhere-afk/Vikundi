@@ -7,7 +7,7 @@ $group_name = $gs['group_name'] ?? 'VIKUNDI MANAGEMENT SYSTEM';
 $group_logo = $gs['group_logo'] ?? 'logo1.png';
 
 if (isset($_SESSION['user_id'])) {
-    header('Location: dashboard');
+    header('Location: ' . (function_exists('getLandingPage') ? getLandingPage() : 'dashboard'));
     exit;
 }
 ?>
@@ -222,7 +222,7 @@ if (isset($_SESSION['user_id'])) {
                     dataType: 'json',
                     success: function(response) {
                         if (response.success) {
-                            window.location.href = 'dashboard';
+                            window.location.href = response.redirect || 'dashboard';
                         } else {
                             Swal.fire({
                                 icon: 'error',
