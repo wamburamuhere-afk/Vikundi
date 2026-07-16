@@ -1,10 +1,15 @@
 <?php
 require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/require_auth.php';  // must be logged in
+require_once __DIR__ . '/../includes/require_csrf.php';  // valid CSRF token
+require_once __DIR__ . '/../core/permissions.php';
 require_once __DIR__ . '/../includes/expense_helpers.php';
 require_once __DIR__ . '/../includes/upload_guard.php';
 global $pdo;
 
 header('Content-Type: application/json');
+// Only leadership may create group expenses — ordinary members are view-only.
+requirePermissionJson('create', 'expenses');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['success' => false, 'message' => 'Invalid request method.']);
