@@ -5,8 +5,10 @@ require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/require_auth.php';  // must be logged in
 require_once __DIR__ . '/../includes/require_csrf.php';  // valid CSRF token
 require_once __DIR__ . '/../core/permissions.php';
+require_once __DIR__ . '/../core/workflow.php';           // workflowActorSnapshot()
 require_once __DIR__ . '/../includes/activity_logger.php';
 require_once __DIR__ . '/../includes/document_sanitizer.php';
+require_once __DIR__ . '/../includes/document_merge_fields.php';
 
 header('Content-Type: application/json');
 
@@ -28,7 +30,15 @@ $doc_type       = in_array($_POST['doc_type'] ?? '', $allowed_types, true) ? $_P
 $status         = ($_POST['status'] ?? 'draft') === 'final' ? 'final' : 'draft';
 $visibility     = ($_POST['visibility'] ?? 'shared') === 'private' ? 'private' : 'shared';
 $use_letterhead = !empty($_POST['use_letterhead']) ? 1 : 0;
-$body_html      = vk_sanitize_document_html($_POST['body_html'] ?? '');
+$member_id      = isset($_POST['member_id']) && ctype_digit((string) $_POST['member_id']) ? (int) $_POST['member_id'] : 0;
+
+// Sanitise the authored structure first, then resolve merge fields and FREEZE the
+// result into what we store. Sanitising before resolving keeps the injected data
+// values (already HTML-escaped by the builder) from ever being treated as markup.
+$body_html = vk_sanitize_document_html($_POST['body_html'] ?? '');
+$actor     = workflowActorSnapshot();
+$merge     = vk_build_merge_values($pdo, $member_id > 0 ? $member_id : null, $actor['name'], $actor['role']);
+$body_html = vk_resolve_merge_fields($body_html, $merge);
 
 try {
     if ($doc_id > 0) {
