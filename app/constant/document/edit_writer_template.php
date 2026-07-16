@@ -6,6 +6,7 @@ ob_start();
 require_once __DIR__ . '/../../../roots.php';
 requireViewPermission('manage_documents');
 require_once __DIR__ . '/../../../includes/document_editor_assets.php';
+require_once __DIR__ . '/../../../includes/document_merge_fields.php';
 require_once 'header.php';
 
 global $pdo;
@@ -61,7 +62,11 @@ if ($tpl_id > 0) {
             </div>
 
             <div class="mb-3">
-                <label class="form-label fw-bold small"><?= $t('Template body', 'Maandishi ya kiolezo') ?></label>
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <label class="form-label fw-bold small mb-0"><?= $t('Template body', 'Maandishi ya kiolezo') ?></label>
+                    <?php vk_render_merge_field_menu('#tplBody', $is_sw); ?>
+                </div>
+                <div class="form-text small mb-2"><?= $t('Insert fields like {member_name}; they are filled in when a document is created from this template.', 'Ingiza uga kama {member_name}; hujazwa nyaraka inapotengenezwa kutoka kiolezo hiki.') ?></div>
                 <div id="tplBody"><?= $tpl['body_html'] ?></div>
             </div>
 
