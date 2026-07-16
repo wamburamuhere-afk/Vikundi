@@ -299,6 +299,8 @@ $routes = [
     // Fines Module
     'manage_fines'        => CUSTOMERS_DIR . '/manage_fines.php',
     'my_fines'            => CUSTOMERS_DIR . '/my_fines.php',
+    'my_home'             => CUSTOMERS_DIR . '/my_home.php',
+    'my_home.php'         => CUSTOMERS_DIR . '/my_home.php',
     'fines_print'         => CUSTOMERS_DIR . '/fines_print.php',
     'fines_print.php'     => CUSTOMERS_DIR . '/fines_print.php',
     'actions/issue_fine'         => ROOT_DIR . '/actions/issue_fine.php',
