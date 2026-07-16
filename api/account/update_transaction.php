@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../roots.php';
+require_once __DIR__ . '/../../includes/require_csrf.php';  // valid CSRF token
 global $pdo;
 
 header('Content-Type: application/json');
@@ -9,6 +10,8 @@ if (!isAuthenticated()) {
     echo json_encode(['success' => false, 'message' => 'Unauthorized access']);
     exit;
 }
+// Only leadership may edit accounting entries.
+requirePermissionJson('edit', 'journals');
 
 try {
     $entry_id = $_POST['entry_id'] ?? 0;

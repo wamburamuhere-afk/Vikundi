@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../roots.php';
 require_once __DIR__ . '/../helpers/transaction_helper.php';
+require_once __DIR__ . '/../../includes/require_csrf.php';  // valid CSRF token
 global $pdo;
 
 header('Content-Type: application/json');
@@ -12,6 +13,8 @@ try {
         echo json_encode(['success' => false, 'message' => 'Unauthorized']);
         exit;
     }
+    // Only leadership may edit expenses.
+    requirePermissionJson('edit', 'expenses');
 
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         http_response_code(405);
