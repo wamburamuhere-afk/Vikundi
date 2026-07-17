@@ -81,6 +81,7 @@ function getActionBadge(string $action, bool $isSw): array {
         'deleted' => ['color' => 'danger',    'label' => $isSw ? 'Futa'    : 'Delete'],
         'login'   => ['color' => 'primary',   'label' => $isSw ? 'Ingia'   : 'Login'],
         'logout'  => ['color' => 'secondary', 'label' => $isSw ? 'Toka'    : 'Logout'],
+        'login failed' => ['color' => 'danger', 'label' => $isSw ? 'Imeshindwa' : 'Failed Login'],
         default   => ['color' => 'secondary', 'label' => ucfirst($action)],
     };
 }
@@ -142,6 +143,7 @@ function getBadgeIcon(string $label): string {
         'delete', 'futa' => 'trash',
         'login', 'ingia' => 'box-arrow-in-right',
         'logout', 'toka' => 'box-arrow-right',
+        'failed login', 'imeshindwa' => 'shield-exclamation',
         default          => 'activity',
     };
 }
