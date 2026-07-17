@@ -42,4 +42,36 @@ class AuditLogsViewTest extends TestCase
         $this->assertStringContainsString("date('d/m/y H:i:s'", $this->src);
         $this->assertStringNotContainsString("date('d/m/y H:i'", $this->src);
     }
+
+    // ── PR 4: server-side export of the full filtered set ──────────────────────
+
+    public function test_export_is_server_side_and_streams_full_filtered_set(): void
+    {
+        $this->assertStringContainsString("\$_GET['export'] === 'csv'", $this->src);
+        // Export query reuses the same WHERE (filters + page-view toggle) ...
+        $this->assertMatchesRegularExpression('/\$sql\s*=\s*"SELECT.*\$where/s', $this->src);
+        // ... but must NOT be limited to a page.
+        $this->assertStringContainsString('ORDER BY al.created_at DESC";', $this->src);
+        $this->assertStringNotContainsString('LIMIT :lmt OFFSET :ofs";', $this->src); // no paging on the export query
+    }
+
+    public function test_export_sends_csv_download_headers_with_bom(): void
+    {
+        $this->assertStringContainsString('Content-Type: text/csv', $this->src);
+        $this->assertStringContainsString('Content-Disposition: attachment; filename="', $this->src);
+        $this->assertStringContainsString("\\xEF\\xBB\\xBF", $this->src, 'UTF-8 BOM for Excel');
+    }
+
+    public function test_export_is_recorded_in_the_audit_trail(): void
+    {
+        // Exporting the audit log is itself an audited action.
+        $this->assertStringContainsString("logActivity('Exported', 'Activity Logs'", $this->src);
+    }
+
+    public function test_frontend_no_longer_scrapes_the_dom(): void
+    {
+        // Old behaviour exported only the 25 visible rows via DOM scraping — gone.
+        $this->assertStringNotContainsString('exportTableToCSV', $this->src);
+        $this->assertStringContainsString("?export=csv&' + params", $this->src);
+    }
 }

@@ -44,6 +44,60 @@ if (!$show_views)    { $conditions[] = "al.action <> 'Viewed'"; }
 $where = $conditions ? ('WHERE ' . implode(' AND ', $conditions)) : '';
 $base  = "FROM activity_logs al LEFT JOIN users u ON al.user_id = u.user_id";
 
+// ── CSV export (server-side, full filtered set) ───────────────────────────────
+// The old export scraped the 25 rows visible in the DOM. This streams every row
+// matching the active filters (type / user / date / page-view toggle), not just
+// the current page, so an exported audit trail is actually complete.
+if (isset($_GET['export']) && $_GET['export'] === 'csv') {
+    $sql = "SELECT al.created_at, al.action, al.module, al.description, al.reference, al.ip_address,
+                   TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,''))) AS full_name,
+                   u.username, COALESCE(r.role_name, 'System') AS role_name
+            FROM activity_logs al
+            LEFT JOIN users u ON al.user_id = u.user_id
+            LEFT JOIN roles r ON u.role_id = r.role_id
+            $where
+            ORDER BY al.created_at DESC";
+    $stmt = $pdo->prepare($sql);
+    foreach ($params as $k => $v) $stmt->bindValue($k, $v);
+    $stmt->execute();
+
+    // Audit the auditors: record that the log was exported.
+    require_once ROOT_DIR . '/includes/activity_logger.php';
+    logActivity('Exported', 'Activity Logs',
+        $isSw ? 'Alipakua kumbukumbu za shughuli (CSV)' : 'Exported activity logs (CSV)',
+        'ACTIVITY-LOGS');
+
+    $filename = 'activity_logs_' . date('Ymd_His') . '.csv';
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Cache-Control: no-store');
+
+    $out = fopen('php://output', 'w');
+    fwrite($out, "\xEF\xBB\xBF"); // UTF-8 BOM so Excel renders Swahili characters correctly
+    // Explicit separator/enclosure/escape ('' escape) — RFC 4180 CSV and avoids
+    // the PHP 8.4 deprecation on the default $escape argument.
+    fputcsv($out, $isSw
+        ? ['Tarehe na Saa', 'Kitendo', 'Moduli', 'Maelezo', 'Kumbukumbu', 'Anwani ya IP', 'Mtumiaji', 'Wadhifa']
+        : ['Time', 'Action', 'Module', 'Description', 'Reference', 'IP Address', 'User', 'Role'],
+        ',', '"', '');
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $user = trim($row['full_name']) ?: ($row['username'] ?: ($isSw ? 'Mfumo' : 'System'));
+        $desc = $row['description'] ?: trim(($row['action'] ?? '') . ' ' . ($row['module'] ?? ''));
+        fputcsv($out, [
+            date('d/m/Y H:i:s', strtotime($row['created_at'])),
+            $row['action'],
+            $row['module'],
+            $desc,
+            $row['reference'],
+            $row['ip_address'],
+            $user,
+            $row['role_name'],
+        ], ',', '"', '');
+    }
+    fclose($out);
+    exit;
+}
+
 try {
     $users = $pdo->query("SELECT user_id, first_name, last_name FROM users ORDER BY first_name")->fetchAll(PDO::FETCH_ASSOC);
 
@@ -642,32 +696,12 @@ function printAndLog() {
 }
 
 function logAndExport() {
-    $.post('<?= getUrl("api/log_action") ?>', {
-        action: 'Exported',
-        module: 'Activity Logs',
-        description: '<?= $isSw ? "Alipakua ripoti ya shughuli (CSV)" : "Exported activity logs report (CSV)" ?>',
-        reference: 'ACTIVITY-LOGS'
-    }).always(function() { exportTableToCSV(); });
+    // Server streams the FULL filtered set (every matching row, not just the page
+    // in view) and records the export itself. Content-Disposition makes the
+    // browser download it without navigating away.
+    const params = $('#filterForm').serialize();
+    window.location = '<?= getUrl('activity-logs') ?>?export=csv&' + params;
 }
-
-window.exportTableToCSV = () => {
-    let csv = [];
-    const rows = document.querySelectorAll("#activityTable tr");
-    for (const row of rows) {
-        let cols = row.querySelectorAll("td, th");
-        let data = [];
-        for (let i = 0; i < cols.length; i++) {
-            data.push('"' + cols[i].innerText.replace(/"/g, '""') + '"');
-        }
-        csv.push(data.join(","));
-    }
-    const blob = new Blob([csv.join("\n")], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.setAttribute("href", url);
-    a.setAttribute("download", "<?= $isSw ? 'kumbukumbu_za_shughuli.csv' : 'activity_logs.csv' ?>");
-    a.click();
-};
 // ─────────────────────────────────────────────────────────────────────────────
 
 </script>
