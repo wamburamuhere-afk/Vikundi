@@ -58,6 +58,27 @@ if (!function_exists('logLogout')) {
     }
 }
 
+// ── Failed / blocked login ───────────────────────────────────────────────────────
+if (!function_exists('logFailedLogin')) {
+    /**
+     * Record an unsuccessful sign-in attempt for the security audit trail.
+     * IMPORTANT: never pass the password — only the attempted username/email and
+     * a short reason. $user_id is 0 when the account is unknown.
+     *
+     * @param string $attemptedLogin username or email that was tried
+     * @param string $reason         short tag, e.g. "wrong password", "account not found"
+     * @param int    $user_id        the matched user id, or 0 if none matched
+     */
+    function logFailedLogin(string $attemptedLogin, string $reason = 'invalid credentials', int $user_id = 0): void {
+        $lang = $_SESSION['preferred_language'] ?? 'en';
+        $safe = substr(trim($attemptedLogin), 0, 100); // cap length; this is a username/email, never a password
+        $desc = $lang === 'sw'
+            ? "Jaribio la kuingia lililoshindwa kwa \"$safe\" ($reason)"
+            : "Failed login attempt for \"$safe\" ($reason)";
+        logActivity('Login Failed', 'Auth', $desc, 'LOGIN-ATTEMPT', $user_id);
+    }
+}
+
 // ── CRUD Actions ───────────────────────────────────────────────────────────────
 if (!function_exists('logCreate')) {
     /**
