@@ -74,4 +74,43 @@ class AuditLogsViewTest extends TestCase
         $this->assertStringNotContainsString('exportTableToCSV', $this->src);
         $this->assertStringContainsString("?export=csv&' + params", $this->src);
     }
+
+    // ── PR 5: action filter + summary strip ────────────────────────────────────
+
+    public function test_action_filter_is_parsed_and_applied(): void
+    {
+        $this->assertStringContainsString("\$action_filter  = trim(\$_GET['action'] ?? '')", $this->src);
+        $this->assertStringContainsString('al.action = :act', $this->src);
+        $this->assertStringContainsString('name="action"', $this->src);
+    }
+
+    public function test_viewed_action_filter_forces_page_views_on(): void
+    {
+        // Filtering to the Viewed action must override the default hide, or it
+        // would return an empty page.
+        $this->assertStringContainsString("(\$action_filter === 'Viewed')", $this->src);
+    }
+
+    public function test_summary_counts_by_action_ignoring_the_drilldown(): void
+    {
+        // Summary snapshots the filter conditions BEFORE the action filter is added,
+        // so the breakdown is stable when you drill into one action.
+        $this->assertStringContainsString('$summary_conditions = $conditions;', $this->src);
+        $this->assertStringContainsString('GROUP BY al.action', $this->src);
+    }
+
+    public function test_summary_strip_highlights_failed_logins(): void
+    {
+        $this->assertStringContainsString('function renderSummaryStrip', $this->src);
+        $this->assertStringContainsString("'Login Failed'", $this->src);
+        // The failed-login card is alarmed (filled red) only when the count is > 0.
+        $this->assertStringContainsString("\$c['key'] === 'Login Failed' && \$val > 0", $this->src);
+    }
+
+    public function test_summary_updates_over_ajax(): void
+    {
+        // Filter changes reload rows over AJAX, so the summary must travel with them.
+        $this->assertStringContainsString("'summary' => renderSummaryStrip(", $this->src);
+        $this->assertStringContainsString("$('#auditSummary').html(res.summary)", $this->src);
+    }
 }
