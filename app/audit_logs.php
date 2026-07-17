@@ -414,6 +414,9 @@ require_once ROOT_DIR . '/header.php';
             </p>
         </div>
         <div class="d-flex gap-2 align-items-center flex-wrap">
+            <a href="<?= getUrl('audit-timeline') ?>" class="btn btn-outline-primary px-4 rounded-pill fw-bold">
+                <i class="bi bi-person-lines-fill me-1"></i><?= $isSw ? 'Ratiba ya Mtumiaji' : 'User Timeline' ?>
+            </a>
             <a href="<?= getUrl('dashboard') ?>" class="btn btn-primary px-4 rounded-pill shadow-sm fw-bold">
                 <i class="bi bi-arrow-left me-1"></i><?= $isSw ? 'Rudi Nyumbani' : 'Back to Dashboard' ?>
             </a>

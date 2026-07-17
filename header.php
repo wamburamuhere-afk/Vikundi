@@ -65,6 +65,8 @@ try {
             'audit-logs'                => ['en' => 'Activity Logs',        'sw' => 'Kumbukumbu za Shughuli'],
             'activity-logs'             => ['en' => 'Activity Logs',        'sw' => 'Kumbukumbu za Shughuli'],
             'audit_logs'                => ['en' => 'Activity Logs',        'sw' => 'Kumbukumbu za Shughuli'],
+            'audit-timeline'            => ['en' => 'User Activity Timeline', 'sw' => 'Ratiba ya Shughuli za Mtumiaji'],
+            'user-timeline'             => ['en' => 'User Activity Timeline', 'sw' => 'Ratiba ya Shughuli za Mtumiaji'],
             'financial_ledger'          => ['en' => 'Financial Ledger',     'sw' => 'Rejesta ya Fedha'],
             'reports/financial_ledger'  => ['en' => 'Financial Ledger',     'sw' => 'Rejesta ya Fedha'],
             'petty_cash'                => ['en' => 'Petty Cash',           'sw' => 'Vocha za Petty Cash'],
