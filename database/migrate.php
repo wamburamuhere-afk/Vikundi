@@ -39,6 +39,7 @@ $migrations = [
     'create_authored_document_templates_table.php', // reusable starting points for the Document Writer
     'add_visibility_to_authored_documents.php', // per-author visibility: shared (default) vs private
     'seed_document_templates.php',  // ready-to-use starter templates (English + Swahili), idempotent
+    'add_activity_logs_indexes.php', // indexes for the audit-logs viewer (created_at/user/module/action)
 ];
 
 echo "== Vikundi database migrations ==\n";
