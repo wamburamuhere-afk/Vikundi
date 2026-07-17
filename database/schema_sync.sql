@@ -63,7 +63,11 @@ CREATE TABLE IF NOT EXISTS `activity_logs` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
   `reference` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `idx_alog_created` (`created_at`),
+  KEY `idx_alog_user_created` (`user_id`,`created_at`),
+  KEY `idx_alog_module_created` (`module`,`created_at`),
+  KEY `idx_alog_action` (`action`(20))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS `ai_prompts` (
