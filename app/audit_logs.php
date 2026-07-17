@@ -23,6 +23,7 @@ $page   = max(1, (int)($_GET['page'] ?? 1));
 $offset = ($limit === -1) ? 0 : ($page - 1) * $limit;
 
 $type_filter    = trim($_GET['type'] ?? '');
+$action_filter  = trim($_GET['action'] ?? '');
 $user_id_filter = trim($_GET['user_id'] ?? '');
 $date_from      = trim($_GET['date_from'] ?? '');
 $date_to        = trim($_GET['date_to'] ?? '');
@@ -30,8 +31,10 @@ $date_to        = trim($_GET['date_to'] ?? '');
 // Page-view (navigation) logging is high-volume noise that buries the real
 // audit events (logins, money, deletes). Hide 'Viewed' rows by default; the
 // user can opt in with the toggle, and we auto-include them when they've
-// explicitly filtered to the Navigation module.
-$show_views = (isset($_GET['show_views']) && $_GET['show_views'] == '1') || ($type_filter === 'Navigation');
+// explicitly asked for them (Navigation module, or the Viewed action filter).
+$show_views = (isset($_GET['show_views']) && $_GET['show_views'] == '1')
+    || ($type_filter === 'Navigation')
+    || ($action_filter === 'Viewed');
 
 // ── Build query ───────────────────────────────────────────────────────────────
 $conditions = []; $params = [];
@@ -40,6 +43,13 @@ if ($user_id_filter) { $conditions[] = "al.user_id = :uid";    $params[':uid']  
 if ($date_from)      { $conditions[] = "al.created_at >= :df"; $params[':df']   = $date_from . ' 00:00:00'; }
 if ($date_to)        { $conditions[] = "al.created_at <= :dt"; $params[':dt']   = $date_to   . ' 23:59:59'; }
 if (!$show_views)    { $conditions[] = "al.action <> 'Viewed'"; }
+
+// The summary strip counts by action over the current filter window, EXCLUDING
+// the action drilldown itself — so the breakdown stays stable as you click into
+// a single action. Snapshot the conditions before adding the action filter.
+$summary_conditions = $conditions;
+$summary_params     = $params;
+if ($action_filter)  { $conditions[] = "al.action = :act"; $params[':act'] = $action_filter; }
 
 $where = $conditions ? ('WHERE ' . implode(' AND ', $conditions)) : '';
 $base  = "FROM activity_logs al LEFT JOIN users u ON al.user_id = u.user_id";
@@ -128,9 +138,23 @@ try {
     $types = $pdo->query("SELECT DISTINCT module FROM activity_logs WHERE module IS NOT NULL AND module != '' ORDER BY module")
                  ->fetchAll(PDO::FETCH_COLUMN);
 
+    $actions = $pdo->query("SELECT DISTINCT action FROM activity_logs WHERE action IS NOT NULL AND action != '' ORDER BY action")
+                   ->fetchAll(PDO::FETCH_COLUMN);
+
+    // Counts by action for the current filter window (ignoring the action drilldown).
+    $sum_where = $summary_conditions ? ('WHERE ' . implode(' AND ', $summary_conditions)) : '';
+    $sum_stmt  = $pdo->prepare("SELECT al.action, COUNT(*) AS c FROM activity_logs al $sum_where GROUP BY al.action");
+    foreach ($summary_params as $k => $v) $sum_stmt->bindValue($k, $v);
+    $sum_stmt->execute();
+    $summary_counts = [];
+    foreach ($sum_stmt->fetchAll(PDO::FETCH_ASSOC) as $r) $summary_counts[$r['action']] = (int) $r['c'];
+    $summary_total = array_sum($summary_counts);
+
 } catch (PDOException $e) {
     $error = $e->getMessage();
-    $activities = []; $users = []; $types = []; $total_items = 0; $total_pages = 1;
+    $activities = []; $users = []; $types = []; $actions = [];
+    $summary_counts = []; $summary_total = 0;
+    $total_items = 0; $total_pages = 1;
 }
 
 // ── Helper: action → badge info ───────────────────────────────────────────────
@@ -145,6 +169,41 @@ function getActionBadge(string $action, bool $isSw): array {
         'login failed' => ['color' => 'danger', 'label' => $isSw ? 'Imeshindwa' : 'Failed Login'],
         default   => ['color' => 'secondary', 'label' => ucfirst($action)],
     };
+}
+
+// ── Render the summary strip (counts by action for the current filter) ─────────
+function renderSummaryStrip(array $counts, int $total, bool $isSw): string {
+    // key => [label, colour, icon]; '' key = total. Failed logins are highlighted.
+    $cards = [
+        ['key' => '',             'label' => $isSw ? 'Matukio Yote' : 'Total events', 'color' => 'dark',    'icon' => 'list-ul'],
+        ['key' => 'Login',        'label' => $isSw ? 'Kuingia'      : 'Logins',        'color' => 'primary', 'icon' => 'box-arrow-in-right'],
+        ['key' => 'Login Failed', 'label' => $isSw ? 'Kumeshindwa'  : 'Failed logins', 'color' => 'danger',  'icon' => 'shield-exclamation'],
+        ['key' => 'Created',      'label' => $isSw ? 'Kuunda'       : 'Created',       'color' => 'success', 'icon' => 'plus-circle'],
+        ['key' => 'Updated',      'label' => $isSw ? 'Kuhariri'     : 'Updated',       'color' => 'warning', 'icon' => 'pencil'],
+        ['key' => 'Deleted',      'label' => $isSw ? 'Kufuta'       : 'Deleted',       'color' => 'danger',  'icon' => 'trash'],
+    ];
+    $html = '<div class="row g-2 mb-4">';
+    foreach ($cards as $c) {
+        $val = $c['key'] === '' ? $total : (int) ($counts[$c['key']] ?? 0);
+        // Draw the eye to failed logins only when there are some.
+        $alarm = ($c['key'] === 'Login Failed' && $val > 0);
+        $box   = $alarm ? 'background:#c0392b;color:#fff;' : 'background:#fff;';
+        $valCol = $alarm ? '#fff' : 'var(--bs-' . $c['color'] . ')';
+        $icoCol = $alarm ? 'rgba(255,255,255,.85)' : 'var(--bs-' . $c['color'] . ')';
+        $subCol = $alarm ? 'rgba(255,255,255,.85)' : '#6c757d';
+        $html .= '
+        <div class="col-6 col-md-2">
+            <div class="h-100 border rounded-3 shadow-sm px-3 py-2" style="' . $box . '">
+                <div class="d-flex align-items-center gap-1 mb-1">
+                    <i class="bi bi-' . $c['icon'] . '" style="font-size:.8rem;color:' . $icoCol . ';"></i>
+                    <span class="text-uppercase fw-bold" style="font-size:.62rem;letter-spacing:.04em;color:' . $subCol . ';">' . htmlspecialchars($c['label']) . '</span>
+                </div>
+                <div class="fw-bold" style="font-size:1.35rem;line-height:1;color:' . $valCol . ';">' . number_format($val) . '</div>
+            </div>
+        </div>';
+    }
+    $html .= '</div>';
+    return $html;
 }
 
 // ── Render a single row ───────────────────────────────────────────────────────
@@ -273,6 +332,7 @@ if (isset($_GET['ajax'])) {
         'success' => true,
         'rows'    => $rows,
         'cards'   => $cards,
+        'summary' => renderSummaryStrip($summary_counts, $summary_total, $isSw),
         'info'    => ($total_items > 0 ? $offset + 1 : 0) . ' - '
                    . ($limit === -1 ? $total_items : min($offset + $limit, $total_items))
                    . ($isSw ? " ya $total_items" : " of $total_items"),
@@ -364,7 +424,7 @@ require_once ROOT_DIR . '/header.php';
     <div class="card border-0 shadow-sm rounded-4 mb-4 no-print">
         <div class="card-body p-4">
             <form id="filterForm" class="row g-3 align-items-end">
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label small fw-bold text-muted"><?= $isSw ? 'Aina' : 'Type' ?></label>
                     <select class="form-select border-0 bg-light rounded-3" name="type">
                         <option value=""><?= $isSw ? 'Zote' : 'All Types' ?></option>
@@ -373,7 +433,18 @@ require_once ROOT_DIR . '/header.php';
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold text-muted"><?= $isSw ? 'Kitendo' : 'Action' ?></label>
+                    <select class="form-select border-0 bg-light rounded-3" name="action">
+                        <option value=""><?= $isSw ? 'Vitendo Vyote' : 'All Actions' ?></option>
+                        <?php foreach ($actions as $act): $lbl = getActionBadge($act, $isSw)['label']; ?>
+                            <option value="<?= htmlspecialchars($act) ?>" <?= $action_filter === $act ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($lbl) ?><?= strcasecmp($lbl, $act) !== 0 ? ' (' . htmlspecialchars($act) . ')' : '' ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-4">
                     <label class="form-label small fw-bold text-muted"><?= $isSw ? 'Mtumiaji' : 'User' ?></label>
                     <select class="form-select border-0 bg-light rounded-3" name="user_id">
                         <option value=""><?= $isSw ? 'Watumiaji Wote' : 'All Users' ?></option>
@@ -384,16 +455,16 @@ require_once ROOT_DIR . '/header.php';
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-4">
                     <label class="form-label small fw-bold text-muted"><?= $isSw ? 'Tarehe (Kuanzia)' : 'Date From' ?></label>
                     <input type="date" class="form-control border-0 bg-light rounded-3" name="date_from" value="<?= $date_from ?>">
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-4">
                     <label class="form-label small fw-bold text-muted"><?= $isSw ? 'Tarehe (Hadi)' : 'Date To' ?></label>
                     <input type="date" class="form-control border-0 bg-light rounded-3" name="date_to" value="<?= $date_to ?>">
                 </div>
 
-                <div class="col-md-2 d-grid">
+                <div class="col-md-4 d-grid">
                     <button type="submit" class="btn btn-dark rounded-3 fw-bold py-2 shadow-sm">
                         <i class="bi bi-funnel me-1"></i><?= $isSw ? 'Chuja' : 'Apply' ?>
                     </button>
@@ -426,6 +497,9 @@ require_once ROOT_DIR . '/header.php';
             <span class="small fw-bold text-muted" style="white-space: nowrap;"><?= $isSw ? 'Onyesha mionekano ya kurasa' : 'Include page views' ?></span>
         </label>
     </div>
+
+    <!-- Summary strip: counts by action for the current filter window -->
+    <div id="auditSummary"><?= renderSummaryStrip($summary_counts, $summary_total, $isSw) ?></div>
 
     <!-- Activity Table -->
     <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4 shadow">
@@ -655,6 +729,9 @@ function loadPage(page) {
             $('#activityRows').html(res.rows);
             if (res.cards) {
                 $('#activityCards').html(res.cards);
+            }
+            if (res.summary) {
+                $('#auditSummary').html(res.summary);
             }
             if (res.total_pages !== undefined) {
                 auditTotalPages = res.total_pages;
