@@ -27,12 +27,19 @@ $user_id_filter = trim($_GET['user_id'] ?? '');
 $date_from      = trim($_GET['date_from'] ?? '');
 $date_to        = trim($_GET['date_to'] ?? '');
 
+// Page-view (navigation) logging is high-volume noise that buries the real
+// audit events (logins, money, deletes). Hide 'Viewed' rows by default; the
+// user can opt in with the toggle, and we auto-include them when they've
+// explicitly filtered to the Navigation module.
+$show_views = (isset($_GET['show_views']) && $_GET['show_views'] == '1') || ($type_filter === 'Navigation');
+
 // ── Build query ───────────────────────────────────────────────────────────────
 $conditions = []; $params = [];
 if ($type_filter)    { $conditions[] = "al.module = :mod";     $params[':mod']  = $type_filter; }
 if ($user_id_filter) { $conditions[] = "al.user_id = :uid";    $params[':uid']  = $user_id_filter; }
 if ($date_from)      { $conditions[] = "al.created_at >= :df"; $params[':df']   = $date_from . ' 00:00:00'; }
 if ($date_to)        { $conditions[] = "al.created_at <= :dt"; $params[':dt']   = $date_to   . ' 23:59:59'; }
+if (!$show_views)    { $conditions[] = "al.action <> 'Viewed'"; }
 
 $where = $conditions ? ('WHERE ' . implode(' AND ', $conditions)) : '';
 $base  = "FROM activity_logs al LEFT JOIN users u ON al.user_id = u.user_id";
@@ -116,7 +123,7 @@ function renderActivityRow(array $a, bool $isSw, int $index): string {
     $ref_raw  = $a['reference'] ?: '-';
     $ref_esc  = htmlspecialchars($ref_raw);
 
-    $time     = date('d/m/y H:i', strtotime($a['created_at']));
+    $time     = date('d/m/y H:i:s', strtotime($a['created_at']));
     $icon     = getBadgeIcon($label);
 
     return "
@@ -167,7 +174,7 @@ if (isset($_GET['ajax'])) {
         $fullname = trim($a['full_name'] ?? '') ?: ($a['username'] ?? ($isSw ? 'Mfumo' : 'System'));
         $role = $a['role_name'] ?? 'System';
         $user_str = "$role ($fullname)";
-        $time = date('d/m/y H:i', strtotime($a['created_at']));
+        $time = date('d/m/y H:i:s', strtotime($a['created_at']));
         $icon = getBadgeIcon($badge['label']);
         $desc_raw = $a['description'] ?: '';
         if (empty($desc_raw)) {
@@ -357,6 +364,13 @@ require_once ROOT_DIR . '/header.php';
                 <?php endforeach; ?>
             </select>
         </div>
+        <!-- Page-view toggle: audit view hides navigation logs by default -->
+        <label style="background: white; cursor: pointer;" class="border shadow-sm rounded-1 px-3 d-flex align-items-center gap-2 mb-0"
+               title="<?= $isSw ? 'Kurasa zilizotazamwa zimefichwa kwa kawaida ili kuonyesha matukio muhimu' : 'Page views are hidden by default so real events stand out' ?>">
+            <input type="checkbox" form="filterForm" name="show_views" value="1" class="form-check-input mt-0"
+                   <?= $show_views ? 'checked' : '' ?> onchange="$('#filterForm').submit()">
+            <span class="small fw-bold text-muted" style="white-space: nowrap;"><?= $isSw ? 'Onyesha mionekano ya kurasa' : 'Include page views' ?></span>
+        </label>
     </div>
 
     <!-- Activity Table -->
@@ -398,7 +412,7 @@ require_once ROOT_DIR . '/header.php';
                     $fullname = trim($a['full_name'] ?? '') ?: ($a['username'] ?? ($isSw ? 'Mfumo' : 'System'));
                     $role = $a['role_name'] ?? 'System';
                     $user_str = "$role ($fullname)";
-                    $time = date('d/m/y H:i', strtotime($a['created_at']));
+                    $time = date('d/m/y H:i:s', strtotime($a['created_at']));
                     $icon = getBadgeIcon($badge['label']);
                     
                     // Fallback description logic same as renderActivityRow
