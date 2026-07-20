@@ -115,9 +115,9 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
                 <th><?= $is_sw ? 'Wanachama' : 'Active Members' ?></th>
             </tr></thead>
             <tbody><tr>
-                <td class="fw-bold text-primary">TZS <?= number_format($total_savings) ?></td>
-                <td class="fw-bold text-danger">TZS <?= number_format($total_expenses) ?></td>
-                <td class="fw-bold text-success">TZS <?= number_format($available_fund) ?></td>
+                <td class="fw-bold text-primary">TSh <?= number_format($total_savings) ?></td>
+                <td class="fw-bold text-danger">TSh <?= number_format($total_expenses) ?></td>
+                <td class="fw-bold text-success">TSh <?= number_format($available_fund) ?></td>
                 <td class="fw-bold"><?= $active_members ?></td>
             </tr></tbody>
         </table>
@@ -129,7 +129,7 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
             <div class="card border-0 shadow-sm h-100 rounded-4 overflow-hidden">
                 <div class="card-body p-4 bg-white">
                     <div class="text-uppercase small fw-bold text-muted mb-2 tracking-wider"><?= $is_sw ? 'Jumla ya Akiba' : 'Total Savings' ?></div>
-                    <div class="fs-4 fw-bold text-primary">TZS <?= number_format($total_savings) ?></div>
+                    <div class="fs-4 fw-bold text-primary">TSh <?= number_format($total_savings) ?></div>
                 </div>
                 <div class="bg-primary" style="height: 4px;"></div>
             </div>
@@ -138,7 +138,7 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
             <div class="card border-0 shadow-sm h-100 rounded-4 overflow-hidden">
                 <div class="card-body p-4 bg-white">
                     <div class="text-uppercase small fw-bold text-muted mb-2 tracking-wider"><?= $is_sw ? 'Matumizi Yote' : 'Total Expenses' ?></div>
-                    <div class="fs-4 fw-bold text-danger">TZS <?= number_format($total_expenses) ?></div>
+                    <div class="fs-4 fw-bold text-danger">TSh <?= number_format($total_expenses) ?></div>
                 </div>
                 <div class="bg-danger" style="height: 4px;"></div>
             </div>
@@ -147,7 +147,7 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
             <div class="card border-0 shadow-sm h-100 rounded-4 overflow-hidden">
                 <div class="card-body p-4 bg-white">
                     <div class="text-uppercase small fw-bold text-muted mb-2 tracking-wider"><?= $is_sw ? 'Baki (Cash)' : 'Balance (Cash)' ?></div>
-                    <div class="fs-4 fw-bold text-success">TZS <?= number_format($available_fund) ?></div>
+                    <div class="fs-4 fw-bold text-success">TSh <?= number_format($available_fund) ?></div>
                 </div>
                 <div class="bg-success" style="height: 4px;"></div>
             </div>
@@ -212,14 +212,14 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
                                         <div class="fw-bold"><?= htmlspecialchars($row['member_name']) ?></div>
                                         <small class="text-muted"><?= $row['phone'] ?></small>
                                     </td>
-                                    <td class="text-end pe-4 fw-bold text-primary">TZS <?= number_format($row['total_savings']) ?></td>
+                                    <td class="text-end pe-4 fw-bold text-primary">TSh <?= number_format($row['total_savings']) ?></td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
                             <tfoot class="bg-primary bg-opacity-10 fw-bold">
                                 <tr>
                                     <td colspan="2" class="text-end ps-4 py-3 border-0"><?= $is_sw ? 'JUMLA YA MICHANGO YOTE:' : 'TOTAL ACCUMULATED CONTRIBUTIONS:' ?></td>
-                                    <td class="text-end pe-4 py-3 text-primary border-0">TZS <?= number_format($total_savings) ?></td>
+                                    <td class="text-end pe-4 py-3 text-primary border-0">TSh <?= number_format($total_savings) ?></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -240,7 +240,7 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
                             <div class="vk-card-body">
                                 <div class="vk-card-row">
                                     <span class="vk-card-label"><?= $is_sw ? 'Jumla Akiba' : 'Total Savings' ?></span>
-                                    <span class="vk-card-value fw-bold text-primary">TZS <?= number_format($row['total_savings']) ?></span>
+                                    <span class="vk-card-value fw-bold text-primary">TSh <?= number_format($row['total_savings']) ?></span>
                                 </div>
                             </div>
                         </div>
@@ -278,7 +278,7 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
                                     <td class="small text-muted"><?= date('d/m/Y', strtotime($exp['date'])) ?></td>
                                     <td><span class="badge rounded-pill <?= $exp_class ?> px-3"><?= $exp_type ?></span></td>
                                     <td class="text-wrap" style="max-width: 300px;"><?= htmlspecialchars($exp['description']) ?></td>
-                                    <td class="text-end pe-4 fw-bold">TZS <?= number_format($exp['amount']) ?></td>
+                                    <td class="text-end pe-4 fw-bold">TSh <?= number_format($exp['amount']) ?></td>
                                 </tr>
                                 <?php endforeach; ?>
                                 <?php if(empty($expenses_data)): ?>
@@ -288,7 +288,7 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
                             <tfoot class="bg-primary bg-opacity-10 fw-bold">
                                 <tr>
                                     <td colspan="4" class="text-end ps-4 py-3 border-0"><?= $is_sw ? 'JUMLA KUU YA MATUMIZI:' : 'CUMULATIVE TOTAL EXPENSES:' ?></td>
-                                    <td class="text-end pe-4 py-3 text-primary border-0">TZS <?= number_format($total_expenses) ?></td>
+                                    <td class="text-end pe-4 py-3 text-primary border-0">TSh <?= number_format($total_expenses) ?></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -322,7 +322,7 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
                                 </div>
                                 <div class="vk-card-row">
                                     <span class="vk-card-label"><?= $is_sw ? 'Kiasi' : 'Amount' ?></span>
-                                    <span class="vk-card-value fw-bold text-danger">TZS <?= number_format($exp['amount']) ?></span>
+                                    <span class="vk-card-value fw-bold text-danger">TSh <?= number_format($exp['amount']) ?></span>
                                 </div>
                             </div>
                         </div>
@@ -344,7 +344,7 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
                             <!-- Pie chart placeholder if we want it here too, but graph is at bottom as per user req -->
                             <div class="d-flex justify-content-between mb-3 pb-2 border-bottom">
                                 <span class="text-muted"><?= $is_sw ? 'Michango ya Wanachama' : 'Member Savings' ?></span>
-                                <span class="fw-bold">TZS <?= number_format($total_savings) ?></span>
+                                <span class="fw-bold">TSh <?= number_format($total_savings) ?></span>
                             </div>
                             <div class="text-muted small mt-4">
                                 <i class="bi bi-info-circle me-1"></i> <?= $is_sw ? 'Ripoti imejikita kwenye michango iliyothibitishwa pekee.' : 'Report considers confirmed contributions only.' ?>
@@ -358,7 +358,7 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
                             <h6 class="mb-0 fw-bold text-primary"><i class="bi bi-shield-check me-2"></i> <?= $is_sw ? 'Hali ya Sasa ya Fedha' : 'Current Liquidity Status' ?></h6>
                         </div>
                         <div class="card-body p-4">
-                            <div class="display-6 fw-bold text-primary mb-2">TZS <?= number_format($available_fund) ?></div>
+                            <div class="display-6 fw-bold text-primary mb-2">TSh <?= number_format($available_fund) ?></div>
                             <div class="text-muted mb-4"><?= $is_sw ? 'Baki inayopatikana mfukoni/benki' : 'Available cash balance in bank/hand' ?></div>
                             <div class="progress rounded-pill mb-2" style="height: 10px;">
                                 <?php $perc = $total_savings > 0 ? ($available_fund / $total_savings) * 100 : 0; ?>
@@ -451,7 +451,7 @@ $(document).ready(function() {
             data: {
                 labels: <?= json_encode($chart_labels) ?>,
                 datasets: [{
-                    label: '<?= $is_sw ? "Akiba (TZS)" : "Savings (TZS)" ?>',
+                    label: '<?= $is_sw ? "Akiba (TSh)" : "Savings (TSh)" ?>',
                     data: <?= json_encode($chart_values) ?>,
                     backgroundColor: 'rgba(13, 110, 253, 0.1)',
                     borderColor: '#0d6efd',
@@ -462,7 +462,7 @@ $(document).ready(function() {
                 responsive: true,
                 plugins: { legend: { display: false } },
                 scales: { 
-                    y: { beginAtZero: true, grid: { borderDash: [5, 5] }, ticks: { callback: v => 'TZS ' + v.toLocaleString() } },
+                    y: { beginAtZero: true, grid: { borderDash: [5, 5] }, ticks: { callback: v => 'TSh ' + v.toLocaleString() } },
                     x: { grid: { display: false } }
                 }
             }
