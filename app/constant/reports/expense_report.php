@@ -111,7 +111,7 @@ $pct_death   = $total_overall > 0 ? round(($total_death   / $total_overall) * 10
             <div class="card border-0 shadow-sm h-100 rounded-4 overflow-hidden">
                 <div class="card-body p-4 bg-white border-bottom border-4 border-primary">
                     <div class="text-uppercase small fw-bold text-muted mb-2"><?= $is_sw ? 'Jumla ya Matumizi' : 'Total Expenditures' ?></div>
-                    <div class="fs-4 fw-bold text-primary">TZS <?= number_format($total_overall) ?></div>
+                    <div class="fs-4 fw-bold text-primary">TSh <?= number_format($total_overall) ?></div>
                 </div>
             </div>
         </div>
@@ -119,7 +119,7 @@ $pct_death   = $total_overall > 0 ? round(($total_death   / $total_overall) * 10
             <div class="card border-0 shadow-sm h-100 rounded-4 overflow-hidden">
                 <div class="card-body p-4 bg-white border-bottom border-4 border-info">
                     <div class="text-uppercase small fw-bold text-muted mb-2"><?= $is_sw ? 'Matumizi Kawaida' : 'General Expenses' ?></div>
-                    <div class="fs-4 fw-bold text-info">TZS <?= number_format($total_general) ?></div>
+                    <div class="fs-4 fw-bold text-info">TSh <?= number_format($total_general) ?></div>
                 </div>
             </div>
         </div>
@@ -127,7 +127,7 @@ $pct_death   = $total_overall > 0 ? round(($total_death   / $total_overall) * 10
             <div class="card border-0 shadow-sm h-100 rounded-4 overflow-hidden">
                 <div class="card-body p-4 bg-white border-bottom border-4 border-danger">
                     <div class="text-uppercase small fw-bold text-muted mb-2"><?= $is_sw ? 'Msaada wa Misiba' : 'Funeral Assistance' ?></div>
-                    <div class="fs-4 fw-bold text-danger">TZS <?= number_format($total_death) ?></div>
+                    <div class="fs-4 fw-bold text-danger">TSh <?= number_format($total_death) ?></div>
                 </div>
             </div>
         </div>
@@ -157,7 +157,7 @@ $pct_death   = $total_overall > 0 ? round(($total_death   / $total_overall) * 10
                                     <th><?= $is_sw ? 'Tarehe' : 'Date' ?></th>
                                     <th><?= $is_sw ? 'Aina' : 'Category' ?></th>
                                     <th><?= $is_sw ? 'Maelezo' : 'Note' ?></th>
-                                    <th class="text-end pe-4"><?= $is_sw ? 'Kiasi (TZS)' : 'Amount (TZS)' ?></th>
+                                    <th class="text-end pe-4"><?= $is_sw ? 'Kiasi (TSh)' : 'Amount (TSh)' ?></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -171,7 +171,7 @@ $pct_death   = $total_overall > 0 ? round(($total_death   / $total_overall) * 10
                                     <td><?= date('d/m/Y', strtotime($exp['date'])) ?></td>
                                     <td><span class="badge rounded-pill <?= $cat_class ?> bg-opacity-10 text-dark border px-3"><?= $is_sw ? $cat_sw : $cat_en ?></span></td>
                                     <td class="text-wrap" style="max-width: 250px;"><?= htmlspecialchars($exp['description']) ?></td>
-                                    <td class="text-end pe-4 fw-bold">TZS <?= number_format($exp['amount']) ?></td>
+                                    <td class="text-end pe-4 fw-bold">TSh <?= number_format($exp['amount']) ?></td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -207,7 +207,7 @@ $pct_death   = $total_overall > 0 ? round(($total_death   / $total_overall) * 10
                                 </div>
                                 <div class="vk-card-row">
                                     <span class="vk-card-label"><?= $is_sw ? 'Kiasi' : 'Amount' ?></span>
-                                    <span class="vk-card-value fw-bold text-danger">TZS <?= number_format($exp['amount']) ?></span>
+                                    <span class="vk-card-value fw-bold text-danger">TSh <?= number_format($exp['amount']) ?></span>
                                 </div>
                             </div>
                         </div>
@@ -232,11 +232,11 @@ $pct_death   = $total_overall > 0 ? round(($total_death   / $total_overall) * 10
                         <div class="mt-4">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <span class="small"><span class="d-inline-block rounded-circle me-2 align-middle" style="width:10px;height:10px;background:#0dcaf0;"></span><?= $is_sw ? 'Ya Kawaida' : 'General' ?></span>
-                                <span class="small fw-bold text-nowrap">TZS <?= number_format($total_general) ?> <span class="text-muted fw-normal">· <?= $pct_general ?>%</span></span>
+                                <span class="small fw-bold text-nowrap">TSh <?= number_format($total_general) ?> <span class="text-muted fw-normal">· <?= $pct_general ?>%</span></span>
                             </div>
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="small"><span class="d-inline-block rounded-circle me-2 align-middle" style="width:10px;height:10px;background:#dc3545;"></span><?= $is_sw ? 'Ya Misiba' : 'Funeral Aid' ?></span>
-                                <span class="small fw-bold text-nowrap">TZS <?= number_format($total_death) ?> <span class="text-muted fw-normal">· <?= $pct_death ?>%</span></span>
+                                <span class="small fw-bold text-nowrap">TSh <?= number_format($total_death) ?> <span class="text-muted fw-normal">· <?= $pct_death ?>%</span></span>
                             </div>
                         </div>
                     <?php else: ?>
@@ -314,7 +314,7 @@ $(document).ready(function() {
                 ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                 ctx.fillStyle = '#212529';
                 ctx.font = "700 17px system-ui, -apple-system, sans-serif";
-                ctx.fillText('TZS ' + fmtCompact(totalOverall), cx, cy - 6);
+                ctx.fillText('TSh ' + fmtCompact(totalOverall), cx, cy - 6);
                 ctx.fillStyle = '#6c757d';
                 ctx.font = "600 11px system-ui, -apple-system, sans-serif";
                 ctx.fillText('<?= $is_sw ? "Jumla" : "Total" ?>', cx, cy + 13);
@@ -340,7 +340,7 @@ $(document).ready(function() {
                             label(c) {
                                 const v = c.parsed || 0;
                                 const pct = totalOverall ? Math.round(v / totalOverall * 100) : 0;
-                                return ' ' + c.label + ': TZS ' + v.toLocaleString('en-US') + ' (' + pct + '%)';
+                                return ' ' + c.label + ': TSh ' + v.toLocaleString('en-US') + ' (' + pct + '%)';
                             }
                         }
                     }
@@ -366,7 +366,7 @@ $(document).ready(function() {
                 responsive: true, maintainAspectRatio: false,
                 plugins: {
                     legend: { display: false },
-                    tooltip: { callbacks: { label: c => ' TZS ' + (c.parsed.y || 0).toLocaleString('en-US') } }
+                    tooltip: { callbacks: { label: c => ' TSh ' + (c.parsed.y || 0).toLocaleString('en-US') } }
                 },
                 scales: {
                     x: { grid: { display: false }, ticks: { font: { size: 10 } } },

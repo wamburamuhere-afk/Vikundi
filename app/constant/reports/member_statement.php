@@ -145,7 +145,7 @@ $total_expenses = array_sum(array_column($expenses, 'amount'));
         <div class="card border shadow-sm h-100" style="background-color: #d1e7dd !important; color: #000000 !important;">
             <div class="card-body p-3 text-center">
                 <small class="text-uppercase fw-bold small mb-1" style="color: #495057;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jumla Aliyolipa' : 'Total Paid' ?></small>
-                <div class="fs-4 fw-bold">TZS <?= number_format($total_paid, 0) ?></div>
+                <div class="fs-4 fw-bold">TSh <?= number_format($total_paid, 0) ?></div>
                 <div class="mt-2 small px-2 py-1 rounded-pill bg-white d-inline-block border text-dark">
                     <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Kiingilio: ' : 'Entrance: ' ?> 
                     <span class="fw-bold"><?= $entrance_status === 'paid' ? (($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'KIMESHAJAA' : 'FULLY PAID') : number_format($entrance_paid_amt, 0) . ' / ' . number_format($entrance_amt, 0) ?></span>
@@ -166,7 +166,7 @@ $total_expenses = array_sum(array_column($expenses, 'amount'));
         <div class="card border shadow-sm h-100" style="background-color: #d1e7dd !important; color: #000000 !important;">
             <div class="card-body p-3 text-center">
                 <small class="text-uppercase fw-bold small mb-1" style="color: #495057;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Misaada Aliyopokea' : 'Benefits Received' ?></small>
-                <div class="fs-4 fw-bold">TZS <?= number_format($total_expenses, 0) ?></div>
+                <div class="fs-4 fw-bold">TSh <?= number_format($total_expenses, 0) ?></div>
             </div>
         </div>
     </div>
@@ -191,7 +191,7 @@ $total_expenses = array_sum(array_column($expenses, 'amount'));
 <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4 vk-grid-card">
     <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
         <h6 class="mb-0 fw-bold"><i class="bi bi-calendar-check me-2 text-primary"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mchanganuo wa Michango ya Kila Mwezi' : 'Monthly Contribution Analysis' ?></h6>
-        <span class="badge bg-light text-dark border"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mchango: ' : 'Monthly: ' ?> <?= number_format($monthly_amt, 0) ?> TZS</span>
+        <span class="badge bg-light text-dark border"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mchango: ' : 'Monthly: ' ?> <?= number_format($monthly_amt, 0) ?> TSh</span>
     </div>
     <div class="card-body p-0">
         <div class="table-responsive w-100">
@@ -297,7 +297,7 @@ $total_expenses = array_sum(array_column($expenses, 'amount'));
                     </div>
                     <div class="vk-card-row">
                         <span class="vk-card-label"><?= $_ms_sw ? 'Kiasi' : 'Amount' ?></span>
-                        <span class="vk-card-value fw-bold text-danger">- TZS <?= number_format($ex['amount'], 0) ?></span>
+                        <span class="vk-card-value fw-bold text-danger">- TSh <?= number_format($ex['amount'], 0) ?></span>
                     </div>
                 </div>
             </div>

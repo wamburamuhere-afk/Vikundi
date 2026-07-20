@@ -122,7 +122,7 @@ logActivity('Viewed', 'Budget', 'Printed Budget #' . $id, 'BUDGET#' . $id);
     </div>
     <div class="meta-item">
         <div class="lbl"><?= $is_sw?'Kiasi Kilichotengwa':'Allocated Amount' ?></div>
-        <div class="val">TZS <?= number_format($budget['allocated_amount'] ?? 0, 2) ?></div>
+        <div class="val">TSh <?= number_format($budget['allocated_amount'] ?? 0, 2) ?></div>
     </div>
 </div>
 
@@ -152,7 +152,7 @@ logActivity('Viewed', 'Budget', 'Printed Budget #' . $id, 'BUDGET#' . $id);
     <tfoot>
         <tr>
             <td colspan="5" class="text-end pe-2"><?= $is_sw?'JUMLA KUU':'GRAND TOTAL' ?></td>
-            <td class="text-end" style="color:#0d6efd;">TZS <?= number_format($budget['allocated_amount'] ?? 0, 2) ?></td>
+            <td class="text-end" style="color:#0d6efd;">TSh <?= number_format($budget['allocated_amount'] ?? 0, 2) ?></td>
         </tr>
     </tfoot>
 </table>

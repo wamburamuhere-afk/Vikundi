@@ -364,10 +364,10 @@ new Chart(ctx, {
     options: { responsive: true,
         plugins: {
             legend: { display: true, position: 'top', labels: { boxWidth: 12, usePointStyle: true, pointStyle: 'rectRounded' } },
-            tooltip: { callbacks: { label: c => c.dataset.label + ': TZS ' + Number(c.raw).toLocaleString() } }
+            tooltip: { callbacks: { label: c => c.dataset.label + ': TSh ' + Number(c.raw).toLocaleString() } }
         },
         scales: {
-            y: { beginAtZero: true, grid: { color: '#eef2f6' }, border: { display: false }, ticks: { callback: v => 'TZS ' + v.toLocaleString() } },
+            y: { beginAtZero: true, grid: { color: '#eef2f6' }, border: { display: false }, ticks: { callback: v => 'TSh ' + v.toLocaleString() } },
             x: { grid: { display: false }, border: { display: false } }
         }
     }
