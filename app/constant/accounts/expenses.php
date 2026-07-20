@@ -92,7 +92,7 @@ $subtitle = $is_sw ? 'Rekodi na dhibiti misaada kwa wanachama waliofiwa' : 'Reco
             <div class="card border-0 shadow-sm h-100" style="background-color: #d1e7dd !important;">
                 <div class="card-body p-2 text-center">
                     <h6 class="text-dark mb-1" style="font-size: 8pt; font-weight: bold; text-transform: uppercase;"><?= $is_sw ? 'Jumla ya Misaada' : 'Total Assistance' ?></h6>
-                    <h5 class="fw-bold mb-0 text-dark" id="total_payouts" style="font-size: 11pt;">0.00</h5>
+                    <h5 class="fw-bold mb-0 text-dark" id="total_payouts" style="font-size: 11pt;">TSh 0.00</h5>
                 </div>
             </div>
         </div>
@@ -107,8 +107,8 @@ $subtitle = $is_sw ? 'Rekodi na dhibiti misaada kwa wanachama waliofiwa' : 'Reco
         <div class="col-4">
             <div class="card border-0 shadow-sm h-100" style="background-color: #d1e7dd !important;">
                 <div class="card-body p-2 text-center">
-                    <h6 class="text-dark mb-1" style="font-size: 8pt; font-weight: bold; text-transform: uppercase;"><?= $is_sw ? 'Mwezi Huu' : 'Cases This Month' ?></h6>
-                    <h5 class="fw-bold mb-0 text-dark" id="month_payouts" style="font-size: 11pt;">0</h5>
+                    <h6 class="text-dark mb-1" style="font-size: 8pt; font-weight: bold; text-transform: uppercase;"><?= $is_sw ? 'Malipo Mwezi Huu' : 'Paid This Month' ?></h6>
+                    <h5 class="fw-bold mb-0 text-dark" id="month_payouts" style="font-size: 11pt;">TSh 0.00</h5>
                 </div>
             </div>
         </div>
@@ -467,9 +467,9 @@ $(document).ready(function() {
                 d.f_month  = $('#filterMonth').val() || '';
             },
             dataSrc: json => {
-                $('#total_payouts').text(parseFloat(json.totalAmount).toLocaleString('en-US', {minimumFractionDigits: 2}));
+                $('#total_payouts').text('TSh ' + parseFloat(json.totalAmount).toLocaleString('en-US', {minimumFractionDigits: 2}));
                 $('#death_count').text(json.recordsFiltered);
-                $('#month_payouts').text(json.monthTotal);
+                $('#month_payouts').text('TSh ' + parseFloat(json.monthTotal).toLocaleString('en-US', {minimumFractionDigits: 2}));
                 return json.data;
             }
         },
