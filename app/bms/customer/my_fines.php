@@ -64,7 +64,7 @@ includeHeader();
         <div class="col-4">
             <div class="card border-0 shadow-sm h-100"><div class="card-body py-2 px-1 text-center">
                 <div class="fw-bold text-<?= $color ?>" style="font-size:1rem;line-height:1.15;"><?= number_format($val, 0) ?></div>
-                <div class="text-muted text-truncate" style="font-size:.7rem;"><i class="bi <?= $icon ?>"></i> <?= $label ?> <span class="d-none d-sm-inline">TZS</span></div>
+                <div class="text-muted text-truncate" style="font-size:.7rem;"><i class="bi <?= $icon ?>"></i> <?= $label ?> <span class="d-none d-sm-inline">TSh</span></div>
             </div></div>
         </div>
         <?php endforeach; ?>

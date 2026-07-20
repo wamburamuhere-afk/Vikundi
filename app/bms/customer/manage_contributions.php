@@ -364,7 +364,7 @@ $cellClass = ['full' => 'vk-cell-full', 'partial' => 'vk-cell-partial', 'none' =
         </h4>
         <div class="d-flex justify-content-center flex-wrap gap-3 mt-2 small text-muted">
             <span><strong><?= $isSw ? 'Kipindi' : 'Period' ?>:</strong> <?= htmlspecialchars($block_label) ?></span>
-            <span><strong><?= $isSw ? 'Zimekusanywa' : 'Collected' ?>:</strong> <?= number_format($sum_collected, 0) ?> / <?= number_format($expected_block, 0) ?> TZS</span>
+            <span><strong><?= $isSw ? 'Zimekusanywa' : 'Collected' ?>:</strong> TSh <?= number_format($sum_collected, 0) ?> / <?= number_format($expected_block, 0) ?></span>
             <span><strong><?= $isSw ? 'Kiwango' : 'Rate' ?>:</strong> <?= $collection_rate ?>%</span>
         </div>
         <div class="mt-2 small">
@@ -378,8 +378,8 @@ $cellClass = ['full' => 'vk-cell-full', 'partial' => 'vk-cell-partial', 'none' =
 <!-- SUMMARY CARDS -->
 <div class="row g-3 mb-4">
     <?php foreach ([
-        ['text-primary','bi-cash-coin', $isSw?'Zimekusanywa (Robo)':'Collected (block)', number_format($sum_collected,0).' TZS'],
-        ['text-secondary','bi-bullseye', $isSw?'Zinatarajiwa (Robo)':'Expected (block)', number_format($expected_block,0).' TZS'],
+        ['text-primary','bi-cash-coin', $isSw?'Zimekusanywa (Robo)':'Collected (block)', 'TSh '.number_format($sum_collected,0)],
+        ['text-secondary','bi-bullseye', $isSw?'Zinatarajiwa (Robo)':'Expected (block)', 'TSh '.number_format($expected_block,0)],
         ['text-success','bi-graph-up-arrow', $isSw?'Kiwango cha Ukusanyaji':'Collection Rate', $collection_rate.'%'],
         ['text-info','bi-people', $isSw?'Wamekamilisha / Nyuma':'Full / Behind', $members_full.' / '.$members_behind],
     ] as [$color,$icon,$label,$val]): ?>
