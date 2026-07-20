@@ -42,7 +42,7 @@ $members_list = $pdo->query("
         <div class="col-md-4">
             <div class="card border-0 shadow-sm h-100"><div class="card-body">
                 <div class="d-flex justify-content-between">
-                    <div><h4 class="mb-0 fw-bold <?= $color ?>"><span id="<?= $id ?>">0.00</span> <small class="text-muted">TZS</small></h4><p class="mb-0 text-muted small"><?= $label ?></p></div>
+                    <div><h4 class="mb-0 fw-bold <?= $color ?>"><small class="text-muted">TSh</small> <span id="<?= $id ?>">0.00</span></h4><p class="mb-0 text-muted small"><?= $label ?></p></div>
                     <div class="align-self-center"><i class="bi <?= $icon ?> <?= $color ?>" style="font-size:2rem;opacity:.3;"></i></div>
                 </div>
             </div></div>
@@ -122,7 +122,7 @@ $(function(){
             { data:null, render:(d,t,r,m)=>`<strong>${m.row+1}</strong>` },
             { data:'member_name', className:'text-start', render:(d,t,r)=>`${esc(d||('Member #'+r.customer_id))}${r.member_phone?`<div class="text-muted" style="font-size:11px;">${esc(r.member_phone)}</div>`:''}` },
             { data:'reason', className:'text-start', render:d=>esc(d||'—') },
-            { data:'amount', render:d=>`<strong class="text-danger">${money(d)}</strong>` },
+            { data:'amount', render:d=>`<strong class="text-danger">TSh ${money(d)}</strong>` },
             { data:'created_at', render:d=>d?new Date(d).toLocaleDateString():'—' },
             { data:'status', render:d=>`<span class="badge bg-${badge(d)}">${d}</span>` },
             <?php if ($can_edit): ?>{ data:null, className:'text-end', render:(d,t,r)=>actions(r) }<?php endif; ?>
@@ -152,7 +152,7 @@ $(function(){
             $w.append(`<div class="border rounded shadow-sm mb-2 p-2 bg-white">
                 <div class="d-flex justify-content-between"><span class="fw-semibold">${esc(r.member_name||('Member #'+r.customer_id))}</span><span class="badge bg-${badge(r.status)}">${r.status}</span></div>
                 <div class="small text-muted">${esc(r.reason||'—')}</div>
-                <div class="d-flex justify-content-between align-items-center mt-1"><span class="fw-bold text-danger">TZS ${money(r.amount)}</span><span>${btns}</span></div>
+                <div class="d-flex justify-content-between align-items-center mt-1"><span class="fw-bold text-danger">TSh ${money(r.amount)}</span><span>${btns}</span></div>
             </div>`);
         });
     }
