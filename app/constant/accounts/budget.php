@@ -311,7 +311,7 @@ $performance_data = $performance_stmt->fetchAll(PDO::FETCH_ASSOC);
                     <div class="vk-card-body">
                         <div class="vk-card-row">
                             <span class="vk-card-label">Allocated</span>
-                            <span class="vk-card-value fw-bold">TZS <?= number_format($item['allocated_amount'], 2) ?></span>
+                            <span class="vk-card-value fw-bold">TSh <?= number_format($item['allocated_amount'], 2) ?></span>
                         </div>
                         <div class="vk-card-row">
                             <span class="vk-card-label">Period</span>

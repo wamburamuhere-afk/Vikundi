@@ -114,7 +114,7 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
             <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
                 <div class="card-body p-4 bg-white border-bottom border-4 border-primary">
                     <div class="text-uppercase small fw-bold text-muted mb-2 tracking-wider"><?= $is_sw ? 'Jumla ya Misaada' : 'Total Aid Paid' ?></div>
-                    <div class="fs-4 fw-bold text-primary">TZS <?= number_format($total_paid) ?></div>
+                    <div class="fs-4 fw-bold text-primary">TSh <?= number_format($total_paid) ?></div>
                 </div>
             </div>
         </div>
@@ -122,7 +122,7 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
             <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
                 <div class="card-body p-4 bg-white border-bottom border-4 border-success">
                     <div class="text-uppercase small fw-bold text-muted mb-2 tracking-wider"><?= $is_sw ? 'Jumla Michango Yao' : 'Total Contrib (Recv)' ?></div>
-                    <div class="fs-4 fw-bold text-success">TZS <?= number_format($total_inbound) ?></div>
+                    <div class="fs-4 fw-bold text-success">TSh <?= number_format($total_inbound) ?></div>
                 </div>
             </div>
         </div>
@@ -130,7 +130,7 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
             <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
                 <div class="card-body p-4 bg-white border-bottom border-4 border-<?= $impact_col ?>">
                     <div class="text-uppercase small fw-bold text-muted mb-2 tracking-wider"><?= $is_sw ? 'Impact ya Mfuko' : 'Fund Impact' ?></div>
-                    <div class="fs-4 fw-bold text-<?= $impact_col ?>"><?= $impact_sign ?>TZS <?= number_format(abs($net_fund_impact)) ?></div>
+                    <div class="fs-4 fw-bold text-<?= $impact_col ?>"><?= $impact_sign ?>TSh <?= number_format(abs($net_fund_impact)) ?></div>
                 </div>
             </div>
         </div>
@@ -173,9 +173,9 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
                             <th class="ps-4">S/NO</th>
                             <th><?= $is_sw ? 'Mwanachama' : 'Member Name' ?></th>
                             <th class="text-center"><?= $is_sw ? 'Visa' : 'Cases' ?></th>
-                            <th class="text-end"><?= $is_sw ? 'Michango (TZS)' : 'Contrib (TZS)' ?></th>
-                            <th class="text-end"><?= $is_sw ? 'Msaada (TZS)' : 'Benefit (TZS)' ?></th>
-                            <th class="text-end text-primary"><?= $is_sw ? 'Tofauti (TZS)' : 'Variance (TZS)' ?></th>
+                            <th class="text-end"><?= $is_sw ? 'Michango (TSh)' : 'Contrib (TSh)' ?></th>
+                            <th class="text-end"><?= $is_sw ? 'Msaada (TSh)' : 'Benefit (TSh)' ?></th>
+                            <th class="text-end text-primary"><?= $is_sw ? 'Tofauti (TSh)' : 'Variance (TSh)' ?></th>
                             <th class="text-end pe-4"><?= $is_sw ? 'Status' : 'Status' ?></th>
                         </tr>
                     </thead>
@@ -368,7 +368,7 @@ $(document).ready(function() {
                 responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
-                    y: { beginAtZero: true, grid: { borderDash: [5, 5] }, ticks: { callback: v => 'TZS ' + v.toLocaleString(), font: { size: 10 } } },
+                    y: { beginAtZero: true, grid: { borderDash: [5, 5] }, ticks: { callback: v => 'TSh ' + v.toLocaleString(), font: { size: 10 } } },
                     x: { grid: { display: false }, ticks: { font: { size: 10 } } }
                 }
             }
