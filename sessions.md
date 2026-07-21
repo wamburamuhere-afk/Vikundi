@@ -4,6 +4,23 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-21 — Feat: M-Koba member onboarding (members + contributions)
+**Branch:** `feat/mkoba-member-onboarding`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Onboard a real M-Koba statement export (Ukuu Msakuzi) — create the distinct members and import their contribution history. The file is a **transactions** export (560 rows), not a roster; the member is the beneficiary (`MEMBER NAME` / `MEMBER ID`), while `SOURCE` is whoever paid. Yields **327 distinct members** and **524 member contributions (TSh 7,968,000)**; group transfers / account-openings / blank rows are correctly excluded.
+
+### New / changed
+- **`includes/member_import.php`:** `middle_name` is now **optional** (required: first_name, last_name, phone). Almost all M-Koba names are two words (first + surname); the DB stores a blank middle fine.
+- **`database/import_mkoba_oneoff.php` (new, CLI):** one-off onboarding that reuses the tested pure parsers (`member_import_parse_row`, `mkoba_parse_row`). Creates members as **`pending`** (auto username = first-initial+surname, password `<username>@123`) then imports their contributions (`pending`), matched by phone, de-duped by receipt. Notes: `users` is **MyISAM** (non-transactional) so the dry-run does **zero writes** (no rollback reliance) and the committed run is **idempotent + self-healing** (skips members already present by phone; deletes a user if its customer insert fails). Because members are pending, contribution matching is by phone **regardless of status** (the live importer requires `active`).
+
+### Tests
+- **`tests/Unit/MemberImportTest.php`:** updated required-field test (middle optional) + new two-word-name case. Full unit suite green (1064).
+
+### Verification
+- Local dry-run (no writes): 327 new members, 524 contributions would match, 0 unmatched. Committed on local demo: **327 pending members** (visible as "New Requests"), **524 M-Koba contributions** (TSh 7,968,000, pending), 0 unmatched, 0 orphans; sample member's payments correctly attributed. Production run pending sign-off (dry-run → backup → `--commit`). The raw CSV is git-ignored (real member PII).
+
+---
+
 ## Session — 2026-07-10 — Feat: fines printouts (leadership register + member's own)
 **Branch:** `feat/fines-printouts`
 **Developer:** Claude Code / Jabir Mussa

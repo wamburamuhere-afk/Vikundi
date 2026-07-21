@@ -20,14 +20,28 @@ class MemberImportTest extends TestCase
 
     public function testRequiredFieldsAreEnforced(): void
     {
+        // first_name, last_name and phone are required; middle_name is not.
         $err = member_import_parse_row(['first_name' => 'Juma', 'phone' => '0712']);
         $this->assertIsString($err);
-        $this->assertStringContainsString('middle_name', $err);
         $this->assertStringContainsString('last_name', $err);
+        $this->assertStringNotContainsString('middle_name', $err);
 
-        $missingPhone = member_import_parse_row(['first_name' => 'A', 'middle_name' => 'B', 'last_name' => 'C']);
+        $missingPhone = member_import_parse_row(['first_name' => 'A', 'last_name' => 'C']);
         $this->assertIsString($missingPhone);
         $this->assertStringContainsString('phone', $missingPhone);
+    }
+
+    public function testTwoWordNameWithoutMiddleParses(): void
+    {
+        // Many rosters (e.g. the M-Koba statement) carry only first + surname.
+        $row = member_import_parse_row([
+            'first_name' => 'Consesa', 'last_name' => 'Munishi', 'phone' => '0767276015',
+        ]);
+        $this->assertIsArray($row);
+        $this->assertSame('Consesa', $row['first_name']);
+        $this->assertSame('', $row['middle_name']);
+        $this->assertSame('Munishi', $row['last_name']);
+        $this->assertSame('0767276015', $row['phone']);
     }
 
     public function testValidRowNormalises(): void
