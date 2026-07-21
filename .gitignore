@@ -46,3 +46,6 @@ desktop.ini
 
 # AI Assistant encryption key (do not commit)
 includes/ai_secret.key
+
+# M-Koba member data export (real member PII — never commit)
+/M-Koba*.csv
