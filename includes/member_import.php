@@ -33,7 +33,8 @@ function member_import_normalize_gender(string $raw): string
 /**
  * Normalise one members-template row (assoc keyed by lowercased header).
  * Returns the normalised row, or a short error string when a REQUIRED field
- * (first_name, middle_name, last_name, phone) is missing.
+ * (first_name, last_name, phone) is missing. middle_name is OPTIONAL — many
+ * rosters (e.g. the M-Koba statement) carry only a first + surname.
  *
  * @return array|string
  */
@@ -48,7 +49,6 @@ function member_import_parse_row(array $assoc)
 
     $missing = [];
     if ($first === '')  $missing[] = 'first_name';
-    if ($middle === '') $missing[] = 'middle_name';
     if ($last === '')   $missing[] = 'last_name';
     if ($phone === '')  $missing[] = 'phone';
     if ($missing) return 'missing required ' . implode(', ', $missing);
