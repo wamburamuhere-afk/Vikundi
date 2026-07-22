@@ -58,6 +58,23 @@ $sb = ['pending' => 'warning', 'reviewed' => 'info', 'approved' => 'success', 'c
         .table tbody tr { page-break-inside: avoid; }
     }
     </style>
+    <?php if ($isMkoba): ?>
+    <style>
+        /* The M-Koba statement is 10 columns wide — print it LANDSCAPE so nothing
+           is clipped (only this statement flips; the standard one stays portrait).
+           Paired with a compact print font + wrapping so the long TRANS_IDs and
+           account numbers stay inside the sheet. */
+        @page { size: A4 landscape; }
+        @media print {
+            #mkobaPrintTable { font-size: 7.5pt !important; width: 100% !important; table-layout: fixed; }
+            #mkobaPrintTable th, #mkobaPrintTable td {
+                padding: 2px 4px !important;
+                word-break: break-word;
+                overflow-wrap: anywhere;
+            }
+        }
+    </style>
+    <?php endif; ?>
     <div class="d-none d-print-block">
         <?php PrintHeader::render($pdo, $isMkoba ? 'M-KOBA STATEMENT' : ($is_sw ? 'TAARIFA YA MIAMALA' : 'CONTRIBUTIONS STATEMENT')); ?>
     </div>
@@ -80,7 +97,7 @@ $sb = ['pending' => 'warning', 'reviewed' => 'info', 'approved' => 'success', 'c
 
             <?php if ($isMkoba): // ── M-Koba statement layout (mirrors the M-Koba extract, for reconciliation) ── ?>
             <div class="table-responsive">
-                <table class="table table-bordered table-sm align-middle" style="font-size:.78rem;">
+                <table id="mkobaPrintTable" class="table table-bordered table-sm align-middle" style="font-size:.78rem;">
                     <thead class="table-light">
                         <tr>
                             <?php foreach (vk_mkoba_statement_columns() as $col): ?><th><?= htmlspecialchars($col) ?></th><?php endforeach; ?>

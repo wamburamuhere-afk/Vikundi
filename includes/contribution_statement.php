@@ -99,9 +99,10 @@ if (!function_exists('vk_mkoba_statement_row')) {
             'RECEIPT'     => $pick('mkoba_receipt', 'receipt_number'),
             'DATE'        => $date,
             'MEMBER NAME' => $name,
-            'MEMBER ID'   => $pick('mkoba_member_id_str', 'phone'),
-            'SOURCE'      => $val('mkoba_source'),
-            'DESTINATION' => $val('mkoba_destination'),
+            // MEMBER ID / SOURCE / DESTINATION are phone / account numbers — drop Excel's ".00".
+            'MEMBER ID'   => preg_replace('/\.0+$/', '', $pick('mkoba_member_id_str', 'phone')),
+            'SOURCE'      => preg_replace('/\.0+$/', '', $val('mkoba_source')),
+            'DESTINATION' => preg_replace('/\.0+$/', '', $val('mkoba_destination')),
             'AMOUNT'      => $amount,
             'TRANS TYPE'  => $transType,
         ];
