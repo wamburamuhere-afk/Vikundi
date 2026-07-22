@@ -4,6 +4,25 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-22 — Feat: direct .xlsx import + Excel-corruption warning/guidance (A+B+C)
+**Branch:** `feat/mkoba-xlsx-import`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Get ahead of the Excel-mangled-Trans-ID problem at the source. (A) Accept the original M-Koba `.xlsx` directly so long numeric TRANS_IDs keep their full value instead of the CSV "3.83E+15"; (B) warn at upload when a file still carries Excel-corrupted Trans IDs; (C) guide users in the import modal. Complements the repair PR (recover-from-receipt) — together: `.xlsx` = clean, corrupted CSV = repaired + warned.
+
+### New / changed
+- **`includes/xlsx_reader.php` (new):** dependency-free `.xlsx` reader (ZipArchive + SimpleXML — nothing to `composer install`; `vendor/` isn't committed and the server's composer step is conditional). `xlsx_read_rows()` returns positional rows like `fgetcsv`; a numeric cell yields its **full** `<v>` value. Reads shared strings, inline strings, resolves the first worksheet, fills cell gaps.
+- **`actions/import_contributions.php`:** reads `.xlsx` via the reader (else CSV) into `$dataRows`, then processes uniformly; counts scientific-notation Trans IDs and appends a warning to the import result nudging to `.xlsx` / raw CSV.
+- **`database/import_mkoba_oneoff.php`:** same `.xlsx`-or-CSV read for the CLI.
+- **`app/bms/customer/transactions.php`:** a tip in the "Import M-Koba statement" modal (upload straight from M-Koba; if opened in Excel, use `.xlsx` or format TRANS_ID as Text).
+
+### Tests
+- **`tests/Unit/XlsxImportTest.php` (5):** builds a real `.xlsx` and reads it back — **full 16-digit Trans ID survives** (`3798612345678901`, not `3.79E+15`); column-letter math; web/CLI wiring; modal guidance. Updated `TransactionsMkobaColumnsTest`. Full suite green (1083).
+
+### Verification
+- Unit + **end-to-end**: a generated M-Koba `.xlsx` run through the CLI stored `trans_id=3798612345678901` (full value). CSV path unchanged (mirror still 560 = 524 + 36 + 0). Caveat on record: A only helps for the *original* `.xlsx`; an `.xlsx` re-saved from a corrupted CSV is already damaged (B + the receipt-repair cover that). First real M-Koba `.xlsx` upload should be spot-checked.
+
+---
+
 ## Session — 2026-07-22 — Feat: Transactions page mirrors the M-Koba statement
 **Branch:** `feat/transactions-mkoba-columns`
 **Developer:** Claude Code / Jabir Mussa

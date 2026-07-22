@@ -69,6 +69,7 @@ class TransactionsMkobaColumnsTest extends TestCase
         $this->assertStringContainsString('includes/mkoba_mirror.php', $imp);
         $this->assertStringContainsString('mkoba_populate_mirror($pdo, $mkobaRows', $imp);
         // collected only for M-Koba uploads
-        $this->assertStringContainsString('if ($isMkoba) $mkobaRows[] = $assoc;', $imp);
+        $this->assertStringContainsString('$mkobaRows[] = $assoc;', $imp);
+        $this->assertStringContainsString('if ($isMkoba) {', $imp);
     }
 }
