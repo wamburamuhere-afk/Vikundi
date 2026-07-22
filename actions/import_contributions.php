@@ -29,25 +29,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['upload_file'])) {
         exit;
     }
 
-    $handle = fopen($file, 'r');
-    if (!$handle) {
-        $_SESSION['import_response'] = ['success' => false, 'message' => 'Unable to read file.'];
+    // Read the whole file into rows. An .xlsx is read directly (dependency-free)
+    // so long numeric TRANS_IDs keep their full value instead of Excel's
+    // "3.83E+15"; everything else is read as CSV. Both yield positional rows.
+    $origName = (string) ($_FILES['upload_file']['name'] ?? '');
+    $isXlsx   = (bool) preg_match('/\.xlsx$/i', $origName);
+    try {
+        if ($isXlsx) {
+            require_once __DIR__ . '/../includes/xlsx_reader.php';
+            $allRows = xlsx_read_rows($file);
+        } else {
+            $allRows = [];
+            $handle = fopen($file, 'r');
+            if ($handle) {
+                while (($r = fgetcsv($handle)) !== false) { $allRows[] = $r; }
+                fclose($handle);
+            }
+        }
+    } catch (Throwable $e) {
+        $_SESSION['import_response'] = ['success' => false, 'message' => 'Could not read the file: ' . $e->getMessage()];
+        header('Location: ' . getUrl('transactions'));
+        exit;
+    }
+    if (!$allRows) {
+        $_SESSION['import_response'] = ['success' => false, 'message' => 'The file is empty.'];
         header('Location: ' . getUrl('transactions'));
         exit;
     }
 
     // Header row → lowercased, trimmed names (handles a UTF-8 BOM on col 1).
-    $headers = fgetcsv($handle);
-    if ($headers === false) {
-        $_SESSION['import_response'] = ['success' => false, 'message' => 'The file is empty.'];
-        header('Location: ' . getUrl('transactions'));
-        exit;
-    }
     $headers = array_map(function ($h) {
         return strtolower(trim(str_replace("\xEF\xBB\xBF", '', (string) $h)));
-    }, $headers);
+    }, array_shift($allRows));
+    $dataRows = $allRows;
 
-    $imported = 0; $skipped = 0; $duplicates = 0; $unmatched = [];
+    $imported = 0; $skipped = 0; $duplicates = 0; $unmatched = []; $sciTransIds = 0;
     unset($_SESSION['import_unmatched']); // clear any rejects held from a prior import
 
     $findMember = $pdo->prepare("
@@ -73,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['upload_file'])) {
     try {
         $pdo->beginTransaction();
 
-        while (($data = fgetcsv($handle)) !== false) {
+        foreach ($dataRows as $data) {
             // Skip wholly empty lines.
             if (count(array_filter($data, fn($v) => trim((string) $v) !== '')) === 0) continue;
 
@@ -81,7 +97,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['upload_file'])) {
             foreach ($headers as $i => $key) {
                 if ($key !== '') $assoc[$key] = $data[$i] ?? '';
             }
-            if ($isMkoba) $mkobaRows[] = $assoc;
+            if ($isMkoba) {
+                $mkobaRows[] = $assoc;
+                // Flag Excel-corrupted Trans IDs so we can warn (and nudge to .xlsx / raw CSV).
+                if (preg_match('/^\d+(\.\d+)?[eE][+\-]?\d+$/', trim((string) ($assoc['trans_id'] ?? '')))) $sciTransIds++;
+            }
 
             $p = $isMkoba ? mkoba_parse_row($assoc) : txn_template_parse_row($assoc);
             if ($p === null) { $skipped++; continue; } // non-contribution / missing phone or amount
@@ -146,6 +166,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['upload_file'])) {
         $parts = ["Imported $imported transaction(s) (pending approval)."];
         if ($duplicates) $parts[] = "$duplicates already on record — skipped.";
         if ($skipped)    $parts[] = "$skipped non-contribution row(s) ignored.";
+        if ($sciTransIds) $parts[] = "Note: $sciTransIds Trans ID(s) were corrupted by Excel (shown as e.g. 3.8E+15) — they fall back to the receipt. For exact Trans IDs, upload the original .xlsx or a raw CSV (don't open it in Excel first).";
         if ($unmatched) {
             $preview = array_map(
                 fn($r) => ($r['name'] !== '' ? $r['name'] : 'Unknown') . ' (' . $r['phone'] . ')',

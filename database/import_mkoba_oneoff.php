@@ -53,19 +53,25 @@ function last9(string $raw): string
     return strlen($d) >= 9 ? substr($d, -9) : $d;
 }
 
-// ── Read file once ──
-$fh = fopen($csvPath, 'r');
-$headers = fgetcsv($fh);
-$headers[0] = preg_replace('/^\xEF\xBB\xBF/', '', $headers[0]);
-$headers = array_map(fn($x) => strtolower(trim((string) $x)), $headers);
+// ── Read file once — .xlsx read directly (numeric TRANS_IDs keep their full
+//    value), otherwise CSV. Both yield positional rows. ──
+if (preg_match('/\.xlsx$/i', $csvPath)) {
+    require __DIR__ . '/../includes/xlsx_reader.php';
+    $allRows = xlsx_read_rows($csvPath);
+} else {
+    $allRows = [];
+    $fh = fopen($csvPath, 'r');
+    while (($r = fgetcsv($fh)) !== false) { $allRows[] = $r; }
+    fclose($fh);
+}
+$headers = array_map(fn($x) => strtolower(trim(str_replace("\xEF\xBB\xBF", '', (string) $x))), array_shift($allRows) ?: []);
 $rows = [];
-while (($r = fgetcsv($fh)) !== false) {
+foreach ($allRows as $r) {
     if (count(array_filter($r, fn($v) => trim((string) $v) !== '')) === 0) continue;
     $a = [];
     foreach ($headers as $i => $k) if ($k !== '') $a[$k] = $r[$i] ?? '';
     $rows[] = $a;
 }
-fclose($fh);
 
 $batch = basename($csvPath);
 

@@ -41,6 +41,7 @@ $migrations = [
     'seed_document_templates.php',  // ready-to-use starter templates (English + Swahili), idempotent
     'add_activity_logs_indexes.php', // indexes for the audit-logs viewer (created_at/user/module/action)
     'create_mkoba_statement_rows_table.php', // M-Koba statement mirror for reconciliation + permission
+    'repair_mkoba_scientific_trans_ids.php', // recover Excel-mangled ("3.8E+15") M-Koba trans ids from the receipt
 ];
 
 echo "== Vikundi database migrations ==\n";

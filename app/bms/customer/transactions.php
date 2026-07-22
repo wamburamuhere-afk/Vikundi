@@ -282,6 +282,12 @@ $statusBadge = [
                         <label class="form-label fw-bold"><?= $isSw ? 'Faili la Taarifa' : 'Statement File' ?></label>
                         <input type="file" name="upload_file" class="form-control" accept=".csv, .xls, .xlsx" required>
                     </div>
+                    <div class="alert alert-light border small py-2 mb-0">
+                        <i class="bi bi-lightbulb text-warning me-1"></i>
+                        <?= $isSw
+                            ? 'Kidokezo: Pakia faili moja kwa moja kutoka M-Koba. Ikiwa limefunguliwa katika Excel, tumia <b>.xlsx</b> — au weka safu ya TRANS_ID kama <b>Text</b> — ili Namba za Muamala ndefu zisiharibike (mfano 3.8E+15).'
+                            : 'Tip: upload the file straight from M-Koba. If it has been opened in Excel, prefer the <b>.xlsx</b> — or format the TRANS_ID column as <b>Text</b> — so long Trans IDs aren\'t corrupted (e.g. 3.8E+15).' ?>
+                    </div>
                 </div>
                 <div class="modal-footer bg-light">
                     <button type="button" class="btn btn-link text-secondary" data-bs-dismiss="modal"><?= $isSw ? 'Ghairi' : 'Cancel' ?></button>
@@ -396,9 +402,11 @@ $(function () {
             return;
         }
         var qs = new URLSearchParams({ from: from, to: to, status: $('#fStatus').val() }).toString();
+        // Both outputs use the M-Koba layout so they match the Transactions table
+        // (and the M-Koba statement) column-for-column.
         var url = (mode === 'excel')
-            ? '<?= getUrl("api/export_contributions_statement") ?>?' + qs
-            : '<?= getUrl("contribution_statement") ?>?' + qs;
+            ? '<?= getUrl("api/export_contributions_statement_mkoba") ?>?' + qs
+            : '<?= getUrl("contribution_statement") ?>?' + qs + '&layout=mkoba';
         window.open(url, '_blank');
     };
 });

@@ -47,6 +47,23 @@ function mkoba_parse_date(string $raw): ?string
     return ($dt && $dt->format('d/m/Y') === $datePart) ? $dt->format('Y-m-d') : null;
 }
 
+/**
+ * Repair a TRANS_ID that Excel mangled into scientific notation (e.g. "3.83E+15")
+ * when the M-Koba CSV was opened/saved in a spreadsheet. The true digits are
+ * unrecoverable from the rounded string, so fall back to the RECEIPT — a real,
+ * unique transaction reference (for most M-Koba rows TRANS_ID == RECEIPT anyway).
+ * A clean TRANS_ID (or one with no receipt fallback) is returned as-is.
+ */
+function mkoba_repair_trans_id(string $transId, string $receipt): string
+{
+    $t = trim($transId);
+    $r = trim($receipt);
+    if ($t !== '' && $r !== '' && preg_match('/^\d+(\.\d+)?[eE][+\-]?\d+$/', $t)) {
+        return $r; // Excel-corrupted numeric -> use the receipt
+    }
+    return $t;
+}
+
 /** Is this M-Koba TRANS TYPE a contribution we should import? */
 function mkoba_is_contribution(string $transType): bool
 {
@@ -78,7 +95,7 @@ function mkoba_parse_row(array $assoc): ?array
         'trans_type'  => trim($transType),
         'source'      => trim((string) ($assoc['source'] ?? '')),
         'destination' => trim((string) ($assoc['destination'] ?? '')),
-        'trans_id'    => trim((string) ($assoc['trans_id'] ?? '')),
+        'trans_id'    => mkoba_repair_trans_id((string) ($assoc['trans_id'] ?? ''), (string) ($assoc['receipt'] ?? '')),
         'sno'         => trim((string) ($assoc['no'] ?? '')),
         'type'        => 'monthly', // M-Koba contributions map to the monthly type
         'account'     => 'M-Koba',
@@ -146,7 +163,7 @@ function mkoba_mirror_row(array $assoc): array
     $reason = mkoba_exclusion_reason($transType, $phone, $amount);
     return [
         'sno'             => trim((string) ($assoc['no'] ?? '')),
-        'trans_id'        => trim((string) ($assoc['trans_id'] ?? '')),
+        'trans_id'        => mkoba_repair_trans_id((string) ($assoc['trans_id'] ?? ''), (string) ($assoc['receipt'] ?? '')),
         'receipt'         => trim((string) ($assoc['receipt'] ?? '')),
         'trans_date'      => mkoba_parse_date((string) ($assoc['date'] ?? '')),
         'member_name'     => trim((string) ($assoc['member name'] ?? '')),
