@@ -75,25 +75,30 @@ try {
     $filtStmt->execute($params);
     $recordsFiltered = (int) $filtStmt->fetchColumn();
 
-    // Whitelisted sortable columns (index → column) — never interpolate the
-    // request's order column directly.
+    // Whitelisted sortable columns (DataTable column index → SQL) — never
+    // interpolate the request's order column directly. The M-Koba-mirror columns
+    // (S/No, Trans ID, Member ID, Source, Destination, Trans Type) are not
+    // sortable, so only the meaningful ones are mapped here.
     $orderCols = [
-        0 => 'con.contribution_date',
-        1 => 'member_name',
-        2 => 'con.receipt_number',
-        3 => 'con.account',
-        4 => 'con.contribution_type',
-        5 => 'con.amount',
-        6 => 'con.status',
+        2  => 'con.receipt_number',    // Receipt
+        3  => 'con.contribution_date', // Date
+        4  => 'member_name',           // Member
+        8  => 'con.amount',            // Amount
+        10 => 'con.status',            // Status
     ];
-    $orderIdx = (int) ($_GET['order'][0]['column'] ?? 0);
+    $orderIdx = (int) ($_GET['order'][0]['column'] ?? 3);
     $orderBy  = $orderCols[$orderIdx] ?? 'con.contribution_date';
     $orderDir = strtolower((string) ($_GET['order'][0]['dir'] ?? 'desc')) === 'asc' ? 'ASC' : 'DESC';
 
+    // Every M-Koba statement column is returned so the Transactions table can
+    // mirror the statement 1:1 (S/No · Trans ID · Receipt · Date · Member ·
+    // Member ID · Source · Destination · Amount · Trans Type) plus our Status.
     $stmt = $pdo->prepare("
         SELECT con.contribution_id, con.contribution_date, con.receipt_number, con.account,
                con.contribution_type, con.amount, con.status,
-               TRIM(CONCAT_WS(' ', c.first_name, c.middle_name, c.last_name)) AS member_name
+               con.mkoba_sno, con.mkoba_trans_id, con.mkoba_member_id_str,
+               con.mkoba_source, con.mkoba_destination, con.mkoba_trans_type,
+               TRIM(CONCAT_WS(' ', c.first_name, NULLIF(c.middle_name, ''), c.last_name)) AS member_name
           FROM contributions con
           LEFT JOIN customers c ON con.member_id = c.customer_id
           $where

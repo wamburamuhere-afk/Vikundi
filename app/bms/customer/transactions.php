@@ -216,12 +216,16 @@ $statusBadge = [
                 <table id="transactionsTable" class="table table-hover align-middle mb-0" style="width:100%">
                     <thead class="table-light small">
                         <tr>
-                            <th><?= $isSw ? 'Tarehe' : 'Date' ?></th>
-                            <th><?= $isSw ? 'Mwanachama' : 'Member' ?></th>
+                            <th>S/No</th>
+                            <th><?= $isSw ? 'Namba ya Muamala' : 'Trans ID' ?></th>
                             <th><?= $isSw ? 'Risiti' : 'Receipt' ?></th>
-                            <th><?= $isSw ? 'Akaunti' : 'Account' ?></th>
-                            <th><?= $isSw ? 'Aina' : 'Type' ?></th>
+                            <th><?= $isSw ? 'Tarehe' : 'Date' ?></th>
+                            <th><?= $isSw ? 'Mwanachama' : 'Member Name' ?></th>
+                            <th><?= $isSw ? 'Namba ya Mwanachama' : 'Member ID' ?></th>
+                            <th><?= $isSw ? 'Chanzo' : 'Source' ?></th>
+                            <th><?= $isSw ? 'Lengwa' : 'Destination' ?></th>
                             <th class="text-end"><?= $isSw ? 'Kiasi' : 'Amount' ?></th>
+                            <th><?= $isSw ? 'Aina ya Muamala' : 'Trans Type' ?></th>
                             <th class="text-center"><?= $isSw ? 'Hali' : 'Status' ?></th>
                         </tr>
                     </thead>
@@ -334,7 +338,7 @@ $(function () {
         processing: true,
         searchDelay: 400,
         deferRender: true,
-        order: [[0, 'desc']],
+        order: [[3, 'desc']], // Date, newest first (mirrors the M-Koba statement)
         pageLength: 25,
         lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
         ajax: {
@@ -347,13 +351,20 @@ $(function () {
                 d.date_to   = $('#fTo').val();
             }
         },
+        // Columns mirror the M-Koba statement 1:1 (+ our Status). M-Koba-only
+        // fields are blank for hand-entered payments; the M-Koba-specific columns
+        // aren't sortable (see $orderCols in api/get_transactions.php).
         columns: [
-            { data: 'contribution_date', render: d => d || '—' },
-            { data: 'member_name',       render: d => txnEsc(d || '—') },
-            { data: 'receipt_number',    render: d => txnEsc(d || '—') },
-            { data: 'account',           render: d => txnEsc(d || '—') },
-            { data: 'contribution_type', render: d => txnEsc(TXN_TYPES[d] || d || '—') },
+            { data: 'mkoba_sno',           orderable: false, render: d => txnEsc(d || '—') },
+            { data: 'mkoba_trans_id',      orderable: false, className: 'small text-muted', render: d => txnEsc(d || '—') },
+            { data: 'receipt_number',      render: d => txnEsc(d || '—') },
+            { data: 'contribution_date',   render: d => d || '—' },
+            { data: 'member_name',         render: d => txnEsc(d || '—') },
+            { data: 'mkoba_member_id_str', orderable: false, className: 'small text-muted', render: d => txnEsc(d || '—') },
+            { data: 'mkoba_source',        orderable: false, className: 'small text-muted', render: d => txnEsc(d || '—') },
+            { data: 'mkoba_destination',   orderable: false, className: 'small text-muted', render: d => txnEsc(d || '—') },
             { data: 'amount', className: 'text-end fw-semibold', render: d => new Intl.NumberFormat().format(Math.round(d || 0)) },
+            { data: 'mkoba_trans_type',    orderable: false, render: (d, t, row) => txnEsc(d || TXN_TYPES[row.contribution_type] || row.contribution_type || '—') },
             { data: 'status', className: 'text-center', render: d => '<span class="badge bg-' + (TXN_STATUS_BADGE[d] || 'secondary') + '">' + txnEsc(d) + '</span>' }
         ],
         language: {

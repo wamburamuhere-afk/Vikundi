@@ -73,8 +73,12 @@ class MkobaReconciliationTest extends TestCase
     {
         $src = file_get_contents(__DIR__ . '/../../database/import_mkoba_oneoff.php');
         $this->assertStringContainsString('--mirror-only', $src);
-        $this->assertStringContainsString('function mkoba_populate_mirror', $src);
-        $this->assertStringContainsString('INSERT INTO mkoba_statement_rows', $src);
+        // The mirror routine now lives in the shared include; the CLI calls it.
+        $this->assertStringContainsString('includes/mkoba_mirror.php', $src);
+        $this->assertStringContainsString('mkoba_populate_mirror(', $src);
+        // and the actual INSERT lives in that shared helper
+        $this->assertStringContainsString('INSERT INTO mkoba_statement_rows',
+            file_get_contents(__DIR__ . '/../../includes/mkoba_mirror.php'));
     }
 
     public function testViewIsGatedMirrorsColumnsAndTiesOut(): void
