@@ -4,6 +4,25 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-22 — Feat: M-Koba reconciliation (statement mirror + tie-out)
+**Branch:** `feat/mkoba-reconciliation`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** The boss wants the Transactions area to match the M-Koba statement for reconciliation. Built the "statement as received" side: a faithful mirror of every M-Koba row, tied out against the ledger so savings + excluded (transfers/openings/blank) + missing add up to the statement total — no more unexplained TSh 8M gap from the deliberately-excluded transfers.
+
+### New / changed
+- **`database/create_mkoba_statement_rows_table.php` (new migration):** `mkoba_statement_rows` — every statement row as printed (sno/trans_id/receipt/date/member_name/member_id/source/destination/amount/trans_type) + `outcome` enum `imported|excluded|missing`, `reason`, `contribution_id`. Registers the `mkoba_reconciliation` permission. Registered in `migrate.php`.
+- **`includes/transaction_import.php`:** pure `mkoba_exclusion_reason()` (why a row isn't a member contribution) + `mkoba_mirror_row()` (flatten a raw row, clean phone `.00`).
+- **`database/import_mkoba_oneoff.php`:** builds the mirror on `--commit`, plus a new **`--mirror-only`** mode to backfill an already-imported statement (idempotent — replaces the batch). Links each imported row to its contribution by receipt; a contribution-type row with no ledger match → `missing`.
+- **`app/constant/accounts/mkoba_reconciliation.php` (new, route `mkoba_reconciliation`, Finance menu):** statement selector, a Reconciled/Attention banner, a tie-out summary (statement total = savings + excluded + missing, plus a ledger cross-check), and the mirror table in M-Koba columns with a per-row Savings/Excluded/Missing badge. Gated `requireViewPermission('mkoba_reconciliation')`.
+
+### Tests
+- **`tests/Unit/MkobaReconciliationTest.php` (8):** exclusion-reason classification, mirror-row flattening (contribution vs transfer, `.00` cleaned), migration/permission, `--mirror-only` + mirror insert, gated view mirrors columns + ties out, route. Full unit suite green (1072).
+
+### Verification
+- Local: migration created the table; `--mirror-only` rebuilt the mirror → **560 rows = 524 imported (TSh 7,968,000) + 36 excluded (TSh 8,015,000) + 0 missing**, ledger cross-check TSh 7,968,000 → **RECONCILED**. Page data-layer queries verified (browser render pending — extension was unresponsive). Production: after merge/deploy, run `php database/import_mkoba_oneoff.php "M-Koba - Ukuu Msakuzi.csv" --mirror-only` to backfill the mirror (the CSV must be re-uploaded — git-ignored). See [[prod-db-and-reset]].
+
+---
+
 ## Session — 2026-07-21 — Feat: M-Koba member onboarding (members + contributions)
 **Branch:** `feat/mkoba-member-onboarding`
 **Developer:** Claude Code / Jabir Mussa

@@ -116,6 +116,52 @@ function unmatched_rows_to_csv(array $rows): string
 }
 
 /**
+ * Why an M-Koba row is NOT a member contribution (so it's kept for the tie-out
+ * but never counted in the books). Returns '' for rows that ARE contributions.
+ */
+function mkoba_exclusion_reason(string $transType, string $phone, float $amount): string
+{
+    $t = strtolower(trim($transType));
+    if ($t === '')                             return 'No transaction type (balance / non-payment row)';
+    if ($t === 'group transfer')               return 'Group transfer (not a member contribution)';
+    if ($t === 'opening an account on cbs')    return 'Account opening (no money moved)';
+    if ($phone === '')                         return 'No member phone on the row';
+    if ($amount <= 0)                          return 'Zero amount';
+    return ''; // it is a contribution
+}
+
+/**
+ * Flatten one raw M-Koba statement row into the shape stored in
+ * `mkoba_statement_rows` — EVERY row, contribution or not, exactly as printed
+ * (phone/account numbers cleaned of Excel's ".00"). Pure — no DB. The caller
+ * resolves the final `outcome` (imported vs missing) against the books; here we
+ * only mark whether the row is a contribution and, if not, why it's excluded.
+ */
+function mkoba_mirror_row(array $assoc): array
+{
+    $clean = fn($v) => preg_replace('/[^0-9]/', '', preg_replace('/\.0+$/', '', trim((string) $v)));
+    $transType = trim((string) ($assoc['trans type'] ?? ''));
+    $phone  = mkoba_normalize_phone((string) ($assoc['member id'] ?? ''));
+    $amount = mkoba_parse_amount((string) ($assoc['amount'] ?? ''));
+    $reason = mkoba_exclusion_reason($transType, $phone, $amount);
+    return [
+        'sno'             => trim((string) ($assoc['no'] ?? '')),
+        'trans_id'        => trim((string) ($assoc['trans_id'] ?? '')),
+        'receipt'         => trim((string) ($assoc['receipt'] ?? '')),
+        'trans_date'      => mkoba_parse_date((string) ($assoc['date'] ?? '')),
+        'member_name'     => trim((string) ($assoc['member name'] ?? '')),
+        'member_id'       => $clean($assoc['member id'] ?? ''),
+        'source'          => $clean($assoc['source'] ?? ''),
+        'destination'     => $clean($assoc['destination'] ?? ''),
+        'amount'          => $amount,
+        'trans_type'      => $transType,
+        'match_phone'     => $phone,               // last-9, for linking to a contribution
+        'is_contribution' => ($reason === ''),
+        'reason'          => $reason,
+    ];
+}
+
+/**
  * Normalise one row of OUR template (headers: receipt_number, date, member_phone,
  * member_name, amount, type, account, description). Null to skip.
  */
