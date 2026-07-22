@@ -61,9 +61,9 @@ class MkobaStatementExportTest extends TestCase
         $this->assertSame('DBS9N7LOXOR', $out['RECEIPT']);       // M-Koba receipt wins over ours
         $this->assertSame('28/02/2026', $out['DATE']);           // dd/mm/yyyy
         $this->assertSame('CONSESA MUNISHI', $out['MEMBER NAME']); // original M-Koba name, already caps
-        $this->assertSame('255767276015.00', $out['MEMBER ID']);
-        $this->assertSame('255767276015.00', $out['SOURCE']);
-        $this->assertSame('60243499376.00', $out['DESTINATION']);
+        $this->assertSame('255767276015', $out['MEMBER ID']);   // Excel ".00" dropped
+        $this->assertSame('255767276015', $out['SOURCE']);      // Excel ".00" dropped
+        $this->assertSame('60243499376', $out['DESTINATION']);  // Excel ".00" dropped
         $this->assertSame('5,000.00', $out['AMOUNT']);           // thousands + 2 decimals
         $this->assertSame('Member Contribution', $out['TRANS TYPE']);
     }

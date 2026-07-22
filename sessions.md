@@ -4,6 +4,23 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-22 — Fix: M-Koba statement prints landscape + cleaner ID columns
+**Branch:** `feat/mkoba-statement-landscape`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** The M-Koba statement is 10 columns wide, so printing it on portrait A4 clipped the right-hand columns (DESTINATION / AMOUNT / TRANS TYPE). It now prints **landscape** — only that statement; the standard 7-column contributions statement stays portrait. Also dropped Excel's trailing ".00" from the MEMBER ID / SOURCE / DESTINATION columns (they're phone/account numbers, not money).
+
+### New / changed
+- **`app/bms/customer/contribution_statement.php`:** when `$isMkoba`, a gated `<style>` adds `@page { size: A4 landscape }` plus a compact print font + `word-break`/`overflow-wrap` on `#mkobaPrintTable`, so all 10 columns fit the wider sheet. Standard layout untouched (still portrait). `@page` size composes with the shared print-footer `@page { margin }` (different properties).
+- **`includes/contribution_statement.php`:** `vk_mkoba_statement_row()` strips a trailing `.00` from MEMBER ID / SOURCE / DESTINATION (cleans both the print and the Excel export).
+
+### Tests
+- **`tests/Unit/MkobaStatementLandscapeTest.php` (3):** landscape gated to M-Koba only (declared exactly once), table id present, `.00` stripped from SOURCE/DESTINATION. Updated `MkobaStatementExportTest` (IDs now without `.00`). Full suite green (1094).
+
+### Verification
+- CSS rule confirmed in source (standard, print-only `@page`); `.00` strip verified via the mapper on live data (SOURCE `255767276015`, DEST `60243499376`). NOTE: landscape is print-only — it can't be screenshotted (the print dialog blocks the extension) and the local session had expired; confirm by printing the M-Koba statement after deploy.
+
+---
+
 ## Session — 2026-07-22 — Fix: repair Excel-mangled M-Koba Trans IDs + M-Koba Statement/Excel outputs
 **Branch:** `fix/mkoba-transid-and-statement-outputs`
 **Developer:** Claude Code / Jabir Mussa
