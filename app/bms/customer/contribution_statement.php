@@ -13,12 +13,15 @@ $is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
 $t = function ($en, $sw) use ($is_sw) { return $is_sw ? $sw : $en; };
 
 $f = vk_statement_filters($_GET);
+$isMkoba = (($_GET['layout'] ?? '') === 'mkoba'); // M-Koba statement layout (reconciliation)
 $params = [];
 $where = vk_statement_where($f, $params);
 
 $stmt = $pdo->prepare("
     SELECT con.contribution_date, con.receipt_number, con.account, con.contribution_type, con.amount, con.status,
-           TRIM(CONCAT_WS(' ', c.first_name, c.middle_name, c.last_name)) AS member_name, c.phone
+           con.mkoba_sno, con.mkoba_trans_id, con.mkoba_receipt, con.mkoba_member_name,
+           con.mkoba_member_id_str, con.mkoba_source, con.mkoba_destination, con.mkoba_trans_type,
+           TRIM(CONCAT_WS(' ', c.first_name, NULLIF(c.middle_name,''), c.last_name)) AS member_name, c.phone
       FROM contributions con
       LEFT JOIN customers c ON con.member_id = c.customer_id
      WHERE $where
@@ -56,7 +59,7 @@ $sb = ['pending' => 'warning', 'reviewed' => 'info', 'approved' => 'success', 'c
     }
     </style>
     <div class="d-none d-print-block">
-        <?php PrintHeader::render($pdo, $is_sw ? 'TAARIFA YA MIAMALA' : 'CONTRIBUTIONS STATEMENT'); ?>
+        <?php PrintHeader::render($pdo, $isMkoba ? 'M-KOBA STATEMENT' : ($is_sw ? 'TAARIFA YA MIAMALA' : 'CONTRIBUTIONS STATEMENT')); ?>
     </div>
 
     <div class="d-flex justify-content-between align-items-center mb-3 no-print">
@@ -67,7 +70,7 @@ $sb = ['pending' => 'warning', 'reviewed' => 'info', 'approved' => 'success', 'c
     <div class="card border-0 shadow-sm">
         <div class="card-body">
             <div class="mb-3">
-                <h5 class="fw-bold text-primary mb-1"><?= $t('Contributions Statement', 'Taarifa ya Michango') ?></h5>
+                <h5 class="fw-bold text-primary mb-1"><?= $isMkoba ? $t('M-Koba Statement', 'Taarifa ya M-Koba') : $t('Contributions Statement', 'Taarifa ya Michango') ?></h5>
                 <div class="small text-muted">
                     <b><?= $t('Period', 'Kipindi') ?>:</b> <?= htmlspecialchars($range) ?>
                     &nbsp;·&nbsp; <b><?= $t('Scope', 'Wigo') ?>:</b> <?= $member_name !== '' ? htmlspecialchars($member_name) : $t('All members (group-wide)', 'Wanachama wote') ?>
@@ -75,6 +78,27 @@ $sb = ['pending' => 'warning', 'reviewed' => 'info', 'approved' => 'success', 'c
                 </div>
             </div>
 
+            <?php if ($isMkoba): // ── M-Koba statement layout (mirrors the M-Koba extract, for reconciliation) ── ?>
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm align-middle" style="font-size:.78rem;">
+                    <thead class="table-light">
+                        <tr>
+                            <?php foreach (vk_mkoba_statement_columns() as $col): ?><th><?= htmlspecialchars($col) ?></th><?php endforeach; ?>
+                        </tr>
+                    </thead>
+                    <tbody class="small">
+                        <?php if (!$rows): ?>
+                            <tr><td colspan="10" class="text-center text-muted py-4"><?= $t('No transactions in this period.', 'Hakuna miamala kwa kipindi hiki.') ?></td></tr>
+                        <?php else: $no = 0; foreach ($rows as $r): $mr = vk_mkoba_statement_row($r, ++$no); ?>
+                            <tr>
+                                <?php foreach ($mr as $cell): ?><td><?= htmlspecialchars((string) $cell) ?></td><?php endforeach; ?>
+                            </tr>
+                        <?php endforeach; endif; ?>
+                    </tbody>
+                    <!-- No grand-total row: an M-Koba extract has none, so a total would break a clean row-by-row diff against it. -->
+                </table>
+            </div>
+            <?php else: // ── standard contributions layout ── ?>
             <div class="table-responsive">
                 <table class="table table-bordered table-sm align-middle">
                     <thead class="table-light">
@@ -104,12 +128,13 @@ $sb = ['pending' => 'warning', 'reviewed' => 'info', 'approved' => 'success', 'c
                     <tfoot>
                         <tr class="fw-bold">
                             <td colspan="6" class="text-end"><?= $t('Total', 'Jumla') ?></td>
-                            <td class="text-end text-primary"><?= number_format($total, 0) ?> TZS</td>
+                            <td class="text-end text-primary"><?= number_format($total, 0) ?> TSh</td>
                             <td class="text-center"><?= count($rows) ?></td>
                         </tr>
                     </tfoot>
                 </table>
             </div>
+            <?php endif; ?>
         </div>
     </div>
 </div>

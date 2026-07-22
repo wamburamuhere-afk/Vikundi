@@ -4,6 +4,26 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-22 — Fix: repair Excel-mangled M-Koba Trans IDs + M-Koba Statement/Excel outputs
+**Branch:** `fix/mkoba-transid-and-statement-outputs`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Two boss follow-ups after the Transactions page started mirroring M-Koba: (1) some Trans IDs showed as `3.83E+15` — Excel corrupts long numeric TRANS_IDs into scientific notation when the CSV is opened/saved in a spreadsheet; (2) the Transactions **Statement (print)** and **Excel** outputs still used the old contributions layout, not the new M-Koba columns.
+
+### New / changed
+- **`includes/transaction_import.php`:** `mkoba_repair_trans_id($transId, $receipt)` — a scientific-notation Trans ID (its digits unrecoverable) falls back to the RECEIPT (unique per txn; for most M-Koba rows TRANS_ID == RECEIPT). Applied in `mkoba_parse_row` + `mkoba_mirror_row` so new imports store clean.
+- **`database/repair_mkoba_scientific_trans_ids.php` (new migration):** repairs already-stored corrupted trans ids in `contributions.mkoba_trans_id` and `mkoba_statement_rows.trans_id` (REGEXP scientific → receipt; idempotent). Registered in `migrate.php`.
+- **`app/bms/customer/contribution_statement.php`:** new **`layout=mkoba`** mode — renders the M-Koba columns (via `vk_mkoba_statement_columns()`/`vk_mkoba_statement_row()`), titled "M-Koba Statement", no grand-total (matches an M-Koba extract for row-by-row diff). Default layout unchanged (still used by manage_contributions).
+- **`app/bms/customer/transactions.php`:** the **Statement** button now opens `contribution_statement?...&layout=mkoba`; the **Excel** button now hits the existing `api/export_contributions_statement_mkoba` (M-Koba layout) instead of the plain one.
+- **`roots.php`:** routes for `api/export_contributions_statement[_mkoba]`.
+
+### Tests
+- **`tests/Unit/MkobaTransIdAndStatementTest.php` (8)** + updated `TransactionsTableTest`. Full unit suite green (1086).
+
+### Verification
+- Local: repair migration fixed 323 ledger + 328 mirror trans ids → 0 scientific remaining. Live table: S/No 1 Consesa Munishi shows `DBS9N7LOXOR` (was `3.7986E+15`). Excel/print helper output and the M-Koba print page (`layout=mkoba`) both render all M-Koba columns with repaired Trans IDs. Production backfill: the repair migration auto-runs on deploy (fixes the already-imported statement); no re-upload needed.
+
+---
+
 ## Session — 2026-07-22 — Feat: Transactions page mirrors the M-Koba statement
 **Branch:** `feat/transactions-mkoba-columns`
 **Developer:** Claude Code / Jabir Mussa
