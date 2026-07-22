@@ -4,6 +4,25 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-22 — Feat: Transactions page mirrors the M-Koba statement
+**Branch:** `feat/transactions-mkoba-columns`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** The boss insisted the Transactions page show ALL the details that appear on the M-Koba statement (Trans ID, Source, etc. were missing), for reconciliation. The data was already stored on each contribution — it just wasn't displayed. Reshaped the Transactions list to mirror the statement 1:1, wired the backend to return the fields, and made the on-page M-Koba importer also build the reconciliation mirror.
+
+### New / changed
+- **`api/get_transactions.php`:** the server-side Transactions DataTable API now returns every M-Koba field (`mkoba_sno`, `mkoba_trans_id`, `mkoba_member_id_str`, `mkoba_source`, `mkoba_destination`, `mkoba_trans_type`) alongside receipt/date/amount/status; sortable-column map remapped for the new layout; member name uses `NULLIF(middle_name,'')` (no more double space).
+- **`app/bms/customer/transactions.php`** (route `transactions`, the M-Koba import page — NOT `app/constant/accounts/transactions.php` which is journal entries): headers + DataTable columns now mirror the statement — **S/No · Trans ID · Receipt · Date · Member · Member ID · Source · Destination · Amount · Trans Type · Status**. Default sort = Date desc. M-Koba-only fields are blank for hand-entered payments (Option A).
+- **`includes/mkoba_mirror.php` (new):** shared `mkoba_populate_mirror()` — the one DB routine that (re)builds the reconciliation mirror. Refactored out of `import_mkoba_oneoff.php` (which now requires it) so the web importer can use it too.
+- **`actions/import_contributions.php`:** an M-Koba statement upload on the Transactions page now also builds the reconciliation mirror after commit (guarded — old DBs without the table are skipped quietly).
+
+### Tests
+- **`tests/Unit/TransactionsMkobaColumnsTest.php` (6)** + updated `MkobaReconciliationTest`. Full unit suite green (1078).
+
+### Verification
+- Local: refactored CLI mirror still ties out (560 = 524 + 36 + 0). API query returns all M-Koba fields populated (e.g. Trans ID `3820502806778077_0783459353`, Source `255753778077`). Visual render of the table pending — Chrome extension was unresponsive; confirm on production after deploy.
+
+---
+
 ## Session — 2026-07-22 — Feat: M-Koba reconciliation (statement mirror + tie-out)
 **Branch:** `feat/mkoba-reconciliation`
 **Developer:** Claude Code / Jabir Mussa

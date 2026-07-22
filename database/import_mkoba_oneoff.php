@@ -34,7 +34,8 @@ if (PHP_SAPI !== 'cli') { http_response_code(403); exit("CLI only\n"); }
 
 require __DIR__ . '/../includes/config.php';            // $pdo
 require __DIR__ . '/../includes/member_import.php';     // member_import_parse_row, member_import_clean_digits
-require __DIR__ . '/../includes/transaction_import.php'; // mkoba_parse_row
+require __DIR__ . '/../includes/transaction_import.php'; // mkoba_parse_row, mkoba_mirror_row
+require __DIR__ . '/../includes/mkoba_mirror.php';       // mkoba_populate_mirror (shared with the web importer)
 
 $csvPath    = $argv[1] ?? null;
 $commit     = in_array('--commit', $argv, true);
@@ -44,40 +45,6 @@ if (!$csvPath || !is_file($csvPath)) { fwrite(STDERR, "Usage: php database/impor
 $dbName = $pdo->query('SELECT DATABASE()')->fetchColumn();
 $modeLabel = $mirrorOnly ? 'MIRROR-ONLY (reconciliation, no members/contributions)' : ($commit ? 'COMMIT (persist)' : 'DRY-RUN (no writes)');
 fwrite(STDERR, "── M-Koba onboarding ──\nTarget DB : $dbName\nMode      : $modeLabel\n\n");
-
-/**
- * Rebuild the reconciliation mirror for one statement (identified by $batch):
- * store EVERY row exactly as received, tagged imported/excluded/missing and
- * linked to its contribution by receipt. Idempotent — replaces the batch.
- */
-function mkoba_populate_mirror(PDO $pdo, array $rows, string $batch): array
-{
-    $pdo->prepare("DELETE FROM mkoba_statement_rows WHERE batch = ?")->execute([$batch]);
-    $byReceipt = $pdo->prepare("SELECT contribution_id FROM contributions WHERE mkoba_receipt = ? LIMIT 1");
-    $ins = $pdo->prepare("INSERT INTO mkoba_statement_rows
-        (batch, sno, trans_id, receipt, trans_date, member_name, member_id, source, destination, amount, trans_type, outcome, reason, contribution_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stats = ['imported' => 0, 'excluded' => 0, 'missing' => 0];
-    foreach ($rows as $a) {
-        $m = mkoba_mirror_row($a);
-        $cid = null;
-        if ($m['is_contribution']) {
-            if ($m['receipt'] !== '') { $byReceipt->execute([$m['receipt']]); $cid = $byReceipt->fetchColumn() ?: null; }
-            $outcome = $cid ? 'imported' : 'missing';
-            $reason  = $cid ? '' : 'Contribution row not found in the ledger';
-        } else {
-            $outcome = 'excluded';
-            $reason  = $m['reason'];
-        }
-        $stats[$outcome]++;
-        $ins->execute([
-            $batch, $m['sno'] ?: null, $m['trans_id'] ?: null, $m['receipt'] ?: null, $m['trans_date'],
-            $m['member_name'] ?: null, $m['member_id'] ?: null, $m['source'] ?: null, $m['destination'] ?: null,
-            $m['amount'], $m['trans_type'] ?: null, $outcome, $reason ?: null, $cid,
-        ]);
-    }
-    return $stats;
-}
 
 /** last9 of a phone/member-id (drops Excel ".00", country code, separators). */
 function last9(string $raw): string
