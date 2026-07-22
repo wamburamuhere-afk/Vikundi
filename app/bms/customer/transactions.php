@@ -402,9 +402,11 @@ $(function () {
             return;
         }
         var qs = new URLSearchParams({ from: from, to: to, status: $('#fStatus').val() }).toString();
+        // Both outputs use the M-Koba layout so they match the Transactions table
+        // (and the M-Koba statement) column-for-column.
         var url = (mode === 'excel')
-            ? '<?= getUrl("api/export_contributions_statement") ?>?' + qs
-            : '<?= getUrl("contribution_statement") ?>?' + qs;
+            ? '<?= getUrl("api/export_contributions_statement_mkoba") ?>?' + qs
+            : '<?= getUrl("contribution_statement") ?>?' + qs + '&layout=mkoba';
         window.open(url, '_blank');
     };
 });

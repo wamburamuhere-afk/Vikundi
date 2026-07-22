@@ -50,14 +50,15 @@ class TransactionsTableTest extends TestCase
         $this->assertStringContainsString('$default_from', $p); // bounded default window
     }
 
-    public function testStatementButtonsReuseTheSharedStatement(): void
+    public function testStatementButtonsUseTheMkobaLayout(): void
     {
-        // The transactions printout reuses the existing date-bounded contributions
-        // statement (print) and CSV/Excel export — no duplicate print logic.
+        // The transactions Statement (print) and Excel outputs use the M-Koba
+        // layout so they match the M-Koba-mirroring Transactions table.
         $p = $this->src('app/bms/customer/transactions.php');
         $this->assertStringContainsString('txnStatement', $p);
-        $this->assertStringContainsString("getUrl(\"contribution_statement\")", $p);       // print
-        $this->assertStringContainsString("getUrl(\"api/export_contributions_statement\")", $p); // Excel/CSV
+        $this->assertStringContainsString("getUrl(\"contribution_statement\")", $p);            // print (base)
+        $this->assertStringContainsString("+ '&layout=mkoba'", $p);                             // …in M-Koba layout
+        $this->assertStringContainsString("getUrl(\"api/export_contributions_statement_mkoba\")", $p); // Excel/CSV
     }
 
     public function testIndexMigrationRegisteredAndReflected(): void
