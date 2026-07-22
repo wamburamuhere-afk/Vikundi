@@ -36,12 +36,48 @@ require __DIR__ . '/../includes/config.php';            // $pdo
 require __DIR__ . '/../includes/member_import.php';     // member_import_parse_row, member_import_clean_digits
 require __DIR__ . '/../includes/transaction_import.php'; // mkoba_parse_row
 
-$csvPath = $argv[1] ?? null;
-$commit  = in_array('--commit', $argv, true);
-if (!$csvPath || !is_file($csvPath)) { fwrite(STDERR, "Usage: php database/import_mkoba_oneoff.php <file.csv> [--commit]\n"); exit(1); }
+$csvPath    = $argv[1] ?? null;
+$commit     = in_array('--commit', $argv, true);
+$mirrorOnly = in_array('--mirror-only', $argv, true); // (re)build the reconciliation mirror only — no members/contributions
+if (!$csvPath || !is_file($csvPath)) { fwrite(STDERR, "Usage: php database/import_mkoba_oneoff.php <file.csv> [--commit | --mirror-only]\n"); exit(1); }
 
 $dbName = $pdo->query('SELECT DATABASE()')->fetchColumn();
-fwrite(STDERR, "── M-Koba onboarding ──\nTarget DB : $dbName\nMode      : " . ($commit ? "COMMIT (persist)" : "DRY-RUN (no writes)") . "\n\n");
+$modeLabel = $mirrorOnly ? 'MIRROR-ONLY (reconciliation, no members/contributions)' : ($commit ? 'COMMIT (persist)' : 'DRY-RUN (no writes)');
+fwrite(STDERR, "── M-Koba onboarding ──\nTarget DB : $dbName\nMode      : $modeLabel\n\n");
+
+/**
+ * Rebuild the reconciliation mirror for one statement (identified by $batch):
+ * store EVERY row exactly as received, tagged imported/excluded/missing and
+ * linked to its contribution by receipt. Idempotent — replaces the batch.
+ */
+function mkoba_populate_mirror(PDO $pdo, array $rows, string $batch): array
+{
+    $pdo->prepare("DELETE FROM mkoba_statement_rows WHERE batch = ?")->execute([$batch]);
+    $byReceipt = $pdo->prepare("SELECT contribution_id FROM contributions WHERE mkoba_receipt = ? LIMIT 1");
+    $ins = $pdo->prepare("INSERT INTO mkoba_statement_rows
+        (batch, sno, trans_id, receipt, trans_date, member_name, member_id, source, destination, amount, trans_type, outcome, reason, contribution_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stats = ['imported' => 0, 'excluded' => 0, 'missing' => 0];
+    foreach ($rows as $a) {
+        $m = mkoba_mirror_row($a);
+        $cid = null;
+        if ($m['is_contribution']) {
+            if ($m['receipt'] !== '') { $byReceipt->execute([$m['receipt']]); $cid = $byReceipt->fetchColumn() ?: null; }
+            $outcome = $cid ? 'imported' : 'missing';
+            $reason  = $cid ? '' : 'Contribution row not found in the ledger';
+        } else {
+            $outcome = 'excluded';
+            $reason  = $m['reason'];
+        }
+        $stats[$outcome]++;
+        $ins->execute([
+            $batch, $m['sno'] ?: null, $m['trans_id'] ?: null, $m['receipt'] ?: null, $m['trans_date'],
+            $m['member_name'] ?: null, $m['member_id'] ?: null, $m['source'] ?: null, $m['destination'] ?: null,
+            $m['amount'], $m['trans_type'] ?: null, $outcome, $reason ?: null, $cid,
+        ]);
+    }
+    return $stats;
+}
 
 /** last9 of a phone/member-id (drops Excel ".00", country code, separators). */
 function last9(string $raw): string
@@ -63,6 +99,22 @@ while (($r = fgetcsv($fh)) !== false) {
     $rows[] = $a;
 }
 fclose($fh);
+
+$batch = basename($csvPath);
+
+// ── MIRROR-ONLY: (re)build the reconciliation mirror from the statement and stop. ──
+// Used to backfill a statement that was already imported, so the reconciliation
+// view can tie out every row without re-creating members/contributions.
+if ($mirrorOnly) {
+    $ms = mkoba_populate_mirror($pdo, $rows, $batch);
+    echo "Reconciliation mirror rebuilt for batch: $batch\n";
+    echo "  rows total : " . array_sum($ms) . "\n";
+    echo "  → imported (savings)      : {$ms['imported']}\n";
+    echo "  → excluded (transfer/etc) : {$ms['excluded']}\n";
+    echo "  → missing (not in ledger) : {$ms['missing']}\n";
+    echo "\n✅ Mirror ready in $dbName\n";
+    exit(0);
+}
 
 // ── Distinct members from the beneficiary columns ──
 $members = []; // last9 => ['first','middle','last','phone']
@@ -171,10 +223,14 @@ foreach ($rows as $a) {
     $stats['contribs_inserted']++;
 }
 
+// Build the reconciliation mirror now that the contributions exist to link to.
+$ms = mkoba_populate_mirror($pdo, $rows, $batch);
+
 echo "Members created         : {$stats['members_new']}\n";
 echo "Contributions inserted  : {$stats['contribs_inserted']}\n";
 echo "  duplicate (skipped)   : {$stats['contribs_dupe']}\n";
 echo "  non-contrib (skipped) : {$stats['contribs_skip']}\n";
 echo "  unmatched (no member) : {$stats['contribs_unmatched']}\n";
 if ($unmatched) echo "    e.g. " . implode(', ', array_slice($unmatched, 0, 8)) . (count($unmatched) > 8 ? ' …' : '') . "\n";
+echo "Reconciliation mirror   : {$ms['imported']} imported · {$ms['excluded']} excluded · {$ms['missing']} missing\n";
 echo "\n✅ COMMITTED to $dbName\n";
