@@ -40,6 +40,7 @@ $migrations = [
     'add_visibility_to_authored_documents.php', // per-author visibility: shared (default) vs private
     'seed_document_templates.php',  // ready-to-use starter templates (English + Swahili), idempotent
     'add_activity_logs_indexes.php', // indexes for the audit-logs viewer (created_at/user/module/action)
+    'create_mkoba_statement_rows_table.php', // M-Koba statement mirror for reconciliation + permission
 ];
 
 echo "== Vikundi database migrations ==\n";
