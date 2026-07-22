@@ -61,16 +61,26 @@ $sb = ['pending' => 'warning', 'reviewed' => 'info', 'approved' => 'success', 'c
     <?php if ($isMkoba): ?>
     <style>
         /* The M-Koba statement is 10 columns wide — print it LANDSCAPE so nothing
-           is clipped (only this statement flips; the standard one stays portrait).
-           Paired with a compact print font + wrapping so the long TRANS_IDs and
-           account numbers stay inside the sheet. */
+           is clipped (only this statement flips; the standard one stays portrait). */
         @page { size: A4 landscape; }
         @media print {
-            #mkobaPrintTable { font-size: 7.5pt !important; width: 100% !important; table-layout: fixed; }
+            /* Reclaim the full printable width: drop the on-screen card/container
+               chrome, and stop .table-responsive clipping the right columns (print
+               can't scroll). */
+            #main-content, .container-fluid, .card, .card-body { padding: 0 !important; margin: 0 !important; }
+            .card { border: 0 !important; box-shadow: none !important; background: #fff !important; }
+            .table-responsive { overflow: visible !important; }
+            #mkobaPrintTable {
+                font-size: 7pt !important;
+                width: 100% !important;
+                table-layout: fixed;      /* honour the 100% width; columns share it */
+                border-collapse: collapse;
+            }
             #mkobaPrintTable th, #mkobaPrintTable td {
-                padding: 2px 4px !important;
+                padding: 1.5px 3px !important;
+                overflow-wrap: anywhere;  /* break only the long TRANS_IDs / numbers */
                 word-break: break-word;
-                overflow-wrap: anywhere;
+                white-space: normal !important;
             }
         }
     </style>
