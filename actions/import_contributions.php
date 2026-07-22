@@ -68,6 +68,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['upload_file'])) {
         ) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     ");
 
+    $mkobaRows = []; // raw statement rows kept for the reconciliation mirror
+
     try {
         $pdo->beginTransaction();
 
@@ -79,6 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['upload_file'])) {
             foreach ($headers as $i => $key) {
                 if ($key !== '') $assoc[$key] = $data[$i] ?? '';
             }
+            if ($isMkoba) $mkobaRows[] = $assoc;
 
             $p = $isMkoba ? mkoba_parse_row($assoc) : txn_template_parse_row($assoc);
             if ($p === null) { $skipped++; continue; } // non-contribution / missing phone or amount
@@ -126,6 +129,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['upload_file'])) {
         }
 
         $pdo->commit();
+
+        // Build the reconciliation mirror for this statement (after commit, so
+        // rows link to the contributions just saved). Table absent on old DBs →
+        // skip quietly rather than fail the import.
+        if ($isMkoba && $mkobaRows) {
+            try {
+                require_once __DIR__ . '/../includes/mkoba_mirror.php';
+                $batch = basename((string) ($_FILES['upload_file']['name'] ?? 'M-Koba statement'));
+                mkoba_populate_mirror($pdo, $mkobaRows, $batch);
+            } catch (Throwable $mirrorErr) {
+                error_log('M-Koba mirror build skipped: ' . $mirrorErr->getMessage());
+            }
+        }
 
         $parts = ["Imported $imported transaction(s) (pending approval)."];
         if ($duplicates) $parts[] = "$duplicates already on record — skipped.";
