@@ -4,6 +4,28 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-23 — Feat: fines receivable + payout cash-basis — PR 3
+**Branch:** `feat/fines-receivable-payout-consistency`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Closes out the approved-vs-paid work. Investigation showed the originally-planned "make fines & payouts consistent" was mostly already done: **fines** are `pending/paid/waived` with no approval step, and the balance already counts only *paid* fines as income — cash-correct already. **member_payouts** mirrors expenses but is a dormant, unrouted, empty table. So instead of building a workflow for a dead feature, PR 3 ships the two genuinely useful things.
+
+### Changed
+- **`includes/finance.php`:** payouts now count as money-out only when `status = 'paid'` (cash basis, matches expenses). Zero live impact (table empty/unrouted) — keeps the balance correct if payouts are ever switched on. Header doc comment updated to describe the cash basis accurately.
+- **`app/dashboard.php`:** the Balance card now shows the **receivable** — "fines owed, not yet collected" (`$total_pending_fines`, which was already computed but never displayed) — the income-side mirror of the "approved, not yet paid" payable. Both are leaders-only and shown only when > 0; excludes waived fines.
+- **`lang/en.json` / `lang/sw.json`:** `dashboard.fines_owed`.
+
+### Deliberately NOT done
+- No approve→paid workflow / backfill / mark-paid UI for `member_payouts` — it is empty, has no route, and is a BMS leftover. Building it would be dead code for zero users. If payouts ever become a live feature that's its own project (route + nav + permissions + workflow).
+- No "approved" state for fines — they don't have one and don't need one.
+
+### Tests
+- **`tests/Unit/FinesReceivablePayoutTest.php` (5):** payouts cash-basis; fines income still paid-only; dashboard shows the fines-owed receivable (leaders, > 0, pending-not-waived); label translated both languages. Full suite green (**1135**).
+
+### Verification
+- Local: balance 2,302,878 (unchanged by the payout fix); payable 0; receivable = 19,000 (7 pending fines). No DB migration needed for this PR.
+
+---
+
 ## Session — 2026-07-23 — Feat: cash-basis expense balance (approved ≠ paid) — PR 2
 **Branch:** `feat/expenses-cash-basis`
 **Developer:** Claude Code / Jabir Mussa

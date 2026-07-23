@@ -230,9 +230,18 @@ $display_month = $is_sw ? $sw_months[date('n')] : $en_months[date('n')];
                         <div class="vk-kpi-label"><?= et('dashboard.balance') ?></div>
                         <div class="vk-kpi-val mt-1" style="font-size: 1.1rem;"><?= fmt_currency($net_balance) ?></div>
                     </div>
-                    <?php if ($is_viongozi && $approved_not_paid > 0): ?>
-                    <div class="vk-kpi-sub mt-2" title="<?= et('dashboard.approved_not_paid') ?>">
-                        <i class="bi bi-hourglass-split"></i> <?= fmt_currency($approved_not_paid) ?> <?= et('dashboard.approved_not_paid') ?>
+                    <?php if ($is_viongozi && ($approved_not_paid > 0 || $total_pending_fines > 0)): ?>
+                    <div class="vk-kpi-sub mt-2">
+                        <?php if ($approved_not_paid > 0): ?>
+                        <div title="<?= et('dashboard.approved_not_paid') ?>">
+                            <i class="bi bi-hourglass-split"></i> <?= fmt_currency($approved_not_paid) ?> <?= et('dashboard.approved_not_paid') ?>
+                        </div>
+                        <?php endif; ?>
+                        <?php if ($total_pending_fines > 0): ?>
+                        <div title="<?= et('dashboard.fines_owed') ?>">
+                            <i class="bi bi-arrow-down-left-circle"></i> <?= fmt_currency($total_pending_fines) ?> <?= et('dashboard.fines_owed') ?>
+                        </div>
+                        <?php endif; ?>
                     </div>
                     <?php else: ?>
                     <div class="vk-kpi-sub mt-2"><?= et('dashboard.as_of_today') ?></div>
