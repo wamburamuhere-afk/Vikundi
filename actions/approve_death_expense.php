@@ -102,7 +102,9 @@ try {
     logActivity('Approved', 'Death Expenses', $log_desc, "DEATH#$id");
     // ─────────────────────────────────────────────────────────────────────────
 
-    $msg = $is_sw ? 'Gharama imeidhinishwa na salio la kikundi limepunguzwa.' : 'Expense approved and group balance updated.';
+    // Cash basis: approval authorises the expense; the balance drops only when
+    // the treasurer marks it paid (disbursed).
+    $msg = $is_sw ? 'Gharama imeidhinishwa. Salio litapungua itakapowekwa "imelipwa".' : 'Expense approved. The balance will update once it is marked paid.';
     echo json_encode(['success' => true, 'message' => $msg]);
 } catch (Exception $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();

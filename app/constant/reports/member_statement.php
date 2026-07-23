@@ -105,7 +105,7 @@ if ($remaining_pot > 0) {
 // 7. Expenses (Death Benefits)
 // Only APPROVED (disbursed) benefits count as "received" — pending/rejected
 // claims must not inflate the Benefits Received total or the history table.
-$stmt = $pdo->prepare("SELECT * FROM death_expenses WHERE member_id = ? AND status = 'approved' ORDER BY expense_date DESC");
+$stmt = $pdo->prepare("SELECT * FROM death_expenses WHERE member_id = ? AND status IN ('approved','paid') ORDER BY expense_date DESC");
 $stmt->execute([$member_id]);
 $expenses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $total_expenses = array_sum(array_column($expenses, 'amount'));

@@ -39,6 +39,7 @@
     "dashboard.active": "Active",
     "dashboard.balance": "Balance",
     "dashboard.as_of_today": "As of today",
+    "dashboard.approved_not_paid": "approved, not yet paid",
     "dashboard.expenses": "Expenses",
     "dashboard.total": "Total",
     "dashboard.verified": "Verified",

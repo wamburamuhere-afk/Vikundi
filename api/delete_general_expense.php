@@ -12,7 +12,9 @@ requirePermissionJson('delete', 'expenses');
 $id = $_POST['id'] ?? 0;
 
 try {
-    $stmt = $pdo->prepare("DELETE FROM general_expenses WHERE id = ? AND status != 'approved'");
+    // Never delete an authorised expense — a paid one is even more final than an
+    // approved one, so both are protected (only pending/rejected can be removed).
+    $stmt = $pdo->prepare("DELETE FROM general_expenses WHERE id = ? AND status NOT IN ('approved','paid')");
     $stmt->execute([$id]);
 
     if ($stmt->rowCount() > 0) {

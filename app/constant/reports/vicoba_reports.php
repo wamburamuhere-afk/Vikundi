@@ -67,10 +67,10 @@ $savings_data = $pdo->query("
 // 2) Expenses (General + Death Assistance)
 $expenses_data = $pdo->query("
     (SELECT 'exp' as type, e.id as id, e.expense_date as date, e.amount, e.description, e.status
-     FROM general_expenses e WHERE e.status='approved')
+     FROM general_expenses e WHERE e.status IN ('approved','paid'))
     UNION ALL
     (SELECT 'death' as type, d.id as id, d.expense_date as date, d.amount, d.description, d.status
-     FROM death_expenses d WHERE d.status='approved')
+     FROM death_expenses d WHERE d.status IN ('approved','paid'))
     ORDER BY date DESC
 ")->fetchAll(PDO::FETCH_ASSOC);
 

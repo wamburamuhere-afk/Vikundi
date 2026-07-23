@@ -45,11 +45,11 @@ $stmt_pending = $pdo->prepare("SELECT COUNT(*) FROM petty_cash_vouchers WHERE st
 $stmt_pending->execute();
 $pending_count = $stmt_pending->fetchColumn();
 
-$stmt_total_month = $pdo->prepare("SELECT SUM(amount) FROM petty_cash_vouchers WHERE status = 'approved' AND MONTH(transaction_date) = MONTH(CURRENT_DATE) AND YEAR(transaction_date) = YEAR(CURRENT_DATE)");
+$stmt_total_month = $pdo->prepare("SELECT SUM(amount) FROM petty_cash_vouchers WHERE status IN ('approved','paid') AND MONTH(transaction_date) = MONTH(CURRENT_DATE) AND YEAR(transaction_date) = YEAR(CURRENT_DATE)");
 $stmt_total_month->execute();
 $total_month = $stmt_total_month->fetchColumn() ?? 0;
 
-$stmt_total_all = $pdo->prepare("SELECT SUM(amount) FROM petty_cash_vouchers WHERE status = 'approved'");
+$stmt_total_all = $pdo->prepare("SELECT SUM(amount) FROM petty_cash_vouchers WHERE status IN ('approved','paid')");
 $stmt_total_all->execute();
 $total_all = $stmt_total_all->fetchColumn() ?? 0;
 ?>
