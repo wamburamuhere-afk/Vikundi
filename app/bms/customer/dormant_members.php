@@ -177,14 +177,9 @@ $breadcrumbs = [
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if (empty($dormant_members)): ?>
-                        <tr>
-                            <td colspan="6" class="text-center py-5 text-muted">
-                                <div class="opacity-25 mb-2"><i class="bi bi-person-x" style="font-size: 3rem;"></i></div>
-                                <?= $is_sw ? 'Hakuna mwanachama dormant kwa sasa.' : 'No dormant members found.' ?>
-                            </td>
-                        </tr>
-                        <?php else: ?>
+                        <?php /* No manual empty row: a colspan cell inside a DataTables
+                           <tbody> triggers "Incorrect column count" (tn/18) when empty.
+                           DataTables shows its language.emptyTable message instead. */ ?>
                         <?php foreach ($dormant_members as $idx => $m): ?>
                         <tr>
                             <td class="ps-4 py-3 fw-bold text-muted"><?= $idx + 1 ?></td>
@@ -225,7 +220,6 @@ $breadcrumbs = [
                             </td>
                         </tr>
                         <?php endforeach; ?>
-                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
@@ -319,6 +313,7 @@ $(document).ready(function() {
         ordering: true,
         info: true,
         responsive: true,
+        language: { emptyTable: '<?= $is_sw ? "Hakuna mwanachama dormant kwa sasa." : "No dormant members found." ?>' },
         dom: 'rtip', // Hide default search and length
         buttons: [
             {

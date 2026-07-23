@@ -60,7 +60,7 @@ $query = "
         (SELECT COALESCE(SUM(amount),0) FROM contributions WHERE member_id = d.member_id AND status IN ('confirmed', 'approved', '')) as total_contributed
     FROM death_expenses d
     LEFT JOIN customers c ON d.member_id = c.customer_id
-    WHERE d.status = 'approved'
+    WHERE d.status IN ('approved','paid')  -- paid is a substate of approved (cash-basis consistency)
     GROUP BY d.member_id, c.customer_name, c.status, c.is_deceased
     ORDER BY latest_date DESC
 ";
@@ -215,13 +215,9 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
                             </td>
                         </tr>
                         <?php endforeach; ?>
-                        <?php if (empty($recipients)): ?>
-                        <tr>
-                            <td colspan="7" class="text-center py-5 text-muted">
-                                <i class="bi bi-info-circle me-1"></i> <?= $is_sw ? 'Hakuna taarifa za misaada ya misiba zilizopatikana.' : 'No funeral aid analysis records found.' ?>
-                            </td>
-                        </tr>
-                        <?php endif; ?>
+                        <?php /* No manual empty row: a colspan cell inside a DataTables
+                           <tbody> triggers "Incorrect column count" (tn/18) when empty.
+                           DataTables shows its language.emptyTable message instead. */ ?>
                     </tbody>
                 </table>
             </div>
@@ -321,7 +317,10 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 $(document).ready(function() {
-    const lang = { search: '<?= $is_sw ? "Tafuta:" : "Search:" ?>' };
+    const lang = {
+        search: '<?= $is_sw ? "Tafuta:" : "Search:" ?>',
+        emptyTable: '<?= $is_sw ? "Hakuna kumbukumbu bado" : "No records yet" ?>'
+    };
     $('#deathSustainabilityTable').DataTable({
         language: lang,
         pageLength: 25,
