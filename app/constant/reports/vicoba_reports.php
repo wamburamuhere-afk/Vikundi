@@ -281,9 +281,10 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
                                     <td class="text-end pe-4 fw-bold">TSh <?= number_format($exp['amount']) ?></td>
                                 </tr>
                                 <?php endforeach; ?>
-                                <?php if(empty($expenses_data)): ?>
-                                <tr><td colspan="4" class="text-center py-5 text-muted"><?= $is_sw ? 'Hakuna matumizi bado' : 'No expenses recorded' ?></td></tr>
-                                <?php endif; ?>
+                                <?php /* No manual empty row here: a colspan cell inside a
+                                   DataTables-managed <tbody> triggers "Incorrect column
+                                   count" (tn/18) when the table is empty. DataTables shows
+                                   its own language.emptyTable message instead. */ ?>
                             </tbody>
                             <tfoot class="bg-primary bg-opacity-10 fw-bold">
                                 <tr>
@@ -437,7 +438,8 @@ $(document).ready(function() {
         lengthMenu: '<?= $is_sw ? "Onyesha _MENU_" : "Show _MENU_" ?>', 
         info: '<?= $is_sw ? "_START_-_END_ ya _TOTAL_" : "_START_-_END_ of _TOTAL_" ?>', 
         paginate: { previous: '<?= $is_sw ? "Nyuma" : "Previous" ?>', next: '<?= $is_sw ? "Mbele" : "Next" ?>' },
-        zeroRecords: '<?= $is_sw ? "Hakuna data inayolingana" : "No matching records found" ?>'
+        zeroRecords: '<?= $is_sw ? "Hakuna data inayolingana" : "No matching records found" ?>',
+        emptyTable: '<?= $is_sw ? "Hakuna kumbukumbu bado" : "No records yet" ?>'
     };
 
     $('#savingsReportTable').DataTable({ language: lang, order:[[2,'desc']], pageLength: 25 });

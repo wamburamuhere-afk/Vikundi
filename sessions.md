@@ -4,6 +4,24 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-23 — Fix: DataTables "Incorrect column count" crash on empty tables
+**Branch:** `fix/empty-state-datatable-column-count`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** During live verification the boss hit a blocking JS alert — `DataTables warning: table id=expensesReportDetailTable - Incorrect column count` — on the VICOBA Reports page. Root cause: a hand-rolled "no records" row (`<td colspan=N>`) sitting inside a **DataTables-managed `<tbody>`**. DataTables counts one `<td>` per column and does not expand colspan for body rows, so a single colspan cell mismatches the header count (tn/18) — but only renders when the table is **empty**, which is exactly the state of the fresh production DB. Local demo had data, so it never surfaced there.
+
+### Fixed (same bug, three pages)
+- **`app/constant/reports/vicoba_reports.php`** (`expensesReportDetailTable`), **`app/constant/reports/death_analysis.php`** (`deathSustainabilityTable`), **`app/bms/customer/dormant_members.php`** (`dormantTable`): removed the manual empty-state `<td colspan>` row from each DataTable `<tbody>` and added a localized `language.emptyTable` message instead — matching how the already-correct tables (`savingsReportTable`, `expenseDetailTable`) behave.
+- **Bonus (PR 2 gap):** `death_analysis.php` filtered `death_expenses` at `status = 'approved'` on a line separate from the table name, so PR 2's line-based grep **missed it** → after the cash-basis cutover it would silently drop paid records. Fixed to `IN ('approved','paid')`. A multi-line-aware sweep confirmed this was the only remaining missed expense read-site.
+
+### Tests
+- **`tests/Unit/EmptyStateDataTableTest.php` (2):** each fixed page defines `emptyTable`; and NO DataTables-managed `<tbody>` contains a `colspan` cell (the exact tn/18 trigger). Full suite green (**1132**).
+
+### Notes
+- Pre-existing bug (present before the PR1–3 work; only `vicoba_reports` was also touched by PR 2, for SQL). Verify on live after deploy — production's empty tables are the perfect repro.
+- **PR 3 (#325) is still OPEN, not merged** — the fines-owed receivable + payout cash-basis are not yet on develop/production.
+
+---
+
 ## Session — 2026-07-23 — Feat: cash-basis expense balance (approved ≠ paid) — PR 2
 **Branch:** `feat/expenses-cash-basis`
 **Developer:** Claude Code / Jabir Mussa
