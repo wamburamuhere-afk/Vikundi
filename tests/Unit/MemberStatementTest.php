@@ -20,10 +20,12 @@ class MemberStatementTest extends TestCase
 
     public function testBenefitsReceivedCountsApprovedOnly(): void
     {
+        // A paid claim is still an authorised claim ('paid' is a substate of
+        // approved) — history includes both, but still excludes pending/rejected.
         $this->assertStringContainsString(
-            "FROM death_expenses WHERE member_id = ? AND status = 'approved'",
+            "FROM death_expenses WHERE member_id = ? AND status IN ('approved','paid')",
             $this->src,
-            'Benefits Received / history must exclude pending or rejected claims.'
+            'Benefits Received / history must include approved and paid claims but exclude pending or rejected ones.'
         );
     }
 

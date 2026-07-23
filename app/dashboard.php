@@ -44,10 +44,13 @@ $pending_budgets = (int) $pdo->query("SELECT COUNT(*) FROM budgets WHERE status 
 
 // ── Death Expenses & Net Balance (audit H1: single source of truth) ───────
 require_once ROOT_DIR . '/includes/finance.php';
-$total_death_expenses   = (float) $pdo->query("SELECT COALESCE(SUM(amount),0) FROM death_expenses WHERE status='approved'")->fetchColumn();
-$total_general_expenses = (float) $pdo->query("SELECT COALESCE(SUM(amount),0) FROM general_expenses WHERE status='approved'")->fetchColumn();
+// "Expenses" KPI = total authorised expenses (approved OR paid) — stable across
+// the paid transition. The balance is the only view that goes strict cash basis.
+$total_death_expenses   = (float) $pdo->query("SELECT COALESCE(SUM(amount),0) FROM death_expenses WHERE status IN ('approved','paid')")->fetchColumn();
+$total_general_expenses = (float) $pdo->query("SELECT COALESCE(SUM(amount),0) FROM general_expenses WHERE status IN ('approved','paid')")->fetchColumn();
 $total_all_expenses = $total_death_expenses + $total_general_expenses;
-$net_balance = getGroupFundBalance($pdo); // computed from records, matches the approval gate
+$net_balance = getGroupFundBalance($pdo); // cash basis: money in − money actually paid out
+$approved_not_paid = approvedNotYetPaidExpenses($pdo); // authorised but not yet disbursed
 
 // ── My own stats if Member ───────────────────────────────────────────────
 $my_total_contributions = 0; $my_pending_contributions = 0;
@@ -66,8 +69,8 @@ for ($i = 5; $i >= 0; $i--) {
 
     // Expenses that month = approved death + general expenses (matches the Expenses KPI).
     $es = $pdo->prepare("SELECT
-          (SELECT COALESCE(SUM(amount),0) FROM death_expenses   WHERE status='approved' AND YEAR(expense_date)=? AND MONTH(expense_date)=?)
-        + (SELECT COALESCE(SUM(amount),0) FROM general_expenses WHERE status='approved' AND YEAR(expense_date)=? AND MONTH(expense_date)=?)");
+          (SELECT COALESCE(SUM(amount),0) FROM death_expenses   WHERE status IN ('approved','paid') AND YEAR(expense_date)=? AND MONTH(expense_date)=?)
+        + (SELECT COALESCE(SUM(amount),0) FROM general_expenses WHERE status IN ('approved','paid') AND YEAR(expense_date)=? AND MONTH(expense_date)=?)");
     $es->execute([$y, $m, $y, $m]); $months_expenses[] = (float) $es->fetchColumn();
 }
 
@@ -227,7 +230,13 @@ $display_month = $is_sw ? $sw_months[date('n')] : $en_months[date('n')];
                         <div class="vk-kpi-label"><?= et('dashboard.balance') ?></div>
                         <div class="vk-kpi-val mt-1" style="font-size: 1.1rem;"><?= fmt_currency($net_balance) ?></div>
                     </div>
+                    <?php if ($is_viongozi && $approved_not_paid > 0): ?>
+                    <div class="vk-kpi-sub mt-2" title="<?= et('dashboard.approved_not_paid') ?>">
+                        <i class="bi bi-hourglass-split"></i> <?= fmt_currency($approved_not_paid) ?> <?= et('dashboard.approved_not_paid') ?>
+                    </div>
+                    <?php else: ?>
                     <div class="vk-kpi-sub mt-2"><?= et('dashboard.as_of_today') ?></div>
+                    <?php endif; ?>
                 </div>
             </div>
             <!-- 3. Expenses -->

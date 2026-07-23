@@ -47,7 +47,9 @@ try {
         : "General expense #$id approved. Amount: TZS " . number_format($amount, 2);
     logActivity('Approved', 'General Expenses', $log_desc, "EXPENSE#$id");
 
-    $msg = $is_sw ? 'Matumizi yameidhinishwa na salio la kikundi limepunguzwa.' : 'General expense approved and group balance updated.';
+    // Cash basis: approval authorises the expense; the balance drops only when
+    // the treasurer marks it paid (disbursed).
+    $msg = $is_sw ? 'Matumizi yameidhinishwa. Salio litapungua yatakapowekwa "imelipwa".' : 'General expense approved. The balance will update once it is marked paid.';
     echo json_encode(['success' => true, 'message' => $msg]);
 
 } catch (Exception $e) {

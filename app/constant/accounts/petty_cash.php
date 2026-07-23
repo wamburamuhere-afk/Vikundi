@@ -45,11 +45,11 @@ $stmt_pending = $pdo->prepare("SELECT COUNT(*) FROM petty_cash_vouchers WHERE st
 $stmt_pending->execute();
 $pending_count = $stmt_pending->fetchColumn();
 
-$stmt_total_month = $pdo->prepare("SELECT SUM(amount) FROM petty_cash_vouchers WHERE status = 'approved' AND MONTH(transaction_date) = MONTH(CURRENT_DATE) AND YEAR(transaction_date) = YEAR(CURRENT_DATE)");
+$stmt_total_month = $pdo->prepare("SELECT SUM(amount) FROM petty_cash_vouchers WHERE status IN ('approved','paid') AND MONTH(transaction_date) = MONTH(CURRENT_DATE) AND YEAR(transaction_date) = YEAR(CURRENT_DATE)");
 $stmt_total_month->execute();
 $total_month = $stmt_total_month->fetchColumn() ?? 0;
 
-$stmt_total_all = $pdo->prepare("SELECT SUM(amount) FROM petty_cash_vouchers WHERE status = 'approved'");
+$stmt_total_all = $pdo->prepare("SELECT SUM(amount) FROM petty_cash_vouchers WHERE status IN ('approved','paid')");
 $stmt_total_all->execute();
 $total_all = $stmt_total_all->fetchColumn() ?? 0;
 ?>
@@ -547,6 +547,23 @@ function approveVoucher(id) {
     });
 }
 
+function markExpensePaid(type, id) {
+    Swal.fire({ title: isSwahili?'Thibitisha kuwa imelipwa?':'Confirm it was paid out?',
+        text: isSwahili?'Inarekodi kwamba pesa imetoka kwenye akaunti.':'Records that the money actually left the account.',
+        icon:'question', showCancelButton:true,
+        confirmButtonText: isSwahili?'Ndio, Imelipwa':'Yes, Paid', confirmButtonColor:'#0d6efd'
+    }).then(result => {
+        if (!result.isConfirmed) return;
+        Swal.fire({ title: isSwahili?'Inahifadhi...':'Saving...', didOpen: () => Swal.showLoading() });
+        $.post('<?= getUrl("actions/mark_expense_paid") ?>', { type: type, id: id }, function(res){
+            if (res.success) {
+                Swal.fire({ icon:'success', title:'Done', text:res.message, timer:1400, showConfirmButton:false })
+                    .then(() => $('#pettyCashTable').DataTable().ajax.reload());
+            } else { Swal.fire('Error', res.message, 'error'); }
+        }, 'json').fail(() => Swal.fire('Error', 'Server error', 'error'));
+    });
+}
+
 function printVoucher(id) {
     window.location.href = '<?= getUrl('print_petty_cash') ?>?id=' + id;
 }
@@ -648,6 +665,7 @@ function viewVoucher(id) {
             const v = r.data;
             let statusClass = 'secondary';
             if(v.status === 'approved') statusClass = 'success';
+            if(v.status === 'paid') statusClass = 'primary';
             if(v.status === 'pending') statusClass = 'warning';
             if(v.status === 'rejected') statusClass = 'danger';
 
@@ -706,7 +724,7 @@ function renderPettyCashCards(api) {
     if (rows.length === 0) { $empty.removeClass('d-none'); return; }
     $empty.addClass('d-none');
 
-    var badgeMap = { pending: 'bg-warning text-dark', approved: 'bg-success text-white', rejected: 'bg-danger text-white' };
+    var badgeMap = { pending: 'bg-warning text-dark', approved: 'bg-success text-white', paid: 'bg-primary text-white', rejected: 'bg-danger text-white' };
     var labelEn  = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
     var labelSw  = { pending: 'Inasubiri', approved: 'Imeidhinishwa', rejected: 'Imekataliwa' };
 
@@ -721,6 +739,7 @@ function renderPettyCashCards(api) {
 
         var canReviewPC  = <?= canReview('petty_cash')  ? 'true' : 'false' ?>;
         var canApprovePC = <?= canApprove('petty_cash') ? 'true' : 'false' ?>;
+        var canMarkPaidPC = <?= canMarkPaid() ? 'true' : 'false' ?>;
         var pendingActions = '';
         if (status === 'pending') {
             pendingActions += `<button class="btn btn-sm btn-outline-warning vk-btn-action" onclick="editVoucher(${id})" title="${isSwahili?'Hariri':'Edit'}"><i class="bi bi-pencil-fill"></i></button>`;
@@ -728,6 +747,9 @@ function renderPettyCashCards(api) {
         }
         if (status === 'reviewed' && canApprovePC) {
             pendingActions += `<button class="btn btn-sm btn-outline-success vk-btn-action" onclick="approveVoucher(${id})" title="${isSwahili?'Idhinisha':'Approve'}"><i class="bi bi-check-circle-fill"></i></button>`;
+        }
+        if (status === 'approved' && canMarkPaidPC) {
+            pendingActions += `<button class="btn btn-sm btn-outline-primary vk-btn-action" onclick="markExpensePaid('petty', ${id})" title="${isSwahili?'Thibitisha Malipo':'Mark as Paid'}"><i class="bi bi-cash-coin"></i></button>`;
         }
 
         html += `

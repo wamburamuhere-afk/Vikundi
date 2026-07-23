@@ -65,9 +65,10 @@ try {
     $stmt->execute($listParams);
     $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Stats reflect the shared scope/date filter (status is always 'approved').
+    // Stats = total authorised expenses (approved OR paid; 'paid' is a substate
+    // of approved). The user-driven list filter above still narrows by exact status.
     $statSql = function (string $extra) use ($scopeWhere) {
-        return "SELECT COALESCE(SUM(ge.amount),0) FROM general_expenses ge WHERE ge.status='approved'$scopeWhere$extra";
+        return "SELECT COALESCE(SUM(ge.amount),0) FROM general_expenses ge WHERE ge.status IN ('approved','paid')$scopeWhere$extra";
     };
     $stats = $pdo->prepare($statSql(""));
     $stats->execute($params);

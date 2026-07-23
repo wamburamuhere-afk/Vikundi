@@ -40,6 +40,7 @@ $can_edit_death   = canEdit('death_expenses');
 $can_delete_death = canDelete('death_expenses');
 $can_review_death = canReview('death_expenses');
 $can_approve_death= canApprove('death_expenses');
+$can_mark_paid    = canMarkPaid(); // treasurer / admin — record the money actually left the account
 
 $lang = $_SESSION['preferred_language'] ?? 'en';
 $is_sw = ($lang === 'sw');
@@ -482,7 +483,7 @@ $(document).ready(function() {
             { data: 'deceased_relationship' },
             { data: 'amount', render: d => `<strong class="text-danger">${parseFloat(d).toLocaleString('en-US', {minimumFractionDigits: 2})}</strong>` },
             { data: 'status', render: d => {
-                const map = {pending:'warning',reviewed:'info',approved:'success',rejected:'danger',inactive:'secondary'};
+                const map = {pending:'warning',reviewed:'info',approved:'success',rejected:'danger',inactive:'secondary',paid:'primary'};
                 const cls = map[d] || 'secondary';
                 const lbl = d ? d.charAt(0).toUpperCase()+d.slice(1) : 'Pending';
                 return `<span class="badge bg-${cls}">${lbl}</span>`;
@@ -499,6 +500,7 @@ $(document).ready(function() {
                             <li><a class="dropdown-item py-2" href="<?= getUrl('print_death_expense') ?>?id=${r.id}" target="_blank"><i class="bi bi-printer me-2"></i> Print</a></li>
                             ${(r.status==='pending' && <?= $can_review_death ? 'true' : 'false' ?>) ? `<li><hr class="dropdown-divider my-1"><li><a class="dropdown-item py-2 fw-bold text-primary" href="javascript:void(0)" onclick="reviewDeathExpense(${r.id})"><i class="bi bi-clipboard-check me-2"></i> Mark Reviewed</a></li>` : ''}
                             ${(r.status==='reviewed' && <?= $can_approve_death ? 'true' : 'false' ?>) ? `<li><a class="dropdown-item py-2 fw-bold text-success" href="javascript:void(0)" onclick="approveDeathExpense(${r.id})"><i class="bi bi-check-circle-fill me-2"></i> Approve</a></li>` : ''}
+                            ${(r.status==='approved' && <?= $can_mark_paid ? 'true' : 'false' ?>) ? `<li><a class="dropdown-item py-2 fw-bold text-primary" href="javascript:void(0)" onclick="markExpensePaid('death', ${r.id})"><i class="bi bi-cash-coin me-2"></i> Mark as Paid</a></li>` : ''}
                             <li><hr class="dropdown-divider my-1"></li><li><a class="dropdown-item py-2 text-danger" href="javascript:void(0)" onclick="deleteDeathExpense(${r.id})"><i class="bi bi-trash-fill me-2"></i> Delete</a></li>
                         </ul>
                     </div>
@@ -651,6 +653,22 @@ function approveDeathExpense(id) {
         confirmButtonText: isSw?'Ndio, Idhinisha':'Yes, Approve', confirmButtonColor:'#198754'
     }).then(result => {
         if (result.isConfirmed) _dePost('<?= getUrl("actions/approve_death_expense") ?>', id, isSw?'Inaidhinisha...':'Approving...');
+    });
+}
+function markExpensePaid(type, id) {
+    Swal.fire({ title: isSw?'Thibitisha kuwa imelipwa?':'Confirm it was paid out?',
+        text: isSw?'Inarekodi kwamba pesa imetoka kwenye akaunti.':'Records that the money actually left the account.',
+        icon:'question', showCancelButton:true,
+        confirmButtonText: isSw?'Ndio, Imelipwa':'Yes, Paid', confirmButtonColor:'#0d6efd'
+    }).then(result => {
+        if (!result.isConfirmed) return;
+        Swal.fire({ title: isSw?'Inahifadhi...':'Saving...', didOpen: () => Swal.showLoading() });
+        $.post('<?= getUrl("actions/mark_expense_paid") ?>', { type: type, id: id }, function(r){
+            if (r.success) {
+                Swal.fire({ icon:'success', title:'Done', text:r.message, timer:1400, showConfirmButton:false })
+                    .then(() => $('#deathExpensesTable').DataTable().ajax.reload());
+            } else { Swal.fire('Error', r.message, 'error'); }
+        }, 'json').fail(() => Swal.fire('Error', 'Server error', 'error'));
     });
 }
 function deleteDeathExpense(id) {

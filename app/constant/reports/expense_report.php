@@ -48,15 +48,15 @@ $is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
 
 // All approved expenses combined
 $expenses_data = $pdo->query("
-    (SELECT 'General' as category, expense_date as date, amount, description FROM general_expenses WHERE status='approved')
+    (SELECT 'General' as category, expense_date as date, amount, description FROM general_expenses WHERE status IN ('approved','paid'))
     UNION ALL
-    (SELECT 'Death Assistance' as category, expense_date as date, amount, description FROM death_expenses WHERE status='approved')
+    (SELECT 'Death Assistance' as category, expense_date as date, amount, description FROM death_expenses WHERE status IN ('approved','paid'))
     ORDER BY date DESC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
 // Totals
-$total_general = $pdo->query("SELECT SUM(amount) FROM general_expenses WHERE status='approved'")->fetchColumn() ?: 0;
-$total_death   = $pdo->query("SELECT SUM(amount) FROM death_expenses WHERE status='approved'")->fetchColumn() ?: 0;
+$total_general = $pdo->query("SELECT SUM(amount) FROM general_expenses WHERE status IN ('approved','paid')")->fetchColumn() ?: 0;
+$total_death   = $pdo->query("SELECT SUM(amount) FROM death_expenses WHERE status IN ('approved','paid')")->fetchColumn() ?: 0;
 $total_overall = $total_general + $total_death;
 $total_records = count($expenses_data);
 
@@ -64,9 +64,9 @@ $total_records = count($expenses_data);
 $trend_query = "
     SELECT DATE_FORMAT(date, '%Y-%m') as month, SUM(amount) as total
     FROM (
-        SELECT expense_date as date, amount FROM general_expenses WHERE status='approved'
+        SELECT expense_date as date, amount FROM general_expenses WHERE status IN ('approved','paid')
         UNION ALL
-        SELECT expense_date as date, amount FROM death_expenses WHERE status='approved'
+        SELECT expense_date as date, amount FROM death_expenses WHERE status IN ('approved','paid')
     ) combined
     GROUP BY month
     ORDER BY month ASC

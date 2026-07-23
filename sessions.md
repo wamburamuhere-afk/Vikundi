@@ -4,6 +4,48 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-23 — Feat: cash-basis expense balance (approved ≠ paid) — PR 2
+**Branch:** `feat/expenses-cash-basis`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Follows PR 1 (which added the `paid` step). The group **Balance** now goes true **cash basis** — an expense leaves the balance only once it is *paid*, not when merely approved. The authorised-but-unpaid amount is surfaced on the dashboard so nothing hides in the gap. `paid` is a *substate* of approved, so all "total expenses" reports were widened to `IN ('approved','paid')` to keep history whole after the cutover.
+
+### New / changed
+- **`includes/finance.php`:** `getGroupFundBalance()` counts the three expense tables at `status = 'paid'` only (cash basis). New helper **`approvedNotYetPaidExpenses()`** = the approved-only commitment. Payouts unchanged (PR 3).
+- **`database/backfill_approved_expenses_paid.php` (migration):** one-time cutover — marks every expense approved **before** a fixed cutover (`2026-07-24`) as `paid`, backfilling `paid_at`/`paid_by` from the approval record. **Future-safe:** re-runs on later deploys can't sweep up freshly-approved expenses (gated on `COALESCE(approved_at, created_at) < :cutover`). Registered after the PR 1 enum migration.
+- **`app/dashboard.php`:** Balance card shows **"TSh X approved, not yet paid"** (leaders only, when > 0). Expenses KPI + monthly chart widened to `IN ('approved','paid')`.
+- **Read-site consistency (`IN ('approved','paid')`):** `expense_report.php` (×6), `vicoba_reports.php`, `member_statement.php`, `petty_cash.php` totals, `get_general_expenses.php` stats, `get_member_death_history.php`, `ai_insights.php` (×4).
+- **`api/delete_general_expense.php`:** delete guard tightened to `status NOT IN ('approved','paid')` — a paid expense must never be deletable (was `!= 'approved'`, which would have let paid rows through).
+- **Approval messages** (`approve_death_expense.php`, `approve_general_expense.php`): no longer claim the balance was reduced on approval — they now point to the paid step. Bilingual.
+- **`lang/en.json` / `lang/sw.json`:** `dashboard.approved_not_paid`.
+
+### Tests
+- **`tests/Unit/ExpensesCashBasisTest.php` (8):** balance is paid-only; commitments helper is approved-only; backfill is future-safe + registered + touches all 3 tables; dashboard surfaces the figure; aggregates count approved-or-paid; delete guard blocks paid; approval messages corrected. Updated 2 PR-1/statement tests to the new semantics. Full suite green (**1130**).
+
+### Verification
+- On local: cash-basis balance was inflated to 2,403,000 pre-backfill (100,122 approved-unpaid not deducted); after the backfill it is **2,302,878 = the old model exactly** (neutral ✓); commitments 100,122 → 0; backfill re-run is a no-op (idempotent ✓). **Deploy:** `php database/migrate.php`. **PR 3 next:** same paid step for fines & payouts; also consider whether approval should check available cash *minus* existing commitments.
+
+---
+
+## Session — 2026-07-23 — Feat: expenses "paid" status (approved ≠ paid) — PR 1 of the cash-basis work
+**Branch:** `feat/expenses-paid-status`
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** The boss's point: an expense can be *approved* (authorised) yet not *paid* (money still in the account). PR 1 adds a `paid` step to the three expense workflows so the treasurer can record the actual disbursement. Deliberately **balance-neutral** — the cash-basis switch (count only paid + show "approved-not-paid") is PR 2.
+
+### New / changed
+- **`database/add_paid_status_to_expenses.php` (migration):** adds `'paid'` to the status enum + `paid_at` / `paid_by` on `death_expenses`, `general_expenses`, `petty_cash_vouchers`. Idempotent (preserves nullability/default). Registered in `migrate.php`.
+- **`core/permissions.php`:** `canMarkPaid()` — Treasurer (role_id 4 / Mweka Hazina / Mhasibu) + full admins (Admin/Chairperson) only. Approving authorises; marking paid confirms the money left.
+- **`includes/finance.php`:** `getGroupFundBalance()` counts each expense at `status IN ('approved','paid')` — **balance-neutral** (money-out either way). PR 2 tightens to `paid` only.
+- **`actions/mark_expense_paid.php` (new, route):** one endpoint for all three types; CSRF-gated + `canMarkPaid()`; whitelisted `type → table`; only an `approved` row moves to `paid` (sets paid_at/paid_by); logs activity.
+- **`expenses.php` / `general_expenses.php` / `petty_cash.php`:** a treasurer/admin-only **"Mark as Paid"** action (table dropdown + card view) shown when `status==='approved'`, and a distinct blue **Paid** badge.
+
+### Tests
+- **`tests/Unit/ExpensesPaidStatusTest.php` (6):** `canMarkPaid()` allows treasurer/admin, denies secretary/member; migration adds the state + registered; balance counts approved-or-paid per expense; endpoint gated/whitelisted/approved-only; each page has the action + paid badge. Full suite green (1100).
+
+### Verification
+- Migration ran + idempotent; balance still computes (neutral); the approve→paid DB transition verified on a live row (status→paid, paid_at/paid_by set). Browser confirmation of the button pending (local session expired) — confirm after deploy. **PR 2 next:** cash-basis balance + "Approved – not yet paid" figure. Fines/payouts already have `paid`.
+
+---
+
 ## Session — 2026-07-22 — Fix: M-Koba statement prints landscape + cleaner ID columns
 **Branch:** `feat/mkoba-statement-landscape`
 **Developer:** Claude Code / Jabir Mussa
