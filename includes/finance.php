@@ -47,9 +47,12 @@ if (!function_exists('getGroupFundBalance')) {
         return fundBalanceFromTotals(
             $sum("SELECT COALESCE(SUM(amount),0) FROM contributions WHERE status IN ('approved','confirmed','')"),
             $sum("SELECT COALESCE(SUM(amount),0) FROM fines WHERE status = 'paid'"),
-            $sum("SELECT COALESCE(SUM(amount),0) FROM death_expenses WHERE status = 'approved'"),
-            $sum("SELECT COALESCE(SUM(amount),0) FROM general_expenses WHERE status = 'approved'"),
-            $sum("SELECT COALESCE(SUM(amount),0) FROM petty_cash_vouchers WHERE status = 'approved'"),
+            // PR 1: balance-neutral — an expense is money-out whether it is still
+            // 'approved' (authorised) or 'paid' (disbursed). PR 2 tightens this to
+            // 'paid' only (cash basis) and surfaces the approved-not-paid figure.
+            $sum("SELECT COALESCE(SUM(amount),0) FROM death_expenses WHERE status IN ('approved','paid')"),
+            $sum("SELECT COALESCE(SUM(amount),0) FROM general_expenses WHERE status IN ('approved','paid')"),
+            $sum("SELECT COALESCE(SUM(amount),0) FROM petty_cash_vouchers WHERE status IN ('approved','paid')"),
             $sum("SELECT COALESCE(SUM(amount),0) FROM member_payouts WHERE status IN ('approved','paid')")
         );
     }
