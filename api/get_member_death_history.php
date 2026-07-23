@@ -8,7 +8,7 @@ header('Content-Type: application/json');
 $member_id = $_GET['member_id'] ?? 0;
 
 try {
-    $stmt = $pdo->prepare("SELECT deceased_relationship FROM death_expenses WHERE member_id = ? AND status = 'approved'");
+    $stmt = $pdo->prepare("SELECT deceased_relationship FROM death_expenses WHERE member_id = ? AND status IN ('approved','paid')");
     $stmt->execute([$member_id]);
     $history = $stmt->fetchAll(PDO::FETCH_COLUMN);
 

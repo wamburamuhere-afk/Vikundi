@@ -136,10 +136,10 @@ if (!function_exists('aiInsightRegistry')) {
                 'run' => function (array $a, PDO $pdo) {
                     [$f, $t] = _aiviPeriod($a);
                     if ($f && $t) {
-                        $s = $pdo->prepare("SELECT COALESCE(SUM(amount),0) total, COUNT(*) n FROM general_expenses WHERE status='approved' AND expense_date BETWEEN ? AND ?");
+                        $s = $pdo->prepare("SELECT COALESCE(SUM(amount),0) total, COUNT(*) n FROM general_expenses WHERE status IN ('approved','paid') AND expense_date BETWEEN ? AND ?");
                         $s->execute([$f, $t]); $r = $s->fetch(PDO::FETCH_ASSOC); $period = "$f to $t";
                     } else {
-                        $r = $pdo->query("SELECT COALESCE(SUM(amount),0) total, COUNT(*) n FROM general_expenses WHERE status='approved'")->fetch(PDO::FETCH_ASSOC); $period = 'all time';
+                        $r = $pdo->query("SELECT COALESCE(SUM(amount),0) total, COUNT(*) n FROM general_expenses WHERE status IN ('approved','paid')")->fetch(PDO::FETCH_ASSOC); $period = 'all time';
                     }
                     $pending = (int)$pdo->query("SELECT COUNT(*) FROM general_expenses WHERE status IN ('pending','reviewed')")->fetchColumn();
                     return ['period' => $period, 'approved_expenses' => (float)$r['total'], 'approved_count' => (int)$r['n'], 'pending_approval' => $pending];
@@ -152,10 +152,10 @@ if (!function_exists('aiInsightRegistry')) {
                 'run' => function (array $a, PDO $pdo) {
                     [$f, $t] = _aiviPeriod($a);
                     if ($f && $t) {
-                        $s = $pdo->prepare("SELECT COALESCE(SUM(amount),0) total, COUNT(*) n FROM death_expenses WHERE status='approved' AND expense_date BETWEEN ? AND ?");
+                        $s = $pdo->prepare("SELECT COALESCE(SUM(amount),0) total, COUNT(*) n FROM death_expenses WHERE status IN ('approved','paid') AND expense_date BETWEEN ? AND ?");
                         $s->execute([$f, $t]); $r = $s->fetch(PDO::FETCH_ASSOC); $period = "$f to $t";
                     } else {
-                        $r = $pdo->query("SELECT COALESCE(SUM(amount),0) total, COUNT(*) n FROM death_expenses WHERE status='approved'")->fetch(PDO::FETCH_ASSOC); $period = 'all time';
+                        $r = $pdo->query("SELECT COALESCE(SUM(amount),0) total, COUNT(*) n FROM death_expenses WHERE status IN ('approved','paid')")->fetch(PDO::FETCH_ASSOC); $period = 'all time';
                     }
                     return ['period' => $period, 'approved_payouts' => (float)$r['total'], 'payout_count' => (int)$r['n']];
                 },

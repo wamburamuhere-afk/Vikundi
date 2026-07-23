@@ -54,13 +54,15 @@ class ExpensesPaidStatusTest extends TestCase
         $this->assertStringContainsString('add_paid_status_to_expenses.php', $this->src('database/migrate.php'));
     }
 
-    public function testBalanceCountsApprovedOrPaidForExpenses(): void
+    public function testBalanceCountsPaidExpensesOnly(): void
     {
-        // PR 1 is balance-neutral: each expense type counts whether approved or paid.
+        // PR 2 tightened the balance to true cash basis: an expense is money-out
+        // only once it is paid (the approved-not-paid figure is surfaced separately).
+        // See ExpensesCashBasisTest for the full cash-basis coverage.
         $fin = $this->src('includes/finance.php');
-        $this->assertStringContainsString("FROM death_expenses WHERE status IN ('approved','paid')", $fin);
-        $this->assertStringContainsString("FROM general_expenses WHERE status IN ('approved','paid')", $fin);
-        $this->assertStringContainsString("FROM petty_cash_vouchers WHERE status IN ('approved','paid')", $fin);
+        $this->assertStringContainsString("FROM death_expenses WHERE status = 'paid'", $fin);
+        $this->assertStringContainsString("FROM general_expenses WHERE status = 'paid'", $fin);
+        $this->assertStringContainsString("FROM petty_cash_vouchers WHERE status = 'paid'", $fin);
     }
 
     public function testMarkPaidEndpointIsGatedAndWhitelisted(): void
