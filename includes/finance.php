@@ -2,10 +2,12 @@
 /**
  * includes/finance.php — group fund balance (single source of truth).
  *
- * Available fund = money in − money out (audit H1):
+ * Available fund = money in − money out (audit H1), on a CASH basis:
  *   IN  : approved contributions (all types) + paid fines
- *   OUT : approved death expenses + approved general expenses
- *         + approved petty-cash vouchers + member payouts (approved/paid)
+ *   OUT : paid death expenses + paid general expenses
+ *         + paid petty-cash vouchers + paid member payouts
+ * An expense/payout that is merely 'approved' is an authorised commitment that
+ * hasn't left the account yet — see approvedNotYetPaidExpenses().
  *
  * Derived from the live records so it can never drift. The old stored
  * group_settings.group_balance was only ever decremented (never credited by
@@ -54,9 +56,11 @@ if (!function_exists('getGroupFundBalance')) {
             $sum("SELECT COALESCE(SUM(amount),0) FROM death_expenses WHERE status = 'paid'"),
             $sum("SELECT COALESCE(SUM(amount),0) FROM general_expenses WHERE status = 'paid'"),
             $sum("SELECT COALESCE(SUM(amount),0) FROM petty_cash_vouchers WHERE status = 'paid'"),
-            // Payouts still count at approved/paid — PR 3 gives them the same
-            // paid step and tightens this the same way.
-            $sum("SELECT COALESCE(SUM(amount),0) FROM member_payouts WHERE status IN ('approved','paid')")
+            // Payouts are cash basis too: money-out only once actually paid
+            // (disbursed), consistent with expenses above. member_payouts is a
+            // dormant/unrouted feature today, so this is zero live impact — it just
+            // keeps the balance correct if payouts are ever switched on.
+            $sum("SELECT COALESCE(SUM(amount),0) FROM member_payouts WHERE status = 'paid'")
         );
     }
 }
