@@ -40,6 +40,7 @@
     "dashboard.balance": "Balance",
     "dashboard.as_of_today": "As of today",
     "dashboard.approved_not_paid": "approved, not yet paid",
+    "dashboard.fines_owed": "fines owed, not yet collected",
     "dashboard.expenses": "Expenses",
     "dashboard.total": "Total",
     "dashboard.verified": "Verified",

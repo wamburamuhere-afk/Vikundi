@@ -4,21 +4,25 @@ This file tracks every development session, modification, and significant change
 
 ---
 
-## Session — 2026-07-23 — Fix: DataTables "Incorrect column count" crash on empty tables
-**Branch:** `fix/empty-state-datatable-column-count`
+## Session — 2026-07-23 — Feat: fines receivable + payout cash-basis — PR 3
+**Branch:** `feat/fines-receivable-payout-consistency`
 **Developer:** Claude Code / Jabir Mussa
-**Summary:** During live verification the boss hit a blocking JS alert — `DataTables warning: table id=expensesReportDetailTable - Incorrect column count` — on the VICOBA Reports page. Root cause: a hand-rolled "no records" row (`<td colspan=N>`) sitting inside a **DataTables-managed `<tbody>`**. DataTables counts one `<td>` per column and does not expand colspan for body rows, so a single colspan cell mismatches the header count (tn/18) — but only renders when the table is **empty**, which is exactly the state of the fresh production DB. Local demo had data, so it never surfaced there.
+**Summary:** Closes out the approved-vs-paid work. Investigation showed the originally-planned "make fines & payouts consistent" was mostly already done: **fines** are `pending/paid/waived` with no approval step, and the balance already counts only *paid* fines as income — cash-correct already. **member_payouts** mirrors expenses but is a dormant, unrouted, empty table. So instead of building a workflow for a dead feature, PR 3 ships the two genuinely useful things.
 
-### Fixed (same bug, three pages)
-- **`app/constant/reports/vicoba_reports.php`** (`expensesReportDetailTable`), **`app/constant/reports/death_analysis.php`** (`deathSustainabilityTable`), **`app/bms/customer/dormant_members.php`** (`dormantTable`): removed the manual empty-state `<td colspan>` row from each DataTable `<tbody>` and added a localized `language.emptyTable` message instead — matching how the already-correct tables (`savingsReportTable`, `expenseDetailTable`) behave.
-- **Bonus (PR 2 gap):** `death_analysis.php` filtered `death_expenses` at `status = 'approved'` on a line separate from the table name, so PR 2's line-based grep **missed it** → after the cash-basis cutover it would silently drop paid records. Fixed to `IN ('approved','paid')`. A multi-line-aware sweep confirmed this was the only remaining missed expense read-site.
+### Changed
+- **`includes/finance.php`:** payouts now count as money-out only when `status = 'paid'` (cash basis, matches expenses). Zero live impact (table empty/unrouted) — keeps the balance correct if payouts are ever switched on. Header doc comment updated to describe the cash basis accurately.
+- **`app/dashboard.php`:** the Balance card now shows the **receivable** — "fines owed, not yet collected" (`$total_pending_fines`, which was already computed but never displayed) — the income-side mirror of the "approved, not yet paid" payable. Both are leaders-only and shown only when > 0; excludes waived fines.
+- **`lang/en.json` / `lang/sw.json`:** `dashboard.fines_owed`.
+
+### Deliberately NOT done
+- No approve→paid workflow / backfill / mark-paid UI for `member_payouts` — it is empty, has no route, and is a BMS leftover. Building it would be dead code for zero users. If payouts ever become a live feature that's its own project (route + nav + permissions + workflow).
+- No "approved" state for fines — they don't have one and don't need one.
 
 ### Tests
-- **`tests/Unit/EmptyStateDataTableTest.php` (2):** each fixed page defines `emptyTable`; and NO DataTables-managed `<tbody>` contains a `colspan` cell (the exact tn/18 trigger). Full suite green (**1132**).
+- **`tests/Unit/FinesReceivablePayoutTest.php` (5):** payouts cash-basis; fines income still paid-only; dashboard shows the fines-owed receivable (leaders, > 0, pending-not-waived); label translated both languages. Full suite green (**1135**).
 
-### Notes
-- Pre-existing bug (present before the PR1–3 work; only `vicoba_reports` was also touched by PR 2, for SQL). Verify on live after deploy — production's empty tables are the perfect repro.
-- **PR 3 (#325) is still OPEN, not merged** — the fines-owed receivable + payout cash-basis are not yet on develop/production.
+### Verification
+- Local: balance 2,302,878 (unchanged by the payout fix); payable 0; receivable = 19,000 (7 pending fines). No DB migration needed for this PR.
 
 ---
 
