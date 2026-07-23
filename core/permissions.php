@@ -274,6 +274,21 @@ function isAdmin()
 }
 
 /**
+ * May the current user mark an expense / payout as PAID (i.e. record that the
+ * money actually left the account)? Reserved for the people who release the money:
+ * the Treasurer (role_id 4 / Mweka Hazina / Mhasibu) plus full admins
+ * (Admin / Chairperson). Approving authorises the spend; marking paid confirms it.
+ */
+function canMarkPaid(): bool
+{
+    if (isAdmin()) return true;
+    $treasurer = ['treasurer', 'mweka hazina', 'mweka-hazina', 'mhasibu'];
+    return (isset($_SESSION['role_id']) && (int) $_SESSION['role_id'] === 4) ||
+           (isset($_SESSION['role']) && in_array(strtolower($_SESSION['role']), $treasurer, true)) ||
+           (isset($_SESSION['user_role']) && in_array(strtolower($_SESSION['user_role']), $treasurer, true));
+}
+
+/**
  * May the current user see a member's sensitive details (phone, NIDA, email,
  * full address, financials, family/guarantor)? Yes for admin/chairperson and for
  * anyone who can edit members (secretary/treasurer), or when looking at their own

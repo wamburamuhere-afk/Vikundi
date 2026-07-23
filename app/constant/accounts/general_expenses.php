@@ -13,6 +13,7 @@ $can_edit_expense    = canEdit('expenses');
 $can_delete_expense  = canDelete('expenses');
 $can_review_expense  = canReview('expenses');
 $can_approve_expense = canApprove('expenses');
+$can_mark_paid       = canMarkPaid(); // treasurer / admin — record the money actually left the account
 
 // FETCH BRANDING (Standard System Logic)
 $gs_stmt = $pdo->prepare("SELECT setting_key, setting_value FROM group_settings");
@@ -407,6 +408,7 @@ $(document).ready(function() {
                             <li><a class="dropdown-item" href="<?= getUrl('print_general_expense') ?>?id=${r.id}" target="_blank"><i class="bi bi-printer me-1"></i> ${isSw?'Chapa':'Print'}</a></li>
                             ${(r.status==='pending' && <?= $can_review_expense ? 'true' : 'false' ?>) ? `<li><hr class="dropdown-divider my-1"></li><li><a class="dropdown-item fw-bold text-primary" href="javascript:void(0)" onclick="reviewGeneralExpense(${r.id})"><i class="bi bi-clipboard-check me-1"></i> ${isSw?'Pitia':'Mark Reviewed'}</a></li>` : ''}
                             ${(r.status==='reviewed' && <?= $can_approve_expense ? 'true' : 'false' ?>) ? `<li><a class="dropdown-item fw-bold text-success" href="javascript:void(0)" onclick="approveGeneralExpense(${r.id})"><i class="bi bi-check-circle me-1"></i> ${isSw?'Idhinisha':'Approve'}</a></li>` : ''}
+                            ${(r.status==='approved' && <?= $can_mark_paid ? 'true' : 'false' ?>) ? `<li><a class="dropdown-item fw-bold text-primary" href="javascript:void(0)" onclick="markExpensePaid('general', ${r.id})"><i class="bi bi-cash-coin me-1"></i> ${isSw?'Thibitisha Malipo':'Mark as Paid'}</a></li>` : ''}
                             <li><hr class="dropdown-divider my-1"></li><li><a class="dropdown-item text-danger" href="javascript:void(0)" onclick="confirmDeleteGeneralExpense(${r.id})"><i class="bi bi-trash me-1"></i> ${isSw?'Futa':'Delete'}</a></li>
                         </ul>
                     </div>
@@ -515,7 +517,7 @@ function applyFilters() { $('#expensesTable').DataTable().ajax.reload(); }
 function clearFilters() { $('#statusFilter, #memberFilter').val('').trigger('change.select2'); $('#dateFromFilter, #dateToFilter').val(''); applyFilters(); }
 function formatCurrency(v) { return parseFloat(v).toLocaleString('en-US', {minimumFractionDigits: 2}); }
 function getStatusBadgeClass(s) {
-    return s === 'approved' ? 'success' : s === 'pending' ? 'warning' : s === 'rejected' ? 'danger' : 'secondary';
+    return s === 'paid' ? 'primary' : s === 'approved' ? 'success' : s === 'pending' ? 'warning' : s === 'rejected' ? 'danger' : 'secondary';
 }
 // "Charged To": a specific member (badge) or the whole organisation.
 function renderChargedTo(r) {
@@ -546,6 +548,22 @@ function approveGeneralExpense(id) {
         confirmButtonText: isSw?'Ndio, Idhinisha':'Yes, Approve', confirmButtonColor:'#198754'
     }).then(r => {
         if (r.isConfirmed) _geListPost('<?= getUrl("api/approve_general_expense") ?>', id, isSw?'Inaidhinisha...':'Approving...');
+    });
+}
+function markExpensePaid(type, id) {
+    Swal.fire({ title: isSw?'Thibitisha kuwa imelipwa?':'Confirm it was paid out?',
+        text: isSw?'Inarekodi kwamba pesa imetoka kwenye akaunti.':'Records that the money actually left the account.',
+        icon:'question', showCancelButton:true,
+        confirmButtonText: isSw?'Ndio, Imelipwa':'Yes, Paid', confirmButtonColor:'#0d6efd'
+    }).then(r => {
+        if (!r.isConfirmed) return;
+        Swal.fire({ title: isSw?'Inahifadhi...':'Saving...', didOpen: () => Swal.showLoading() });
+        $.post('<?= getUrl("actions/mark_expense_paid") ?>', { type: type, id: id }, function(res){
+            if (res.success) {
+                Swal.fire({ icon:'success', title:'Done', text:res.message, timer:1400, showConfirmButton:false })
+                    .then(() => $('#expensesTable').DataTable().ajax.reload());
+            } else { Swal.fire('Error', res.message, 'error'); }
+        }, 'json').fail(() => Swal.fire('Error', 'Server error', 'error'));
     });
 }
 function confirmDeleteGeneralExpense(id) {
@@ -598,6 +616,7 @@ function renderExpenseCards(api) {
         
         var reviewBtn  = (status==='pending'  && <?= $can_review_expense  ? 'true':'false' ?>) ? `<button class="btn btn-sm btn-outline-primary vk-btn-action" onclick="reviewGeneralExpense(${id})" title="${isSw?'Pitia':'Mark Reviewed'}"><i class="bi bi-clipboard-check"></i></button>` : '';
         var approveBtn = (status==='reviewed' && <?= $can_approve_expense ? 'true':'false' ?>) ? `<button class="btn btn-sm btn-outline-success vk-btn-action" onclick="approveGeneralExpense(${id})" title="${isSw?'Idhinisha':'Approve'}"><i class="bi bi-check-circle-fill"></i></button>` : '';
+        var paidBtn    = (status==='approved' && <?= $can_mark_paid       ? 'true':'false' ?>) ? `<button class="btn btn-sm btn-outline-primary vk-btn-action" onclick="markExpensePaid('general', ${id})" title="${isSw?'Thibitisha Malipo':'Mark as Paid'}"><i class="bi bi-cash-coin"></i></button>` : '';
 
         html += `<div class="vk-member-card">
             <div class="vk-card-header d-flex justify-content-between align-items-center gap-2">
@@ -626,7 +645,7 @@ function renderExpenseCards(api) {
             </div>
             <div class="vk-card-actions">
                 <a href="<?= getUrl('general_expense_view') ?>?id=${id}" class="btn btn-sm btn-outline-primary vk-btn-action" title="${isSw?'Maelezo':'View'}"><i class="bi bi-eye-fill"></i></a>
-                ${reviewBtn}${approveBtn}
+                ${reviewBtn}${approveBtn}${paidBtn}
                 <button class="btn btn-sm btn-outline-danger vk-btn-action" onclick="confirmDeleteGeneralExpense(${id})" title="${isSw ? 'Futa' : 'Delete'}">
                     <i class="bi bi-trash3-fill"></i>
                 </button>
