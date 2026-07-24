@@ -48,8 +48,30 @@ $pending_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // 3. Grid Navigation Logic (Block of 4 months)
 require_once __DIR__ . '/../../../includes/contribution_grid_helpers.php';
-$block = intval($_GET['block'] ?? 0);
 $periods_per_block = 4;
+
+// Which 4-month block a given date falls in, relative to the group start.
+$block_of = static function (string $dateStr) use ($start_date, $periods_per_block): int {
+    $s = strtotime(date('Y-m-01', strtotime($start_date)));
+    $d = strtotime(date('Y-m-01', strtotime($dateStr)));
+    $months = ((int) date('Y', $d) - (int) date('Y', $s)) * 12 + ((int) date('n', $d) - (int) date('n', $s));
+    return (int) floor($months / $periods_per_block);
+};
+
+// Reachable range: back to the earliest contribution, forward to the current month.
+$cRange = $pdo->query("SELECT MIN(contribution_date) mn, MAX(contribution_date) mx
+                         FROM contributions WHERE status IN ('confirmed','approved','')")->fetch(PDO::FETCH_ASSOC);
+$min_block = !empty($cRange['mn']) ? $block_of($cRange['mn']) : 0;
+$max_block = max($block_of(date('Y-m-d')), !empty($cRange['mx']) ? $block_of($cRange['mx']) : 0);
+
+// Default (no ?block=) opens on the block holding the MOST RECENT contribution,
+// so the grid lands on real data instead of an empty future window. An explicit
+// ?block= is honoured but clamped to the reachable range.
+$block = isset($_GET['block'])
+    ? intval($_GET['block'])
+    : (!empty($cRange['mx']) ? $block_of($cRange['mx']) : 0);
+$block = max($min_block, min($max_block, $block));
+
 $start_offset = $block * $periods_per_block;
 
 $monthly_val  = floatval($settings_raw['monthly_contribution'] ?? 10000);
@@ -58,7 +80,9 @@ $entrance_val = floatval($settings_raw['entrance_fee'] ?? 20000);
 $columns = [];
 for ($i = 0; $i < $periods_per_block; $i++) {
     $idx = $start_offset + $i;
-    $ts = strtotime($start_date . " +$idx months");
+    // "$idx months" is sign-safe for negative blocks (earlier periods); the old
+    // "+$idx months" produced "+-4 months" and broke once prev could go back.
+    $ts = strtotime("$idx months", strtotime($start_date));
     $columns[] = [
         'ym'          => date('Y-m', $ts),          // for matching contribution sums
         'month_label' => date('M', $ts),            // "Mar" (year shown once, in the caption)
@@ -184,10 +208,11 @@ $statement_members = $pdo->query("
     </div>
     <div class="col-md-auto d-flex gap-2 justify-content-end align-items-center">
         <!-- Compact Navigation Group -->
+        <?php $prev_disabled = $block <= $min_block; $next_disabled = $block >= $max_block; ?>
         <div class="btn-group shadow-sm border rounded-2 overflow-hidden bg-white">
-            <a href="?block=<?= max(0, $block - 1) ?>" class="btn btn-light border-0 px-2 px-md-3" title="Previous"><i class="bi bi-chevron-left"></i></a>
+            <a href="?block=<?= max($min_block, $block - 1) ?>" class="btn btn-light border-0 px-2 px-md-3<?= $prev_disabled ? ' disabled' : '' ?>" title="Previous"<?= $prev_disabled ? ' tabindex="-1" aria-disabled="true"' : '' ?>><i class="bi bi-chevron-left"></i></a>
             <span class="btn btn-white border-0 disabled fw-bold py-2 shadow-none"><?= htmlspecialchars($block_label) ?></span>
-            <a href="?block=<?= $block + 1 ?>" class="btn btn-light border-0 px-2 px-md-3" title="Next"><i class="bi bi-chevron-right"></i></a>
+            <a href="?block=<?= min($max_block, $block + 1) ?>" class="btn btn-light border-0 px-2 px-md-3<?= $next_disabled ? ' disabled' : '' ?>" title="Next"<?= $next_disabled ? ' tabindex="-1" aria-disabled="true"' : '' ?>><i class="bi bi-chevron-right"></i></a>
         </div>
 
         <?php if ($is_leader): ?>
@@ -407,7 +432,7 @@ $cellClass = ['full' => 'vk-cell-full', 'partial' => 'vk-cell-partial', 'none' =
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-bordered align-middle text-center mb-0 vk-grid" style="width:100%">
+            <table id="contribGrid" class="table table-bordered align-middle text-center mb-0 vk-grid" style="width:100%">
                 <thead class="small bg-light fw-bold text-uppercase">
                     <tr>
                         <th class="py-3 px-2">#</th>
@@ -516,14 +541,33 @@ $(document).ready(function() {
 });
 
 
-// Grid: client-side member search + statement Excel export.
+// Grid: DataTable pagination + member search (search box reused, wired to the table).
 $(document).ready(function () {
-    $('#gridSearch').on('keyup', function () {
-        var q = $(this).val().toLowerCase();
-        $('.vk-grid-row').each(function () {
-            $(this).toggle(('' + $(this).data('name')).indexOf(q) !== -1);
+    var isSwG = '<?= ($_SESSION['preferred_language'] ?? 'en') ?>' === 'sw';
+    var $grid = $('#contribGrid');
+    // Only initialise when there are real member rows — never on the colspan
+    // "no members" placeholder (that would trip DataTables' column-count check).
+    if ($grid.length && $grid.find('tbody tr.vk-grid-row').length) {
+        var gridTable = $grid.DataTable({
+            paging: true,
+            pageLength: 25,
+            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, isSwG ? 'Zote' : 'All']],
+            ordering: true,
+            order: [],                                   // keep the server's A–Z order by default
+            columnDefs: [{ orderable: false, targets: 0 }], // the "#" column
+            info: true,
+            dom: 'rtip',                                 // table + info + pagination; we reuse #gridSearch below
+            language: {
+                info: isSwG ? 'Inaonyesha _START_–_END_ kati ya _TOTAL_' : 'Showing _START_–_END_ of _TOTAL_',
+                infoEmpty: isSwG ? 'Hakuna wanachama' : 'No members',
+                emptyTable: isSwG ? 'Hakuna wanachama wa kuonyesha.' : 'No members to display.',
+                paginate: { previous: isSwG ? 'Nyuma' : 'Prev', next: isSwG ? 'Mbele' : 'Next' }
+            }
         });
-    });
+        $('#gridSearch').off('keyup').on('keyup', function () {
+            gridTable.search($(this).val()).draw();
+        });
+    }
 });
 // Both exports share the same From/To (+ optional member/status) filters; only
 // the endpoint differs — the M-Koba one mirrors an M-Koba extract's columns.
