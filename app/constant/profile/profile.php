@@ -856,7 +856,7 @@ require_once 'header.php';
                     <!-- Avatar -->
                     <div class="mb-3 position-relative d-inline-block">
                         <?php if (!empty($member['avatar'])): ?>
-                            <img src="uploads/avatars/<?= htmlspecialchars($member['avatar']) ?>" 
+                            <img src="uploads/avatars/<?= htmlspecialchars($member['avatar'] ?? '') ?>" 
                                  class="rounded-circle avatar-lg shadow" alt="Avatar"
                                  style="width: 120px; height: 120px; object-fit: cover;">
                         <?php else: ?>
@@ -1079,23 +1079,23 @@ require_once 'header.php';
                                                     <div class="row g-3">
                                                         <div class="col-md-4">
                                                             <label class="form-label fw-bold small">First Name *</label>
-                                                            <input type="text" name="first_name" class="form-control" value="<?= htmlspecialchars($member['first_name']) ?>" required>
+                                                            <input type="text" name="first_name" class="form-control" value="<?= htmlspecialchars($member['first_name'] ?? '') ?>" required>
                                                         </div>
                                                         <div class="col-md-4">
                                                             <label class="form-label fw-bold small">Middle Name</label>
-                                                            <input type="text" name="middle_name" class="form-control" value="<?= htmlspecialchars($member['middle_name']) ?>">
+                                                            <input type="text" name="middle_name" class="form-control" value="<?= htmlspecialchars($member['middle_name'] ?? '') ?>">
                                                         </div>
                                                         <div class="col-md-4">
                                                             <label class="form-label fw-bold small">Last Name *</label>
-                                                            <input type="text" name="last_name" class="form-control" value="<?= htmlspecialchars($member['last_name']) ?>" required>
+                                                            <input type="text" name="last_name" class="form-control" value="<?= htmlspecialchars($member['last_name'] ?? '') ?>" required>
                                                         </div>
                                                         <div class="col-md-6">
                                                             <label class="form-label fw-bold small">Email *</label>
-                                                            <input type="email" name="email" class="form-control" value="<?= htmlspecialchars($member['email']) ?>" required>
+                                                            <input type="email" name="email" class="form-control" value="<?= htmlspecialchars($member['email'] ?? '') ?>" required>
                                                         </div>
                                                         <div class="col-md-6">
                                                             <label class="form-label fw-bold small">Phone *</label>
-                                                            <input type="tel" name="phone" class="form-control" value="<?= htmlspecialchars($member['phone']) ?>" required>
+                                                            <input type="tel" name="phone" class="form-control" value="<?= htmlspecialchars($member['phone'] ?? '') ?>" required>
                                                         </div>
                                                         <div class="col-md-6">
                                                             <label class="form-label fw-bold small">Gender *</label>
@@ -1447,7 +1447,7 @@ require_once 'header.php';
                                           <div class="vk-passport d-none d-print-block ms-3">
                                               <div class="vk-passport-frame">
                                                   <?php if (!empty($member['avatar'])): ?>
-                                                      <img src="uploads/avatars/<?= htmlspecialchars($member['avatar']) ?>" alt="Passport photo">
+                                                      <img src="uploads/avatars/<?= htmlspecialchars($member['avatar'] ?? '') ?>" alt="Passport photo">
                                                   <?php else: ?>
                                                       <span class="vk-passport-hint"><?= $isSw_b ? 'Ambatanisha picha hapa' : 'Affix photo here' ?></span>
                                                   <?php endif; ?>
@@ -1956,7 +1956,7 @@ require_once 'header.php';
                     <div class="text-center p-3 bg-light rounded-4">
                         <div id="avatarPreview" class="mb-0">
                             <?php if (!empty($member['avatar'])): ?>
-                                <img src="uploads/avatars/<?= htmlspecialchars($member['avatar']) ?>" 
+                                <img src="uploads/avatars/<?= htmlspecialchars($member['avatar'] ?? '') ?>" 
                                      class="rounded-circle shadow avatar-preview" alt="Current Avatar"
                                      style="width: 140px; height: 140px; object-fit: cover;">
                             <?php else: ?>
