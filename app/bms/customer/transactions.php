@@ -25,9 +25,12 @@ $members = $pdo->query("
 
 // The transactions list is a server-side DataTable (api/get_transactions.php):
 // it pages, filters and sorts in the database, so nothing is preloaded here.
-// Default the view to a recent window so the first load stays cheap even when the
-// table holds a very large history.
-$default_from = date('Y-m-d', strtotime('-90 days'));
+// Show the full history by default (no lower date bound). The list is server-side
+// paginated (25 rows at a time), so an unbounded default is still a cheap first
+// load — and it avoids the trap of a fresh/imported group landing on "No
+// transactions" simply because their records predate a rolling 90-day window.
+// Reset (below) clears back to this same empty default.
+$default_from = '';
 
 $accounts = ['M-Koba', 'Bank', 'Cash', 'Mobile Money'];
 $types = [
