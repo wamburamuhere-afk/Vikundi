@@ -534,10 +534,10 @@ function getRoleBadgeColor($role_name) {
                                                 <?php foreach ($users as $user): ?>
                                                     <tr>
                                                         <td>
-                                                            <strong><?= htmlspecialchars($user['first_name'] . ' ' . $user['last_name']) ?></strong>
-                                                            <br><small class="text-muted"><?= htmlspecialchars($user['email']) ?></small>
+                                                            <strong><?= htmlspecialchars(trim(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? ''))) ?></strong>
+                                                            <br><small class="text-muted"><?= htmlspecialchars($user['email'] ?? '—') ?></small>
                                                         </td>
-                                                        <td><?= htmlspecialchars($user['username']) ?></td>
+                                                        <td><?= htmlspecialchars($user['username'] ?? '') ?></td>
                                                         <td><?= htmlspecialchars($user['department_name'] ?? 'N/A') ?></td>
                                                         <td>
                                                             <span class="badge bg-<?= getRoleBadgeColor($user['role_name']) ?>">
