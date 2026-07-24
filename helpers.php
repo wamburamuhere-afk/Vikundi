@@ -652,6 +652,13 @@ function safe_output($value, $default = 'N/A') {
     return !empty($value) ? htmlspecialchars($value) : $default;
 }
 
+// Display guard for M-Koba references: a value Excel mangled into scientific
+// notation ("3.75E+15") is unrecoverable, so show a dash instead of the junk.
+function mkoba_display_ref($value, $default = '—') {
+    $v = trim((string) $value);
+    return ($v === '' || preg_match('/^\d+(\.\d+)?[eE][+\-]?\d+$/', $v)) ? $default : htmlspecialchars($v);
+}
+
 if (!function_exists('vk_registration_number_taken')) {
     /**
      * True when a (non-empty) member registration number is already used by
