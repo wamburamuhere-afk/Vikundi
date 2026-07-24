@@ -160,7 +160,7 @@ $badge = function (string $outcome) use ($t): array {
             <?php foreach ($rows as $r): [$bcol, $blab] = $badge($r['outcome']); ?>
               <tr>
                 <td class="text-muted"><?= htmlspecialchars((string) $r['sno']) ?></td>
-                <td class="fw-semibold small"><?= safe_output($r['receipt'], '—') ?></td>
+                <td class="fw-semibold small"><?= mkoba_display_ref($r['receipt']) ?></td>
                 <td class="small text-nowrap"><?= $r['trans_date'] ? date('d/m/Y', strtotime($r['trans_date'])) : '—' ?></td>
                 <td><?= safe_output($r['member_name'], '—') ?></td>
                 <td class="small text-muted"><?= safe_output($r['member_id'], '—') ?></td>
