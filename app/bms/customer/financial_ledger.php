@@ -66,8 +66,19 @@ $month1 = date('m', $ts1);
 $month2 = date('m', $ts2);
 $diff_months = (($year2 - $year1) * 12) + ($month2 - $month1) + 1;
 
-// 3. Fetch All Members
-$stmt = $pdo->query("SELECT customer_id, first_name, last_name, mpesa_name, status, created_at FROM customers WHERE status != 'deleted' ORDER BY first_name ASC");
+// 3. Fetch All Members. The "M-Koba Name" is stored on the customer (mpesa_name)
+// but the one-off import never populated it — so fall back to the name captured on
+// that member's imported contribution rows, which fills the column instead of "—".
+$stmt = $pdo->query("
+    SELECT c.customer_id, c.first_name, c.last_name,
+           COALESCE(NULLIF(c.mpesa_name, ''),
+                    (SELECT mkoba_member_name FROM contributions
+                      WHERE member_id = c.customer_id AND mkoba_member_name IS NOT NULL AND mkoba_member_name <> ''
+                      LIMIT 1)) AS mpesa_name,
+           c.status, c.created_at
+    FROM customers c
+    WHERE c.status != 'deleted'
+    ORDER BY c.first_name ASC");
 $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // 4. Fetch All Confirmed Contributions in Range
@@ -76,7 +87,7 @@ $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
 // whole ledger read as zero. Accept the same status set the rest of the system
 // treats as valid (see the funeral-aid report and death analysis).
 $stmt = $pdo->prepare("
-    SELECT member_id, amount, contribution_type, contribution_date
+    SELECT member_id, amount, contribution_type, contribution_date, mkoba_trans_id, account
     FROM contributions
     WHERE status IN ('confirmed', 'approved', '')
     AND contribution_date BETWEEN ? AND ?
@@ -166,6 +177,7 @@ function fmt($n) { return number_format($n, 0); }
                             <th rowspan="2" class="bg-light border-0 text-center" style="width: 45px;">S/N</th>
                             <th rowspan="2" class="text-primary text-center"><?= $is_sw ? 'Jina la Mwanachama' : 'Member Name' ?></th>
                             <th rowspan="2" class="text-center"><?= $is_sw ? 'Jina la M-Koba' : 'M-Koba Name' ?></th>
+                            <th rowspan="2" class="text-center text-success"><?= $is_sw ? 'Akiba ya M-Koba' : 'Opening (M-Koba)' ?></th>
                             <th rowspan="2" class="text-center"><?= $is_sw ? 'Kiingilio' : 'Entrance' ?></th>
                             <th colspan="<?= $diff_months ?>" class="text-primary border-bottom text-center"><?= $is_sw ? 'Michango ya Kila Mwezi (Monthly)' : 'Monthly Subscriptions' ?></th>
                             <th rowspan="2" class="bg-light fw-bold text-center"><?= $is_sw ? 'Jumla' : 'Total' ?></th>
@@ -194,38 +206,49 @@ function fmt($n) { return number_format($n, 0); }
                             $mid = $m['customer_id'];
                             $m_contribs = $contributions[$mid] ?? [];
                             
-                            $total_raw_pool = 0; // Pool for Entrance + Monthly
-                            $agm_paid = 0;
+                            $opening   = 0; // carried-in M-Koba savings (opening balance)
+                            $new_pool  = 0; // NEW (non-imported) entrance + monthly
+                            $agm_paid  = 0;
 
                             foreach ($m_contribs as $c) {
+                                $is_imported = !empty($c['mkoba_trans_id']) || ($c['account'] ?? '') === 'M-Koba';
                                 if ($c['contribution_type'] == 'agm') {
                                     $agm_paid += $c['amount'];
+                                } elseif ($is_imported) {
+                                    // Money carried in from M-Koba is an opening balance, not a NEW
+                                    // monthly payment — shown on its own, never skimmed for the
+                                    // entrance fee, and it can only reduce a deficit, never cause one.
+                                    $opening += $c['amount'];
                                 } elseif ($c['contribution_type'] == 'entrance' || $c['contribution_type'] == 'monthly') {
-                                    $total_raw_pool += $c['amount'];
+                                    $new_pool += $c['amount'];
                                 }
                             }
 
-                            // Intelligence: Distribution Logic
-                            // 1. Take Entrance Fee first
-                            $entrance_paid = min($total_raw_pool, $entrance_fee_rate);
-                            $remaining_for_months = $total_raw_pool - $entrance_paid;
-                            
+                            // Entrance fee comes off NEW money first (never off the opening balance).
+                            $entrance_paid = min($new_pool, $entrance_fee_rate);
+                            $remaining_for_months = $new_pool - $entrance_paid;
+
                             $monthly_total = 0;
                             $monthly_by_month = array_fill(0, $diff_months, 0);
                             $valid_months_count = 0;
+                            $this_month = date('Y-m-01');
+                            // A member is only expected to contribute monthly from the month they
+                            // JOINED — so imported members (who onboarded now, carrying an opening
+                            // balance) aren't charged a target for the months before they existed.
+                            $join_month = !empty($m['created_at']) ? date('Y-m-01', strtotime($m['created_at'])) : null;
 
-                            // 2. Distribute the rest to months sequentially (Only if month >= start date)
+                            // Distribute NEW money across months, and count the target only over
+                            // months that have actually elapsed (>= start, >= join, <= this month) —
+                            // so the target isn't a full year while the year is still in progress.
                             for ($i = 0; $i < $diff_months; $i++) {
                                 $current_col_month = date('Y-m-01', strtotime("+$i months", $ts1));
-                                
-                                // Check if this month is valid for contribution
-                                $is_valid_month = true;
+
+                                $is_valid_month = ($current_col_month <= $this_month);
                                 if ($contribution_start_date) {
                                     $start_month = date('Y-m-01', strtotime($contribution_start_date));
-                                    if ($current_col_month < $start_month) {
-                                        $is_valid_month = false;
-                                    }
+                                    if ($current_col_month < $start_month) $is_valid_month = false;
                                 }
+                                if ($join_month && $current_col_month < $join_month) $is_valid_month = false;
 
                                 if ($is_valid_month) {
                                     $valid_months_count++;
@@ -237,24 +260,24 @@ function fmt($n) { return number_format($n, 0); }
                                     }
                                 }
                             }
-                            
-                            // If any leftover after all moths, add it to the LAST month in view OR keep in total
                             if ($remaining_for_months > 0 && $diff_months > 0) {
                                 $monthly_by_month[$diff_months - 1] += $remaining_for_months;
                                 $monthly_total += $remaining_for_months;
                             }
 
                             $total_assistance = (float)($payouts[$mid] ?? 0);
-                            $total_member_contributed = $total_raw_pool + $agm_paid; // All confirmed money
-                            $balance = $total_member_contributed - $total_assistance - $agm_paid; 
-                            
+                            $total_savings = $opening + $new_pool;                  // real savings (carried-in + new)
+                            $total_member_contributed = $total_savings + $agm_paid; // all money in (Total column)
+                            $balance = $total_savings - $total_assistance;          // savings minus aid received
+
                             $target_amt = $monthly_rate * $valid_months_count;
-                            // Surplus/Deficit is based on the logic: (Pool - Entrance) vs Target
-                            // Actually it's simpler: What is the total monthly we got vs what we need?
-                            $surplus_deficit = ($total_raw_pool - $entrance_fee_rate) - $target_amt;
-                            
+                            // Opening savings count toward the target, so carrying money in never
+                            // CREATES a deficit — it only reduces it. A deficit remains only when a
+                            // member's total savings are still below what is expected by now.
+                            $surplus_deficit = $total_savings - $target_amt;
+
                             $status_class = $surplus_deficit >= 0 ? 'text-success' : 'text-danger';
-                            $ledger_rows[] = compact('m', 'idx', 'entrance_paid', 'monthly_total', 'total_member_contributed', 'total_assistance', 'agm_paid', 'balance', 'target_amt', 'surplus_deficit', 'status_class');
+                            $ledger_rows[] = compact('m', 'idx', 'opening', 'entrance_paid', 'monthly_total', 'total_member_contributed', 'total_assistance', 'agm_paid', 'balance', 'target_amt', 'surplus_deficit', 'status_class');
                         ?>
                         <tr>
                             <td class="text-center text-muted small"><?= $idx + 1 ?></td>
@@ -263,6 +286,7 @@ function fmt($n) { return number_format($n, 0); }
                                 <?php if ($m['status'] == 'suspended' || $m['status'] == 'terminated'): ?><span class="badge bg-light text-dark shadow-sm ms-1 border" style="font-size: 0.6rem;">OS</span><?php endif; ?>
                             </td>
                             <td class="small text-muted"><?= htmlspecialchars($m['mpesa_name'] ?? '—') ?></td>
+                            <td class="text-end text-success fw-semibold"><?= $opening > 0 ? fmt($opening) : '—' ?></td>
                             <td class="text-end"><?= $entrance_paid > 0 ? fmt($entrance_paid) : '—' ?></td>
                             
                             <?php foreach ($monthly_by_month as $amt): ?>
@@ -318,6 +342,12 @@ function fmt($n) { return number_format($n, 0); }
                         </span>
                     </div>
                     <div class="vk-card-body">
+                        <?php if ($row['opening'] > 0): ?>
+                        <div class="vk-card-row">
+                            <span class="vk-card-label"><?= $is_sw ? 'Akiba ya M-Koba' : 'Opening (M-Koba)' ?></span>
+                            <span class="vk-card-value text-success fw-semibold"><?= fmt($row['opening']) ?></span>
+                        </div>
+                        <?php endif; ?>
                         <div class="vk-card-row">
                             <span class="vk-card-label"><?= $is_sw ? 'Jumla' : 'Total' ?></span>
                             <span class="vk-card-value fw-bold"><?= fmt($row['total_member_contributed']) ?></span>
