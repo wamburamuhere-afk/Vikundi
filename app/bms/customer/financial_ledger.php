@@ -298,7 +298,7 @@ function fmt($n) { return number_format($n, 0); }
                             <td class="text-end text-muted small"><?= fmt($agm_paid) ?></td>
                             <td class="text-end fw-bold text-primary"><?= fmt($balance) ?></td>
                             
-                            <td class="text-center bg-light small"><?= $diff_months ?></td>
+                            <td class="text-center bg-light small"><?= $valid_months_count ?></td>
                             <td class="text-end bg-light small"><?= fmt($target_amt) ?></td>
                             
                             <td class="text-end fw-bold <?= $status_class ?> border-start">

@@ -68,4 +68,13 @@ class LedgerOpeningSavingsTest extends TestCase
         // imported contribution rows.
         $this->assertStringContainsString('mkoba_member_name FROM contributions', $this->src);
     }
+
+    public function testTargetMonthsColumnShowsMonthsCountedNotFullRange(): void
+    {
+        // The Target "M" cell shows the months actually counted toward the target
+        // (valid_months_count), so it lines up with the target amount — instead of
+        // the full range width, which made "M 12 / T 20,000" look contradictory.
+        $this->assertStringContainsString('bg-light small"><?= $valid_months_count ?>', $this->src);
+        $this->assertStringNotContainsString('bg-light small"><?= $diff_months ?>', $this->src);
+    }
 }
