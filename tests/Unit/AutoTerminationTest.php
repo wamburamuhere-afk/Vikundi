@@ -148,4 +148,20 @@ class AutoTerminationTest extends TestCase
         );
         $this->assertStringNotContainsString("con.status = 'confirmed'", $src);
     }
+
+    public function testAutoDormancyIsDisabledByDefault(): void
+    {
+        // The sweep demands entrance + monthly dues from the group start and moves
+        // anyone short into dormant — wrong for an established group imported
+        // mid-life, where it repeatedly re-dormanted real, active members. It must
+        // be off unless group_settings 'auto_dormancy_enabled' = '1'.
+        $src = file_get_contents(__DIR__ . '/../../actions/auto_terminate_members.php');
+        $this->assertStringContainsString("\$settings['auto_dormancy_enabled'] ?? '0') !== '1'", $src);
+        // The kill-switch must guard BEFORE any dormant write.
+        $pos_guard  = strpos($src, "auto_dormancy_enabled");
+        $pos_write  = strpos($src, "SET status = 'dormant'");
+        $this->assertNotFalse($pos_guard);
+        $this->assertNotFalse($pos_write);
+        $this->assertLessThan($pos_write, $pos_guard, 'the kill-switch must come before any dormant UPDATE');
+    }
 }

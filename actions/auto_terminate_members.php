@@ -72,6 +72,19 @@ if (!function_exists('vk_run_auto_termination')) {
         $settings = $pdo->query("SELECT setting_key, setting_value FROM group_settings")
                         ->fetchAll(PDO::FETCH_KEY_PAIR);
 
+        // KILL-SWITCH — auto-dormancy is DISABLED by default.
+        // This sweep demands entrance + monthly dues from the group's start date
+        // and moves anyone short into 'dormant'. That is correct for a group that
+        // begins inside Vikundi, but WRONG for an established group imported
+        // mid-life (e.g. UKUU MSAKUZI, whose members are already active and whose
+        // contribution history is being fed in continuously): it wrongly swept 320
+        // real members into dormant every morning, undoing their activation.
+        // Re-enable only after the contribution model is reworked for imported /
+        // running groups — set group_settings 'auto_dormancy_enabled' = '1'.
+        if (($settings['auto_dormancy_enabled'] ?? '0') !== '1') {
+            return 0;
+        }
+
         $required_total = vk_required_contribution_total($settings, new DateTime());
         if ($required_total <= 0) {
             return 0;
