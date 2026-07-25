@@ -52,11 +52,11 @@ $savings_data = $pdo->query("
         c.customer_id,
         COALESCE(CONCAT(c.first_name,' ',c.last_name), c.first_name, c.last_name, 'Mwanachama') AS member_name,
         c.phone,
-        COALESCE(SUM(CASE WHEN co.contribution_type='entrance'  AND co.status='confirmed' THEN co.amount ELSE 0 END),0) AS entrance,
-        COALESCE(SUM(CASE WHEN co.contribution_type='monthly'   AND co.status='confirmed' THEN co.amount ELSE 0 END),0) AS monthly,
-        COALESCE(SUM(CASE WHEN co.contribution_type='agm'       AND co.status='confirmed' THEN co.amount ELSE 0 END),0) AS agm,
-        COALESCE(SUM(CASE WHEN co.contribution_type='other'     AND co.status='confirmed' THEN co.amount ELSE 0 END),0) AS other,
-        COALESCE(SUM(CASE WHEN co.status='confirmed'            THEN co.amount ELSE 0 END),0) AS total_savings
+        COALESCE(SUM(CASE WHEN co.contribution_type='entrance'  AND co.status IN ('confirmed','approved','') THEN co.amount ELSE 0 END),0) AS entrance,
+        COALESCE(SUM(CASE WHEN co.contribution_type='monthly'   AND co.status IN ('confirmed','approved','') THEN co.amount ELSE 0 END),0) AS monthly,
+        COALESCE(SUM(CASE WHEN co.contribution_type='agm'       AND co.status IN ('confirmed','approved','') THEN co.amount ELSE 0 END),0) AS agm,
+        COALESCE(SUM(CASE WHEN co.contribution_type='other'     AND co.status IN ('confirmed','approved','') THEN co.amount ELSE 0 END),0) AS other,
+        COALESCE(SUM(CASE WHEN co.status IN ('confirmed','approved','')            THEN co.amount ELSE 0 END),0) AS total_savings
     FROM customers c
     LEFT JOIN contributions co ON c.customer_id = co.member_id AND co.contribution_type != 'fine'
     WHERE c.status = 'active'
