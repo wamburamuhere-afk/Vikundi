@@ -89,4 +89,13 @@ class ContributionStandingTest extends TestCase
         $this->assertSame(50000.0, $s['total']);
         $this->assertSame(38000.0, $s['balance']); // 50k − 12k aid
     }
+
+    public function testGroupQueryCountsApprovedContributions(): void
+    {
+        // The one place the status set lives now: the module's DB read must count
+        // confirmed / approved / '' (the live workflow ends at 'approved').
+        $src = file_get_contents(__DIR__ . '/../../includes/contribution_standing.php');
+        $this->assertStringContainsString("co.status IN ('confirmed','approved','')", $src);
+        $this->assertStringNotContainsString("co.status = 'confirmed'", $src);
+    }
 }

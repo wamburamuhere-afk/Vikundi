@@ -46,23 +46,29 @@ $is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
 // FETCH ALL DATA FOR REPORTS
 // ============================================================
 
-// 1) Member Savings Summary (Grouped by Member)
-$savings_data = $pdo->query("
-    SELECT
-        c.customer_id,
-        COALESCE(CONCAT(c.first_name,' ',c.last_name), c.first_name, c.last_name, 'Mwanachama') AS member_name,
-        c.phone,
-        COALESCE(SUM(CASE WHEN co.contribution_type='entrance'  AND co.status IN ('confirmed','approved','') THEN co.amount ELSE 0 END),0) AS entrance,
-        COALESCE(SUM(CASE WHEN co.contribution_type='monthly'   AND co.status IN ('confirmed','approved','') THEN co.amount ELSE 0 END),0) AS monthly,
-        COALESCE(SUM(CASE WHEN co.contribution_type='agm'       AND co.status IN ('confirmed','approved','') THEN co.amount ELSE 0 END),0) AS agm,
-        COALESCE(SUM(CASE WHEN co.contribution_type='other'     AND co.status IN ('confirmed','approved','') THEN co.amount ELSE 0 END),0) AS other,
-        COALESCE(SUM(CASE WHEN co.status IN ('confirmed','approved','')            THEN co.amount ELSE 0 END),0) AS total_savings
-    FROM customers c
-    LEFT JOIN contributions co ON c.customer_id = co.member_id AND co.contribution_type != 'fine'
-    WHERE c.status = 'active'
-    GROUP BY c.customer_id, c.first_name, c.last_name, c.phone
-    ORDER BY total_savings DESC
-")->fetchAll(PDO::FETCH_ASSOC);
+// 1) Member Savings Summary — via the shared contribution-standing module, so
+// this page can never drift from the ledger/dashboard again. The group's total
+// savings is EVERY member's money (dormant members haven't withdrawn), so it is
+// not filtered by status here; the active-member headcount is a separate figure.
+require_once __DIR__ . '/../../../includes/contribution_standing.php';
+$standing = cs_group_standing($pdo);
+
+$names = $pdo->query("
+    SELECT customer_id,
+           COALESCE(CONCAT(first_name,' ',last_name), first_name, last_name, 'Mwanachama') AS member_name,
+           phone
+    FROM customers WHERE status <> 'deleted'
+")->fetchAll(PDO::FETCH_UNIQUE);
+
+$savings_data = [];
+foreach ($standing as $cid => $st) {
+    $savings_data[] = [
+        'member_name'   => $names[$cid]['member_name'] ?? 'Mwanachama',
+        'phone'         => $names[$cid]['phone'] ?? '',
+        'total_savings' => $st['total'],
+    ];
+}
+usort($savings_data, fn($a, $b) => $b['total_savings'] <=> $a['total_savings']);
 
 // 2) Expenses (General + Death Assistance)
 $expenses_data = $pdo->query("
@@ -78,7 +84,8 @@ $expenses_data = $pdo->query("
 $total_savings   = array_sum(array_column($savings_data, 'total_savings'));
 $total_expenses  = array_sum(array_column($expenses_data, 'amount'));
 $available_fund  = $total_savings - $total_expenses;
-$active_members  = count($savings_data);
+$members_total   = count($savings_data); // everyone in the savings table
+$active_members  = (int) $pdo->query("SELECT COUNT(*) FROM customers WHERE status = 'active'")->fetchColumn();
 
 // Chart data for savings (Top 10)
 $chart_labels = array_map(fn($m) => explode(' ', $m['member_name'] ?? 'Mwanachama')[0], array_slice($savings_data, 0, 10));
@@ -192,7 +199,7 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
             <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-5">
                 <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
                     <h6 class="mb-0 fw-bold text-primary"><?= $is_sw ? 'Akiba na Michango Kila Mwanachama' : 'Member Contributions & Savings' ?></h6>
-                    <span class="badge bg-primary rounded-pill px-3"><?= $active_members ?> <?= $is_sw ? 'Wanachama' : 'Members' ?></span>
+                    <span class="badge bg-primary rounded-pill px-3"><?= $members_total ?> <?= $is_sw ? 'Wanachama' : 'Members' ?></span>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive d-none d-md-block d-print-block">
