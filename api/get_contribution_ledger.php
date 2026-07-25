@@ -16,8 +16,10 @@ if (!$user_id) {
 $settings_raw = $pdo->query("SELECT setting_key, setting_value FROM group_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $start_date = $settings_raw['contribution_start_date'] ?? $settings_raw['group_founded_date'] ?? date('Y-m-01');
 $cycle = $settings_raw['cycle_type'] ?? 'monthly';
-$monthly_val = floatval($settings_raw['monthly_contribution'] ?? 10000);
-$entrance_val = floatval($settings_raw['entrance_fee'] ?? 20000);
+// Unset monthly / entrance => no target (save-what-you-can), matching the shared
+// standing module. The old `?? 10000` / `?? 20000` fabricated the per-period amounts.
+$monthly_val = floatval($settings_raw['monthly_contribution'] ?? 0);
+$entrance_val = floatval($settings_raw['entrance_fee'] ?? 0);
 
 // 2. Navigation Logic (Block of 4)
 $block = intval($_GET['block'] ?? 0);
