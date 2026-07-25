@@ -47,58 +47,71 @@ if (is_array($children_json)) {
 }
 $dependant_count = $spouse_active + $active_children;
 
-// 4. Fetch All Confirmed Contributions (Total Pot)
-// IMPORTANT: We must include the 'initial_savings' from the registration as part of the total paid pot.
-$stmt = $pdo->prepare("SELECT SUM(amount) FROM contributions WHERE member_id = ? AND status IN ('confirmed', 'approved', '') AND (contribution_type = 'monthly' OR contribution_type = 'entrance' OR contribution_type = 'other' OR contribution_type = '')");
+$isSw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
+
+// 4. Contributions — split the member's carried-in M-Koba savings (an opening
+// balance) from any NEW money. The opening is never consumed by the entrance fee
+// and always counts toward the schedule, so a member who brought savings in is
+// never shown as having "paid nothing" (mirrors the group ledger's treatment).
+$stmt = $pdo->prepare("
+    SELECT
+      COALESCE(SUM(CASE WHEN (mkoba_trans_id IS NOT NULL AND mkoba_trans_id <> '') OR account = 'M-Koba'
+                        THEN amount ELSE 0 END), 0) AS opening,
+      COALESCE(SUM(CASE WHEN (mkoba_trans_id IS NULL OR mkoba_trans_id = '') AND (account IS NULL OR account <> 'M-Koba')
+                        THEN amount ELSE 0 END), 0) AS newmoney
+    FROM contributions
+    WHERE member_id = ? AND status IN ('confirmed', 'approved', '')
+      AND (contribution_type IN ('monthly', 'entrance', 'other') OR contribution_type = '' OR contribution_type IS NULL)");
 $stmt->execute([$member_id]);
-$contributions_total = floatval($stmt->fetchColumn());
+$csplit    = $stmt->fetch(PDO::FETCH_ASSOC) ?: ['opening' => 0, 'newmoney' => 0];
+$opening   = floatval($csplit['opening']);                                        // carried in from M-Koba
+$new_money = floatval($member['initial_savings'] ?? 0) + floatval($csplit['newmoney']);
+$total_paid = $opening + $new_money;
 
-// Total paid = Initial Savings (from registration) + Confirmed Contributions (from table)
-$total_paid = floatval($member['initial_savings'] ?? 0) + $contributions_total;
+// 5. Entrance is paid from NEW money only — the opening savings are never skimmed.
+$entrance_paid_amt = min($new_money, $entrance_amt);
+$entrance_status   = ($entrance_paid_amt >= $entrance_amt) ? 'paid' : ($entrance_paid_amt > 0 ? 'partial' : 'unpaid');
 
-// 5. Query Dynamic Columns needed
-// We show at least 12 months, or up to the current month, or up to what they've paid
-$total_paid_for_monthly = max(0, $total_paid - $entrance_amt);
-$total_months_covered = floor($total_paid_for_monthly / $monthly_amt);
-$has_remainder = ($total_paid_for_monthly % $monthly_amt) > 0;
+// The pot that counts toward monthly contributions = opening + (new after entrance).
+$monthly_pot = $opening + max(0, $new_money - $entrance_paid_amt);
+$total_months_covered = $monthly_amt > 0 ? (int) floor($monthly_pot / $monthly_amt) : 0;
+$has_remainder = $monthly_amt > 0 ? (fmod($monthly_pot, $monthly_amt) > 0) : false;
 
-$current_month_idx = (intval(date('Y')) - intval(date('Y', strtotime($contribution_start_date)))) * 12 + (intval(date('m')) - intval(date('m', strtotime($contribution_start_date))));
-$columns_count = max(12, $total_months_covered, $current_month_idx + 1);
+// 6. The schedule runs from when the member was first expected to contribute — the
+// later of the group start and the member's own join month — up to the CURRENT
+// month only (never bill months that haven't happened). It extends past "now" only
+// when the member has paid ahead.
+$anchor_ts = strtotime($contribution_start_date);
+if (!empty($member['created_at']) && strtotime($member['created_at']) > $anchor_ts) {
+    $anchor_ts = strtotime($member['created_at']);
+}
+$anchor_ym = date('Y-m-01', $anchor_ts);
+$elapsed   = max(0, (intval(date('Y')) - intval(date('Y', $anchor_ts))) * 12 + (intval(date('m')) - intval(date('m', $anchor_ts))));
+$columns_count = max(1, $elapsed + 1, $total_months_covered);
 
-// 6. Logic: Distribute $total_paid to periods (THE INTELLIGENCE)
-$remaining_pot = $total_paid;
-
-// A. Deduct Entrance Fee but don't show it in grid
-$entrance_paid_amt = min($remaining_pot, $entrance_amt);
-$remaining_pot -= $entrance_paid_amt;
-$entrance_status = ($entrance_paid_amt >= $entrance_amt) ? 'paid' : ($entrance_paid_amt > 0 ? 'partial' : 'unpaid');
-
-// B. Fill Monthly grid from the remaining pot
+// 7. Distribute the pot across the months (opening counts, so real savings show as paid).
+$remaining_pot = $monthly_pot;
 $distribution = [];
 for ($i = 0; $i < $columns_count; $i++) {
-    $month_ts = strtotime($contribution_start_date . " +$i months");
-    $month_label = date('M Y', $month_ts);
-    
+    $month_ts = strtotime("$i months", strtotime($anchor_ym));
     $paid_for_this_month = min($remaining_pot, $monthly_amt);
     $remaining_pot -= $paid_for_this_month;
-    
     $status = ($paid_for_this_month >= $monthly_amt) ? 'paid' : ($paid_for_this_month > 0 ? 'partial' : 'unpaid');
-    
     $distribution[] = [
-        'label' => $month_label,
+        'label'  => date('M Y', $month_ts),
         'amount' => $paid_for_this_month,
         'status' => $status,
-        'target' => $monthly_amt
+        'target' => $monthly_amt,
     ];
 }
 
-// C. If there is STILL money left (Advanced beyond our columns), OR a partial remainder
+// Any money beyond the months shown = advance / credit.
 if ($remaining_pot > 0) {
     $distribution[] = [
-        'label' => ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'ZIADA (ADVANCE)' : 'ADVANCE / CREDIT',
+        'label'  => $isSw ? 'ZIADA (ADVANCE)' : 'ADVANCE / CREDIT',
         'amount' => $remaining_pot,
         'status' => 'paid',
-        'target' => 0
+        'target' => 0,
     ];
 }
 
@@ -139,21 +152,30 @@ $total_expenses = array_sum(array_column($expenses, 'amount'));
     </div>
 </div>
 
-<div class="row g-3 mb-4">
+<div class="row row-cols-2 row-cols-md-5 g-3 mb-4">
     <!-- INFO CARDS -->
-    <div class="col-md-3">
+    <div class="col">
         <div class="card border shadow-sm h-100" style="background-color: #d1e7dd !important; color: #000000 !important;">
             <div class="card-body p-3 text-center">
                 <small class="text-uppercase fw-bold small mb-1" style="color: #495057;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jumla Aliyolipa' : 'Total Paid' ?></small>
                 <div class="fs-4 fw-bold">TSh <?= number_format($total_paid, 0) ?></div>
                 <div class="mt-2 small px-2 py-1 rounded-pill bg-white d-inline-block border text-dark">
-                    <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Kiingilio: ' : 'Entrance: ' ?> 
+                    <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Kiingilio: ' : 'Entrance: ' ?>
                     <span class="fw-bold"><?= $entrance_status === 'paid' ? (($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'KIMESHAJAA' : 'FULLY PAID') : number_format($entrance_paid_amt, 0) . ' / ' . number_format($entrance_amt, 0) ?></span>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col">
+        <div class="card border shadow-sm h-100" style="background-color: #eaf3fb !important; color: #000000 !important;">
+            <div class="card-body p-3 text-center">
+                <small class="text-uppercase fw-bold small mb-1 text-primary"><?= $isSw ? 'Akiba ya M-Koba' : 'M-Koba Savings' ?></small>
+                <div class="fs-4 fw-bold">TSh <?= number_format($opening, 0) ?></div>
+                <small class="text-muted"><?= $isSw ? 'Iliyoingizwa (imehesabiwa hapa chini)' : 'Carried in (counted below)' ?></small>
+            </div>
+        </div>
+    </div>
+    <div class="col">
         <div class="card border shadow-sm h-100" style="background-color: #d1e7dd !important; color: #000000 !important;">
             <div class="card-body p-3 text-center">
                 <small class="text-uppercase fw-bold small mb-1" style="color: #495057;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Wategemezi Hai' : 'Active Dependants' ?></small>
@@ -162,7 +184,7 @@ $total_expenses = array_sum(array_column($expenses, 'amount'));
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col">
         <div class="card border shadow-sm h-100" style="background-color: #d1e7dd !important; color: #000000 !important;">
             <div class="card-body p-3 text-center">
                 <small class="text-uppercase fw-bold small mb-1" style="color: #495057;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Misaada Aliyopokea' : 'Benefits Received' ?></small>
@@ -170,7 +192,7 @@ $total_expenses = array_sum(array_column($expenses, 'amount'));
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col">
         <div class="card border shadow-sm h-100" style="background-color: #f0f7ff !important;">
             <div class="card-body p-3 text-center">
                 <small class="text-uppercase fw-bold small mb-1 text-primary"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Hali ya Akiba' : 'Savings Status' ?></small>
@@ -243,7 +265,7 @@ $total_expenses = array_sum(array_column($expenses, 'amount'));
         <div class="d-flex align-items-center"><span class="badge bg-success me-1">&nbsp;</span> Fully Paid</div>
         <div class="d-flex align-items-center"><span class="badge bg-warning me-1">&nbsp;</span> Partial Payment</div>
         <div class="d-flex align-items-center"><span class="badge bg-danger me-1">&nbsp;</span> Not Paid</div>
-        <div class="ms-auto text-muted font-italic">Starting from: <?= date('d M Y', strtotime($contribution_start_date)) ?></div>
+        <div class="ms-auto text-muted font-italic"><?= $isSw ? 'Kuanzia' : 'Starting from' ?>: <?= date('d M Y', $anchor_ts) ?></div>
     </div>
 </div>
 
@@ -324,7 +346,7 @@ $total_expenses = array_sum(array_column($expenses, 'amount'));
     /* Layout Flexibility */
     .card { border: 1px solid #ccc !important; box-shadow: none !important; margin-bottom: 5px !important; page-break-inside: avoid; background: transparent !important; }
     .row { display: flex !important; flex-wrap: wrap !important; }
-    .col-md-3 { flex: 1 1 23% !important; width: 23% !important; }
+    .row-cols-md-5 > .col { flex: 1 1 18% !important; width: 18% !important; }
 
     /* The monthly grid was jumping whole to page 2 (leaving page 1 half-empty)
        because page-break-inside:avoid + the old tfoot spacer made it too tall to
