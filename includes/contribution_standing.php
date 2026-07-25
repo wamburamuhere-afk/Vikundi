@@ -97,6 +97,30 @@ if (!function_exists('cs_standing')) {
     }
 }
 
+if (!function_exists('cs_group_savings_total')) {
+    /**
+     * The group's total contributions/savings in one figure — every member's
+     * money that counts as savings (fines excluded), across the accepted status
+     * set. Uses the SAME rules as cs_group_standing(), so the dashboard's
+     * "Contributions" KPI and the Group Reports savings total are guaranteed to
+     * agree (both are this number). Cheaper than cs_group_standing() when only the
+     * total is needed.
+     */
+    function cs_group_savings_total(PDO $pdo): float
+    {
+        // Member-scoped (same join as cs_group_standing) so this equals the sum of
+        // every member's standing exactly — orphan contributions whose member_id
+        // has no current member are not counted on either side.
+        return (float) $pdo->query("
+            SELECT COALESCE(SUM(co.amount), 0)
+              FROM contributions co
+              JOIN customers c ON c.customer_id = co.member_id AND c.status <> 'deleted'
+             WHERE co.status IN ('confirmed','approved','')
+               AND co.contribution_type <> 'fine'
+        ")->fetchColumn();
+    }
+}
+
 if (!function_exists('cs_group_standing')) {
     /**
      * Every member's standing in one pass, keyed by customer_id. This is what the
