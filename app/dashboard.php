@@ -20,10 +20,13 @@ $can_view_library   = canView('library');
 $can_view_reports   = canView('vicoba_reports');
 
 // ── Fetch key metrics (NOW PUBLIC FOR ALL ROLES) ──────────────
+require_once ROOT_DIR . '/includes/contribution_standing.php';
 $total_members = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE status != 'deleted' AND user_role != 'Admin'")->fetchColumn();
 $active_members = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE status = 'active' AND user_role != 'Admin'")->fetchColumn();
 $pending_members = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE status = 'pending'")->fetchColumn();
-$total_contributions = (float) $pdo->query("SELECT COALESCE(SUM(amount),0) FROM contributions WHERE status IN ('confirmed', 'approved', '')")->fetchColumn();
+// The "Contributions" KPI shares one definition with the Group Reports savings
+// total, via the standing module, so the two can never disagree.
+$total_contributions = cs_group_savings_total($pdo);
 $month_contributions = (float) $pdo->query("SELECT COALESCE(SUM(amount),0) FROM contributions WHERE status IN ('confirmed', 'approved', '') AND MONTH(contribution_date)=MONTH(NOW()) AND YEAR(contribution_date)=YEAR(NOW())")->fetchColumn();
 $pending_contributions_global = (int) $pdo->query("SELECT COUNT(*) FROM contributions c JOIN customers cust ON c.member_id = cust.customer_id WHERE c.status = 'pending' AND cust.status = 'active'")->fetchColumn();
 
