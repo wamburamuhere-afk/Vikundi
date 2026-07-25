@@ -98,4 +98,15 @@ class ContributionStandingTest extends TestCase
         $this->assertStringContainsString("co.status IN ('confirmed','approved','')", $src);
         $this->assertStringNotContainsString("co.status = 'confirmed'", $src);
     }
+
+    public function testGroupSavingsTotalIsMemberScoped(): void
+    {
+        // cs_group_savings_total must use the SAME member-scoped join as
+        // cs_group_standing, so the dashboard "Contributions" KPI and the Group
+        // Reports savings total are exactly equal (verified numerically on live).
+        $src = file_get_contents(__DIR__ . '/../../includes/contribution_standing.php');
+        $this->assertStringContainsString('function cs_group_savings_total', $src);
+        $this->assertStringContainsString("JOIN customers c ON c.customer_id = co.member_id AND c.status <> 'deleted'", $src);
+        $this->assertStringContainsString("co.contribution_type <> 'fine'", $src);
+    }
 }
