@@ -30,10 +30,17 @@ $member = $pdo->prepare("SELECT * FROM customers WHERE customer_id = ?");
 $member->execute([$member_id]);
 $member = $member->fetch(PDO::FETCH_ASSOC);
 
+// Shared contribution-standing rules — the one place every screen agrees on the
+// month-counting and "no fixed rule => no target" behaviour.
+require_once __DIR__ . '/../../../includes/contribution_standing.php';
+
 // 2. Fetch Group Settings (Monthly Contribution, Entrance Fee, Start Date)
 $settings_raw = $pdo->query("SELECT setting_key, setting_value FROM group_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
-$monthly_amt = floatval($settings_raw['monthly_contribution'] ?? 10000);
-$entrance_amt = floatval($settings_raw['entrance_fee'] ?? 20000);
+// No fixed monthly / entrance => no target (save-what-you-can), matching the module.
+// The old `?? 10000` / `?? 20000` fabricated a target and a false unpaid entrance for
+// every member whenever the group had these unset (the case on the current data).
+$monthly_amt = floatval($settings_raw['monthly_contribution'] ?? 0);
+$entrance_amt = floatval($settings_raw['entrance_fee'] ?? 0);
 $contribution_start_date = $settings_raw['contribution_start_date'] ?? ($settings_raw['group_founded_date'] ?? date('Y') . '-01-01');
 
 // 3. Calculate Dependant Count
@@ -53,6 +60,8 @@ $isSw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
 // balance) from any NEW money. The opening is never consumed by the entrance fee
 // and always counts toward the schedule, so a member who brought savings in is
 // never shown as having "paid nothing" (mirrors the group ledger's treatment).
+// The CASE predicate below is the SQL form of the module's cs_is_opening() rule —
+// keep the two in sync. (This report excludes 'agm' from savings by design.)
 $stmt = $pdo->prepare("
     SELECT
       COALESCE(SUM(CASE WHEN (mkoba_trans_id IS NOT NULL AND mkoba_trans_id <> '') OR account = 'M-Koba'
@@ -86,8 +95,10 @@ if (!empty($member['created_at']) && strtotime($member['created_at']) > $anchor_
     $anchor_ts = strtotime($member['created_at']);
 }
 $anchor_ym = date('Y-m-01', $anchor_ts);
-$elapsed   = max(0, (intval(date('Y')) - intval(date('Y', $anchor_ts))) * 12 + (intval(date('m')) - intval(date('m', $anchor_ts))));
-$columns_count = max(1, $elapsed + 1, $total_months_covered);
+// Elapsed months (inclusive of the anchor month) via the shared module, so the
+// statement counts months exactly like the ledger, dashboard and Group Reports.
+$elapsed_inclusive = cs_months_elapsed($anchor_ym);
+$columns_count = max(1, $elapsed_inclusive, $total_months_covered);
 
 // 7. Distribute the pot across the months (opening counts, so real savings show as paid).
 $remaining_pot = $monthly_pot;

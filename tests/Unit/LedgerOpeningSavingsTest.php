@@ -29,7 +29,8 @@ class LedgerOpeningSavingsTest extends TestCase
     {
         // The fetch must pull the M-Koba markers so imports can be told apart.
         $this->assertStringContainsString('mkoba_trans_id, account', $this->src);
-        $this->assertStringContainsString("!empty(\$c['mkoba_trans_id']) || (\$c['account'] ?? '') === 'M-Koba'", $this->src);
+        // Detection now delegates to the shared module (was an inline mkoba/account check).
+        $this->assertStringContainsString('cs_is_opening($c[\'mkoba_trans_id\'] ?? null, $c[\'account\'] ?? null)', $this->src);
     }
 
     public function testOpeningIsSeparatedFromNewMoneyAndEntrance(): void
@@ -43,17 +44,22 @@ class LedgerOpeningSavingsTest extends TestCase
 
     public function testOpeningCountsTowardTargetSoItCannotCauseADeficit(): void
     {
-        // Deficit is measured against TOTAL savings (opening + new), so opening can
-        // only reduce it — never create one.
-        $this->assertStringContainsString('$total_savings = $opening + $new_pool', $this->src);
-        $this->assertStringContainsString('$surplus_deficit = $total_savings - $target_amt', $this->src);
+        // The total/deficit now come from cs_standing(opening, new, target, …); the
+        // module guarantees opening feeds the total, so it can only reduce a deficit —
+        // never create one (see ContributionStandingTest). Opening is passed first.
+        $this->assertStringContainsString('cs_standing((float)$opening, (float)$new_pool, (float)$target_amt', $this->src);
+        $this->assertStringContainsString("\$surplus_deficit          = \$st['surplus_deficit'];", $this->src);
+        // The old inline deficit math must be gone.
+        $this->assertStringNotContainsString('$surplus_deficit = $total_savings - $target_amt', $this->src);
     }
 
     public function testTargetUsesElapsedMonthsNotTheWholeYear(): void
     {
         // A month only counts toward the target once it has actually arrived.
-        $this->assertStringContainsString('$this_month = date(\'Y-m-01\')', $this->src);
-        $this->assertStringContainsString('($current_col_month <= $this_month)', $this->src);
+        $this->assertStringContainsString('date(\'Y-m-01\')', $this->src);
+        $this->assertStringContainsString('$col <= $this_month', $this->src);
+        // ...and an unset monthly must not fabricate a full-year target any more.
+        $this->assertStringContainsString("(float)(\$settings['monthly_contribution'] ?? 0)", $this->src);
     }
 
     public function testOpeningColumnIsRendered(): void

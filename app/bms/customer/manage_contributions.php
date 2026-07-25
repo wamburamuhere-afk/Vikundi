@@ -74,8 +74,11 @@ $block = max($min_block, min($max_block, $block));
 
 $start_offset = $block * $periods_per_block;
 
-$monthly_val  = floatval($settings_raw['monthly_contribution'] ?? 10000);
-$entrance_val = floatval($settings_raw['entrance_fee'] ?? 20000);
+// Unset monthly / entrance => no target (save-what-you-can), matching the shared
+// standing module (includes/contribution_standing.php). The old `?? 10000` / `?? 20000`
+// fabricated a per-cell target and an inflated "expected" whenever these were unset.
+$monthly_val  = floatval($settings_raw['monthly_contribution'] ?? 0);
+$entrance_val = floatval($settings_raw['entrance_fee'] ?? 0);
 
 $columns = [];
 for ($i = 0; $i < $periods_per_block; $i++) {

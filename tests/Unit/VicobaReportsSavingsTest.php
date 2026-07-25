@@ -5,12 +5,12 @@ namespace Tests\Unit;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The Group Reports page (vicoba_reports) computed Member Savings by summing only
- * contributions with status = 'confirmed'. The M-Koba imports are stored as
- * 'approved', so the whole report read TSh 0 savings and a NEGATIVE cash balance
- * (0 − expenses). The savings must count the same status set the rest of the
- * system treats as valid — 'confirmed', 'approved', or '' — matching the ledger
- * and the dashboard.
+ * The Group Reports page (vicoba_reports) once computed Member Savings with its
+ * own query gated on status='confirmed', so it read TSh 0 savings and a negative
+ * cash balance while the M-Koba imports (stored 'approved') were ignored. It now
+ * derives savings from the shared contribution-standing module, so it can never
+ * drift from the ledger/dashboard again — and the group total is every member's
+ * money (not just the currently-active ones).
  */
 class VicobaReportsSavingsTest extends TestCase
 {
@@ -21,26 +21,26 @@ class VicobaReportsSavingsTest extends TestCase
         $this->src = file_get_contents(__DIR__ . '/../../app/constant/reports/vicoba_reports.php');
     }
 
-    public function testSavingsCountApprovedContributionsNotOnlyConfirmed(): void
+    public function testSavingsComeFromTheSharedStandingModule(): void
     {
-        // No CASE clause may still gate savings on 'confirmed' alone.
-        $this->assertStringNotContainsString("co.status='confirmed'", $this->src);
-        // The total-savings sum uses the accepted status set (columns are padded).
-        $this->assertMatchesRegularExpression(
-            "/SUM\\(CASE WHEN co\\.status IN \\('confirmed','approved',''\\)\\s+THEN co\\.amount ELSE 0 END\\),0\\) AS total_savings/",
-            $this->src
-        );
+        $this->assertStringContainsString('contribution_standing.php', $this->src);
+        $this->assertStringContainsString('cs_group_standing($pdo)', $this->src);
+        // The savings figure is each member's standing total.
+        $this->assertStringContainsString("'total_savings' => \$st['total']", $this->src);
     }
 
-    public function testPerTypeBucketsAlsoCountApproved(): void
+    public function testPageNoLongerRunsItsOwnConfirmedOnlySavingsQuery(): void
     {
-        // Columns are alignment-padded, so match the clause spacing-agnostically.
-        foreach (['entrance', 'monthly', 'agm', 'other'] as $type) {
-            $this->assertMatchesRegularExpression(
-                "/co\\.contribution_type='$type'\\s+AND co\\.status IN \\('confirmed','approved',''\\)/",
-                $this->src,
-                "the $type bucket should count approved contributions too"
-            );
-        }
+        $this->assertStringNotContainsString("co.status='confirmed'", $this->src);
+        $this->assertStringNotContainsString("co.status IN ('confirmed','approved','') THEN co.amount ELSE 0 END),0) AS entrance", $this->src);
+    }
+
+    public function testGroupTotalIsAllMembersAndActiveIsASeparateCount(): void
+    {
+        // Total savings sums every member in the table; the active headcount is
+        // a distinct query, so a dormancy blip can't zero the group total.
+        $this->assertStringContainsString('$members_total   = count($savings_data)', $this->src);
+        $this->assertStringContainsString("FROM customers WHERE status <> 'deleted'", $this->src);
+        $this->assertStringContainsString("SELECT COUNT(*) FROM customers WHERE status = 'active'", $this->src);
     }
 }
