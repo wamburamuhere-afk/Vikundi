@@ -51,10 +51,11 @@ class MemberStatementSavingsTest extends TestCase
 
     public function testNoLongerBillsAFullTwelveMonths(): void
     {
-        // The hard 12-month floor (which billed future months) is gone; the count
-        // is elapsed months (+ advance).
+        // The hard 12-month floor (which billed future months) is gone; the count is
+        // elapsed months from the shared module (inclusive of the anchor) + advance.
         $this->assertStringNotContainsString('max(12, $total_months_covered', $this->src);
-        $this->assertStringContainsString('$columns_count = max(1, $elapsed + 1, $total_months_covered)', $this->src);
+        $this->assertStringContainsString('$elapsed_inclusive = cs_months_elapsed($anchor_ym)', $this->src);
+        $this->assertStringContainsString('$columns_count = max(1, $elapsed_inclusive, $total_months_covered)', $this->src);
     }
 
     public function testOpeningTileIsShown(): void
