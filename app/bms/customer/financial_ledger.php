@@ -43,10 +43,16 @@ if (!canView('vicoba_reports')) {
 
 $is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
 
+// Shared contribution-standing rules (opening detection, total/deficit/status) —
+// the one place every screen agrees on the math. See includes/contribution_standing.php.
+require_once ROOT_DIR . '/includes/contribution_standing.php';
+
 // 1. Fetch Group Settings (Rates & Branding)
 $stmt = $pdo->query("SELECT setting_key, setting_value FROM group_settings");
 $settings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-$monthly_rate = (float)($settings['monthly_contribution'] ?? 10000);
+// No fixed monthly => no target (save-what-you-can), matching the module. The old
+// `?? 10000` fabricated a target — and false deficits — whenever this was unset.
+$monthly_rate = (float)($settings['monthly_contribution'] ?? 0);
 $entrance_fee_rate = (float)($settings['entrance_fee'] ?? 0);
 $agm_fee_rate = (float)($settings['agm_fee'] ?? 0);
 $group_logo = $settings['group_logo'] ?? 'logo1.png';
@@ -211,10 +217,9 @@ function fmt($n) { return number_format($n, 0); }
                             $agm_paid  = 0;
 
                             foreach ($m_contribs as $c) {
-                                $is_imported = !empty($c['mkoba_trans_id']) || ($c['account'] ?? '') === 'M-Koba';
                                 if ($c['contribution_type'] == 'agm') {
                                     $agm_paid += $c['amount'];
-                                } elseif ($is_imported) {
+                                } elseif (cs_is_opening($c['mkoba_trans_id'] ?? null, $c['account'] ?? null)) {
                                     // Money carried in from M-Koba is an opening balance, not a NEW
                                     // monthly payment — shown on its own, never skimmed for the
                                     // entrance fee, and it can only reduce a deficit, never cause one.
@@ -228,36 +233,42 @@ function fmt($n) { return number_format($n, 0); }
                             $entrance_paid = min($new_pool, $entrance_fee_rate);
                             $remaining_for_months = $new_pool - $entrance_paid;
 
+                            $this_month  = date('Y-m-01');
+                            // A member is only owed a target from the month they JOINED — imported
+                            // members carrying an opening balance aren't charged for months before them.
+                            $join_month  = !empty($m['created_at']) ? date('Y-m-01', strtotime($m['created_at'])) : null;
+                            $start_month = $contribution_start_date ? date('Y-m-01', strtotime($contribution_start_date)) : null;
+
+                            // First pass: which visible columns have actually elapsed and are owed
+                            // (>= start, >= join, <= this month). Only these count toward the target
+                            // and receive a monthly allocation in the grid.
+                            $col_is_valid = [];
+                            $valid_months_count = 0;
+                            for ($i = 0; $i < $diff_months; $i++) {
+                                $col = date('Y-m-01', strtotime("+$i months", $ts1));
+                                $ok  = ($col <= $this_month)
+                                     && (!$start_month || $col >= $start_month)
+                                     && (!$join_month  || $col >= $join_month);
+                                $col_is_valid[$i] = $ok;
+                                if ($ok) $valid_months_count++;
+                            }
+
+                            // Grid cap for the visual spread only: with a fixed monthly, chunk the new
+                            // money in monthly-sized pieces; with no fixed monthly (save-what-you-can),
+                            // spread it evenly across the elapsed months so it still reads across the
+                            // row instead of lumping into the last column.
+                            $grid_cap = $monthly_rate > 0
+                                ? $monthly_rate
+                                : ($valid_months_count > 0 ? $remaining_for_months / $valid_months_count : $remaining_for_months);
+
                             $monthly_total = 0;
                             $monthly_by_month = array_fill(0, $diff_months, 0);
-                            $valid_months_count = 0;
-                            $this_month = date('Y-m-01');
-                            // A member is only expected to contribute monthly from the month they
-                            // JOINED — so imported members (who onboarded now, carrying an opening
-                            // balance) aren't charged a target for the months before they existed.
-                            $join_month = !empty($m['created_at']) ? date('Y-m-01', strtotime($m['created_at'])) : null;
-
-                            // Distribute NEW money across months, and count the target only over
-                            // months that have actually elapsed (>= start, >= join, <= this month) —
-                            // so the target isn't a full year while the year is still in progress.
                             for ($i = 0; $i < $diff_months; $i++) {
-                                $current_col_month = date('Y-m-01', strtotime("+$i months", $ts1));
-
-                                $is_valid_month = ($current_col_month <= $this_month);
-                                if ($contribution_start_date) {
-                                    $start_month = date('Y-m-01', strtotime($contribution_start_date));
-                                    if ($current_col_month < $start_month) $is_valid_month = false;
-                                }
-                                if ($join_month && $current_col_month < $join_month) $is_valid_month = false;
-
-                                if ($is_valid_month) {
-                                    $valid_months_count++;
-                                    if ($remaining_for_months > 0) {
-                                        $allocation = min($remaining_for_months, $monthly_rate);
-                                        $monthly_by_month[$i] = $allocation;
-                                        $monthly_total += $allocation;
-                                        $remaining_for_months -= $allocation;
-                                    }
+                                if ($col_is_valid[$i] && $remaining_for_months > 0 && $grid_cap > 0) {
+                                    $allocation = min($remaining_for_months, $grid_cap);
+                                    $monthly_by_month[$i] = $allocation;
+                                    $monthly_total += $allocation;
+                                    $remaining_for_months -= $allocation;
                                 }
                             }
                             if ($remaining_for_months > 0 && $diff_months > 0) {
@@ -266,17 +277,19 @@ function fmt($n) { return number_format($n, 0); }
                             }
 
                             $total_assistance = (float)($payouts[$mid] ?? 0);
-                            $total_savings = $opening + $new_pool;                  // real savings (carried-in + new)
-                            $total_member_contributed = $total_savings + $agm_paid; // all money in (Total column)
-                            $balance = $total_savings - $total_assistance;          // savings minus aid received
-
+                            // Target honours the module's rule: no fixed monthly => 0 target, so an
+                            // unset monthly can never fabricate a deficit.
                             $target_amt = $monthly_rate * $valid_months_count;
-                            // Opening savings count toward the target, so carrying money in never
-                            // CREATES a deficit — it only reduces it. A deficit remains only when a
-                            // member's total savings are still below what is expected by now.
-                            $surplus_deficit = $total_savings - $target_amt;
 
-                            $status_class = $surplus_deficit >= 0 ? 'text-success' : 'text-danger';
+                            // Standing (total, surplus/deficit, balance, status) comes from the shared
+                            // module so the ledger, dashboard and reports can never disagree again.
+                            // Opening counts toward the total, so carrying money in only reduces a
+                            // deficit — it never creates one.
+                            $st = cs_standing((float)$opening, (float)$new_pool, (float)$target_amt, $total_assistance);
+                            $total_member_contributed = $st['total'] + $agm_paid; // savings + AGM (kept separate)
+                            $balance                  = $st['balance'];
+                            $surplus_deficit          = $st['surplus_deficit'];
+                            $status_class             = $st['status'] === 'behind' ? 'text-danger' : 'text-success';
                             $ledger_rows[] = compact('m', 'idx', 'opening', 'entrance_paid', 'monthly_total', 'total_member_contributed', 'total_assistance', 'agm_paid', 'balance', 'target_amt', 'surplus_deficit', 'status_class');
                         ?>
                         <tr>
