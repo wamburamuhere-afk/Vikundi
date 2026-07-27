@@ -21,9 +21,17 @@ $can_view_reports   = canView('vicoba_reports');
 
 // ── Fetch key metrics (NOW PUBLIC FOR ALL ROLES) ──────────────
 require_once ROOT_DIR . '/includes/contribution_standing.php';
-$total_members = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE status != 'deleted' AND user_role != 'Admin'")->fetchColumn();
-$active_members = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE status = 'active' AND user_role != 'Admin'")->fetchColumn();
-$pending_members = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE status = 'pending'")->fetchColumn();
+// One pass over `users` for all three counts — was three separate COUNT(*) scans.
+$mrow = $pdo->query("
+    SELECT
+      COALESCE(SUM(status <> 'deleted' AND user_role <> 'Admin'), 0) AS total,
+      COALESCE(SUM(status =  'active'  AND user_role <> 'Admin'), 0) AS active,
+      COALESCE(SUM(status =  'pending'), 0)                          AS pending
+    FROM users
+")->fetch(PDO::FETCH_ASSOC);
+$total_members   = (int) $mrow['total'];
+$active_members  = (int) $mrow['active'];
+$pending_members = (int) $mrow['pending'];
 // The "Contributions" KPI shares one definition with the Group Reports savings
 // total, via the standing module, so the two can never disagree.
 $total_contributions = cs_group_savings_total($pdo);
