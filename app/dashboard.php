@@ -63,19 +63,39 @@ if (!$is_viongozi) {
 }
 
 // ── Monthly contributions trend (last 6 months) ───────────────────────────
+// Two grouped queries fill six pre-seeded month buckets. This was a 6-iteration
+// loop firing 2 queries each (12 round-trips) for the identical result; letting
+// MySQL GROUP BY month does it in one scan per dataset.
 $months_labels = []; $months_data = []; $months_expenses = [];
+$keys = []; $bucket_c = []; $bucket_e = [];          // 'Y-m' => total, in display order
 for ($i = 5; $i >= 0; $i--) {
-    $months_labels[] = date('M Y', strtotime("-$i months"));
-    $y = date('Y', strtotime("-$i months")); $m = date('m', strtotime("-$i months"));
-    $stmt = $pdo->prepare("SELECT COALESCE(SUM(amount),0) FROM contributions WHERE status IN ('confirmed', 'approved', '') AND YEAR(contribution_date)=? AND MONTH(contribution_date)=?");
-    $stmt->execute([$y, $m]); $months_data[] = (float) $stmt->fetchColumn();
-
-    // Expenses that month = approved death + general expenses (matches the Expenses KPI).
-    $es = $pdo->prepare("SELECT
-          (SELECT COALESCE(SUM(amount),0) FROM death_expenses   WHERE status IN ('approved','paid') AND YEAR(expense_date)=? AND MONTH(expense_date)=?)
-        + (SELECT COALESCE(SUM(amount),0) FROM general_expenses WHERE status IN ('approved','paid') AND YEAR(expense_date)=? AND MONTH(expense_date)=?)");
-    $es->execute([$y, $m, $y, $m]); $months_expenses[] = (float) $es->fetchColumn();
+    $ts = strtotime("-$i months");
+    $key = date('Y-m', $ts);
+    $keys[] = $key;
+    $months_labels[] = date('M Y', $ts);
+    $bucket_c[$key] = 0.0;
+    $bucket_e[$key] = 0.0;
 }
+$since = $keys[0] . '-01';                            // first day of the earliest bucket
+
+// Contributions per month (one scan).
+$stmt = $pdo->prepare("SELECT DATE_FORMAT(contribution_date, '%Y-%m') AS ym, COALESCE(SUM(amount),0) AS total
+                       FROM contributions
+                       WHERE status IN ('confirmed', 'approved', '') AND contribution_date >= ?
+                       GROUP BY ym");
+$stmt->execute([$since]);
+foreach ($stmt as $r) { if (isset($bucket_c[$r['ym']])) $bucket_c[$r['ym']] = (float) $r['total']; }
+
+// Expenses per month = approved/paid death + general (matches the Expenses KPI), one scan.
+$stmt = $pdo->prepare("SELECT ym, COALESCE(SUM(amount),0) AS total FROM (
+        SELECT DATE_FORMAT(expense_date, '%Y-%m') AS ym, amount FROM death_expenses   WHERE status IN ('approved','paid') AND expense_date >= ?
+        UNION ALL
+        SELECT DATE_FORMAT(expense_date, '%Y-%m') AS ym, amount FROM general_expenses WHERE status IN ('approved','paid') AND expense_date >= ?
+    ) x GROUP BY ym");
+$stmt->execute([$since, $since]);
+foreach ($stmt as $r) { if (isset($bucket_e[$r['ym']])) $bucket_e[$r['ym']] = (float) $r['total']; }
+
+foreach ($keys as $k) { $months_data[] = $bucket_c[$k]; $months_expenses[] = $bucket_e[$k]; }
 
 // ── AUDIT LOGS - REAL DATA & TIME ──────────────────────────────────────────
 $activity_logs = [];
