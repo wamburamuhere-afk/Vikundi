@@ -980,7 +980,9 @@ $(document).ready(function() {
         "initComplete": function() {
             // Native length menu is hidden, we use our custom dropdown
             $('.dataTables_length').hide();
-            updateMobilePageInfo();
+            // Pass the API instance — the outer `table` var isn't assigned yet while
+            // initComplete runs, so referencing it here threw "reading 'page' of undefined".
+            updateMobilePageInfo(this.api());
         }
     });
 
@@ -990,8 +992,10 @@ $(document).ready(function() {
         table.page(dir).draw('page');
     };
 
-    function updateMobilePageInfo() {
-        var info = table.page.info();
+    function updateMobilePageInfo(api) {
+        var dt = api || table;   // during init the outer `table` isn't ready; initComplete passes this.api()
+        if (!dt) return;
+        var info = dt.page.info();
         $('#mobilePageInfo').text((info.page + 1) + ' / ' + (info.pages || 1));
         $('#mobilePrevBtn').prop('disabled', info.page === 0);
         $('#mobileNextBtn').prop('disabled', info.page >= info.pages - 1);
