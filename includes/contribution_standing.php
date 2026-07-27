@@ -161,3 +161,116 @@ if (!function_exists('cs_group_standing')) {
         return $out;
     }
 }
+
+if (!function_exists('cs_build_schedule')) {
+    /**
+     * A member's month-by-month contribution schedule — the per-member view shared by
+     * the member statement and the profile page (they used to compute this identically
+     * in ~60 lines each). Pure: no DB, so it is fully unit-testable.
+     *
+     * Opening (carried-in M-Koba) counts toward the pot and is never skimmed for the
+     * entrance fee; the entrance comes off NEW money only; the pot is laid across the
+     * months from the later of the group start and the member's join, up to now. A
+     * monthly of 0 means no target (every cell target 0, the whole pot is advance).
+     *
+     * Returns: opening, new_money, total_paid, entrance_amt, entrance_paid,
+     * entrance_status, monthly_amt, monthly_pot, total_months_covered, start_date,
+     * anchor_ym, columns_count, distribution[] (label, amount, status, target), advance.
+     */
+    function cs_build_schedule(
+        float $opening,
+        float $newMoney,
+        float $monthly,
+        float $entrance,
+        ?string $startDate,
+        ?string $joinDate = null,
+        ?DateTimeInterface $asOf = null
+    ): array {
+        $totalPaid      = $opening + $newMoney;
+        $entrancePaid   = min($newMoney, $entrance);
+        $entranceStatus = $entrancePaid >= $entrance ? 'paid' : ($entrancePaid > 0 ? 'partial' : 'unpaid');
+        $monthlyPot     = $opening + max(0.0, $newMoney - $entrancePaid);
+        $monthsCovered  = $monthly > 0 ? (int) floor($monthlyPot / $monthly) : 0;
+
+        // Anchor at the later of the group start and the member's own join month.
+        $anchorTs = strtotime((string) $startDate);
+        if ($anchorTs === false) {
+            $anchorTs = strtotime(date('Y') . '-01-01');
+        }
+        if (!empty($joinDate) && ($j = strtotime($joinDate)) !== false && $j > $anchorTs) {
+            $anchorTs = $j;
+        }
+        $anchorYm = date('Y-m-01', $anchorTs);
+        $columns  = max(1, cs_months_elapsed($anchorYm, $asOf), $monthsCovered);
+
+        $distribution = [];
+        $remaining = $monthlyPot;
+        for ($i = 0; $i < $columns; $i++) {
+            $monthTs = strtotime("$i months", strtotime($anchorYm));
+            $paid = min($remaining, $monthly);
+            $remaining -= $paid;
+            $distribution[] = [
+                'label'  => date('M Y', $monthTs),
+                'amount' => $paid,
+                'status' => $paid >= $monthly ? 'paid' : ($paid > 0 ? 'partial' : 'unpaid'),
+                'target' => $monthly,
+            ];
+        }
+
+        return [
+            'opening'              => $opening,
+            'new_money'            => $newMoney,
+            'total_paid'           => $totalPaid,
+            'entrance_amt'         => $entrance,
+            'entrance_paid'        => $entrancePaid,
+            'entrance_status'      => $entranceStatus,
+            'monthly_amt'          => $monthly,
+            'monthly_pot'          => $monthlyPot,
+            'total_months_covered' => $monthsCovered,
+            'start_date'           => $startDate,
+            'anchor_ym'            => $anchorYm,
+            'columns_count'        => $columns,
+            'distribution'         => $distribution,
+            'advance'              => max(0.0, $remaining), // money beyond the shown months
+        ];
+    }
+}
+
+if (!function_exists('cs_member_schedule')) {
+    /**
+     * cs_build_schedule() for one member, reading everything from the DB: the group's
+     * monthly/entrance/start settings (unset => 0 => no target), the member's carried-in
+     * initial savings and join date, and the opening-vs-new split of their contributions
+     * (the CASE mirrors cs_is_opening(); 'agm' and 'fine' are excluded from savings).
+     */
+    function cs_member_schedule(PDO $pdo, int $memberId, ?DateTimeInterface $asOf = null): array
+    {
+        $settings = $pdo->query("SELECT setting_key, setting_value FROM group_settings")
+                        ->fetchAll(PDO::FETCH_KEY_PAIR);
+        $monthly   = (float) ($settings['monthly_contribution'] ?? 0);
+        $entrance  = (float) ($settings['entrance_fee'] ?? 0);
+        $startDate = $settings['contribution_start_date']
+                     ?? ($settings['group_founded_date'] ?? date('Y') . '-01-01');
+
+        $cust = $pdo->prepare("SELECT initial_savings, created_at FROM customers WHERE customer_id = ?");
+        $cust->execute([$memberId]);
+        $cust = $cust->fetch(PDO::FETCH_ASSOC) ?: ['initial_savings' => 0, 'created_at' => null];
+
+        $split = $pdo->prepare("
+            SELECT
+              COALESCE(SUM(CASE WHEN (mkoba_trans_id IS NOT NULL AND mkoba_trans_id <> '') OR account = 'M-Koba'
+                                THEN amount ELSE 0 END), 0) AS opening,
+              COALESCE(SUM(CASE WHEN (mkoba_trans_id IS NULL OR mkoba_trans_id = '') AND (account IS NULL OR account <> 'M-Koba')
+                                THEN amount ELSE 0 END), 0) AS newmoney
+            FROM contributions
+            WHERE member_id = ? AND status IN ('confirmed','approved','')
+              AND (contribution_type IN ('monthly','entrance','other') OR contribution_type = '' OR contribution_type IS NULL)");
+        $split->execute([$memberId]);
+        $split = $split->fetch(PDO::FETCH_ASSOC) ?: ['opening' => 0, 'newmoney' => 0];
+
+        $opening  = (float) $split['opening'];
+        $newMoney = (float) ($cust['initial_savings'] ?? 0) + (float) $split['newmoney'];
+
+        return cs_build_schedule($opening, $newMoney, $monthly, $entrance, $startDate, $cust['created_at'] ?? null, $asOf);
+    }
+}

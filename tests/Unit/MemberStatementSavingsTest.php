@@ -5,13 +5,11 @@ namespace Tests\Unit;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The Member Financial Statement used to (a) skim the whole entrance fee off a
- * member's total, so a member who brought in M-Koba savings showed 0 monthly paid
- * and every month red, and (b) always render 12 months — billing future months
- * that haven't happened. It now mirrors the group ledger: carried-in M-Koba money
- * is an opening balance (never skimmed as entrance, always counts toward the
- * schedule), the schedule runs from the later of the group start and the member's
- * join month, and only up to the current month (plus any months paid in advance).
+ * The Member Financial Statement's per-member schedule — opening split, entrance from
+ * new money only, elapsed-month counting, no 12-month floor — used to live inline here.
+ * It now comes from the shared module (cs_member_schedule / cs_build_schedule), so this
+ * asserts the statement DELEGATES and still renders the pieces the page owns. The rules
+ * themselves are covered by MemberScheduleTest.
  */
 class MemberStatementSavingsTest extends TestCase
 {
@@ -22,44 +20,37 @@ class MemberStatementSavingsTest extends TestCase
         $this->src = file_get_contents(__DIR__ . '/../../app/constant/reports/member_statement.php');
     }
 
-    public function testOpeningIsSplitFromNewMoneyViaMkobaMarkers(): void
+    public function testScheduleComesFromTheSharedModule(): void
     {
-        $this->assertStringContainsString('AS opening', $this->src);
-        $this->assertStringContainsString('AS newmoney', $this->src);
-        $this->assertStringContainsString('mkoba_trans_id IS NOT NULL', $this->src);
-        $this->assertStringContainsString("account = 'M-Koba'", $this->src);
+        $this->assertStringContainsString('$sched = cs_member_schedule($pdo, $member_id);', $this->src);
+        // The mapped fields the display relies on.
+        $this->assertStringContainsString("\$distribution         = \$sched['distribution'];", $this->src);
+        $this->assertStringContainsString("\$entrance_status      = \$sched['entrance_status'];", $this->src);
+        $this->assertStringContainsString("\$total_months_covered = \$sched['total_months_covered'];", $this->src);
     }
 
-    public function testEntranceIsPaidFromNewMoneyOnly(): void
+    public function testTheOldInlineScheduleMathIsGone(): void
     {
-        $this->assertStringContainsString('$entrance_paid_amt = min($new_money, $entrance_amt)', $this->src);
-        // The old skim of the whole pot is gone.
-        $this->assertStringNotContainsString('max(0, $total_paid - $entrance_amt)', $this->src);
-    }
-
-    public function testOpeningCountsTowardTheSchedule(): void
-    {
-        $this->assertStringContainsString('$monthly_pot = $opening + max(0, $new_money - $entrance_paid_amt)', $this->src);
-        $this->assertStringContainsString('$remaining_pot = $monthly_pot', $this->src);
-    }
-
-    public function testScheduleAnchorsAtLaterOfStartAndJoinMonth(): void
-    {
-        $this->assertStringContainsString("strtotime(\$member['created_at']) > \$anchor_ts", $this->src);
-        $this->assertStringContainsString('$anchor_ym = date(\'Y-m-01\', $anchor_ts)', $this->src);
-    }
-
-    public function testNoLongerBillsAFullTwelveMonths(): void
-    {
-        // The hard 12-month floor (which billed future months) is gone; the count is
-        // elapsed months from the shared module (inclusive of the anchor) + advance.
+        // The duplicated SQL split, entrance skim, pot and anchor loop must be removed.
+        $this->assertStringNotContainsString('AS newmoney', $this->src);
+        $this->assertStringNotContainsString('$entrance_paid_amt = min($new_money, $entrance_amt)', $this->src);
+        $this->assertStringNotContainsString('$monthly_pot = $opening', $this->src);
+        $this->assertStringNotContainsString("strtotime(\$member['created_at']) > \$anchor_ts", $this->src);
         $this->assertStringNotContainsString('max(12, $total_months_covered', $this->src);
-        $this->assertStringContainsString('$elapsed_inclusive = cs_months_elapsed($anchor_ym)', $this->src);
-        $this->assertStringContainsString('$columns_count = max(1, $elapsed_inclusive, $total_months_covered)', $this->src);
+    }
+
+    public function testAdvanceRowLabelStaysLocalisedInTheView(): void
+    {
+        // The advance/credit label is a display concern and stays in the page (i18n),
+        // appended only when the module reports money beyond the shown months.
+        $this->assertStringContainsString("if (\$sched['advance'] > 0)", $this->src);
+        $this->assertStringContainsString("'ZIADA (ADVANCE)' : 'ADVANCE / CREDIT'", $this->src);
     }
 
     public function testOpeningTileIsShown(): void
     {
+        // The statement still renders the M-Koba opening balance from $opening (mapped
+        // from the module result).
         $this->assertStringContainsString('M-Koba Savings', $this->src);
         $this->assertStringContainsString('number_format($opening, 0)', $this->src);
     }

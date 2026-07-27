@@ -27,21 +27,19 @@ class RemainingConsumersUseStandingModuleTest extends TestCase
         $this->assertStringContainsString("require_once __DIR__ . '/../../../includes/contribution_standing.php'", $s);
         $this->assertStringNotContainsString("'monthly_contribution'] ?? 10000", $s);
         $this->assertStringNotContainsString("'entrance_fee'] ?? 20000", $s);
-        $this->assertStringContainsString("floatval(\$settings_raw['monthly_contribution'] ?? 0)", $s);
-        $this->assertStringContainsString("floatval(\$settings_raw['entrance_fee'] ?? 0)", $s);
+        // The whole per-member schedule now comes from the shared module.
+        $this->assertStringContainsString('$sched = cs_member_schedule($pdo, (int) $member_id);', $s);
     }
 
-    public function testProfileDropsTheTwelveMonthFloorAndSplitsOpening(): void
+    public function testProfileHasNoInlineScheduleMathLeft(): void
     {
         $s = $this->src('app/constant/profile/profile.php');
-        // No more billing a hard 12 months of future dues.
+        // No more billing a hard 12 months of future dues, and no duplicated split /
+        // month-counting — all of that lives in cs_build_schedule now.
         $this->assertStringNotContainsString('max(12,', $s);
-        // Elapsed-month counting comes from the module.
-        $this->assertStringContainsString('cs_months_elapsed($anchor_ym)', $s);
-        // Carried-in M-Koba money is split out as opening (mirrors cs_is_opening).
-        $this->assertStringContainsString('AS opening', $s);
-        // Division is guarded so an unset (0) monthly can't blow up.
-        $this->assertStringContainsString('$monthly_amt > 0 ? (int) floor($monthly_pot / $monthly_amt) : 0', $s);
+        $this->assertStringNotContainsString('cs_months_elapsed($anchor_ym)', $s);
+        $this->assertStringNotContainsString('AS opening', $s);
+        $this->assertStringNotContainsString('floor($monthly_pot / $monthly_amt)', $s);
     }
 
     // ── contributions grid + its AJAX feed ───────────────────────────────────

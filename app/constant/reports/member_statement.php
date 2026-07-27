@@ -56,71 +56,23 @@ $dependant_count = $spouse_active + $active_children;
 
 $isSw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
 
-// 4. Contributions — split the member's carried-in M-Koba savings (an opening
-// balance) from any NEW money. The opening is never consumed by the entrance fee
-// and always counts toward the schedule, so a member who brought savings in is
-// never shown as having "paid nothing" (mirrors the group ledger's treatment).
-// The CASE predicate below is the SQL form of the module's cs_is_opening() rule —
-// keep the two in sync. (This report excludes 'agm' from savings by design.)
-$stmt = $pdo->prepare("
-    SELECT
-      COALESCE(SUM(CASE WHEN (mkoba_trans_id IS NOT NULL AND mkoba_trans_id <> '') OR account = 'M-Koba'
-                        THEN amount ELSE 0 END), 0) AS opening,
-      COALESCE(SUM(CASE WHEN (mkoba_trans_id IS NULL OR mkoba_trans_id = '') AND (account IS NULL OR account <> 'M-Koba')
-                        THEN amount ELSE 0 END), 0) AS newmoney
-    FROM contributions
-    WHERE member_id = ? AND status IN ('confirmed', 'approved', '')
-      AND (contribution_type IN ('monthly', 'entrance', 'other') OR contribution_type = '' OR contribution_type IS NULL)");
-$stmt->execute([$member_id]);
-$csplit    = $stmt->fetch(PDO::FETCH_ASSOC) ?: ['opening' => 0, 'newmoney' => 0];
-$opening   = floatval($csplit['opening']);                                        // carried in from M-Koba
-$new_money = floatval($member['initial_savings'] ?? 0) + floatval($csplit['newmoney']);
-$total_paid = $opening + $new_money;
+// 4–7. The member's monthly schedule — the opening-vs-new split, entrance taken from
+// NEW money only, and the pot laid across the elapsed months — now comes from the
+// shared module, so the member statement and the profile page compute it identically.
+$sched = cs_member_schedule($pdo, $member_id);
+$opening              = $sched['opening'];
+$new_money            = $sched['new_money'];
+$total_paid           = $sched['total_paid'];
+$entrance_paid_amt    = $sched['entrance_paid'];
+$entrance_status      = $sched['entrance_status'];
+$total_months_covered = $sched['total_months_covered'];
+$distribution         = $sched['distribution'];
 
-// 5. Entrance is paid from NEW money only — the opening savings are never skimmed.
-$entrance_paid_amt = min($new_money, $entrance_amt);
-$entrance_status   = ($entrance_paid_amt >= $entrance_amt) ? 'paid' : ($entrance_paid_amt > 0 ? 'partial' : 'unpaid');
-
-// The pot that counts toward monthly contributions = opening + (new after entrance).
-$monthly_pot = $opening + max(0, $new_money - $entrance_paid_amt);
-$total_months_covered = $monthly_amt > 0 ? (int) floor($monthly_pot / $monthly_amt) : 0;
-$has_remainder = $monthly_amt > 0 ? (fmod($monthly_pot, $monthly_amt) > 0) : false;
-
-// 6. The schedule runs from when the member was first expected to contribute — the
-// later of the group start and the member's own join month — up to the CURRENT
-// month only (never bill months that haven't happened). It extends past "now" only
-// when the member has paid ahead.
-$anchor_ts = strtotime($contribution_start_date);
-if (!empty($member['created_at']) && strtotime($member['created_at']) > $anchor_ts) {
-    $anchor_ts = strtotime($member['created_at']);
-}
-$anchor_ym = date('Y-m-01', $anchor_ts);
-// Elapsed months (inclusive of the anchor month) via the shared module, so the
-// statement counts months exactly like the ledger, dashboard and Group Reports.
-$elapsed_inclusive = cs_months_elapsed($anchor_ym);
-$columns_count = max(1, $elapsed_inclusive, $total_months_covered);
-
-// 7. Distribute the pot across the months (opening counts, so real savings show as paid).
-$remaining_pot = $monthly_pot;
-$distribution = [];
-for ($i = 0; $i < $columns_count; $i++) {
-    $month_ts = strtotime("$i months", strtotime($anchor_ym));
-    $paid_for_this_month = min($remaining_pot, $monthly_amt);
-    $remaining_pot -= $paid_for_this_month;
-    $status = ($paid_for_this_month >= $monthly_amt) ? 'paid' : ($paid_for_this_month > 0 ? 'partial' : 'unpaid');
-    $distribution[] = [
-        'label'  => date('M Y', $month_ts),
-        'amount' => $paid_for_this_month,
-        'status' => $status,
-        'target' => $monthly_amt,
-    ];
-}
-
-// Any money beyond the months shown = advance / credit.
-if ($remaining_pot > 0) {
+// Money beyond the shown months = advance / credit (the label stays in the view).
+if ($sched['advance'] > 0) {
     $distribution[] = [
         'label'  => $isSw ? 'ZIADA (ADVANCE)' : 'ADVANCE / CREDIT',
-        'amount' => $remaining_pot,
+        'amount' => $sched['advance'],
         'status' => 'paid',
         'target' => 0,
     ];
