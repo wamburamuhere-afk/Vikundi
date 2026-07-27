@@ -11,17 +11,22 @@ if (!isset($_SESSION['user_id'])) {
 
 $_SESSION['user_id'];
 
-$stmt = $pdo->prepare("SELECT username, first_name, middle_name, last_name FROM users WHERE user_id = ?");
+// One lookup for the header's identity + role — was two separate reads of the same
+// users row (name, then role via JOIN) on every page load. LEFT JOIN so a user with
+// no matching role still returns their name and falls back to the 'user' role.
+$stmt = $pdo->prepare("
+    SELECT u.username, u.first_name, u.middle_name, u.last_name, r.role_name
+    FROM users u
+    LEFT JOIN roles r ON u.role_id = r.role_id
+    WHERE u.user_id = ?
+");
 $stmt->execute([$_SESSION['user_id']]);
 $user = $stmt->fetch();
 $username = trim(($user['first_name'] ?? '') . ' ' . ($user['middle_name'] ?? '') . ' ' . ($user['last_name'] ?? ''));
-if (empty($username)) $username = $user['username'];
+if (empty($username)) $username = $user['username'] ?? '';
 
 // Get user role for menu permissions
-$role_stmt = $pdo->prepare("SELECT r.role_name FROM users u JOIN roles r ON u.role_id = r.role_id WHERE u.user_id = ?");
-$role_stmt->execute([$_SESSION['user_id']]);
-$role_data = $role_stmt->fetch();
-$user_role = $role_data['role_name'] ?? 'user';
+$user_role = $user['role_name'] ?? 'user';
 $user_role_lower = strtolower($user_role); // Normalized role check
 
 // Get company type and branding from settings
