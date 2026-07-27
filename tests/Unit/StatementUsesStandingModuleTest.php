@@ -38,13 +38,15 @@ class StatementUsesStandingModuleTest extends TestCase
         $this->assertStringContainsString("floatval(\$settings_raw['entrance_fee'] ?? 0)", $this->src);
     }
 
-    public function testMonthCountingGoesThroughTheModule(): void
+    public function testScheduleGoesThroughTheSharedModule(): void
     {
-        // The hand-rolled elapsed-months arithmetic is replaced by cs_months_elapsed().
-        $this->assertStringContainsString('cs_months_elapsed($anchor_ym)', $this->src);
+        // The whole per-member schedule (including month counting) now comes from the
+        // module's cs_member_schedule(); the hand-rolled arithmetic is gone.
+        $this->assertStringContainsString('$sched = cs_member_schedule($pdo, $member_id);', $this->src);
         $this->assertStringNotContainsString(
             "intval(date('m')) - intval(date('m', \$anchor_ts))",
             $this->src
         );
+        $this->assertStringNotContainsString('cs_months_elapsed($anchor_ym)', $this->src);
     }
 }

@@ -65,79 +65,28 @@ if ($member) {
     $member_id = $cust_rec['customer_id'] ?? 0;
 
     if ($member_id) {
-        // 2. Fetch Group Settings
-        $settings_raw = $pdo->query("SELECT setting_key, setting_value FROM group_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+        // 2. The member's monthly schedule — opening-vs-new split, entrance from NEW
+        // money only, pot laid across the elapsed months — comes from the shared module,
+        // so the profile and the member statement compute it identically.
         require_once __DIR__ . '/../../../includes/contribution_standing.php';
-        // Unset monthly / entrance => no target (save-what-you-can), matching the shared
-        // standing module. The old `?? 10000` / `?? 20000` fabricated a target and a
-        // false unpaid entrance for every member whenever these were unset.
-        $monthly_amt = floatval($settings_raw['monthly_contribution'] ?? 0);
-        $entrance_amt = floatval($settings_raw['entrance_fee'] ?? 0);
-        $contribution_start_date = $settings_raw['contribution_start_date'] ?? ($settings_raw['group_founded_date'] ?? date('Y') . '-01-01');
+        $sched = cs_member_schedule($pdo, (int) $member_id);
 
-        // 3. Contributions — split carried-in M-Koba savings (opening balance) from NEW
-        // money, exactly like the member statement: the opening is never skimmed as the
-        // entrance fee and always counts toward the schedule (the CASE below is the SQL
-        // form of the module's cs_is_opening() rule — keep the two in sync).
-        $stmt_c = $pdo->prepare("
-            SELECT
-              COALESCE(SUM(CASE WHEN (mkoba_trans_id IS NOT NULL AND mkoba_trans_id <> '') OR account = 'M-Koba'
-                                THEN amount ELSE 0 END), 0) AS opening,
-              COALESCE(SUM(CASE WHEN (mkoba_trans_id IS NULL OR mkoba_trans_id = '') AND (account IS NULL OR account <> 'M-Koba')
-                                THEN amount ELSE 0 END), 0) AS newmoney
-            FROM contributions
-            WHERE member_id = ? AND status IN ('confirmed', 'approved', '')
-              AND (contribution_type IN ('monthly', 'entrance', 'other') OR contribution_type = '' OR contribution_type IS NULL)");
-        $stmt_c->execute([$member_id]);
-        $csplit    = $stmt_c->fetch(PDO::FETCH_ASSOC) ?: ['opening' => 0, 'newmoney' => 0];
-        $opening   = floatval($csplit['opening']);
-        $new_money = floatval($cust_rec['initial_savings'] ?? 0) + floatval($csplit['newmoney']);
-        $total_paid = $opening + $new_money;
-
-        // 4. Entrance from NEW money only; the pot toward monthly = opening + new-after-entrance.
-        $entrance_paid_amt = min($new_money, $entrance_amt);
-        $monthly_pot = $opening + max(0, $new_money - $entrance_paid_amt);
-        $total_months_covered = $monthly_amt > 0 ? (int) floor($monthly_pot / $monthly_amt) : 0;
-
-        // 5. Schedule from the later of the group start and the member's join month, up to
-        // the current month only (no more billing 12 future months) — via the shared module.
-        $anchor_ts = strtotime($contribution_start_date);
-        if (!empty($cust_rec['created_at']) && strtotime($cust_rec['created_at']) > $anchor_ts) {
-            $anchor_ts = strtotime($cust_rec['created_at']);
-        }
-        $anchor_ym = date('Y-m-01', $anchor_ts);
-        $columns_count = max(1, cs_months_elapsed($anchor_ym), $total_months_covered);
-
-        // 6. Distribute the pot across the months (opening counts, so real savings show as paid).
-        $distribution = [];
-        $temp_pot = $monthly_pot;
-        for ($i = 0; $i < $columns_count; $i++) {
-            $month_ts = strtotime("$i months", strtotime($anchor_ym));
-            $paid_for_this_month = min($temp_pot, $monthly_amt);
-            $temp_pot -= $paid_for_this_month;
-            $status = ($paid_for_this_month >= $monthly_amt) ? 'paid' : ($paid_for_this_month > 0 ? 'partial' : 'unpaid');
-            $distribution[] = [
-                'label' => date('M Y', $month_ts),
-                'amount' => $paid_for_this_month,
-                'status' => $status,
-                'target' => $monthly_amt
-            ];
-        }
-        if ($temp_pot > 0) {
+        $distribution = $sched['distribution'];
+        if ($sched['advance'] > 0) {
             $distribution[] = [
                 'label' => ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'ZIADA (ADVANCE)' : 'ADVANCE / CREDIT',
-                'amount' => $temp_pot,
+                'amount' => $sched['advance'],
                 'status' => 'paid',
                 'target' => 0
             ];
         }
         $contribution_data = [
-            'total_paid' => $total_paid,
-            'entrance_amt' => $entrance_amt,
-            'entrance_paid' => $entrance_paid_amt,
-            'monthly_amt' => $monthly_amt,
+            'total_paid' => $sched['total_paid'],
+            'entrance_amt' => $sched['entrance_amt'],
+            'entrance_paid' => $sched['entrance_paid'],
+            'monthly_amt' => $sched['monthly_amt'],
             'distribution' => $distribution,
-            'start_date' => $contribution_start_date
+            'start_date' => $sched['start_date']
         ];
     }
 }
