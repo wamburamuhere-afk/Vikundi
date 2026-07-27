@@ -47,18 +47,30 @@ $pending_contributions = $is_viongozi ? $pending_contributions_global : $my_pend
 $total_pending_fines = (float) $pdo->query("SELECT COALESCE(SUM(amount),0) FROM fines WHERE status = 'pending'")->fetchColumn();
 
 // ── Pending Expenses (General & Death) ───────────────────────────────────
-$pending_death_expenses = (int) $pdo->query("SELECT COUNT(*) FROM death_expenses WHERE status = 'pending'")->fetchColumn();
+// One pass per table gets BOTH the pending count and the authorised (approved/paid)
+// total — each expense table is scanned once instead of twice (the KPI totals below
+// read from these rows rather than re-querying).
+$de = $pdo->query("SELECT
+      COALESCE(SUM(status = 'pending'), 0) AS pending_ct,
+      COALESCE(SUM(CASE WHEN status IN ('approved','paid') THEN amount ELSE 0 END), 0) AS approved_sum
+    FROM death_expenses")->fetch(PDO::FETCH_ASSOC);
+$pending_death_expenses = (int) $de['pending_ct'];
 // General (other) expenses live in the general_expenses table — the legacy
 // `expenses` table is empty/unused, so this chip never appeared before.
-$pending_general_expenses = (int) $pdo->query("SELECT COUNT(*) FROM general_expenses WHERE status = 'pending'")->fetchColumn();
+$ge = $pdo->query("SELECT
+      COALESCE(SUM(status = 'pending'), 0) AS pending_ct,
+      COALESCE(SUM(CASE WHEN status IN ('approved','paid') THEN amount ELSE 0 END), 0) AS approved_sum
+    FROM general_expenses")->fetch(PDO::FETCH_ASSOC);
+$pending_general_expenses = (int) $ge['pending_ct'];
 $pending_budgets = (int) $pdo->query("SELECT COUNT(*) FROM budgets WHERE status = 'pending'")->fetchColumn();
 
 // ── Death Expenses & Net Balance (audit H1: single source of truth) ───────
 require_once ROOT_DIR . '/includes/finance.php';
-// "Expenses" KPI = total authorised expenses (approved OR paid) — stable across
-// the paid transition. The balance is the only view that goes strict cash basis.
-$total_death_expenses   = (float) $pdo->query("SELECT COALESCE(SUM(amount),0) FROM death_expenses WHERE status IN ('approved','paid')")->fetchColumn();
-$total_general_expenses = (float) $pdo->query("SELECT COALESCE(SUM(amount),0) FROM general_expenses WHERE status IN ('approved','paid')")->fetchColumn();
+// "Expenses" KPI = total authorised expenses (approved OR paid) — stable across the
+// paid transition. Read from the single-pass rows fetched above (no re-query). The
+// balance is the only view that goes strict cash basis.
+$total_death_expenses   = (float) $de['approved_sum'];
+$total_general_expenses = (float) $ge['approved_sum'];
 $total_all_expenses = $total_death_expenses + $total_general_expenses;
 $net_balance = getGroupFundBalance($pdo); // cash basis: money in − money actually paid out
 $approved_not_paid = approvedNotYetPaidExpenses($pdo); // authorised but not yet disbursed
