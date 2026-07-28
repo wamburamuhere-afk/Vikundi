@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vikundi — Membership Onboarding, 21 July 2026</title>
+    <style>
+      :root {
+        --brand: #0f4c81;
+        --brand-2: #1769aa;
+        --ink: #1b2733;
+        --muted: #5b6b7a;
+        --line: #e4e9ef;
+        --bg: #f5f7fa;
+        --card: #ffffff;
+        --ok: #1a7f4b;
+        --bad: #c0392b;
+        --gold: #b8860b;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .page {
+        max-width: 900px;
+        margin: 28px auto;
+        background: var(--card);
+        box-shadow: 0 1px 4px rgba(20, 40, 60, 0.08);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      header.rpt {
+        background: linear-gradient(135deg, var(--brand), var(--brand-2));
+        color: #fff;
+        padding: 38px 44px 32px;
+      }
+      header.rpt .kicker {
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        font-size: 11px;
+        opacity: 0.85;
+        font-weight: 700;
+      }
+      header.rpt h1 { margin: 10px 0 6px; font-size: 29px; line-height: 1.2; font-weight: 800; }
+      header.rpt .sub { opacity: 0.94; font-size: 15px; max-width: 64ch; }
+      header.rpt .meta {
+        margin-top: 18px; font-size: 13px; opacity: 0.9;
+        display: flex; gap: 26px; flex-wrap: wrap;
+      }
+      .body { padding: 10px 44px 40px; }
+      h2 {
+        margin: 32px 0 10px; font-size: 20px; color: var(--brand);
+        border-bottom: 2px solid var(--line); padding-bottom: 8px;
+      }
+      h3 { margin: 20px 0 4px; font-size: 16px; color: var(--ink); font-weight: 800; }
+      p { margin: 9px 0; }
+      .lead { font-size: 16.5px; color: #33414f; }
+      ul { margin: 8px 0 8px 2px; padding-left: 22px; }
+      li { margin: 7px 0; }
+      .stats {
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 18px 0 6px;
+      }
+      .stat {
+        border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px;
+        background: #f8fbff; text-align: center;
+      }
+      .stat .n { font-size: 26px; font-weight: 800; color: var(--brand); line-height: 1.1; }
+      .stat .l { font-size: 12.5px; color: var(--muted); margin-top: 4px; font-weight: 600; }
+      .feature {
+        border: 1px solid var(--line); border-left: 4px solid var(--brand-2);
+        border-radius: 0 9px 9px 0; background: #f8fbff; padding: 14px 18px; margin: 12px 0;
+      }
+      .feature h3 { margin: 0 0 4px; color: var(--brand); }
+      .feature p { margin: 0; color: #3a4855; font-size: 15px; }
+      .good {
+        border-left: 4px solid var(--ok); background: #f0f8f3;
+        border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 16px 0;
+      }
+      .steps { counter-reset: step; list-style: none; padding-left: 0; margin: 12px 0; }
+      .steps > li {
+        position: relative; padding: 4px 0 14px 46px; margin: 0;
+      }
+      .steps > li::before {
+        counter-increment: step; content: counter(step);
+        position: absolute; left: 0; top: 2px;
+        width: 30px; height: 30px; border-radius: 50%;
+        background: var(--brand); color: #fff; font-weight: 800; font-size: 14px;
+        display: flex; align-items: center; justify-content: center;
+      }
+      .steps > li strong { color: var(--ink); }
+      .tag {
+        display: inline-block; border-radius: 20px; padding: 2px 12px;
+        font-size: 12px; font-weight: 700; color: #fff;
+      }
+      .tag.ok { background: var(--ok); }
+      .foot {
+        padding: 20px 44px 34px; border-top: 1px solid var(--line);
+        color: var(--muted); font-size: 13px;
+      }
+      @media (max-width: 640px) {
+        .stats { grid-template-columns: 1fr; }
+        .body, .foot, header.rpt { padding-left: 24px; padding-right: 24px; }
+      }
+      @media print {
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        body { background: #fff; }
+        .page { box-shadow: none; margin: 0; max-width: none; }
+        header.rpt { background: var(--brand) !important; }
+        .feature, .good, .stat { break-inside: avoid; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="rpt">
+        <div class="kicker">Vikundi · VICOBA Group Management System</div>
+        <h1>Membership Onboarding</h1>
+        <div class="sub">
+          Bringing UKUU MSAKUZI's real members — and their savings history — out
+          of the M-Koba mobile records and into the system, so the group's own
+          books and reports now reflect the actual membership.
+        </div>
+        <div class="meta">
+          <span><strong>Prepared for:</strong> Management</span>
+          <span><strong>Group:</strong> UKUU MSAKUZI</span>
+          <span><strong>Date:</strong> 21 July 2026</span>
+          <span><strong>Status:</strong> <span class="tag ok">Loaded &amp; verified</span></span>
+        </div>
+      </header>
+
+      <div class="body">
+        <h2>1 · At a glance</h2>
+        <p class="lead">
+          Until now the system had been running on <strong>sample data</strong> —
+          example members and figures used while it was being built and tested.
+          Today we replaced that with the <strong>real thing</strong>: the group's
+          actual members and their real savings history, taken from the M-Koba
+          records and loaded into the system.
+        </p>
+
+        <div class="stats">
+          <div class="stat"><div class="n">327</div><div class="l">Members loaded</div></div>
+          <div class="stat"><div class="n">524</div><div class="l">Savings payments</div></div>
+          <div class="stat"><div class="n">TSh 7,968,000</div><div class="l">Total savings recorded</div></div>
+        </div>
+        <p style="text-align:center; color:var(--muted); font-size:13.5px; margin-top:2px">
+          Savings history covering January–February 2026.
+        </p>
+
+        <h2>2 · What was done</h2>
+        <ol class="steps">
+          <li>
+            <strong>A full backup first.</strong> Before touching anything, we
+            took a complete backup of the system, kept safely aside — so every
+            step could be undone if needed.
+          </li>
+          <li>
+            <strong>Cleared the sample data.</strong> The 30 example members and
+            their practice figures were removed, so the system would hold
+            <em>only</em> the group's real records. All the setup — roles,
+            settings, accounts and so on — was left fully intact.
+          </li>
+          <li>
+            <strong>Loaded the real members.</strong> All <strong>327 members</strong>
+            from the M-Koba records were brought in — each with their name and
+            phone number, and set up with their own account in the system.
+          </li>
+          <li>
+            <strong>Loaded their savings history.</strong> Every one of the
+            <strong>524 contributions</strong> — totalling
+            <strong>TSh 7,968,000</strong> — was imported and
+            <strong>automatically matched to the right member</strong> by phone
+            number, keeping the original date and receipt of each payment.
+          </li>
+          <li>
+            <strong>Queued for the committee.</strong> Each new member now appears
+            under <strong>"New Requests"</strong> for leadership to formally
+            approve — a simple final sign-off that activates them.
+          </li>
+        </ol>
+
+        <h2>3 · Done carefully</h2>
+        <div class="good">
+          <p style="margin: 0">
+            Every figure was <strong>checked and matched</strong> — 327 members
+            in, 327 accounted for; 524 payments in, every one attached to a
+            member with <strong>none left unmatched</strong>. Nothing outside the
+            intended data was touched, the backup is kept safe, and the sensitive
+            member file was <strong>removed from the server</strong> once the load
+            was complete.
+          </p>
+        </div>
+
+        <h2>4 · What's next</h2>
+        <ul>
+          <li>
+            <strong>Leadership approves the members</strong> — the 327 New
+            Requests are reviewed and approved (can be done in one action).
+          </li>
+          <li>
+            <strong>The treasurer confirms the savings</strong> — approving the
+            imported contributions so they count towards the group's balance.
+          </li>
+          <li>
+            Once both are done, the <strong>dashboard, member list and reports</strong>
+            all reflect the real group: <strong>327 members</strong> and
+            <strong>TSh 7,968,000</strong> in recorded savings.
+          </li>
+        </ul>
+
+        <div class="good" style="border-left-color: var(--brand)">
+          <strong>In short:</strong> the group's real membership and savings
+          history are now in the system — accurately, in full, and safely — and
+          only need leadership's approval to go fully live. The move from
+          sample data to the real group is done.
+        </div>
+      </div>
+
+      <div class="foot">
+        Vikundi VICOBA Group Management System · Membership Onboarding · UKUU MSAKUZI · 21 July 2026.
+      </div>
+    </div>
+  </body>
+</html>

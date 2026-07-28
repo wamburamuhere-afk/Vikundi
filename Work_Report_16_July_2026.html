@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vikundi — Work Report, 16 July 2026</title>
+    <style>
+      :root {
+        --brand: #0f4c81;
+        --brand-2: #1769aa;
+        --ink: #1b2733;
+        --muted: #5b6b7a;
+        --line: #e4e9ef;
+        --bg: #f5f7fa;
+        --card: #ffffff;
+        --ok: #1a7f4b;
+        --bad: #c0392b;
+        --gold: #b8860b;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          16px/1.65 -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          Helvetica,
+          Arial,
+          sans-serif;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .page {
+        max-width: 900px;
+        margin: 28px auto;
+        background: var(--card);
+        box-shadow: 0 1px 4px rgba(20, 40, 60, 0.08);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      header.rpt {
+        background: linear-gradient(135deg, var(--brand), var(--brand-2));
+        color: #fff;
+        padding: 38px 44px 32px;
+      }
+      header.rpt .kicker {
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        font-size: 11px;
+        opacity: 0.85;
+        font-weight: 700;
+      }
+      header.rpt h1 {
+        margin: 10px 0 6px;
+        font-size: 29px;
+        line-height: 1.2;
+        font-weight: 800;
+      }
+      header.rpt .sub {
+        opacity: 0.94;
+        font-size: 15px;
+        max-width: 62ch;
+      }
+      header.rpt .meta {
+        margin-top: 18px;
+        font-size: 13px;
+        opacity: 0.9;
+        display: flex;
+        gap: 26px;
+        flex-wrap: wrap;
+      }
+      .body {
+        padding: 10px 44px 40px;
+      }
+      h2 {
+        margin: 32px 0 10px;
+        font-size: 20px;
+        color: var(--brand);
+        border-bottom: 2px solid var(--line);
+        padding-bottom: 8px;
+      }
+      h3 {
+        margin: 20px 0 4px;
+        font-size: 16px;
+        color: var(--ink);
+        font-weight: 800;
+      }
+      p {
+        margin: 9px 0;
+      }
+      .lead {
+        font-size: 16.5px;
+        color: #33414f;
+      }
+      ul {
+        margin: 8px 0 8px 2px;
+        padding-left: 22px;
+      }
+      li {
+        margin: 7px 0;
+      }
+      .feature {
+        border: 1px solid var(--line);
+        border-left: 4px solid var(--brand-2);
+        border-radius: 0 9px 9px 0;
+        background: #f8fbff;
+        padding: 14px 18px;
+        margin: 12px 0;
+      }
+      .feature h3 {
+        margin: 0 0 4px;
+        color: var(--brand);
+      }
+      .feature p {
+        margin: 0;
+        color: #3a4855;
+        font-size: 15px;
+      }
+      .alert {
+        border-left: 4px solid var(--bad);
+        background: #fdecea;
+        border-radius: 0 8px 8px 0;
+        padding: 14px 18px;
+        margin: 16px 0;
+      }
+      .good {
+        border-left: 4px solid var(--ok);
+        background: #f0f8f3;
+        border-radius: 0 8px 8px 0;
+        padding: 14px 18px;
+        margin: 16px 0;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .tag {
+        display: inline-block;
+        border-radius: 20px;
+        padding: 2px 12px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #fff;
+      }
+      .tag.ok {
+        background: var(--ok);
+      }
+      .tag.fix {
+        background: var(--gold);
+      }
+      .tag.sec {
+        background: var(--bad);
+      }
+      .foot {
+        padding: 20px 44px 34px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 13px;
+      }
+      @media (max-width: 640px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+        .body,
+        .foot,
+        header.rpt {
+          padding-left: 24px;
+          padding-right: 24px;
+        }
+      }
+      @media print {
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        body {
+          background: #fff;
+        }
+        .page {
+          box-shadow: none;
+          margin: 0;
+          max-width: none;
+        }
+        header.rpt {
+          background: var(--brand) !important;
+        }
+        .feature,
+        .alert,
+        .good {
+          break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="rpt">
+        <div class="kicker">Vikundi · VICOBA Group Management System</div>
+        <h1>Work Report — Member Experience &amp; Security</h1>
+        <div class="sub">
+          Three things this day: a new personal home screen that gives members a
+          reason to open the system, a thorough security review that protects the
+          group's money, and a clearer leadership dashboard.
+        </div>
+        <div class="meta">
+          <span><strong>Prepared for:</strong> Management</span>
+          <span><strong>Date:</strong> 16 July 2026</span>
+          <span
+            ><strong>Status:</strong>
+            <span class="tag ok">Live &amp; in use</span></span
+          >
+        </div>
+      </header>
+
+      <div class="body">
+        <h2>1 · At a glance</h2>
+        <p class="lead">
+          Today's work covered three areas. First, we gave
+          <strong>members</strong> a personal home screen — a clear, encouraging
+          view of their own savings that gives them a reason to log in regularly.
+          Second, during our own testing we discovered and fixed a
+          <strong>serious security gap</strong>, then reviewed and protected
+          every money function in the system. Third, we made the
+          <strong>leadership dashboard</strong> clearer and more consistent.
+        </p>
+
+        <h2>
+          2 · New for members — a personal home screen
+          <span class="tag ok">New</span>
+        </h2>
+        <p>
+          Until now, a member logging in did not have a place that simply showed
+          them <em>their own money</em>. They do now. When a member signs in,
+          they land on a personal home page showing, at a glance:
+        </p>
+
+        <div class="grid">
+          <div class="feature">
+            <h3>Total savings</h3>
+            <p>
+              Everything they have saved with the group, and how much this year.
+            </p>
+          </div>
+          <div class="feature">
+            <h3>Fines due</h3>
+            <p>
+              Any outstanding fines, clearly shown (and zero when they're
+              clear).
+            </p>
+          </div>
+          <div class="feature">
+            <h3>Next meeting</h3>
+            <p>The date, time and place of the group's next meeting.</p>
+          </div>
+          <div class="feature">
+            <h3>A 12-month savings chart</h3>
+            <p>A simple bar chart of their saving over the past year.</p>
+          </div>
+        </div>
+
+        <div class="feature">
+          <h3>🔥 A savings streak</h3>
+          <p>
+            A gentle, encouraging counter of how many months in a row they have
+            saved — for example, "9 months in a row." It is
+            <strong>private to each member</strong>: there is no public ranking
+            and no one is shamed. It simply rewards consistency, which is
+            exactly what a savings group depends on.
+          </p>
+        </div>
+
+        <p>
+          <strong>Why it matters:</strong> members who can see their savings
+          grow — and their streak build — come back more often and stay engaged.
+          It also reinforces the group's transparency: every member can see
+          their own numbers, and those numbers match the official records
+          exactly.
+        </p>
+
+        <h2>3 · Making it work properly <span class="tag fix">Fixes</span></h2>
+        <p>
+          As we tested the new home screen on the live system, we found and
+          corrected a few things so the experience is smooth and trustworthy:
+        </p>
+        <ul>
+          <li>
+            <strong>Members now land on their home screen</strong> when they log
+            in (leadership continue to the management dashboard, as before).
+          </li>
+          <li>
+            <strong>The "My statement" link works</strong> and opens the
+            member's own statement. We also closed a related privacy gap so that
+            a member can only ever see <em>their own</em> statement, never
+            another member's.
+          </li>
+          <li>
+            <strong>The savings chart now displays</strong> its bars correctly.
+          </li>
+          <li>
+            Every figure on the home screen is drawn from a single source, so a
+            member's savings total is <strong>identical</strong> on their home
+            screen, their statement, and any letter produced for them.
+          </li>
+        </ul>
+
+        <h2>
+          4 · Security — protecting the group's money
+          <span class="tag sec">Important</span>
+        </h2>
+        <div class="alert">
+          <p style="margin: 0 0 6px">
+            <strong>What we found.</strong> During testing we discovered that an
+            <strong>ordinary member</strong> — not a leader — was able to
+            <strong>add and even delete the group's expense records</strong>.
+            The screens correctly hid these actions from members, but the
+            underlying system was not checking permission when a request came
+            in, so the protection could be bypassed. This is a serious risk to
+            the group's financial integrity.
+          </p>
+        </div>
+        <div class="good">
+          <p style="margin: 0 0 6px">
+            <strong>What we did.</strong> We fixed every affected expense
+            function so that <strong>only leadership</strong> can create or
+            delete expenses and petty-cash vouchers, and we strengthened the
+            system against forged requests. We then
+            <strong>confirmed on the live system</strong>: a member attempting
+            to add or delete an expense is now firmly refused ("you do not have
+            permission"), while leadership keep full access.
+          </p>
+        </div>
+        <p>
+          To be clear: we found this ourselves through careful testing and
+          closed it. We then went further and reviewed
+          <strong>every</strong> money-related function in the system.
+        </p>
+        <div class="good">
+          <p style="margin: 0 0 6px">
+            <strong>The full review — results.</strong> The same kind of gap
+            existed on a few more functions (editing and approving expenses,
+            editing an accounting entry, and bulk-uploading contributions); all
+            are now protected the same way. We also stopped a member from being
+            able to file a contribution against
+            <em>another</em> member — a member may now only submit their own.
+            <strong
+              >The good news: fines and funeral-aid payouts were already
+              properly protected</strong
+            >, and every fix was confirmed on the live system.
+          </p>
+        </div>
+
+        <h2>
+          5 · A clearer leadership dashboard
+          <span class="tag ok">Improved</span>
+        </h2>
+        <p>
+          We refreshed the leadership dashboard so it reads clearly and matches
+          the new member screen:
+        </p>
+        <ul>
+          <li>
+            <strong>A cleaner, consistent look</strong> — the summary tiles
+            (members, balance, expenses, contributions, budget) now use the same
+            clean style as the member home, so the whole system feels like one
+            product.
+          </li>
+          <li>
+            <strong>Money in vs money out</strong> — the monthly chart now shows
+            <em>contributions and expenses side by side</em>, so leadership can
+            see at a glance whether the group ran a surplus or a deficit each
+            month, instead of only how much came in.
+          </li>
+        </ul>
+
+        <h2>6 · What's next</h2>
+        <ul>
+          <li>
+            <strong>Post-meeting notifications</strong> (an SMS to each member
+            after a meeting, with their contribution and total) — ready to build
+            once the cost and member opt-in are agreed.
+          </li>
+          <li>
+            <strong>A small decision on the old loans feature</strong>, which is
+            switched off — either fully lock its unused functions or remove them.
+          </li>
+        </ul>
+
+        <div class="good" style="border-left-color: var(--brand)">
+          <strong>In short:</strong> members now have a personal, encouraging
+          view of their savings; the group's money functions have been reviewed
+          and properly protected across the board; and the leadership dashboard
+          is clearer, showing money in against money out at a glance.
+        </div>
+      </div>
+
+      <div class="foot">
+        Vikundi VICOBA Group Management System · Work Report · 16 July 2026.
+      </div>
+    </div>
+  </body>
+</html>

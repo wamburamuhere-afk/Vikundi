@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vikundi — Approved vs Paid (Cash-Basis Money Tracking)</title>
+    <style>
+      :root {
+        --brand: #0f4c81;
+        --brand-2: #1769aa;
+        --ink: #1b2733;
+        --muted: #5b6b7a;
+        --line: #e4e9ef;
+        --bg: #f5f7fa;
+        --card: #ffffff;
+        --ok: #1a7f4b;
+        --bad: #c0392b;
+        --gold: #b8860b;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; background: var(--bg); color: var(--ink);
+        font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+      }
+      .page {
+        max-width: 900px; margin: 28px auto; background: var(--card);
+        box-shadow: 0 1px 4px rgba(20, 40, 60, 0.08); border-radius: 10px; overflow: hidden;
+      }
+      header.rpt {
+        background: linear-gradient(135deg, var(--brand), var(--brand-2));
+        color: #fff; padding: 38px 44px 32px;
+      }
+      header.rpt .kicker {
+        text-transform: uppercase; letter-spacing: 0.16em; font-size: 11px; opacity: 0.85; font-weight: 700;
+      }
+      header.rpt h1 { margin: 10px 0 6px; font-size: 29px; line-height: 1.2; font-weight: 800; }
+      header.rpt .sub { opacity: 0.94; font-size: 15px; max-width: 66ch; }
+      header.rpt .meta { margin-top: 18px; font-size: 13px; opacity: 0.9; display: flex; gap: 26px; flex-wrap: wrap; }
+      .body { padding: 10px 44px 40px; }
+      h2 { margin: 32px 0 10px; font-size: 20px; color: var(--brand); border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+      h3 { margin: 20px 0 4px; font-size: 16px; color: var(--ink); font-weight: 800; }
+      p { margin: 9px 0; }
+      .lead { font-size: 16.5px; color: #33414f; }
+      ul { margin: 8px 0 8px 2px; padding-left: 22px; }
+      li { margin: 7px 0; }
+      .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 18px 0 6px; }
+      .stat { border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; background: #f8fbff; text-align: center; }
+      .stat .n { font-size: 22px; font-weight: 800; color: var(--brand); line-height: 1.1; }
+      .stat .l { font-size: 12.5px; color: var(--muted); margin-top: 4px; font-weight: 600; }
+      .feature { border: 1px solid var(--line); border-left: 4px solid var(--brand-2); border-radius: 0 9px 9px 0; background: #f8fbff; padding: 14px 18px; margin: 12px 0; }
+      .feature h3 { margin: 0 0 4px; color: var(--brand); }
+      .feature p { margin: 0; color: #3a4855; font-size: 15px; }
+      .good { border-left: 4px solid var(--ok); background: #f0f8f3; border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 16px 0; }
+      .alert { border-left: 4px solid var(--gold); background: #fdf6e7; border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 16px 0; }
+      .tag { display: inline-block; border-radius: 20px; padding: 2px 12px; font-size: 12px; font-weight: 700; color: #fff; }
+      .tag.ok { background: var(--ok); }
+      .tag.new { background: var(--brand-2); }
+      .tag.grey { background: #7a8a99; }
+
+      /* lifecycle flow */
+      .flow { display: flex; align-items: stretch; gap: 0; margin: 20px 0 8px; flex-wrap: wrap; }
+      .flow .step { flex: 1 1 130px; border: 1px solid var(--line); border-radius: 10px; padding: 12px 12px; text-align: center; background: #fbfdff; position: relative; }
+      .flow .step .s-name { font-weight: 800; font-size: 14px; }
+      .flow .step .s-desc { font-size: 12px; color: var(--muted); margin-top: 3px; }
+      .flow .step .s-money { font-size: 11.5px; font-weight: 700; margin-top: 7px; }
+      .flow .arrow { align-self: center; color: var(--brand-2); font-weight: 800; font-size: 20px; padding: 0 6px; }
+      .flow .step.paid { border-color: var(--ok); background: #f0f8f3; }
+      .flow .step.paid .s-name { color: var(--ok); }
+      .m-out { color: var(--bad); } .m-none { color: var(--muted); } .m-in { color: var(--ok); }
+
+      .tieout { border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; background: #fbfdff; font-size: 15px; margin: 12px 0; }
+      .tieout .row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+      .tieout .row:last-child { border-bottom: 0; font-weight: 800; color: var(--brand); }
+      .tieout .g { color: var(--ok); } .tieout .x { color: var(--muted); }
+      table.grid { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14.5px; }
+      table.grid th, table.grid td { border: 1px solid var(--line); padding: 9px 12px; text-align: left; vertical-align: top; }
+      table.grid th { background: #f1f6fb; color: var(--brand); font-weight: 700; }
+      .foot { padding: 20px 44px 34px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+      @media (max-width: 640px) {
+        .stats { grid-template-columns: 1fr; }
+        .flow { flex-direction: column; } .flow .arrow { transform: rotate(90deg); padding: 4px 0; }
+        .body, .foot, header.rpt { padding-left: 24px; padding-right: 24px; }
+      }
+      @media print {
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        body { background: #fff; } .page { box-shadow: none; margin: 0; max-width: none; }
+        header.rpt { background: var(--brand) !important; }
+        .feature, .good, .alert, .stat, .tieout, .flow { break-inside: avoid; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="rpt">
+        <div class="kicker">Vikundi · VICOBA Group Management System</div>
+        <h1>Approved vs Paid — Cash-Basis Money Tracking</h1>
+        <div class="sub">
+          The system now separates money that is <strong>authorised</strong> from money that has
+          <strong>actually left the account</strong>. The group Balance reflects real cash only;
+          anything approved-but-not-yet-paid is shown clearly beside it, so nothing is hidden and
+          nothing is double-counted.
+        </div>
+        <div class="meta">
+          <span><strong>Prepared for:</strong> Management</span>
+          <span><strong>Group:</strong> UKUU MSAKUZI</span>
+          <span><strong>Date:</strong> 23 July 2026</span>
+          <span><strong>Status:</strong> <span class="tag ok">Live &amp; in use</span></span>
+        </div>
+      </header>
+
+      <div class="body">
+
+        <p class="lead">
+          You raised a simple but important point: <em>"some things may be approved but not yet paid."</em>
+          A funeral support or an expense can be <strong>approved</strong> (the committee has said yes)
+          while the money is <strong>still in the account</strong> — it hasn't been handed over yet.
+          The system now treats those two moments as different things, the way a real treasurer does.
+        </p>
+
+        <h2>The one rule that matters</h2>
+        <div class="good">
+          <strong>The Balance only changes when money is actually <span style="color:var(--ok)">PAID</span>.</strong>
+          Approving an expense does <strong>not</strong> reduce the Balance — it simply records that the
+          group has <em>promised</em> to pay it. The Balance drops the moment the treasurer marks it
+          <strong>Paid</strong>. This is called <strong>cash-basis</strong> accounting: the Balance is
+          always the real cash the group is holding.
+        </div>
+
+        <h2>How an expense moves through the system</h2>
+        <div class="flow">
+          <div class="step">
+            <div class="s-name">Pending</div>
+            <div class="s-desc">Recorded, awaiting review</div>
+            <div class="s-money m-none">Balance: no change</div>
+          </div>
+          <div class="arrow">→</div>
+          <div class="step">
+            <div class="s-name">Reviewed</div>
+            <div class="s-desc">Checked by leadership</div>
+            <div class="s-money m-none">Balance: no change</div>
+          </div>
+          <div class="arrow">→</div>
+          <div class="step">
+            <div class="s-name">Approved</div>
+            <div class="s-desc">Authorised to pay</div>
+            <div class="s-money m-none">Balance: no change<br/>(shown as a commitment)</div>
+          </div>
+          <div class="arrow">→</div>
+          <div class="step paid">
+            <div class="s-name">Paid</div>
+            <div class="s-desc">Money handed over</div>
+            <div class="s-money m-out">Balance: reduced ↓</div>
+          </div>
+        </div>
+        <p style="font-size:14px;color:var(--muted);margin-top:2px">
+          Only the last step touches the Balance. Everything before it is just paperwork moving forward.
+        </p>
+
+        <h2>Why you saw a number change on approval</h2>
+        <p>
+          When you approved a test expense, a figure on the dashboard did move — but it was the
+          <strong>"Expenses" card</strong>, <em>not</em> the <strong>"Balance" card</strong>. These two
+          answer different questions:
+        </p>
+        <table class="grid">
+          <tr><th>Card</th><th>What it answers</th><th>Does approving change it?</th></tr>
+          <tr>
+            <td><strong>Balance</strong></td>
+            <td>How much cash does the group actually hold right now?</td>
+            <td><span class="m-none">No</span> — only paying changes it</td>
+          </tr>
+          <tr>
+            <td><strong>Expenses</strong></td>
+            <td>How much has the group authorised to spend in total?</td>
+            <td><span class="m-out">Yes</span> — it counts approved <em>and</em> paid</td>
+          </tr>
+        </table>
+        <p>
+          So the system was already behaving correctly. The Balance held steady on approval; the
+          Expenses total went up because the group had now <em>committed</em> to that spending.
+        </p>
+
+        <h3>Worked example</h3>
+        <div class="tieout">
+          <div class="row"><span>Starting Balance</span><span class="g">TSh 2,302,878</span></div>
+          <div class="row"><span>Record &amp; <strong>approve</strong> an expense of TSh 50,000 (not paid)</span><span class="x">Balance unchanged</span></div>
+          <div class="row"><span>Balance after approval</span><span class="g">TSh 2,302,878</span></div>
+          <div class="row"><span>Shown separately as "approved, not yet paid"</span><span>TSh 50,000</span></div>
+          <div class="row"><span>Treasurer marks it <strong>Paid</strong></span><span class="x">Balance reduced by 50,000</span></div>
+          <div class="row"><span>Balance after payment</span><span class="g">TSh 2,252,878</span></div>
+        </div>
+        <p style="font-size:13.5px;color:var(--muted)">
+          (Figures from a controlled test. The live UKUU MSAKUZI balance today is
+          <strong>TSh 7,968,000</strong>, with no outstanding expenses.)
+        </p>
+
+        <h2>What the Balance card now shows a leader</h2>
+        <p>A treasurer opening the dashboard now sees the full money position at a glance:</p>
+        <ul>
+          <li><strong>Balance</strong> — real cash held (money in, minus money actually paid out).</li>
+          <li><strong>Approved, not yet paid</strong> — money the group has promised out but hasn't handed over (a <em>payable</em>). Appears only when there is something outstanding.</li>
+          <li><strong>Fines owed, not yet collected</strong> — money members owe the group that hasn't come in yet (a <em>receivable</em>). The mirror image of the above.</li>
+        </ul>
+        <div class="feature">
+          <h3>Nothing is hidden</h3>
+          <p>Because approved-but-unpaid money is shown next to the Balance instead of quietly removed from it, the committee can see both the true cash and the promises against it — no surprises at pay-out time.</p>
+        </div>
+
+        <h2>Where this applies</h2>
+        <table class="grid">
+          <tr><th>Area</th><th>Approved vs Paid</th><th>Notes</th></tr>
+          <tr><td>Funeral / Death Support</td><td><span class="tag ok">Done</span></td><td>Approve, then a treasurer/admin marks it Paid when disbursed.</td></tr>
+          <tr><td>General Expenses</td><td><span class="tag ok">Done</span></td><td>Same approve → paid step.</td></tr>
+          <tr><td>Petty Cash</td><td><span class="tag ok">Done</span></td><td>Same approve → paid step.</td></tr>
+          <tr><td>Fines (money in)</td><td><span class="tag ok">Already correct</span></td><td>A fine counts only once <em>collected</em>; unpaid fines now shown as "owed".</td></tr>
+          <tr><td>Member Payouts</td><td><span class="tag grey">Consistent, not in use</span></td><td>Kept on the same rule for the future; feature currently dormant.</td></tr>
+        </table>
+
+        <h2>Who can mark things Paid</h2>
+        <p>
+          Recording the actual disbursement is a money control, so it is limited to the
+          <strong>Treasurer</strong> and <strong>Admin</strong> only. Other roles can record and review
+          expenses, but confirming that cash has left the account is the treasurer's responsibility —
+          exactly as it is in the group's book.
+        </p>
+
+        <h2>A stability fix found along the way</h2>
+        <div class="feature">
+          <h3>Report pages no longer error on empty data</h3>
+          <p>While verifying the work on the live site, an old pop-up error ("Incorrect column count") appeared on some report pages when a table had no records yet — common on a fresh group. This was traced to three report tables and fixed; they now show a clean "No records yet" message instead of an error.</p>
+        </div>
+
+        <h2>Status</h2>
+        <div class="stats">
+          <div class="stat"><div class="n">Live</div><div class="l">Cash-basis Balance in production</div></div>
+          <div class="stat"><div class="n">3</div><div class="l">Expense areas with a Paid step</div></div>
+          <div class="stat"><div class="n">2</div><div class="l">New figures: payable &amp; receivable</div></div>
+        </div>
+        <div class="good">
+          Delivered and running on the live site. The Balance is now trustworthy as a true cash figure,
+          the difference between "promised" and "paid" is visible, and marking money as paid is controlled
+          by the treasurer.
+        </div>
+
+      </div>
+
+      <div class="foot">
+        Vikundi — VICOBA Group Management System · Prepared for Management (UKUU MSAKUZI) · 23 July 2026.
+        Cash-basis money tracking: approved = authorised, paid = disbursed; the Balance follows real cash.
+      </div>
+    </div>
+  </body>
+</html>

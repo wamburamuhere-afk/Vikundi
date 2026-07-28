@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vikundi — Printouts &amp; Reports Overhaul + Document Writer</title>
+<style>
+  :root{
+    --brand:#0f4c81; --brand-2:#1769aa; --ink:#1b2733; --muted:#5b6b7a;
+    --line:#e4e9ef; --bg:#f5f7fa; --card:#ffffff; --ok:#1a7f4b; --warn:#b8860b;
+    --bad:#c0392b; --chip:#eaf2fb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .page{max-width:960px;margin:28px auto;background:var(--card);
+    box-shadow:0 1px 4px rgba(20,40,60,.08);border-radius:10px;overflow:hidden}
+  header.rpt{background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#fff;padding:34px 40px 30px}
+  header.rpt .kicker{text-transform:uppercase;letter-spacing:.14em;font-size:11px;opacity:.85;font-weight:700}
+  header.rpt h1{margin:8px 0 4px;font-size:27px;line-height:1.2;font-weight:800}
+  header.rpt .sub{opacity:.92;font-size:14px}
+  header.rpt .meta{margin-top:16px;font-size:12px;opacity:.85;display:flex;gap:22px;flex-wrap:wrap}
+  .body{padding:8px 40px 34px}
+  .statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:26px 0 8px}
+  .stat{background:var(--chip);border:1px solid var(--line);border-radius:9px;padding:14px 12px;text-align:center}
+  .stat b{display:block;font-size:24px;color:var(--brand);font-weight:800;line-height:1}
+  .stat span{display:block;margin-top:5px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  h2{margin:30px 0 8px;font-size:18px;color:var(--brand);border-bottom:2px solid var(--line);padding-bottom:6px}
+  h3{margin:18px 0 6px;font-size:14px;color:var(--ink);font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+  p{margin:8px 0}
+  .muted{color:var(--muted)}
+  ul{margin:8px 0 8px 2px;padding-left:20px}
+  li{margin:4px 0}
+  .callout{border-left:4px solid var(--brand-2);background:#f2f7fc;border-radius:0 8px 8px 0;padding:12px 16px;margin:14px 0}
+  .callout.good{border-left-color:var(--ok);background:#f0f8f3}
+  .callout.warn{border-left-color:var(--warn);background:#fbf7ec}
+  table{width:100%;border-collapse:collapse;margin:10px 0 6px;font-size:13.5px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:#f0f4f8;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+  tbody tr:nth-child(even){background:#fafcfe}
+  .pr{display:inline-block;min-width:44px;text-align:center;background:var(--brand);color:#fff;
+    border-radius:20px;padding:1px 9px;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+  .tag{display:inline-block;border-radius:5px;padding:1px 7px;font-size:11px;font-weight:700}
+  .t-fix{background:#fdecea;color:var(--bad)} .t-feat{background:#eaf6ee;color:var(--ok)} .t-chore{background:#eef1f4;color:var(--muted)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .mini{background:#f7fafd;border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .mini b{color:var(--brand)}
+  .foot{padding:18px 40px 30px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
+  @media (max-width:640px){.statgrid{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}.body,.foot,header.rpt{padding-left:22px;padding-right:22px}}
+  @media print{
+    *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
+    body{background:#fff}
+    .page{box-shadow:none;margin:0;max-width:none}
+    header.rpt{background:var(--brand) !important}
+    h2{break-after:avoid}table{break-inside:auto}tr{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="rpt">
+    <div class="kicker">Vikundi · VICOBA Management System</div>
+    <h1>Printouts &amp; Reports Overhaul + Document Writer</h1>
+    <div class="sub">A consolidated review of the printout-fixing track and the new in-system document tool.</div>
+    <div class="meta">
+      <span><strong>Scope:</strong> PR #185 → #253 (35 PRs)</span>
+      <span><strong>Branch:</strong> develop</span>
+      <span><strong>Date:</strong> 14 July 2026</span>
+    </div>
+  </header>
+
+  <div class="body">
+
+    <div class="statgrid">
+      <div class="stat"><b>35</b><span>PRs merged</span></div>
+      <div class="stat"><b>6</b><span>Areas overhauled</span></div>
+      <div class="stat"><b>926</b><span>Tests passing</span></div>
+      <div class="stat"><b>1</b><span>New feature</span></div>
+    </div>
+
+    <!-- 1 -->
+    <h2>1 · Executive summary</h2>
+    <p>Across this track the printouts moved from <em>clipped, blank-topped and cramped</em> to clean, readable and consistent — and, just as important, several reports that were quietly showing <strong>wrong numbers</strong> were corrected so they now reflect the real data. The work touched six areas (members &amp; profiles, meetings, finance, fines, analysis reports) and closed with a brand-new <strong>Document Writer</strong> for writing, printing and signing letters, contracts and notices in-system.</p>
+    <p>Two threads run through everything:</p>
+    <ul>
+      <li><strong>The same handful of print bugs kept recurring</strong> — so they were diagnosed once and fixed the same way everywhere (see §3).</li>
+      <li><strong>Some reports were untruthful</strong> — reading zero, counting rejected members, or summing unapproved money. Those were verified against the live database and corrected (see §4).</li>
+    </ul>
+
+    <!-- 2 -->
+    <h2>2 · How the work was done</h2>
+    <ul>
+      <li>Every change shipped as a <strong>small, focused PR to <code>develop</code></strong>, each with its own PHPUnit guards.</li>
+      <li>Data claims were <strong>checked against the live development database</strong> before and after each fix (row counts, sums, status distributions).</li>
+      <li>Layout changes were <strong>print-previewed</strong> and iterated on real output, not assumptions.</li>
+      <li>The test suite grew alongside the work to <strong>921 passing tests</strong>; nothing merged red.</li>
+    </ul>
+
+    <!-- 3 -->
+    <h2>3 · Cross-cutting print fixes (the patterns)</h2>
+    <p>Most of the printout problems traced back to a small set of root causes. Fixing them once and applying the same remedy everywhere is what made the printouts consistent.</p>
+    <table>
+      <thead><tr><th style="width:34%">Root cause</th><th>The fix</th></tr></thead>
+      <tbody>
+        <tr><td><b>Only the current DataTable page printed</b> (25 rows) — long lists were silently truncated on paper</td><td>Expand to all rows on <code>beforeprint</code>, restore on <code>afterprint</code>. Applied to the fines register, funeral-aid table and the financial ledger.</td></tr>
+        <tr><td><b>Grand total repeated on every page</b> and overlapped the footer</td><td>Print the <code>&lt;tfoot&gt;</code> total once at the end instead of as a repeating table-footer group.</td></tr>
+        <tr><td><b>Mobile pagers leaked into print</b> (print ignores <code>d-md-none</code>)</td><td>Explicit <code>d-print-none</code> + ID-based hides on expenses, petty cash, budget.</td></tr>
+        <tr><td><b>Tiny 10px print fonts</b> with half-empty pages</td><td>Base font raised to 12–12.5px; stat figures and table cells enlarged.</td></tr>
+        <tr><td><b>Wide tables clipped in portrait</b> (23+ columns)</td><td>Print <b>landscape</b> with compact cells and repeating headers (ledger, member statement).</td></tr>
+        <tr><td><b>Charts clipped or shrunk in print</b></td><td>Re-render the canvas at a fixed paper size on <code>beforeprint</code> so labels stay crisp and nothing is cut off.</td></tr>
+        <tr><td><b>Coloured status badges printed flat</b></td><td><code>print-color-adjust: exact</code> so variance/status colours survive.</td></tr>
+        <tr><td><b>Content pushed to a near-empty second page</b></td><td>Tightened print margins / removed tall spacers so content flows onto page 1.</td></tr>
+      </tbody>
+    </table>
+
+    <!-- 4 -->
+    <h2>4 · Data-accuracy fixes (the reports now tell the truth)</h2>
+    <div class="callout warn"><strong>These are the highest-value items for review.</strong> Each was a case where the on-screen or printed figure did not match reality; all were verified against the database.</div>
+    <table>
+      <thead><tr><th style="width:22%">Report</th><th style="width:39%">What it showed (wrong)</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td><b>Financial Ledger</b> <span class="pr">233</span></td><td>Every member, month and total read <b>0</b> — despite 2,401,000 TZS of contributions</td><td>Filtered on <code>status='confirmed'</code> but the system approves to <code>'approved'</code>; broadened the filter — real figures now show.</td></tr>
+        <tr><td><b>Member Statement</b> <span class="pr">239</span></td><td>“Benefits Received” counted <b>pending / rejected</b> claims as money received</td><td>Counts only <code>approved</code> (disbursed) claims.</td></tr>
+        <tr><td><b>Member Analysis</b> <span class="pr">235</span></td><td>Total counted a <b>rejected</b> applicant; growth chart pulled the <b>earliest</b> months; region % divided by the wrong population</td><td>Rejected excluded; latest-6-months growth; region % over the region total with blanks labelled “Unspecified”.</td></tr>
+        <tr><td><b>Funeral Aid</b> <span class="pr">225</span></td><td>“Fund Impact” hard-coded a leading minus (could render <code>- TZS -X</code>)</td><td>Signs dynamically — − red when drained, + green when in surplus.</td></tr>
+        <tr><td><b>Death-expense flow</b> <span class="pr">237</span></td><td><code>is_deceased</code> could be missed when a <b>member</b> died (fragile text match)</td><td>Keyed on the stable <code>deceased_id='member'</code> so the flag fires reliably; dependant deaths correctly do not flag the member.</td></tr>
+      </tbody>
+    </table>
+
+    <!-- 5 -->
+    <h2>5 · Area-by-area log</h2>
+
+    <h3>Members &amp; profiles</h3>
+    <table><tbody>
+      <tr><td><span class="pr">185</span></td><td><span class="tag t-fix">fix</span></td><td>Fixed the “Incorrect column count” DataTables warning and the blank space at the top of the members printout; status filter corrected.</td></tr>
+      <tr><td><span class="pr">187</span></td><td><span class="tag t-fix">fix</span></td><td>Cleaned up the member-details print layout.</td></tr>
+      <tr><td><span class="pr">189</span></td><td><span class="tag t-fix">fix</span></td><td>Compact, professional member-details printout — hid the on-screen sidebar, tidy header line, “none recorded” for empty relations, fixed column gaps.</td></tr>
+      <tr><td><span class="pr">191</span></td><td><span class="tag t-feat">feat</span></td><td>Framed passport-size photo beside Basic Information on the printout.</td></tr>
+    </tbody></table>
+
+    <h3>Meetings</h3>
+    <table><tbody>
+      <tr><td><span class="pr">193</span></td><td><span class="tag t-feat">feat</span></td><td>Printable meetings register + a single-meeting record, including attached documents (images inline, other files listed).</td></tr>
+      <tr><td><span class="pr">195</span></td><td><span class="tag t-fix">fix</span></td><td>Removed the print buttons from the printout, enlarged attached document images, 2-column attendance register.</td></tr>
+    </tbody></table>
+
+    <h3>Finance — transactions, contributions, expenses, petty cash, budget</h3>
+    <table><tbody>
+      <tr><td><span class="pr">197</span></td><td><span class="tag t-feat">feat</span></td><td>Rebuilt the transactions table as a <b>server-side paginated</b> DataTable that scales to large history (endpoint + DB indexes, bounded window, whitelisted sort).</td></tr>
+      <tr><td><span class="pr">199</span></td><td><span class="tag t-feat">feat</span></td><td>Transactions Statement / Excel printout (reused the contributions statement).</td></tr>
+      <tr><td><span class="pr">201</span></td><td><span class="tag t-fix">fix</span></td><td>Print the grand Total once, not on every page.</td></tr>
+      <tr><td><span class="pr">203</span></td><td><span class="tag t-fix">fix</span></td><td>Proper printout for the contributions analysis grid — branded header, colours kept, landscape, hid pending-approvals + toolbar.</td></tr>
+      <tr><td><span class="pr">205</span></td><td><span class="tag t-fix">fix</span></td><td>Hid the mobile pager on the death-assistance printout; date kept on one line.</td></tr>
+      <tr><td><span class="pr">207</span></td><td><span class="tag t-fix">fix</span></td><td>Tidied the petty-cash vouchers list printout (mobile pager + sort arrows hidden, empty message).</td></tr>
+      <tr><td><span class="pr">209</span></td><td><span class="tag t-fix">fix</span></td><td>Compacted the petty-cash summary stat cards.</td></tr>
+      <tr><td><span class="pr">211</span></td><td><span class="tag t-chore">chore</span></td><td>Removed Copy/Excel/PDF exports from the budget page, kept Print.</td></tr>
+      <tr><td><span class="pr">213</span></td><td><span class="tag t-chore">chore</span></td><td>Removed the Excel export button from petty cash, kept Print.</td></tr>
+      <tr><td><span class="pr">253</span></td><td><span class="tag t-feat">feat</span></td><td>Applied the financial-ledger print style to the contribution analysis grid — header repeats on every page, member rows don’t split, Collected/Target totals print once at the end, status colours kept (no zebra).</td></tr>
+    </tbody></table>
+
+    <h3>Fines</h3>
+    <table><tbody>
+      <tr><td><span class="pr">215</span></td><td><span class="tag t-feat">feat</span></td><td>Dedicated printable fines register (leadership) + a member’s own-fines printout.</td></tr>
+      <tr><td><span class="pr">217</span></td><td><span class="tag t-fix">fix</span></td><td>Kept the register Date column on one line.</td></tr>
+      <tr><td><span class="pr">219</span></td><td><span class="tag t-fix">fix</span></td><td>Compacted the My Fines summary into 3-across chips and polished the table.</td></tr>
+      <tr><td><span class="pr">221</span></td><td><span class="tag t-fix">fix</span></td><td>Hid the “confirmed by leadership” note from the My Fines printout.</td></tr>
+    </tbody></table>
+
+    <h3>Analysis reports</h3>
+    <table><tbody>
+      <tr><td><span class="pr">223</span></td><td><span class="tag t-feat">feat</span></td><td>Polished the expense proportion doughnut (centre total, legend, tooltips, empty state) and added a 6-month trend bar reusing already-fetched data.</td></tr>
+      <tr><td><span class="pr">225</span></td><td><span class="tag t-fix">fix</span></td><td>Funeral Aid printout: full case table now prints, chart included in print, coloured badges kept, dynamic Fund Impact sign.</td></tr>
+      <tr><td><span class="pr">227</span></td><td><span class="tag t-fix">fix</span></td><td>Funeral Aid print: chart no longer clipped; base font enlarged.</td></tr>
+      <tr><td><span class="pr">229</span></td><td><span class="tag t-fix">fix</span></td><td>Funeral Aid: chart fills its card on screen; print page 1 no longer half-empty.</td></tr>
+      <tr><td><span class="pr">231</span></td><td><span class="tag t-fix">fix</span></td><td>Financial ledger prints landscape so the 23+ columns are no longer clipped; header repeats, full register prints.</td></tr>
+      <tr><td><span class="pr">233</span></td><td><span class="tag t-fix">fix</span></td><td>Ledger counted approved contributions (was reading all-zeros). <em>See §4.</em></td></tr>
+      <tr><td><span class="pr">235</span></td><td><span class="tag t-fix">fix</span></td><td>Corrected Member Analysis data (rejected excluded, latest-6 growth, region %) and polished the charts + print. <em>See §4.</em></td></tr>
+      <tr><td><span class="pr">237</span></td><td><span class="tag t-fix">fix</span></td><td>Reliable <code>is_deceased</code> wiring in the death-expense flow. <em>See §4.</em></td></tr>
+      <tr><td><span class="pr">239</span></td><td><span class="tag t-fix">fix</span></td><td>Member Statement: approved-only benefits; prints landscape with readable fonts. <em>See §4.</em></td></tr>
+      <tr><td><span class="pr">241</span></td><td><span class="tag t-fix">fix</span></td><td>Member Statement: stopped the monthly grid being pushed to a near-empty page 2.</td></tr>
+    </tbody></table>
+
+    <!-- 6 -->
+    <h2>6 · New feature — Document Writer</h2>
+    <p>A new <strong>Document Writer</strong> subsection under Documents lets leadership write letters, contracts and notices in-system, print them (optionally on the group letterhead) and sign them electronically.</p>
+    <div class="grid2">
+      <div class="mini"><b>Editor</b><br>Summernote (Bootstrap 5) — free (MIT), lightweight (~100&nbsp;KB), built on the jQuery + Bootstrap already loaded, and loaded only on the editor page. Bold/italic/underline, headings, colour, lists, tables, links.</div>
+      <div class="mini"><b>Letterhead toggle</b><br>Each document can print on the branded group letterhead (reusing <code>PrintHeader</code>) or plain — the author’s choice, stored per document.</div>
+      <div class="mini"><b>Signing</b><br>Reuses the existing e-signature system — a signer’s uploaded signature is captured against the document (image + name + role + timestamp) and printed with it.</div>
+      <div class="mini"><b>Security</b><br>The editor’s HTML is sanitised server-side on every save — scripts, <code>javascript:</code> URLs and event handlers are stripped while formatting is kept. Uses HTMLPurifier when installed, with a built-in dependency-free fallback so it is safe even where <code>composer install</code> hasn’t run.</div>
+    </div>
+    <table>
+      <thead><tr><th style="width:70px">PR</th><th>Delivered</th></tr></thead>
+      <tbody>
+        <tr><td><span class="pr">243</span></td><td><b>Authoring core</b> — <code>authored_documents</code> table + <code>manage_documents</code> permission, the Summernote editor, sanitised save, list / edit / delete, all CSRF-protected and audit-logged.</td></tr>
+        <tr><td><span class="pr">245</span></td><td><b>View, print &amp; sign</b> — read-only view/print page with the letterhead toggle, signing via the e-signature system, and the “Document Writer” entry in the Documents menu.</td></tr>
+      </tbody>
+    </table>
+    <h3>Hardening after launch</h3>
+    <table><tbody>
+      <tr><td><span class="pr">247</span></td><td><span class="tag t-fix">fix</span></td><td>Fixed a production 500 (<code>Class "HTMLPurifier_Config" not found</code>) when the package wasn’t installed on the server — the sanitiser now falls back to a dependency-free DOM allow-list, so saving always works and stays safe.</td></tr>
+      <tr><td><span class="pr">249</span></td><td><span class="tag t-fix">fix</span></td><td>Re-wired the editor’s font-size / paragraph / alignment menus for Bootstrap 5 — Summernote ships Bootstrap-4 markup, so those dropdowns weren’t opening.</td></tr>
+      <tr><td><span class="pr">251</span></td><td><span class="tag t-fix">fix</span></td><td>Kept text alignment (centre / right / justify) and block styling on save — the sanitiser was dropping alignment stored on paragraphs and headings.</td></tr>
+    </tbody></table>
+
+    <!-- 7 -->
+    <h2>7 · Testing &amp; verification</h2>
+    <ul>
+      <li><strong>926 automated tests pass.</strong> Guards were added for every change — layout regressions, data filters, permission gates, print behaviours, and the document sanitiser (real tests proving it strips XSS while keeping formatting and alignment, on both the HTMLPurifier and the dependency-free path).</li>
+      <li><strong>Live-database verification</strong> for every data claim — e.g. the ledger’s 0→2,401,000 correction, the region percentages summing to 100%, and an end-to-end document sign-and-read-back.</li>
+      <li><strong>Deploy note:</strong> HTMLPurifier is an optional enhancement, not a hard requirement — the sanitiser falls back to a built-in DOM allow-list, so the Document Writer is safe whether or not the server ran <code>composer install</code> (<span class="pr">247</span>).</li>
+    </ul>
+
+    <!-- 8 -->
+    <h2>8 · Open items &amp; recommendations</h2>
+    <div class="callout">
+      <ul style="margin:0">
+        <li><strong>Expense report table</strong> still has the same latent <em>print-truncation</em> (only the current 25/15-row DataTable page prints) — flagged during <span class="pr">225</span>, not yet fixed. A one-PR fix, same pattern as the ledger/fines.</li>
+        <li><strong>Region data is placeholder</strong> — 6 of 7 members have no region set and one reads “Connecticut”. The Member Analysis pie only becomes meaningful once real regions are entered.</li>
+        <li><strong>Multi-party signing</strong> — the Document Writer signs with a single authoritative signature. If contracts need two signatories on one document, that’s a small fast-follow.</li>
+        <li><strong>Grant <code>manage_documents</code></strong> to Secretary/Treasurer in the roles matrix if they should author documents (Chairperson/Admin already have access).</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <div class="foot">
+    Vikundi VICOBA Management System · Printouts &amp; Reports Overhaul + Document Writer · Prepared 14 July 2026 · Scope PR #185–#253 on <code>develop</code>.
+  </div>
+</div>
+</body>
+</html>
