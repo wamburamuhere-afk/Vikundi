@@ -45,11 +45,21 @@ try {
     $stmt->execute($params);
     $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Get counts for DataTables and Stats
-    $total_count = (int)$pdo->query("SELECT COUNT(*) FROM notifications WHERE user_id = $userId")->fetchColumn();
-    $unread_count = (int)$pdo->query("SELECT COUNT(*) FROM notifications WHERE user_id = $userId AND is_read = 0")->fetchColumn();
-    $high_priority_unread = (int)$pdo->query("SELECT COUNT(*) FROM notifications WHERE user_id = $userId AND is_read = 0 AND priority = 'high'")->fetchColumn();
-    $today_count = (int)$pdo->query("SELECT COUNT(*) FROM notifications WHERE user_id = $userId AND DATE(created_at) = CURDATE()")->fetchColumn();
+    // Overall stats — one pass over the user's notifications instead of four separate
+    // COUNT(*) scans (also parameterised; the old queries interpolated $userId).
+    $statsStmt = $pdo->prepare("
+        SELECT
+          COUNT(*)                                            AS total,
+          COALESCE(SUM(is_read = 0), 0)                       AS unread,
+          COALESCE(SUM(is_read = 0 AND priority = 'high'), 0) AS high,
+          COALESCE(SUM(DATE(created_at) = CURDATE()), 0)      AS today
+        FROM notifications WHERE user_id = ?");
+    $statsStmt->execute([$userId]);
+    $stats = $statsStmt->fetch(PDO::FETCH_ASSOC) ?: ['total' => 0, 'unread' => 0, 'high' => 0, 'today' => 0];
+    $total_count          = (int) $stats['total'];
+    $unread_count         = (int) $stats['unread'];
+    $high_priority_unread = (int) $stats['high'];
+    $today_count          = (int) $stats['today'];
 
     $formatted = [];
     foreach ($data as $row) {
