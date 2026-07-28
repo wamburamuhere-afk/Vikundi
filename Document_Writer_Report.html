@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vikundi — Document Writer Feature Report</title>
+<style>
+  :root{
+    --brand:#0f4c81; --brand-2:#1769aa; --ink:#1b2733; --muted:#5b6b7a;
+    --line:#e4e9ef; --bg:#f5f7fa; --card:#ffffff; --ok:#1a7f4b; --chip:#eaf2fb; --gold:#b8860b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .page{max-width:900px;margin:28px auto;background:var(--card);
+    box-shadow:0 1px 4px rgba(20,40,60,.08);border-radius:10px;overflow:hidden}
+  header.rpt{background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#fff;padding:38px 44px 32px}
+  header.rpt .kicker{text-transform:uppercase;letter-spacing:.16em;font-size:11px;opacity:.85;font-weight:700}
+  header.rpt h1{margin:10px 0 6px;font-size:30px;line-height:1.2;font-weight:800}
+  header.rpt .sub{opacity:.94;font-size:15px;max-width:60ch}
+  header.rpt .meta{margin-top:18px;font-size:13px;opacity:.9;display:flex;gap:26px;flex-wrap:wrap}
+  .body{padding:10px 44px 40px}
+  h2{margin:34px 0 10px;font-size:20px;color:var(--brand);border-bottom:2px solid var(--line);padding-bottom:8px}
+  h3{margin:22px 0 4px;font-size:16px;color:var(--ink);font-weight:800}
+  p{margin:9px 0}
+  .lead{font-size:16.5px;color:#33414f}
+  .muted{color:var(--muted)}
+  ul{margin:8px 0 8px 2px;padding-left:22px}
+  li{margin:7px 0}
+  .feature{border:1px solid var(--line);border-left:4px solid var(--brand-2);border-radius:0 9px 9px 0;
+    background:#f8fbff;padding:14px 18px;margin:12px 0}
+  .feature h3{margin:0 0 4px;color:var(--brand)}
+  .feature p{margin:0;color:#3a4855;font-size:15px}
+  .callout{border-left:4px solid var(--ok);background:#f0f8f3;border-radius:0 8px 8px 0;padding:14px 18px;margin:16px 0}
+  .callout.gold{border-left-color:var(--gold);background:#fbf7ec}
+  .example{background:#fff;border:1px dashed #c9d6e3;border-radius:8px;padding:12px 16px;margin:10px 0;color:#33414f;font-style:italic}
+  .example b{font-style:normal;color:var(--brand);font-weight:700}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .foot{padding:20px 44px 34px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+  .tag{display:inline-block;background:var(--ok);color:#fff;border-radius:20px;padding:2px 12px;font-size:12px;font-weight:700}
+  @media (max-width:640px){.grid{grid-template-columns:1fr}.body,.foot,header.rpt{padding-left:24px;padding-right:24px}}
+  @media print{
+    *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
+    body{background:#fff}
+    .page{box-shadow:none;margin:0;max-width:none}
+    header.rpt{background:var(--brand) !important}
+    h2{break-after:avoid}.feature,.callout{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="rpt">
+    <div class="kicker">Vikundi · VICOBA Group Management System</div>
+    <h1>The Document Writer</h1>
+    <div class="sub">A new part of the system that lets group leaders write, personalise, sign and print official documents — all in one place, without leaving Vikundi.</div>
+    <div class="meta">
+      <span><strong>Prepared for:</strong> Management</span>
+      <span><strong>Date:</strong> 15 July 2026</span>
+      <span><strong>Status:</strong> <span class="tag">Live &amp; in use</span></span>
+    </div>
+  </header>
+
+  <div class="body">
+
+    <h2>1 · What the Document Writer is</h2>
+    <p class="lead">The Document Writer is a built-in tool for creating the group's official paperwork — letters, contracts and notices — directly inside Vikundi. Before, leaders had to leave the system, type documents in a separate word processor, print them, sign by hand, and file them somewhere else.</p>
+    <p>Now the whole process happens in one place: a leader writes the document, formats it neatly, optionally puts it on the group's branded letterhead, signs it electronically, and prints or saves it as a PDF — and the group keeps a permanent record of it. It works in both <strong>English and Swahili</strong>, like the rest of the system.</p>
+
+    <h2>2 · Who can use it</h2>
+    <p>The Document Writer is a <strong>leadership tool</strong>. The Chairperson, Secretary and Treasurer can write, edit and manage documents. Ordinary members do <em>not</em> write documents.</p>
+    <p>There is one important exception: if a member is <strong>asked to sign</strong> a particular document, they are given access to that one document — and only that one — so they can add their signature. They see a clear "Documents to Sign" entry pointing them to it.</p>
+
+    <h2>3 · What it can do — the features</h2>
+
+    <div class="feature">
+      <h3>Write and format documents</h3>
+      <p>A familiar, word-processor-style editor: bold, italic, underline, headings, bullet and numbered lists, tables, links, text colour and highlighting, different fonts (such as Times New Roman and Calibri), font sizes, line spacing, and alignment. Everything you need to produce a professional-looking letter or contract.</p>
+    </div>
+
+    <div class="feature">
+      <h3>Group letterhead</h3>
+      <p>Any document can be printed on the group's official letterhead — the group's logo and name at the top — so it looks like formal, branded correspondence. This can be turned on or off per document.</p>
+    </div>
+
+    <div class="feature">
+      <h3>Templates — reusable starting points</h3>
+      <p>Leaders can save common documents (for example, a standard meeting notice or a standard membership contract) as templates. Next time, instead of starting from a blank page, they pick the template and it fills in the wording for them. This keeps the group's documents consistent and saves a lot of time.</p>
+    </div>
+
+    <div class="feature">
+      <h3>Automatic personalisation</h3>
+      <p>This is a powerful addition. A template can include "fill-in" fields — such as the member's name, their total contributions, the group name, or today's date. When a document is created for a specific member, the system fills in those details automatically. One template can produce a personalised letter for any member in seconds.</p>
+      <div class="example">"Dear <b>Baraka Kessy</b>, this confirms your total contributions of <b>TSh 300,000.00</b> to <b>Umoja VICOBA</b> as at <b>15 July 2026</b>." — written once as a template, filled in automatically for each member.</div>
+    </div>
+
+    <div class="feature">
+      <h3>Electronic signatures</h3>
+      <p>Documents can be signed digitally using a signer's saved signature — no need to print a page just to sign it. Each signature is recorded with the signer's name, their role, and the date and time it was signed, and it appears on the printed document.</p>
+    </div>
+
+    <div class="feature">
+      <h3>Multiple signatures on one document</h3>
+      <p>Some documents need more than one signatory — for example, a contract signed by the Chairperson, the Secretary and a member. A leader can assign the people who must sign, each of them is notified that a document is waiting for them, and each adds their own signature. The document clearly shows the signing progress (for example, "2 of 3 signed") and tells the author once everyone has signed.</p>
+    </div>
+
+    <div class="feature">
+      <h3>Privacy control</h3>
+      <p>When writing a document, the author chooses who can see it: <strong>all leadership</strong>, or <strong>private to themselves</strong> (and administrators). Anyone assigned to sign a private document can still open it to sign — but no one else can see it.</p>
+    </div>
+
+    <div class="feature">
+      <h3>Print and save as PDF</h3>
+      <p>Every document can be printed on paper or saved as a clean PDF for emailing or archiving, complete with the letterhead and signatures.</p>
+    </div>
+
+    <div class="callout">
+      <strong>A quiet but important benefit:</strong> every document, signature and change is recorded automatically in the system's activity log. The group always has a trustworthy record of who wrote what, who signed it, and when.
+    </div>
+
+    <h2>4 · Improvements and fixes made along the way</h2>
+    <p>As the tool was built and tested with real use, several issues were found and corrected so the experience is smooth and reliable:</p>
+    <ul>
+      <li><strong>The formatting menus now open reliably.</strong> Early on, some of the editor's drop-down menus (fonts, sizes, alignment) would not open. This was traced to the underlying editor and fully fixed, and tested directly in the browser to be sure.</li>
+      <li><strong>More formatting options were added</strong> — choosing a font (like Times New Roman), line spacing, superscript/subscript, and undo/redo — after they were requested.</li>
+      <li><strong>Formatting is now kept when a document is saved.</strong> Previously, some styling (such as centred text or the chosen font) was being lost on save. That was corrected.</li>
+      <li><strong>The right people can now reach the right pages.</strong> Members invited to sign a document were being blocked from the very document they were asked to sign. Access was fixed so a signer can reach and sign their document, and can manage their own electronic signature, without being given powers they shouldn't have.</li>
+      <li><strong>"Dead" menu links were removed.</strong> Some menu items led members to an "access denied" page. Those are now hidden from people who can't use them, so the menus only show what each person can actually open.</li>
+      <li><strong>Signatures display and print correctly</strong>, and multiple signatures lay out neatly on the printed page.</li>
+    </ul>
+
+    <h2>5 · Why it matters for the group</h2>
+    <div class="grid">
+      <div class="feature"><h3>Saves time</h3><p>Templates and automatic personalisation turn a half-hour task into a couple of minutes.</p></div>
+      <div class="feature"><h3>Looks professional</h3><p>Branded letterhead and clean formatting present the group well to members, banks and partners.</p></div>
+      <div class="feature"><h3>Everything in one place</h3><p>Writing, signing, printing and record-keeping all happen inside Vikundi — nothing scattered across other apps.</p></div>
+      <div class="feature"><h3>Secure and accountable</h3><p>Clear control over who can write and see documents, with a full record of every signature and change.</p></div>
+    </div>
+
+    <div class="callout gold">
+      <strong>In short:</strong> the Document Writer gives the group a simple, professional and secure way to produce, sign and keep its official documents — from a single meeting notice to a personalised letter for every member — without ever leaving the system. It is live and ready to use.
+    </div>
+
+  </div>
+
+  <div class="foot">
+    Vikundi VICOBA Group Management System · Document Writer Feature Report · 15 July 2026.
+  </div>
+</div>
+</body>
+</html>

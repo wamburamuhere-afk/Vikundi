@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vikundi — Work Report, 18 July 2026</title>
+    <style>
+      :root {
+        --brand: #0f4c81;
+        --brand-2: #1769aa;
+        --ink: #1b2733;
+        --muted: #5b6b7a;
+        --line: #e4e9ef;
+        --bg: #f5f7fa;
+        --card: #ffffff;
+        --ok: #1a7f4b;
+        --bad: #c0392b;
+        --gold: #b8860b;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .page {
+        max-width: 900px;
+        margin: 28px auto;
+        background: var(--card);
+        box-shadow: 0 1px 4px rgba(20, 40, 60, 0.08);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      header.rpt {
+        background: linear-gradient(135deg, var(--brand), var(--brand-2));
+        color: #fff;
+        padding: 38px 44px 32px;
+      }
+      header.rpt .kicker {
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        font-size: 11px;
+        opacity: 0.85;
+        font-weight: 700;
+      }
+      header.rpt h1 { margin: 10px 0 6px; font-size: 29px; line-height: 1.2; font-weight: 800; }
+      header.rpt .sub { opacity: 0.94; font-size: 15px; max-width: 64ch; }
+      header.rpt .meta {
+        margin-top: 18px; font-size: 13px; opacity: 0.9;
+        display: flex; gap: 26px; flex-wrap: wrap;
+      }
+      .body { padding: 10px 44px 40px; }
+      h2 {
+        margin: 32px 0 10px; font-size: 20px; color: var(--brand);
+        border-bottom: 2px solid var(--line); padding-bottom: 8px;
+      }
+      h3 { margin: 20px 0 4px; font-size: 16px; color: var(--ink); font-weight: 800; }
+      p { margin: 9px 0; }
+      .lead { font-size: 16.5px; color: #33414f; }
+      ul { margin: 8px 0 8px 2px; padding-left: 22px; }
+      li { margin: 7px 0; }
+      .feature {
+        border: 1px solid var(--line); border-left: 4px solid var(--brand-2);
+        border-radius: 0 9px 9px 0; background: #f8fbff; padding: 14px 18px; margin: 12px 0;
+      }
+      .feature h3 { margin: 0 0 4px; color: var(--brand); }
+      .feature p { margin: 0; color: #3a4855; font-size: 15px; }
+      .alert {
+        border-left: 4px solid var(--bad); background: #fdecea;
+        border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 16px 0;
+      }
+      .good {
+        border-left: 4px solid var(--ok); background: #f0f8f3;
+        border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 16px 0;
+      }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .tag {
+        display: inline-block; border-radius: 20px; padding: 2px 12px;
+        font-size: 12px; font-weight: 700; color: #fff;
+      }
+      .tag.ok { background: var(--ok); }
+      .tag.fix { background: var(--gold); }
+      .tag.sec { background: var(--bad); }
+      .tag.new { background: var(--brand-2); }
+      .ba {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 12px 0;
+      }
+      .ba .col { border: 1px solid var(--line); border-radius: 9px; padding: 12px 16px; }
+      .ba .col.before { background: #fdf6f5; border-color: #f3d6d2; }
+      .ba .col.after { background: #f0f8f3; border-color: #cbe7d7; }
+      .ba .lbl {
+        text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px;
+        font-weight: 800; margin-bottom: 4px;
+      }
+      .ba .before .lbl { color: var(--bad); }
+      .ba .after .lbl { color: var(--ok); }
+      .ba .col p { margin: 0; font-size: 14.5px; color: #3a4855; }
+      .foot {
+        padding: 20px 44px 34px; border-top: 1px solid var(--line);
+        color: var(--muted); font-size: 13px;
+      }
+      @media (max-width: 640px) {
+        .grid, .ba { grid-template-columns: 1fr; }
+        .body, .foot, header.rpt { padding-left: 24px; padding-right: 24px; }
+      }
+      @media print {
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        body { background: #fff; }
+        .page { box-shadow: none; margin: 0; max-width: none; }
+        header.rpt { background: var(--brand) !important; }
+        .feature, .alert, .good, .ba { break-inside: avoid; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="rpt">
+        <div class="kicker">Vikundi · VICOBA Group Management System</div>
+        <h1>Work Report — Interface Polish &amp; Consistency</h1>
+        <div class="sub">
+          Today's work was a careful clean-up pass across the system: fixing a
+          menu that was hard to use, and making the way money is shown the same
+          everywhere. Small things on their own — but together they make the
+          system feel noticeably more finished and trustworthy to members and
+          leaders.
+        </div>
+        <div class="meta">
+          <span><strong>Prepared for:</strong> Management</span>
+          <span><strong>Date:</strong> 18 July 2026</span>
+          <span><strong>Status:</strong> <span class="tag ok">Live &amp; in use</span></span>
+        </div>
+      </header>
+
+      <div class="body">
+        <h2>1 · At a glance</h2>
+        <p class="lead">
+          The system already does a lot. Today we focused on
+          <strong>polish</strong> — the details that decide whether software
+          feels professional or rough. Four improvements were made: the
+          <strong>row action menus</strong> now open fully instead of being cut
+          off, and the <strong>currency is shown the same way everywhere</strong>
+          — across the dashboard, all the reports, the members' contribution and
+          fines pages, and the funeral-support screen. Every change was checked
+          on the live site.
+        </p>
+
+        <h2>2 · Action menus that were being cut off <span class="tag fix">Fixed</span></h2>
+        <p>
+          On every list in the system — members, budgets, fines, expenses and
+          the rest — each row has a small gear button that opens a menu of
+          actions (View, Print, Edit, Delete, and so on).
+        </p>
+        <div class="ba">
+          <div class="col before">
+            <div class="lbl">Before</div>
+            <p>
+              When a list was short, opening that menu got trapped inside the
+              table and a scrollbar appeared — so the lower options were
+              <strong>hidden until you scrolled</strong>. It looked broken and
+              made simple actions fiddly.
+            </p>
+          </div>
+          <div class="col after">
+            <div class="lbl">After</div>
+            <p>
+              The menu now <strong>opens in full, every time</strong>, on every
+              list in the system. It was one fix applied in a shared place, so
+              the whole system benefited at once — and wide tables still scroll
+              sideways as before.
+            </p>
+          </div>
+        </div>
+
+        <h2>3 · One currency label across the whole system <span class="tag ok">Consistency</span></h2>
+        <div class="alert">
+          <p style="margin: 0">
+            <strong>The problem.</strong> The same currency was being shown two
+            different ways. Some screens said <strong>“TSh”</strong> (the
+            dashboard totals), while charts and every report said
+            <strong>“TZS”</strong>. To anyone reading carefully, it looked like
+            two different things — exactly the kind of small inconsistency that
+            makes people question the numbers.
+          </p>
+        </div>
+        <div class="good">
+          <p style="margin: 0">
+            <strong>Fixed.</strong> Everything now reads <strong>“TSh”</strong> —
+            the dashboard chart, the group report, the expense report, the member
+            statement and the funeral-support analysis. One currency, shown one
+            way, everywhere leadership looks.
+          </p>
+        </div>
+
+        <h2>4 · The members' money pages, made consistent <span class="tag ok">Consistency</span></h2>
+        <p>
+          The two pages members and leaders use most for money — the
+          <strong>Contribution Ledger</strong> and the <strong>Fines</strong>
+          page — were the worst offenders, and were tidied up:
+        </p>
+        <ul>
+          <li>
+            They now show <strong>“TSh”</strong> like the rest of the system,
+            and always in the <strong>same position</strong> (before the amount).
+            Previously the label sat after the number in some places and before
+            it in others — even on the same page.
+          </li>
+          <li>
+            On the Fines list, the amounts were showing as
+            <strong>bare numbers with no currency at all</strong> (e.g.
+            “10,000.00”). They now clearly read <strong>“TSh 10,000.00”</strong>,
+            so there is no doubt what the figure means.
+          </li>
+        </ul>
+
+        <h2>5 · A corrected summary on funeral support <span class="tag fix">Fixed</span></h2>
+        <p>
+          The Funeral / Death Assistance page has three summary boxes at the top.
+          One of them was <strong>mislabelled</strong>.
+        </p>
+        <div class="ba">
+          <div class="col before">
+            <div class="lbl">Before</div>
+            <p>
+              A box titled <strong>“Cases This Month”</strong> — which should be
+              a simple count — was actually showing a
+              <strong>money amount</strong>, and displayed oddly as “0.00”. The
+              title and the number did not agree.
+            </p>
+          </div>
+          <div class="col after">
+            <div class="lbl">After</div>
+            <p>
+              The box is now correctly titled <strong>“Paid This Month”</strong>
+              and shows a proper money figure — for example
+              <strong>“TSh 0.00”</strong> — matching the total-assistance box
+              beside it. Title and number now agree.
+            </p>
+          </div>
+        </div>
+
+        <h2>6 · How it was checked, and what's next</h2>
+        <ul>
+          <li>
+            Every change was <strong>checked on the live site</strong> against
+            the group's real data, and each is covered by
+            <strong>automated tests</strong> so the behaviour is protected going
+            forward.
+          </li>
+          <li>
+            The interface now speaks with <strong>one voice on money</strong> —
+            the same currency label on every screen a member or leader can reach.
+          </li>
+          <li>
+            <strong>Still on the list</strong> from earlier: post-meeting SMS
+            notifications (awaiting cost and member opt-in sign-off) and a small
+            decision on the switched-off loans feature.
+          </li>
+        </ul>
+
+        <div class="good" style="border-left-color: var(--brand)">
+          <strong>In short:</strong> the system is cleaner and more consistent
+          today — action menus open properly on every list, money is shown the
+          same way everywhere, and a mislabelled summary on the funeral-support
+          page now reads correctly. Nothing flashy; just a system that looks and
+          behaves like it was built with care.
+        </div>
+      </div>
+
+      <div class="foot">
+        Vikundi VICOBA Group Management System · Work Report · 18 July 2026.
+      </div>
+    </div>
+  </body>
+</html>
