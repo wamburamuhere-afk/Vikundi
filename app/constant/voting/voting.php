@@ -31,11 +31,49 @@ if ($member_id > 0) {
     $open = $q->fetchAll(PDO::FETCH_ASSOC);
 }
 
-$optStmt   = $pdo->prepare("SELECT id, label FROM vote_options WHERE vote_id = ? ORDER BY position, id");
-$votedStmt = $pdo->prepare("SELECT COUNT(*) FROM vote_participation WHERE vote_id = ? AND member_id = ?");
-
 // Closed votes whose results were published — visible to all members.
 $published = $pdo->query("SELECT * FROM votes WHERE status='closed' AND publish_results=1 ORDER BY created_at DESC LIMIT 15")->fetchAll(PDO::FETCH_ASSOC);
+
+// Pre-aggregate everything the render loops need, so they read arrays instead of
+// firing per-vote queries (was ~2 queries per open vote + ~4 per published vote).
+$openIds = array_map(fn($v) => (int) $v['id'], $open);
+$pubIds  = array_map(fn($v) => (int) $v['id'], $published);
+$allIds  = array_values(array_unique(array_merge($openIds, $pubIds)));
+
+$optsByVote = [];   // vote_id => [ ['id'=>, 'label'=>], ... ]
+$votedSet   = [];   // vote_id => true  (has THIS member voted — for open votes)
+$ballots    = [];   // vote_id => [ option_id => count ]  (published tallies)
+$partByVote = [];   // vote_id => participants  (published turnout numerator)
+$eligByVote = [];   // vote_id => eligible      (published turnout denominator)
+
+if ($allIds) {
+    $in = implode(',', array_fill(0, count($allIds), '?'));
+    $st = $pdo->prepare("SELECT vote_id, id, label FROM vote_options WHERE vote_id IN ($in) ORDER BY vote_id, position, id");
+    $st->execute($allIds);
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $optsByVote[(int) $r['vote_id']][] = ['id' => $r['id'], 'label' => $r['label']];
+    }
+}
+if ($openIds && $member_id > 0) {
+    $in = implode(',', array_fill(0, count($openIds), '?'));
+    $st = $pdo->prepare("SELECT DISTINCT vote_id FROM vote_participation WHERE member_id = ? AND vote_id IN ($in)");
+    $st->execute(array_merge([$member_id], $openIds));
+    foreach ($st->fetchAll(PDO::FETCH_COLUMN) as $vid) $votedSet[(int) $vid] = true;
+}
+if ($pubIds) {
+    $in = implode(',', array_fill(0, count($pubIds), '?'));
+    $st = $pdo->prepare("SELECT vote_id, option_id, COUNT(*) n FROM vote_ballots WHERE vote_id IN ($in) GROUP BY vote_id, option_id");
+    $st->execute($pubIds);
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $ballots[(int) $r['vote_id']][(int) $r['option_id']] = (int) $r['n'];
+
+    $st = $pdo->prepare("SELECT vote_id, COUNT(*) n FROM vote_participation WHERE vote_id IN ($in) GROUP BY vote_id");
+    $st->execute($pubIds);
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $partByVote[(int) $r['vote_id']] = (int) $r['n'];
+
+    $st = $pdo->prepare("SELECT vote_id, COUNT(*) n FROM vote_eligibility WHERE vote_id IN ($in) GROUP BY vote_id");
+    $st->execute($pubIds);
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $eligByVote[(int) $r['vote_id']] = (int) $r['n'];
+}
 
 includeHeader();
 ?>
@@ -59,10 +97,8 @@ includeHeader();
             <i class="bi bi-inbox fs-1 d-block mb-2"></i><?= $t('There are no open votes right now.', 'Hakuna kura zilizo wazi kwa sasa.') ?>
         </div></div>
     <?php else: foreach ($open as $v):
-        $votedStmt->execute([$v['id'], $member_id]);
-        $hasVoted = (int) $votedStmt->fetchColumn() > 0;
-        $optStmt->execute([$v['id']]);
-        $opts = $optStmt->fetchAll(PDO::FETCH_ASSOC);
+        $hasVoted = isset($votedSet[(int) $v['id']]);
+        $opts = $optsByVote[(int) $v['id']] ?? [];
     ?>
         <div class="card border-0 shadow-sm mb-3">
             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
@@ -95,16 +131,12 @@ includeHeader();
     <?php if (!empty($published)): ?>
     <h5 class="fw-bold text-dark mb-3 mt-4"><i class="bi bi-bar-chart me-2"></i><?= $t('Published Results', 'Matokeo Yaliyotangazwa') ?></h5>
     <?php foreach ($published as $v):
-        $optStmt->execute([$v['id']]);
-        $opts = $optStmt->fetchAll(PDO::FETCH_ASSOC);
-        $cnt = $pdo->prepare("SELECT option_id, COUNT(*) n FROM vote_ballots WHERE vote_id = ? GROUP BY option_id");
-        $cnt->execute([$v['id']]);
-        $counts = [];
-        foreach ($cnt->fetchAll(PDO::FETCH_ASSOC) as $r) $counts[(int) $r['option_id']] = (int) $r['n'];
-        $tally = vk_vote_tally($opts, $counts);
+        $vid   = (int) $v['id'];
+        $opts  = $optsByVote[$vid] ?? [];
+        $tally = vk_vote_tally($opts, $ballots[$vid] ?? []);
         $max = 1; foreach ($tally as $tt) $max = max($max, $tt['votes']);
-        $voted = (int) $pdo->query("SELECT COUNT(*) FROM vote_participation WHERE vote_id = " . (int) $v['id'])->fetchColumn();
-        $elig  = (int) $pdo->query("SELECT COUNT(*) FROM vote_eligibility WHERE vote_id = " . (int) $v['id'])->fetchColumn();
+        $voted = $partByVote[$vid] ?? 0;
+        $elig  = $eligByVote[$vid] ?? 0;
     ?>
         <div class="card border-0 shadow-sm mb-3"><div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-2">
