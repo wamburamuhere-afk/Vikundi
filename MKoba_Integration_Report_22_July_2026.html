@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vikundi — M-Koba Integration &amp; Reconciliation</title>
+    <style>
+      :root {
+        --brand: #0f4c81;
+        --brand-2: #1769aa;
+        --ink: #1b2733;
+        --muted: #5b6b7a;
+        --line: #e4e9ef;
+        --bg: #f5f7fa;
+        --card: #ffffff;
+        --ok: #1a7f4b;
+        --bad: #c0392b;
+        --gold: #b8860b;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; background: var(--bg); color: var(--ink);
+        font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+      }
+      .page {
+        max-width: 900px; margin: 28px auto; background: var(--card);
+        box-shadow: 0 1px 4px rgba(20, 40, 60, 0.08); border-radius: 10px; overflow: hidden;
+      }
+      header.rpt {
+        background: linear-gradient(135deg, var(--brand), var(--brand-2));
+        color: #fff; padding: 38px 44px 32px;
+      }
+      header.rpt .kicker {
+        text-transform: uppercase; letter-spacing: 0.16em; font-size: 11px; opacity: 0.85; font-weight: 700;
+      }
+      header.rpt h1 { margin: 10px 0 6px; font-size: 29px; line-height: 1.2; font-weight: 800; }
+      header.rpt .sub { opacity: 0.94; font-size: 15px; max-width: 66ch; }
+      header.rpt .meta { margin-top: 18px; font-size: 13px; opacity: 0.9; display: flex; gap: 26px; flex-wrap: wrap; }
+      .body { padding: 10px 44px 40px; }
+      h2 { margin: 32px 0 10px; font-size: 20px; color: var(--brand); border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+      h3 { margin: 20px 0 4px; font-size: 16px; color: var(--ink); font-weight: 800; }
+      p { margin: 9px 0; }
+      .lead { font-size: 16.5px; color: #33414f; }
+      ul { margin: 8px 0 8px 2px; padding-left: 22px; }
+      li { margin: 7px 0; }
+      .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 18px 0 6px; }
+      .stat { border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; background: #f8fbff; text-align: center; }
+      .stat .n { font-size: 24px; font-weight: 800; color: var(--brand); line-height: 1.1; }
+      .stat .l { font-size: 12.5px; color: var(--muted); margin-top: 4px; font-weight: 600; }
+      .feature { border: 1px solid var(--line); border-left: 4px solid var(--brand-2); border-radius: 0 9px 9px 0; background: #f8fbff; padding: 14px 18px; margin: 12px 0; }
+      .feature h3 { margin: 0 0 4px; color: var(--brand); }
+      .feature p { margin: 0; color: #3a4855; font-size: 15px; }
+      .good { border-left: 4px solid var(--ok); background: #f0f8f3; border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 16px 0; }
+      .alert { border-left: 4px solid var(--bad); background: #fdecea; border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 16px 0; }
+      .tag { display: inline-block; border-radius: 20px; padding: 2px 12px; font-size: 12px; font-weight: 700; color: #fff; }
+      .tag.ok { background: var(--ok); }
+      .tag.new { background: var(--brand-2); }
+      .tieout { border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; background: #fbfdff; font-size: 15px; }
+      .tieout .row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed var(--line); }
+      .tieout .row:last-child { border-bottom: 0; font-weight: 800; color: var(--brand); }
+      .tieout .g { color: var(--ok); } .tieout .x { color: var(--muted); }
+      .foot { padding: 20px 44px 34px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+      @media (max-width: 640px) {
+        .stats { grid-template-columns: 1fr; }
+        .body, .foot, header.rpt { padding-left: 24px; padding-right: 24px; }
+      }
+      @media print {
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        body { background: #fff; } .page { box-shadow: none; margin: 0; max-width: none; }
+        header.rpt { background: var(--brand) !important; }
+        .feature, .good, .alert, .stat, .tieout { break-inside: avoid; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="rpt">
+        <div class="kicker">Vikundi · VICOBA Group Management System</div>
+        <h1>M-Koba Integration &amp; Reconciliation</h1>
+        <div class="sub">
+          The group's real M-Koba records — the members, their savings history and
+          every transaction — are now inside the system: shown the same way M-Koba
+          shows them, reconcilable line-by-line, and ready to print or export.
+        </div>
+        <div class="meta">
+          <span><strong>Prepared for:</strong> Management</span>
+          <span><strong>Group:</strong> UKUU MSAKUZI</span>
+          <span><strong>Date:</strong> 22 July 2026</span>
+          <span><strong>Status:</strong> <span class="tag ok">Live &amp; in use</span></span>
+        </div>
+      </header>
+
+      <div class="body">
+        <h2>1 · At a glance</h2>
+        <p class="lead">
+          The group keeps its money on <strong>M-Koba</strong>. The goal of this
+          work was to bring that reality into the system — not a rough copy, but
+          the <strong>real members and real money</strong>, shown exactly as they
+          appear on the M-Koba statement, so leadership can <strong>reconcile the
+          two with confidence</strong> whenever a question comes up. That is now
+          done and in use.
+        </p>
+
+        <div class="stats">
+          <div class="stat"><div class="n">327</div><div class="l">Members loaded</div></div>
+          <div class="stat"><div class="n">524</div><div class="l">Payments recorded</div></div>
+          <div class="stat"><div class="n">TSh 7,968,000</div><div class="l">Savings on the books</div></div>
+        </div>
+
+        <h2>2 · The real membership and their savings</h2>
+        <p>
+          The system had been running on sample data. It now holds the group's
+          <strong>actual membership</strong> — 327 people — drawn from the M-Koba
+          records, each matched to their own account. Their
+          <strong>savings history</strong> (every payment, with its original date
+          and receipt) was imported alongside them and matched to the right member
+          automatically. Everything was backed up first, every figure checked, and
+          the sensitive member file removed from the server once loaded.
+        </p>
+
+        <h2>3 · The system now shows what M-Koba shows <span class="tag ok">Matching</span></h2>
+        <p>
+          Leadership asked for the transactions area to <strong>match the M-Koba
+          statement exactly</strong> — the same columns, in the same order — so the
+          two can be read side by side. It now does: reference number, receipt,
+          date, member, member number, source, destination, amount and type all
+          appear, just like on M-Koba. What used to be hidden (the reference and
+          source details) is now fully visible.
+        </p>
+
+        <h2>4 · Reconciliation, made simple <span class="tag new">New</span></h2>
+        <p>
+          A dedicated <strong>reconciliation view</strong> holds the M-Koba
+          statement next to the system's records and <strong>accounts for every
+          single row</strong> — so nothing is unexplained. It clearly separates the
+          money that is <em>member savings</em> from the money that is <em>not</em>
+          (for example, group transfers between accounts, which should never count
+          as members' savings):
+        </p>
+        <div class="tieout">
+          <div class="row"><span>Statement total (every row)</span><span>TSh 15,983,000</span></div>
+          <div class="row"><span class="g">Member savings — counted</span><span class="g">TSh 7,968,000</span></div>
+          <div class="row"><span class="x">Group transfers &amp; account-openings — not savings</span><span class="x">TSh 8,015,000</span></div>
+          <div class="row"><span>Unexplained</span><span>TSh 0</span></div>
+        </div>
+        <p style="margin-top:10px">
+          In short: <strong>every shilling on the statement is accounted for</strong>,
+          and the books show only what genuinely belongs to the members.
+        </p>
+
+        <h2>5 · Trustworthy reference numbers <span class="tag ok">Fixed</span></h2>
+        <div class="alert">
+          <p style="margin:0">
+            <strong>The problem.</strong> When an M-Koba statement is opened in a
+            spreadsheet program (Excel), it quietly damages the long transaction
+            reference numbers — turning something like a 16-digit reference into
+            "3.8E+15". This is a spreadsheet quirk, not a system fault.
+          </p>
+        </div>
+        <div class="good">
+          <p style="margin:0">
+            <strong>Fixed and future-proofed.</strong> The system now
+            <strong>recovers</strong> a valid reference (from the receipt) for any
+            that were already damaged, and — better still — it can now take the
+            <strong>original M-Koba file directly</strong>, which keeps every
+            reference number intact from the start. If a damaged file is ever
+            uploaded, the system <strong>warns</strong> and explains how to avoid
+            it. So the reference numbers can be trusted.
+          </p>
+        </div>
+
+        <h2>6 · Print and export that match <span class="tag ok">Improved</span></h2>
+        <ul>
+          <li>
+            The M-Koba statement can be <strong>printed</strong> — and it now prints
+            <strong>sideways (landscape)</strong> so that all the columns fit on the
+            page instead of being cut off.
+          </li>
+          <li>
+            It can also be <strong>exported to Excel</strong> in the very same
+            M-Koba layout — ideal for handing to an auditor or checking against the
+            original.
+          </li>
+          <li>
+            Small tidy-ups along the way: the phone and account numbers print
+            cleanly, and the currency reads consistently as <strong>TSh</strong>
+            throughout.
+          </li>
+        </ul>
+
+        <h2>7 · Status &amp; what's next</h2>
+        <ul>
+          <li>
+            Everything above is <strong>built, tested and live</strong> on the
+            system, checked against the group's real data, and protected by
+            automated tests.
+          </li>
+          <li>
+            <strong>Ready for the future:</strong> because the system already
+            matches M-Koba row-for-row and reconciles cleanly, it is well placed
+            for the planned <strong>direct link with M-Koba</strong> down the line —
+            today's work is the foundation for it, not throwaway.
+          </li>
+          <li>
+            <strong>When more history is available:</strong> loading additional
+            M-Koba months is now a simple repeat — the system won't double-count.
+          </li>
+        </ul>
+
+        <div class="good" style="border-left-color: var(--brand)">
+          <strong>In short:</strong> the group's M-Koba reality now lives in the
+          system — the right members, the right money, shown M-Koba's way, fully
+          reconcilable, and ready to print, export, and one day connect directly.
+        </div>
+      </div>
+
+      <div class="foot">
+        Vikundi VICOBA Group Management System · M-Koba Integration &amp; Reconciliation · UKUU MSAKUZI · 22 July 2026.
+      </div>
+    </div>
+  </body>
+</html>

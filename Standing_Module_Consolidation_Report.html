@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vikundi — Contribution-Standing Consolidation</title>
+<style>
+  :root{
+    --brand:#0f4c81; --brand-2:#1769aa; --ink:#1b2733; --muted:#5b6b7a;
+    --line:#e4e9ef; --bg:#f5f7fa; --card:#ffffff; --ok:#1a7f4b; --warn:#b8860b;
+    --bad:#c0392b; --chip:#eaf2fb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .page{max-width:960px;margin:28px auto;background:var(--card);
+    box-shadow:0 1px 4px rgba(20,40,60,.08);border-radius:10px;overflow:hidden}
+  header.rpt{background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#fff;padding:34px 40px 30px}
+  header.rpt .kicker{text-transform:uppercase;letter-spacing:.14em;font-size:11px;opacity:.85;font-weight:700}
+  header.rpt h1{margin:8px 0 4px;font-size:27px;line-height:1.2;font-weight:800}
+  header.rpt .sub{opacity:.92;font-size:14px;max-width:70ch}
+  header.rpt .meta{margin-top:16px;font-size:12px;opacity:.9;display:flex;gap:22px;flex-wrap:wrap}
+  header.rpt .meta b{font-weight:700}
+  .body{padding:8px 40px 34px}
+  .statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:26px 0 8px}
+  .stat{background:var(--chip);border:1px solid var(--line);border-radius:9px;padding:16px 12px;text-align:center}
+  .stat b{display:block;font-size:26px;color:var(--brand);font-weight:800;line-height:1}
+  .stat span{display:block;margin-top:6px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  h2{margin:30px 0 8px;font-size:18px;color:var(--brand);border-bottom:2px solid var(--line);padding-bottom:6px}
+  h3{margin:18px 0 6px;font-size:13px;color:var(--ink);font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+  p{margin:8px 0}
+  .lead{font-size:16px}
+  .muted{color:var(--muted)}
+  ul{margin:8px 0 8px 2px;padding-left:20px}
+  li{margin:5px 0}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.86em;
+    background:#eef2f7;padding:1.5px 6px;border-radius:5px;color:#0b3a63}
+  .callout{border-left:4px solid var(--brand-2);background:#f2f7fc;border-radius:0 8px 8px 0;padding:13px 16px;margin:14px 0}
+  .callout.good{border-left-color:var(--ok);background:#f0f8f3}
+  .callout.warn{border-left-color:var(--warn);background:#fbf7ec}
+  .callout p{margin:0}
+  table{width:100%;border-collapse:collapse;margin:10px 0 6px;font-size:13.5px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:#f0f4f8;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+  tbody tr:nth-child(even){background:#fafcfe}
+  .pr{display:inline-block;min-width:44px;text-align:center;background:var(--brand);color:#fff;
+    border-radius:20px;padding:1px 9px;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+  .pill{display:inline-block;border-radius:20px;padding:2px 11px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.03em}
+  .pill.merged{background:#eaf6ee;color:var(--ok)}
+  .pill.open{background:#e9f1fb;color:var(--brand)}
+  .tag{display:inline-block;background:var(--chip);border:1px solid #d4e3f4;border-radius:6px;padding:2px 8px;font-size:12px;
+    color:var(--brand);font-weight:600;margin:2px 4px 2px 0;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
+  .ba{border-radius:9px;padding:14px 16px;border:1px solid var(--line)}
+  .ba h4{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+  .ba.before{background:#fdecea} .ba.before h4{color:var(--bad)}
+  .ba.after{background:#eaf6ee} .ba.after h4{color:var(--ok)}
+  .ba ul{margin:0;padding-left:18px;font-size:13px}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;color:var(--muted)}
+  .foot{padding:18px 40px 30px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
+  @media (max-width:640px){.statgrid{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}.body,.foot,header.rpt{padding-left:22px;padding-right:22px}}
+  @media print{
+    *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
+    body{background:#fff}
+    .page{box-shadow:none;margin:0;max-width:none}
+    header.rpt{background:var(--brand) !important}
+    h2{break-after:avoid}table{break-inside:auto}tr{break-inside:avoid}
+    .callout,.grid2,.statgrid{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="rpt">
+    <div class="kicker">Vikundi · VICOBA Management System</div>
+    <h1>Contribution-Standing Consolidation</h1>
+    <div class="sub">One source of truth for how much every member has saved, how much is expected, and whether they are ahead or behind.</div>
+    <div class="meta">
+      <span><b>Date</b> · 25 July 2026</span>
+      <span><b>Scope</b> · 6 pull requests</span>
+      <span><b>Module</b> · includes/contribution_standing.php</span>
+      <span><b>Tests</b> · 1,183 passing</span>
+    </div>
+  </header>
+
+  <div class="body">
+
+    <div class="statgrid">
+      <div class="stat"><b>6</b><span>Screens consolidated</span></div>
+      <div class="stat"><b>0</b><span>False deficits / 334 members</span></div>
+      <div class="stat"><b>5+1</b><span>PRs merged · open</span></div>
+      <div class="stat"><b>1,183</b><span>Tests green</span></div>
+    </div>
+
+    <h2>Executive summary</h2>
+    <p class="lead">The same money bug kept coming back on screen after screen — savings showing zero, false deficits, invented monthly targets. The cause: every screen re-did the contribution math its own way. This work put that math in <strong>one module</strong> and pointed every screen at it, so a fix in one place can’t be undone by a stale copy in another.</p>
+
+    <h2>The problem</h2>
+    <p>Each report computed member standing independently, and the copies had drifted. Two failures dominated:</p>
+    <ul>
+      <li><strong>Fabricated targets.</strong> Screens defaulted the monthly dues to <code>?? 10000</code> and the entrance fee to <code>?? 20000</code> when the group had set neither. This group has <em>not</em> set a fixed monthly, so every member was measured against an <strong>invented 10,000/month target</strong> and shown a deficit that does not exist.</li>
+      <li><strong>Imported savings mishandled.</strong> Money carried in from M-Koba is each member’s <em>opening balance</em>. Some screens skimmed the entrance fee out of it, or billed a full 12 future months — so members who brought real savings appeared to have paid nothing.</li>
+    </ul>
+    <p>Because the logic was copy-pasted, fixing the ledger did nothing for the dashboard, statement or profile — textbook whack-a-mole.</p>
+
+    <h2>The solution — one module</h2>
+    <p><code>includes/contribution_standing.php</code> now holds the calculation once. Every screen calls it. The rules it encodes:</p>
+    <ul>
+      <li><strong>No fixed monthly ⇒ no target.</strong> An unset monthly means “save what you can” — no deficits until the treasurer sets a real figure. The moment they do, <em>every</em> screen adopts it at once.</li>
+      <li><strong>M-Koba money is opening savings.</strong> Identified by its transaction markers, it always counts toward a member’s total and is never skimmed as an entrance fee.</li>
+      <li><strong>Measured from each member’s own first contribution</strong>, counting only months that have actually elapsed — never billing the future.</li>
+    </ul>
+    <p>
+      <span class="tag">cs_is_opening</span>
+      <span class="tag">cs_months_elapsed</span>
+      <span class="tag">cs_expected_to_date</span>
+      <span class="tag">cs_standing</span>
+      <span class="tag">cs_group_standing</span>
+      <span class="tag">cs_group_savings_total</span>
+    </p>
+
+    <div class="grid2">
+      <div class="ba before">
+        <h4>✕ Before</h4>
+        <ul>
+          <li>Invented 10,000/month target on every member</li>
+          <li>False entrance “owing” skimmed from savings</li>
+          <li>Profile billed a full 12 months into the future</li>
+          <li>Fixing one screen left the others wrong</li>
+        </ul>
+      </div>
+      <div class="ba after">
+        <h4>✓ After</h4>
+        <ul>
+          <li>Unset monthly ⇒ no target, no false deficit</li>
+          <li>Opening savings counted, never skimmed</li>
+          <li>Only elapsed months, from first contribution</li>
+          <li>One definition; all screens agree by construction</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2>What shipped</h2>
+    <table>
+      <thead><tr><th style="width:70px">PR</th><th>Screen(s) wired</th><th style="width:90px">Status</th></tr></thead>
+      <tbody>
+        <tr><td><span class="pr">#347</span></td><td>The standing module itself (foundation)</td><td><span class="pill merged">merged</span></td></tr>
+        <tr><td><span class="pr">#348</span></td><td>Group Reports savings + Dashboard “Contributions” KPI</td><td><span class="pill merged">merged</span></td></tr>
+        <tr><td><span class="pr">#349</span></td><td>Group Financial Ledger</td><td><span class="pill merged">merged</span></td></tr>
+        <tr><td><span class="pr">#350</span></td><td>Member Financial Statement</td><td><span class="pill merged">merged</span></td></tr>
+        <tr><td><span class="pr">#351</span></td><td>Member Profile schedule · Contributions grid · its AJAX feed</td><td><span class="pill open">open</span></td></tr>
+        <tr><td><span class="pr">#346</span></td><td>Auto-dormancy sweep disabled (wrong for a running group)</td><td><span class="pill merged">merged</span></td></tr>
+      </tbody>
+    </table>
+    <p class="mono">Files touched: vicoba_reports · dashboard · financial_ledger · member_statement · profile · manage_contributions · api/get_contribution_ledger · + the module and its tests.</p>
+
+    <h2>Verification</h2>
+    <ul>
+      <li><strong>Test suite:</strong> 1,183 tests / 2,959 assertions passing. New coverage for the module’s math and each screen’s wiring; existing tests updated to assert delegation rather than the old inline code.</li>
+      <li><strong>Numbers on real data:</strong> 334 members; with the monthly unset the expected target is 0 across the board — <strong>zero false deficits</strong> (previously a deficit on nearly every member). Group Reports and the Dashboard KPI are now computed from the same rule, so they are identical by construction.</li>
+      <li><strong>No database migration</strong> in any PR; purely calculation-layer changes.</li>
+    </ul>
+
+    <div class="callout good">
+      <p><strong>Outcome:</strong> every screen that shows contribution standing now reads the same definition, and none show a fabricated deficit. The system is correct-by-default and <em>armed</em> — the day a real monthly is set, accurate targets appear everywhere at once.</p>
+    </div>
+
+    <h2>What’s left</h2>
+    <ul>
+      <li><strong>Deploy:</strong> merge <span class="pr">#351</span> into <code>develop</code>, then <code>develop → main</code> to release (<span class="pr">#347</span>–<span class="pr">#350</span> already merged).</li>
+      <li><strong>One consumer deferred:</strong> the auto-dormancy sweep is disabled and will be wired only once “dormant” is actually defined.</li>
+      <li><strong>Re-activate members</strong> after <span class="pr">#346</span> reaches production.</li>
+    </ul>
+
+    <div class="callout warn">
+      <p><strong>Blocked on the treasurer / boss — these unlock the real numbers:</strong> (1) the fixed monthly amount, (2) the entrance-fee policy for existing members, (3) the definition of dormancy, (4) the period the data covers.</p>
+    </div>
+
+    <h3>Engineering follow-ups (noted, not blocking)</h3>
+    <ul>
+      <li>Profile and statement now run near-identical per-member schedules — worth extracting a shared <code>cs_member_schedule()</code>.</li>
+      <li>Reconcile AGM handling: the module counts AGM toward savings while the ledger/statement treat it as a separate fee. No effect today (0 AGM rows), latent otherwise.</li>
+    </ul>
+
+    <div class="callout">
+      <p><strong>Local vs production data note.</strong> On the local copy all M-Koba rows are still <code>pending</code>, so “opening savings” reads 0 locally; on production they are <code>approved</code> and populate normally. A data-snapshot difference, not a code issue.</p>
+    </div>
+
+  </div>
+
+  <div class="foot">
+    Vikundi VICOBA Management System · Contribution-Standing Consolidation · 25 July 2026 · PHP 8 / MySQL 8 · Prepared for internal engineering record.
+  </div>
+
+</div>
+</body>
+</html>

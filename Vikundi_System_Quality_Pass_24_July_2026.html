@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vikundi — System Quality Pass &amp; Fixes (24 July 2026)</title>
+    <style>
+      :root {
+        --brand: #0f4c81; --brand-2: #1769aa; --ink: #1b2733; --muted: #5b6b7a;
+        --line: #e4e9ef; --bg: #f5f7fa; --card: #ffffff; --ok: #1a7f4b; --bad: #c0392b; --gold: #b8860b;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--ink);
+        font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .page { max-width: 900px; margin: 28px auto; background: var(--card);
+        box-shadow: 0 1px 4px rgba(20,40,60,.08); border-radius: 10px; overflow: hidden; }
+      header.rpt { background: linear-gradient(135deg, var(--brand), var(--brand-2)); color: #fff; padding: 38px 44px 32px; }
+      header.rpt .kicker { text-transform: uppercase; letter-spacing: .16em; font-size: 11px; opacity: .85; font-weight: 700; }
+      header.rpt h1 { margin: 10px 0 6px; font-size: 28px; line-height: 1.2; font-weight: 800; }
+      header.rpt .sub { opacity: .94; font-size: 15px; max-width: 66ch; }
+      header.rpt .meta { margin-top: 18px; font-size: 13px; opacity: .9; display: flex; gap: 26px; flex-wrap: wrap; }
+      .body { padding: 10px 44px 40px; }
+      h2 { margin: 32px 0 10px; font-size: 19px; color: var(--brand); border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+      h3 { margin: 18px 0 4px; font-size: 15.5px; color: var(--ink); font-weight: 800; }
+      p { margin: 9px 0; } .lead { font-size: 16.5px; color: #33414f; }
+      ul { margin: 8px 0 8px 2px; padding-left: 22px; } li { margin: 6px 0; }
+      .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 18px 0 6px; }
+      .stat { border: 1px solid var(--line); border-radius: 10px; padding: 14px 12px; background: #f8fbff; text-align: center; }
+      .stat .n { font-size: 22px; font-weight: 800; color: var(--brand); line-height: 1.1; }
+      .stat .l { font-size: 11.5px; color: var(--muted); margin-top: 4px; font-weight: 600; }
+      .feature { border: 1px solid var(--line); border-left: 4px solid var(--brand-2); border-radius: 0 9px 9px 0; background: #f8fbff; padding: 13px 18px; margin: 12px 0; }
+      .feature h3 { margin: 0 0 4px; color: var(--brand); }
+      .feature p { margin: 0; color: #3a4855; font-size: 14.5px; }
+      .good { border-left: 4px solid var(--ok); background: #f0f8f3; border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 16px 0; }
+      .warn { border-left: 4px solid var(--gold); background: #fdf6e7; border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 16px 0; }
+      .tag { display: inline-block; border-radius: 20px; padding: 2px 12px; font-size: 12px; font-weight: 700; color: #fff; }
+      .tag.ok { background: var(--ok); } .tag.new { background: var(--brand-2); }
+      table.grid { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+      table.grid th, table.grid td { border: 1px solid var(--line); padding: 8px 11px; text-align: left; vertical-align: top; }
+      table.grid th { background: #f1f6fb; color: var(--brand); font-weight: 700; }
+      .before-after { display: flex; gap: 10px; flex-wrap: wrap; margin: 6px 0; }
+      .ba { flex: 1 1 240px; border: 1px solid var(--line); border-radius: 9px; padding: 12px 14px; font-size: 14px; }
+      .ba .h { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; margin-bottom: 4px; }
+      .ba.b { background: #fdf0ee; } .ba.b .h { color: var(--bad); }
+      .ba.a { background: #f0f8f3; } .ba.a .h { color: var(--ok); }
+      .foot { padding: 20px 44px 34px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+      @media (max-width: 640px) { .stats { grid-template-columns: 1fr 1fr; } .body, .foot, header.rpt { padding-left: 24px; padding-right: 24px; } }
+      @media print { * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        body { background: #fff; } .page { box-shadow: none; margin: 0; max-width: none; }
+        header.rpt { background: var(--brand) !important; } .feature, .good, .warn, .stat, .ba { break-inside: avoid; } }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="rpt">
+        <div class="kicker">Vikundi · VICOBA Group Management System</div>
+        <h1>System Quality Pass &amp; Fixes</h1>
+        <div class="sub">
+          A full walk-through of the live system as a tester, followed by fixes across members,
+          the contribution ledger, transactions, reconciliation, and the email/reliability setup —
+          each one verified on the live site afterwards.
+        </div>
+        <div class="meta">
+          <span><strong>Prepared for:</strong> Management</span>
+          <span><strong>Group:</strong> UKUU MSAKUZI</span>
+          <span><strong>Date:</strong> 24 July 2026</span>
+          <span><strong>Status:</strong> <span class="tag ok">Live &amp; verified</span></span>
+        </div>
+      </header>
+
+      <div class="body">
+
+        <p class="lead">
+          Today was a top-to-bottom quality check of the live system — every menu and page opened as a
+          user would, issues noted, then fixed and re-checked on the live site. The headline: the group's
+          327 real members are now fully active and consistent everywhere, the contribution records read
+          correctly, and two pages that appeared "empty" were actually just hiding data behind date filters.
+        </p>
+
+        <div class="stats">
+          <div class="stat"><div class="n">327</div><div class="l">Members now active (was 7)</div></div>
+          <div class="stat"><div class="n">8</div><div class="l">Fixes shipped &amp; verified</div></div>
+          <div class="stat"><div class="n">TSh 7.97M</div><div class="l">Contributions, now visible &amp; tied out</div></div>
+          <div class="stat"><div class="n">100%</div><div class="l">Fixes confirmed on live site</div></div>
+        </div>
+
+        <h2>1. Members — all 327 now active and consistent</h2>
+        <p>
+          The 320 members imported from M-Koba were sitting as "dormant", so different pages disagreed on the
+          count (Dashboard said 327, the Members list showed 7, the Users list showed 8). After a careful,
+          backed-up, reversible update, <strong>all 327 members are now active</strong> — and every page agrees.
+        </p>
+        <div class="before-after">
+          <div class="ba b"><div class="h">Before</div>Dashboard 327 · Members 7 · Users 8 · Dormant 320 — numbers didn't match anywhere.</div>
+          <div class="ba a"><div class="h">After</div>327 active members across the Dashboard, Members list, Users, and Member Analysis. Dormant list empty.</div>
+        </div>
+
+        <h2>2. Contribution Ledger — reads correctly now</h2>
+        <div class="feature">
+          <h3>Members' M-Koba savings are shown as an opening balance</h3>
+          <p>The imported savings used to be filed under "Entrance" and measured against a full year's target, so <em>every</em> member showed a huge false deficit. They now appear in their own <strong>"Opening (M-Koba)"</strong> column and count toward each member's balance — carrying money in can only reduce a shortfall, never create one.</p>
+        </div>
+        <div class="feature">
+          <h3>The "M-Koba Name" column is filled in</h3>
+          <p>It was blank for everyone; it now shows each member's M-Koba name pulled from their imported records.</p>
+        </div>
+        <div class="feature">
+          <h3>The target period is realistic</h3>
+          <p>The "months" figure now reflects the months that have actually elapsed since a member joined — not a flat 12 — so the Target and Surplus/Deficit finally line up.</p>
+        </div>
+
+        <h2>3. Two pages that looked empty were hiding data</h2>
+        <table class="grid">
+          <tr><th>Page</th><th>What was wrong</th><th>Now</th></tr>
+          <tr>
+            <td><strong>Transactions</strong></td>
+            <td>Opened on "No transactions" — the date filter defaulted to the last 90 days, but the imported records are dated February.</td>
+            <td>Shows the full history by default — all <strong>524 transactions</strong>, paginated.</td>
+          </tr>
+          <tr>
+            <td><strong>Contribution Ledger grid</strong></td>
+            <td>Opened on an empty month range, the "‹" arrow did nothing, and 327 members loaded with no pagination.</td>
+            <td>Opens on the months that <strong>have data</strong>, the period arrows work, and the grid is paged (25/page).</td>
+          </tr>
+        </table>
+
+        <h2>4. M-Koba reconciliation — tidy</h2>
+        <p>
+          One leftover row still displayed a spreadsheet-corrupted reference ("3.75E+15"). It's a zero-value
+          transfer row that never affected the tie-out, but it now shows a clean dash instead of the junk.
+          The statement remains <strong>fully reconciled</strong> — every shilling accounted for.
+        </p>
+
+        <h2>5. Email &amp; reliability</h2>
+        <div class="feature">
+          <h3>Email sending is now installable</h3>
+          <p>The mail library (PHPMailer) had never installed on the server due to a file-ownership issue; that's fixed, so email can be switched on once the group's sending details are entered.</p>
+        </div>
+        <div class="warn">
+          <strong>Full transparency:</strong> while fixing the email setup, a supporting library the site quietly
+          relied on (the error-monitoring SDK) was removed, which briefly took the site offline. It was spotted
+          and <strong>restored within minutes</strong>, and two permanent safeguards were added so it cannot happen
+          again: the library is now formally declared, and the startup code was hardened to keep the site running
+          even if a component is ever missing. No data was affected.
+        </div>
+
+        <h2>Where things stand</h2>
+        <div class="good">
+          Every issue found in today's review has been fixed and confirmed on the live site. The member roster is
+          clean and consistent, the money records read correctly and reconcile, and the pages that looked empty now
+          show their data. The system is in solid shape for day-to-day use.
+        </div>
+        <p style="font-size:13.5px;color:var(--muted)">
+          One open item is a treasurer's decision (not a defect): whether the monthly contribution target should be
+          measured from each member's join date or from the group's original start date — worth a quick look at the
+          live numbers before deciding.
+        </p>
+
+      </div>
+
+      <div class="foot">
+        Vikundi — VICOBA Group Management System · Prepared for Management (UKUU MSAKUZI) · 24 July 2026.
+        All fixes deployed to the live site and verified.
+      </div>
+    </div>
+  </body>
+</html>

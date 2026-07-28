@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vikundi — Work Report, 17 July 2026</title>
+    <style>
+      :root {
+        --brand: #0f4c81;
+        --brand-2: #1769aa;
+        --ink: #1b2733;
+        --muted: #5b6b7a;
+        --line: #e4e9ef;
+        --bg: #f5f7fa;
+        --card: #ffffff;
+        --ok: #1a7f4b;
+        --bad: #c0392b;
+        --gold: #b8860b;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .page {
+        max-width: 900px;
+        margin: 28px auto;
+        background: var(--card);
+        box-shadow: 0 1px 4px rgba(20, 40, 60, 0.08);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      header.rpt {
+        background: linear-gradient(135deg, var(--brand), var(--brand-2));
+        color: #fff;
+        padding: 38px 44px 32px;
+      }
+      header.rpt .kicker {
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        font-size: 11px;
+        opacity: 0.85;
+        font-weight: 700;
+      }
+      header.rpt h1 { margin: 10px 0 6px; font-size: 29px; line-height: 1.2; font-weight: 800; }
+      header.rpt .sub { opacity: 0.94; font-size: 15px; max-width: 64ch; }
+      header.rpt .meta {
+        margin-top: 18px; font-size: 13px; opacity: 0.9;
+        display: flex; gap: 26px; flex-wrap: wrap;
+      }
+      .body { padding: 10px 44px 40px; }
+      h2 {
+        margin: 32px 0 10px; font-size: 20px; color: var(--brand);
+        border-bottom: 2px solid var(--line); padding-bottom: 8px;
+      }
+      h3 { margin: 20px 0 4px; font-size: 16px; color: var(--ink); font-weight: 800; }
+      p { margin: 9px 0; }
+      .lead { font-size: 16.5px; color: #33414f; }
+      ul { margin: 8px 0 8px 2px; padding-left: 22px; }
+      li { margin: 7px 0; }
+      .feature {
+        border: 1px solid var(--line); border-left: 4px solid var(--brand-2);
+        border-radius: 0 9px 9px 0; background: #f8fbff; padding: 14px 18px; margin: 12px 0;
+      }
+      .feature h3 { margin: 0 0 4px; color: var(--brand); }
+      .feature p { margin: 0; color: #3a4855; font-size: 15px; }
+      .alert {
+        border-left: 4px solid var(--bad); background: #fdecea;
+        border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 16px 0;
+      }
+      .good {
+        border-left: 4px solid var(--ok); background: #f0f8f3;
+        border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 16px 0;
+      }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .tag {
+        display: inline-block; border-radius: 20px; padding: 2px 12px;
+        font-size: 12px; font-weight: 700; color: #fff;
+      }
+      .tag.ok { background: var(--ok); }
+      .tag.fix { background: var(--gold); }
+      .tag.sec { background: var(--bad); }
+      .tag.new { background: var(--brand-2); }
+      .foot {
+        padding: 20px 44px 34px; border-top: 1px solid var(--line);
+        color: var(--muted); font-size: 13px;
+      }
+      @media (max-width: 640px) {
+        .grid { grid-template-columns: 1fr; }
+        .body, .foot, header.rpt { padding-left: 24px; padding-right: 24px; }
+      }
+      @media print {
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        body { background: #fff; }
+        .page { box-shadow: none; margin: 0; max-width: none; }
+        header.rpt { background: var(--brand) !important; }
+        .feature, .alert, .good { break-inside: avoid; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="rpt">
+        <div class="kicker">Vikundi · VICOBA Group Management System</div>
+        <h1>Work Report — A Trustworthy Activity Record</h1>
+        <div class="sub">
+          Today's work rebuilt the system's activity record — the log of who did
+          what, and when — into a proper, professional audit trail the group can
+          rely on: it now catches break-in attempts, stays clear instead of
+          cluttered, and lets leadership review any member's activity at a glance.
+        </div>
+        <div class="meta">
+          <span><strong>Prepared for:</strong> Management</span>
+          <span><strong>Date:</strong> 17 July 2026</span>
+          <span><strong>Status:</strong> <span class="tag ok">Live &amp; in use</span></span>
+        </div>
+      </header>
+
+      <div class="body">
+        <h2>1 · At a glance</h2>
+        <p class="lead">
+          Every action in the system — a login, a contribution, an edit, a
+          deletion — is quietly recorded in an activity log. That log is what lets
+          the group answer "who did this, and when". Today we took that log from a
+          basic list and made it <strong>professional</strong>, across six areas:
+          it now records <strong>failed login attempts</strong>, shows the
+          <strong>events that matter</strong> instead of browsing noise, allows a
+          <strong>complete download</strong> for records, loads
+          <strong>quickly</strong> as it grows, gives leadership real
+          <strong>review tools</strong>, and can show <strong>one member's whole
+          day</strong> as a clear timeline.
+        </p>
+
+        <h2>2 · Catching attempts to break in <span class="tag sec">Security</span></h2>
+        <div class="alert">
+          <p style="margin: 0">
+            <strong>The gap.</strong> Until now the system only recorded
+            <em>successful</em> logins. If someone repeatedly guessed a member's
+            or leader's password, they left <strong>no trace at all</strong> — the
+            single most important security signal was invisible.
+          </p>
+        </div>
+        <div class="good">
+          <p style="margin: 0">
+            <strong>Fixed.</strong> Every <strong>failed sign-in attempt</strong>
+            is now recorded — a wrong password, an unknown account, or someone
+            trying to reach a suspended account. The password itself is
+            <strong>never stored</strong>; only the attempt and the reason. Failed
+            attempts stand out in red, so a burst of them is easy to spot.
+          </p>
+        </div>
+
+        <h2>3 · A clear record, not a noisy one <span class="tag ok">Improved</span></h2>
+        <p>
+          The system logs every page a person opens, which meant the record was
+          roughly <strong>nine-tenths "someone looked at a screen"</strong> — real
+          events like money movements and deletions were buried underneath.
+        </p>
+        <ul>
+          <li>
+            The activity view now shows the <strong>meaningful events by
+            default</strong> — logins, contributions, edits, deletions — and hides
+            routine page-browsing behind a simple "include page views" switch for
+            when it's needed. Nothing is lost; it's just no longer in the way.
+          </li>
+          <li>
+            Every entry now shows the time down to the <strong>exact
+            second</strong>, which matters when two actions happen close together.
+          </li>
+        </ul>
+
+        <h2>4 · Complete records you can keep <span class="tag fix">Fixed</span></h2>
+        <p>
+          The "Export" button used to save only the <strong>25 rows visible on
+          the screen</strong> — so an "exported record" was really just one page,
+          not much use for a review or a handover. It now downloads the
+          <strong>complete set of records</strong> that match whatever you're
+          looking at (by date, by person, by type), as a proper spreadsheet file
+          — including the network address each action came from. The system also
+          notes in the log that a download was taken.
+        </p>
+
+        <h2>5 · Fast even as it grows <span class="tag ok">Improved</span></h2>
+        <p>
+          The activity log grows every single day. We tuned the underlying
+          database so searching and filtering it stays <strong>fast as it grows
+          into hundreds of thousands of entries</strong>, rather than slowing the
+          page down over time. This was applied to the live system automatically
+          during today's release — nothing manual required.
+        </p>
+
+        <h2>6 · Tools to actually review it <span class="tag new">New</span></h2>
+        <p>
+          A record is only useful if leadership can question it. Two additions
+          turn the log from a list into a review tool:
+        </p>
+        <div class="grid">
+          <div class="feature">
+            <h3>Filter by action</h3>
+            <p>
+              Show me every deletion · every login · every failed login — in one
+              click, alongside the existing filters for person, type and date.
+            </p>
+          </div>
+          <div class="feature">
+            <h3>An at-a-glance summary</h3>
+            <p>
+              A row of totals at the top — logins, failed logins, items created,
+              edited and deleted — for whatever you're viewing. Failed logins
+              turn a bold red the moment there is even one.
+            </p>
+          </div>
+        </div>
+
+        <h2>7 · One member's day, as a story <span class="tag new">New</span></h2>
+        <p>
+          The biggest addition. Leadership can now pick any member and see their
+          activity as a <strong>readable timeline</strong> instead of scattered
+          lines: each visit is grouped into a <strong>session</strong> — when they
+          signed in, everything they did (with the exact time), and when they
+          signed out — along with how long they were active and how many actions
+          they took. It answers, cleanly, "what did this person do, and when?"
+        </p>
+        <div class="feature">
+          <p>
+            <strong>Example.</strong> A single session reads: signed in at
+            1:45 pm → downloaded a report → downloaded it again → a failed login
+            was recorded at 2:17 pm — 32 minutes, 4 actions — laid out in order,
+            so the whole visit is understood at a glance.
+          </p>
+        </div>
+
+        <h2>8 · Status &amp; next</h2>
+        <ul>
+          <li>
+            All six improvements are <strong>built, tested and released to the
+            live system</strong> today, and were checked on the live site.
+          </li>
+          <li>
+            Each change is covered by automated tests, so the behaviour is
+            protected against future changes.
+          </li>
+          <li>
+            <strong>Still on the list</strong> from earlier: post-meeting SMS
+            notifications (awaiting cost/opt-in sign-off) and a small decision on
+            the switched-off loans feature.
+          </li>
+        </ul>
+
+        <div class="good" style="border-left-color: var(--brand)">
+          <strong>In short:</strong> the group's activity record is now a
+          trustworthy audit trail — it catches attempts to break in, shows what
+          truly matters instead of clutter, can be downloaded in full, stays fast
+          as it grows, and lets leadership review any member's activity, session
+          by session.
+        </div>
+      </div>
+
+      <div class="foot">
+        Vikundi VICOBA Group Management System · Work Report · 17 July 2026.
+      </div>
+    </div>
+  </body>
+</html>

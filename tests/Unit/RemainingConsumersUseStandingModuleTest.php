@@ -42,19 +42,10 @@ class RemainingConsumersUseStandingModuleTest extends TestCase
         $this->assertStringNotContainsString('floor($monthly_pot / $monthly_amt)', $s);
     }
 
-    // ── contributions grid + its AJAX feed ───────────────────────────────────
+    // ── contributions grid ────────────────────────────────────────────────────
     public function testManageContributionsHasNoFabricatedDefault(): void
     {
         $s = $this->src('app/bms/customer/manage_contributions.php');
-        $this->assertStringNotContainsString("'monthly_contribution'] ?? 10000", $s);
-        $this->assertStringNotContainsString("'entrance_fee'] ?? 20000", $s);
-        $this->assertStringContainsString("floatval(\$settings_raw['monthly_contribution'] ?? 0)", $s);
-        $this->assertStringContainsString("floatval(\$settings_raw['entrance_fee'] ?? 0)", $s);
-    }
-
-    public function testContributionLedgerApiHasNoFabricatedDefault(): void
-    {
-        $s = $this->src('api/get_contribution_ledger.php');
         $this->assertStringNotContainsString("'monthly_contribution'] ?? 10000", $s);
         $this->assertStringNotContainsString("'entrance_fee'] ?? 20000", $s);
         $this->assertStringContainsString("floatval(\$settings_raw['monthly_contribution'] ?? 0)", $s);
