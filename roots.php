@@ -585,6 +585,9 @@ $routes = [
     'payment_settings.php' => COMING_SOON_FILE,
     'my_settings' => PROFILE_DIR . '/my_settings.php',
     'my_settings.php' => PROFILE_DIR . '/my_settings.php',
+    // The Help nav link uses getUrl('help') -> /help, but only 'help.php' was
+    // registered, so /help 404'd. Register the clean-URL key too.
+    'help' => COMING_SOON_FILE,
     'help.php' => COMING_SOON_FILE,
 
     // ========================================================================
