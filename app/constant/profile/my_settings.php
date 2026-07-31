@@ -218,7 +218,7 @@ require_once HEADER_FILE;
                             <div class="col-auto">
                                 <div class="position-relative">
                                     <?php if (!empty($profile_image)): ?>
-                                        <img src="/uploads/avatars/<?= htmlspecialchars($profile_image) ?>" id="avatar-preview" class="rounded-circle border shadow-sm" style="width: 120px; height: 120px; object-fit: cover;">
+                                        <img src="<?= htmlspecialchars(vk_avatar_url($profile_image)) ?>" id="avatar-preview" class="rounded-circle border shadow-sm" style="width: 120px; height: 120px; object-fit: cover;">
                                     <?php else: ?>
                                         <div id="avatar-placeholder" class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center text-primary border shadow-sm shadow" style="width: 120px; height: 120px; font-size: 3rem;">
                                             <i class="bi bi-person"></i>

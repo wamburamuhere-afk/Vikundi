@@ -605,6 +605,43 @@ function vk_upload_photo(string $field, string $dir): ?string {
     return move_uploaded_file($_FILES[$field]['tmp_name'], rtrim($dir, '/\\') . '/' . $name) ? $name : null;
 }
 
+if (!function_exists('vk_upload_base_url')) {
+    /**
+     * Install base path ("" at the web root, "/vikundi" in a subdirectory install).
+     * Same derivation includes/workflow_signature_row.php uses, so both callers of
+     * the gated upload reader agree in every deployment layout.
+     */
+    function vk_upload_base_url(): string {
+        $root = str_replace('\\', '/', defined('ROOT_DIR') ? ROOT_DIR : __DIR__);
+        $doc  = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT'] ?? '');
+        $base = trim(str_replace($doc, '', $root), '/');
+        return $base !== '' ? '/' . $base : '';
+    }
+}
+
+if (!function_exists('vk_avatar_url')) {
+    /**
+     * URL for a member/spouse/parent/child photo, routed through the gated reader
+     * api/get_upload.php.
+     *
+     * uploads/ is denied to direct HTTP (SEC-011), so a bare
+     * "uploads/avatars/<file>" <img src> no longer resolves. basename() is applied
+     * because the stored column is data, not a trusted path, and the reader accepts
+     * a single constrained segment only.
+     *
+     * Returns '' for an empty filename so callers emit no <img> rather than a
+     * broken one.
+     */
+    function vk_avatar_url(?string $filename): string {
+        $filename = trim((string) $filename);
+        if ($filename === '') {
+            return '';
+        }
+        return vk_upload_base_url()
+             . '/api/get_upload.php?type=avatar&name=' . rawurlencode(basename($filename));
+    }
+}
+
 /**
  * The member fields an ordinary (view-only) member must NOT see about OTHER
  * members. General area (state/district/ward) and name/photo/status stay visible.
