@@ -33,6 +33,36 @@ RewriteRule ^ - [L]
 # 4. Front Controller (all other requests through index.php)
 RewriteRule ^ index.php [L,QSA]
 
+# ── Security headers (audit XSS-006) ──────────────────────────────────────────
+# Before this, the application sent none at all.
+<IfModule mod_headers.c>
+    # Never let a browser second-guess a declared Content-Type. Blunts attacks that
+    # rely on a file being sniffed as script.
+    Header always set X-Content-Type-Options "nosniff"
+
+    # The approval and payment screens were framable, so clickjacking a leader into
+    # approving an expense was possible.
+    Header always set X-Frame-Options "SAMEORIGIN"
+
+    # Do not leak the full path (which carries member and record ids in the query
+    # string) to third-party hosts.
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # ── CSP: REPORT-ONLY, deliberately not enforced ──────────────────────────
+    # This policy is what we believe would be safe to enforce, published so the
+    # browser reports what would break rather than breaking it.
+    #
+    # It CANNOT be enforced today. The tree contains 151 inline <script> blocks,
+    # 688 inline event handlers, 55 javascript: hrefs and 896 inline style
+    # attributes, so 'unsafe-inline' is load-bearing for both script-src and
+    # style-src. Removing it is a migration, not a header change — see the
+    # estimate in sessions.md.
+    #
+    # The external origins below are the four CDNs the app actually loads from:
+    # code.jquery.com, cdn.datatables.net, cdn.jsdelivr.net, cdnjs.cloudflare.com.
+    Header always set Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self' 'unsafe-inline' https://code.jquery.com https://cdn.datatables.net https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.datatables.net https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'"
+</IfModule>
+
 # PHP session cookie path
 <IfModule mod_php.c>
     php_value session.cookie_path "/"
