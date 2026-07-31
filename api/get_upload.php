@@ -65,9 +65,11 @@ if (!isset(VK_UPLOAD_ROOTS[$type])) {
 }
 
 // A single path segment, conservative charset. Rejects '/', '\' and '..' by
-// construction rather than by blacklist.
+// construction rather than by blacklist. The first character may not be '.' (no
+// dotfiles) or '-' (never let a filename look like a CLI switch); '_' is allowed
+// because it is an ordinary character in stored filenames.
 $name = (string) ($_GET['name'] ?? '');
-if (!preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$/', $name) || str_contains($name, '..')) {
+if (!preg_match('/^[A-Za-z0-9_][A-Za-z0-9._-]{0,254}$/', $name) || str_contains($name, '..')) {
     vk_upload_fail(400, 'Invalid asset name.');
 }
 

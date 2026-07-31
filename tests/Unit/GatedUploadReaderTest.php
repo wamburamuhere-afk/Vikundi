@@ -101,17 +101,19 @@ class GatedUploadReaderTest extends TestCase
      */
     public function testNameConstraintRejectsTraversalAndSeparators(): void
     {
-        $re = '/^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$/';
+        $re = '/^[A-Za-z0-9_][A-Za-z0-9._-]{0,254}$/';
         $accept = static fn (string $n): bool => (bool) preg_match($re, $n) && !str_contains($n, '..');
 
         $this->assertTrue($accept('signature_7.png'));
         $this->assertTrue($accept('member_42.JPG'));
+        $this->assertTrue($accept('_legacy_name.png'), 'a leading underscore is an ordinary filename character');
 
         $this->assertFalse($accept('../../../etc/passwd'));
         $this->assertFalse($accept('a/b.png'));
         $this->assertFalse($accept('a\\b.png'));
         $this->assertFalse($accept('..'));
         $this->assertFalse($accept('.hidden'));
+        $this->assertFalse($accept('-rf.png'));
         $this->assertFalse($accept(''));
         $this->assertFalse($accept('x"><script>alert(1)</script>'));
     }
