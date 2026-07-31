@@ -17,7 +17,8 @@ try {
     // Basic search and ordering
     $search = $_GET['search']['value'] ?? '';
     $order_col_idx = $_GET['order'][0]['column'] ?? 0;
-    $order_dir = $_GET['order'][0]['dir'] ?? 'ASC';
+    // SEC-006: direction was concatenated raw into ORDER BY. Whitelist it.
+    $order_dir = strtolower((string) ($_GET['order'][0]['dir'] ?? 'asc')) === 'asc' ? 'ASC' : 'DESC';
     
     $cols = ['user_id', 'user_id', 'username', 'full_name', 'email', 'role_name', 'status', 'last_login'];
     $order_col = $cols[$order_col_idx] ?? 'user_id';
