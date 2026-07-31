@@ -1,7 +1,7 @@
 <?php
 // UI: complies with .claude/ui-constants.md (§UI-0…§UI-8)
 // Stores an uploaded signature image into user_signatures for the current user.
-require_once __DIR__ . '/../roots.php';
+require_once __DIR__ . '/../../roots.php';
 global $pdo;
 
 header('Content-Type: application/json');

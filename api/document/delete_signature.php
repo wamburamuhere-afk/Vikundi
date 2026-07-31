@@ -1,7 +1,7 @@
 <?php
 // UI: complies with .claude/ui-constants.md (§UI-0…§UI-8)
 // Deletes one of the current user's signatures (DB record + stored files).
-require_once __DIR__ . '/../roots.php';
+require_once __DIR__ . '/../../roots.php';
 global $pdo, $pdo_accounts;
 
 header('Content-Type: application/json');
