@@ -2,12 +2,13 @@
 header('Content-Type: application/json');
 require_once __DIR__ . '/../includes/config.php';
 
-// Check permissions (Admin only)
-session_start();
-if (!isset($_SESSION['user_id'])) {
-    echo json_encode(['success' => false, 'message' => 'Unauthorized']);
-    exit();
-}
+// Audit SEC-002: the comment said "Admin only" but the code only checked that
+// SOMEONE was logged in, so any member could dump the whole database — every
+// users.password hash and all member PII — and then fetch it via
+// api/download_backup.php. Authorisation is now enforced, not just asserted.
+require_once __DIR__ . '/../includes/require_auth.php';
+require_once __DIR__ . '/../core/permissions.php';
+requirePermissionJson('view', 'backup_restore');
 
 try {
     $root_dir = realpath(__DIR__ . '/..');

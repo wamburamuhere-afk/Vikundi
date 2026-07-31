@@ -12,14 +12,15 @@ if (!hasPermission('view_campaigns')) {
 
 try {
     $draw = $_GET['draw'] ?? 1;
-    $start = $_GET['start'] ?? 0;
-    $length = $_GET['length'] ?? 10;
+    $start = (int) ($_GET['start'] ?? 0);   // SEC-006: was interpolated into LIMIT unvalidated
+    $length = (int) ($_GET['length'] ?? 10); // SEC-006: was interpolated into LIMIT unvalidated
     $search = $_GET['search']['value'] ?? '';
     
     // Columns
     $columns = ['campaign_name', 'type', 'budget', 'spent', 'start_date', 'status'];
     $order_idx = $_GET['order'][0]['column'] ?? 0;
-    $order_dir = $_GET['order'][0]['dir'] ?? 'asc';
+    // SEC-006: direction was concatenated raw into ORDER BY. Whitelist it.
+    $order_dir = strtolower((string) ($_GET['order'][0]['dir'] ?? 'asc')) === 'asc' ? 'ASC' : 'DESC';
     $order_col = $columns[$order_idx] ?? 'start_date';
 
     $query = "SELECT * FROM marketing_campaigns WHERE 1=1";

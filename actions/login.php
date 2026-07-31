@@ -57,14 +57,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // Success - Proceed with session setup
             require_once __DIR__ . '/../core/permissions.php';
-            
+            require_once __DIR__ . '/../includes/session_guard.php';
+
+            // Audit SEC-009: issue a NEW session ID at the moment of privilege
+            // escalation. Without this the ID the browser held before
+            // authenticating is the ID it holds after, so anyone who could plant
+            // a PHPSESSID on the victim's browser is logged in as them once they
+            // sign in. Must precede the first $_SESSION write.
+            session_regenerate_id(true);
+
             $_SESSION['user_id'] = $user['user_id'];
             $_SESSION['role_id'] = $user['role_id'] ?? 0;
             $_SESSION['role'] = $user['role_name'] ?? $user['user_role'] ?? 'user';
             $_SESSION['user_role'] = $user['user_role'] ?? 'user';
             $_SESSION['preferred_language'] = $user['preferred_language'] ?? 'en';
             $_SESSION['username'] = $user['username'];
-            
+            // SEC-009: stamps for the idle and absolute bounds (includes/session_guard.php).
+            $_SESSION['login_time'] = time();
+            $_SESSION['last_activity'] = time();
+
             // Update last login timestamp
             $update_stmt = $pdo->prepare("UPDATE users SET last_login = NOW() WHERE user_id = ?");
             $update_stmt->execute([$user['user_id']]);

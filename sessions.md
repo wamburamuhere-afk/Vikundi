@@ -4,6 +4,50 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-31 — Fix: unauthenticated endpoints + session fixation — Remediation Batch 1
+**Branch:** `fix/sec-unauthenticated-endpoints` (from `develop`)
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** First write pass after the seven-agent analysis. Closes the S0 unauthenticated-access set and the session-fixation finding. Confirmed against the live host with curl and no cookie beforehand: **12 endpoints returned HTTP 200 with real data to anonymous callers** — member names with mobile numbers, spouse and children records, the group's bank balance, the chart of accounts, and the general and death expense ledgers. That test also confirmed the deployed server honours the committed `.htaccess`, which moves SEC-011 from `likely` to confirmed. Seven commits, one per finding.
+
+### Changed
+- **`app/constant/settings/ajax/get_role.php` (SEC-019):** `require_auth` + `requirePermissionJson('view','user_roles')`; `role_id` cast to int; `$e->getMessage()` echo replaced with a fixed string + `error_log()`. Done first and separately — it handed out both the per-role permission grid and the literal `role_name` string `isAdmin()` matches against (`core/permissions.php:263-274`), i.e. the reconnaissance primitive for everything else.
+- **21 endpoints (SEC-003 / SEC-004 / SEC-005):** each now requires `includes/require_auth.php` and calls `requirePermissionJson()`. Files bootstrapped on `includes/config.php` also require `core/permissions.php`, which `roots.php` would otherwise have provided. Keys were chosen to match what each **calling page already enforces**, so no legitimate user loses access: `customers` (beneficiaries, three member searches, dependents), `death_expenses` (death history + death expense list — caller `app/constant/accounts/expenses.php`), `expenses` (general expense list + details — caller `general_expenses.php`), `chart_of_accounts` (the ten `api/account` read endpoints), `document_workflow` (`get_all_documents` — caller `document/document_workflow.php`).
+- **`api/create_backup.php`, `api/download_backup.php` (SEC-002):** both said "Admin only" in a comment and checked only `isset($_SESSION['user_id'])`. Now `requirePermissionJson('view','backup_restore')`. Traversal handling in `download_backup.php` deliberately untouched — it was verified sound; only authorisation was wrong.
+- **Five `ORDER BY` sites (SEC-006):** direction whitelisted via the idiom already correct at `api/get_transactions.php:91`. `api/get_campaigns.php` also had `$start`/`$length` interpolated into `LIMIT` with no `intval()`; both now cast. Column side was already safe everywhere and is unchanged.
+- **`uploads/.htaccess`, `documents/.htaccess` (SEC-011):** directives copied verbatim from `backups/.htaccess`. **`.gitignore` also fixed** — `/uploads/*` and `/documents/*` were ignored with a negation only for `backups/.htaccess`, so both new files would have been silently dropped and never reached production.
+- **Session fixation (SEC-009):** `session_regenerate_id(true)` at `actions/login.php:67`, before the first `$_SESSION` write — there was no call to it anywhere in the codebase. New `includes/session_guard.php` provides `vk_session_expired()` / `vk_session_touch()` / `vk_session_end()`; both `header.php` and `includes/require_auth.php` enforce them.
+- **`Vikundi_Audit_Findings.md`:** retracted the "No SQL injection — prepared statements throughout" claim, citing the five sites. Recording it under "Healthy (verified)" is why they survived a prior audit unexamined.
+- **`analysis/02-security.md`:** corrected SEC-005, which listed `api/account/export_invoices.php` as open. It returns 302 to `login` (it requires `header.php`, whose `:6-9` gate redirects) and was excluded from this work.
+
+### Session timeout values, and why
+`VK_SESSION_IDLE_SECONDS = 8h`, `VK_SESSION_ABSOLUTE_SECONDS = 24h` (`includes/session_guard.php`). Deliberately generous: this system is used live during group meetings, where a treasurer's screen sits untouched for hours between entries, so an aggressive idle timeout is real friction for no real gain. 8h covers a full working day; 24h bounds a stolen or fixed session ID to at most one day. Both are named constants — tune them there. Sessions established before this ships carry neither marker and are stamped on their next request rather than being killed mid-request. This also puts a **ceiling** on SEC-010 (permissions cached at login, `reloadPermissions()` never called): a revoked permission now survives at most 24h instead of indefinitely. That is a mitigation, not the fix.
+
+### Deliberately NOT done
+- **`api/document/get_all_documents.php` still 500s.** Gated as instructed, but the fatal is unrelated to a missing table: `:2` is `require_once __DIR__ . '/../roots.php'`, which from `api/document/` resolves to `api/roots.php` — a file that does not exist. It needs `/../../`. The `documents` table exists and has all three columns the query selects. Left broken because un-breaking a never-working endpoint is a functional change needing its own caller verification; the guard is in place and correct for whoever fixes the path. Three sibling files in the same directory have the identical bug (`delete_document.php:2`, `get_collateral_documents.php:3`, `delete_collateral_document.php:3`).
+- **`api/auto_sync.php` is an unauthenticated *mutator*, not a read.** It mass-creates `users` rows from `customers`. SEC-005 classified it as a read. Gated on `edit/system_settings` rather than a view key, but it should be CLI-only or deleted — not attempted here.
+- **CSRF rollout (SEC-012)** — separate, larger work. No `require_csrf` was added to any GET endpoint.
+- **Login rate limiting** — needs a storage decision; its own change.
+- **`$e->getMessage()` echoes outside this batch's files** — ~28 further sites across `api/`. SEC-018 in full is a separate sweep.
+- **Four endpoints left ungated and tracked in the new test's exemption list**, each with its finding ID: `actions/contribution_reminders.php` (SEC-016, unauthenticated SMS to the whole membership), `api/get_products.php`, `api/get_stock_counts.php`, `api/get_sms_templates.php` (MAP §2.5, inherited BMS tree). Carried deliberately so the sweep test could ship and start protecting the tree today.
+- **`actions/auto_terminate_members.php`** still runs before the auth gate at `header.php:4` (ARCH-006).
+- No database change of any kind — no migration, no `ALTER`, no seed, no `.sql` edit.
+
+### Tests
+- **New: `tests/Unit/EndpointAuthSweepTest.php` (3 tests).** Walks `actions/`, `ajax/`, `api/` with `RecursiveDirectoryIterator` and asserts every file reaches an auth or fail-closed authorisation marker. Modelled on `NoBrokenDbIncludeTest`, previously the only whole-tree invariant in the suite. Structural exemptions (zero-byte files, the two-line `api/` → `api/account/` shims) are detected programmatically, not listed, so a new shim needs no test edit and a shim that grows logic stops qualifying. Two supporting tests keep the exemption list honest: one fails on an exemption whose file no longer exists, one fails if the sweep walks fewer than 200 files.
+- **Verified non-vacuous:** an ungated probe endpoint reading `customers.phone` was added to `api/`, the test failed naming it, and the probe was removed. A test that cannot fail is worthless; this one was proven to fail.
+- Suite: **1200 → 1203 tests, 3033 → 3036 assertions, 15 skipped, exit 0.** No existing test changed or broke.
+
+### Verification
+- `composer test` green before and after every commit; `php -l` clean on all 30 changed files.
+- **Caller tracing (the rollback risk):** every gated endpoint was traced back to its calling page, and all identified callers were confirmed behind the `header.php:6-9` gate. Eight endpoints have **no caller anywhere** in `app/`, `actions/` or non-minified `assets/` — `get_member_beneficiaries`, `get_accounts`, `get_account_types`, `get_account_categories`, `get_categories_by_type`, `get_category_details`, `get_general_expense_details`, `auto_sync` — gated anyway per the brief.
+- **Guard ordering proven statically:** all 24 gated files were token-parsed with comments stripped to confirm `requirePermissionJson()` executes before any `query()`/`prepare()`/`exec()`/`readfile()`/`header()`/`echo`. All pass.
+- **The logged-in walk-through was NOT possible in this environment** and is outstanding. The app is not served at `localhost/vikundi` here and the database is unreachable (the 15 skipped tests are the proof — they skip on `Access denied for user 'root'@'localhost'`). Before merge, someone must log in as an ordinary member and exercise: dashboard, contributions list, submit a contribution, member list, documents, expenses, and the funeral-support wizard (which drives four of the newly gated member-search endpoints).
+
+### Known regression — needs a decision before merge
+`uploads/.htaccess` denies direct HTTP access to the whole directory, which is correct for documents and signatures but **breaks two things that render uploads by direct URL**: member avatars (`app/constant/profile/my_settings.php:221`, `app/constant/profile/profile.php:828,1419,1928`) and **e-signature images on every printed voucher** (`includes/workflow_signature_row.php:94` — budget, death expense, general expense, petty cash, contribution). Reported rather than reverted, per the brief. Remedy is either a gated image reader or a scoped exception for `uploads/avatars/` and the signature path.
+
+---
+
 ## Session — 2026-07-23 — Feat: fines receivable + payout cash-basis — PR 3
 **Branch:** `feat/fines-receivable-payout-consistency`
 **Developer:** Claude Code / Jabir Mussa

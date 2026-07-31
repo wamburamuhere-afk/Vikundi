@@ -5,9 +5,15 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-if (!isset($_SESSION['user_id'])) {
-    die('Unauthorized');
-}
+// Audit SEC-002: previously any logged-in member could fetch a full mysqldump —
+// every users.password bcrypt hash and all member PII. backups/.htaccess correctly
+// denies direct HTTP access; that control was undone by this ungated reader in
+// front of it. Both guards run before any file header is emitted.
+// The path handling below (realpath + prefix + extension) was verified
+// traversal-safe and is deliberately left unchanged — only authorisation was wrong.
+require_once __DIR__ . '/../includes/require_auth.php';
+require_once __DIR__ . '/../core/permissions.php';
+requirePermissionJson('view', 'backup_restore');
 
 $filename = $_GET['file'] ?? '';
 if (empty($filename)) {

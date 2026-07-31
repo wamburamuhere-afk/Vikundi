@@ -24,7 +24,8 @@ $date_to = $_GET['date_to'] ?? '';
 
 // Get order parameters
 $orderColumnIndex = $_GET['order'][0]['column'] ?? 0;
-$orderDirection = $_GET['order'][0]['dir'] ?? 'desc';
+// SEC-006: direction was concatenated raw into ORDER BY. Whitelist it.
+$orderDirection = strtolower((string) ($_GET['order'][0]['dir'] ?? 'desc')) === 'asc' ? 'ASC' : 'DESC';
 
 // Define column mapping
 $columns = [

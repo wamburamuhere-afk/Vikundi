@@ -91,7 +91,16 @@ _Severity: 🔴 Blocker · 🟠 High · 🟡 Medium · 🟢 Low/Verify_
 
 ## ✅ Healthy (verified)
 
-- **No SQL injection** — prepared statements throughout; no request data interpolated into SQL.
+- ~~**No SQL injection** — prepared statements throughout; no request data interpolated into SQL.~~
+  **RETRACTED 2026-07-31.** This claim was false when written and is why nobody looked again.
+  Five endpoints concatenated an unvalidated `ORDER BY` direction straight from `$_GET`:
+  `ajax/get_users.php:20`, `api/account/get_expenses.php:27`, `api/get_leads.php:21`,
+  `api/get_purchase_returns.php:21`, `api/get_campaigns.php:22` — the last also interpolating
+  `$start`/`$length` into `LIMIT`. All six sites are fixed on
+  `fix/sec-unauthenticated-endpoints` (SEC-006). The *column* side was and remains safe
+  (index-into-whitelist at all ten `ORDER BY $var` sites). Prepared statements are the dominant
+  pattern (843 `prepare()` calls) but they are not universal — see MAP §6.3 for the 22
+  `query($variable)` sites that remain.
 - **No raw echo** of `$_GET/$_POST/$_REQUEST`.
 - **Password hashing** via `password_hash()`.
 - **Approval workflow guarding is solid** — `assertApprovable()` + DB transactions used consistently across approve endpoints (contribution, general expense, death expense, budget, petty cash) → double-approval protected.

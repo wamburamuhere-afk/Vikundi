@@ -1,5 +1,9 @@
 <?php
 require_once __DIR__ . '/../includes/config.php';
+// Audit SEC-003/004/005: this endpoint was reachable with no session at all.
+require_once __DIR__ . '/../includes/require_auth.php';
+require_once __DIR__ . '/../core/permissions.php';
+requirePermissionJson('view', 'expenses');
 global $pdo;
 
 header('Content-Type: application/json');
@@ -92,6 +96,7 @@ try {
         'yearTotal' => $year
     ]);
 } catch (Exception $e) {
-    echo json_encode(['error' => $e->getMessage()]);
+    error_log('get_general_expenses.php: ' . $e->getMessage()); // SEC-018
+    echo json_encode(['error' => 'An unexpected error occurred. Please try again.']);
 }
 ?>
