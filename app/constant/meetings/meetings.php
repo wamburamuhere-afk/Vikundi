@@ -222,9 +222,9 @@ $(function(){
             { data:null, render:(d,t,r,m)=>`<strong>${m.row+1}</strong>` },
             { data:'title', className:'text-start', render:(d,t,r)=>`<a href="${VIEW_URL}?id=${r.id}" class="fw-semibold text-decoration-none">${esc(d)}</a>${r.location?`<div class="text-muted" style="font-size:11px;"><i class="bi bi-geo-alt me-1"></i>${esc(r.location)}</div>`:''}` },
             { data:'meeting_date', render:d=>fmtDate(d) },
-            { data:'meeting_type', render:d=>`<span class="badge bg-${typeBadge(d)}-subtle text-${typeBadge(d)} border border-${typeBadge(d)}-subtle text-uppercase">${d}</span>` },
-            { data:'present_count', render:d=>`<span class="badge bg-light text-dark border"><i class="bi bi-people me-1"></i>${d||0}</span>` },
-            { data:'status', render:d=>`<span class="badge bg-${statusBadge(d)}">${d}</span>` },
+            { data:'meeting_type', render:d=>`<span class="badge bg-${typeBadge(d)}-subtle text-${typeBadge(d)} border border-${typeBadge(d)}-subtle text-uppercase">${esc(d)}</span>` },
+            { data:'present_count', render:d=>`<span class="badge bg-light text-dark border"><i class="bi bi-people me-1"></i>${Number(d) || 0}</span>` },
+            { data:'status', render:d=>`<span class="badge bg-${statusBadge(d)}">${esc(d)}</span>` },
             { data:null, className:'text-end', render:(d,t,r)=>actions(r) }
         ],
         order: [], dom:'lrtp',

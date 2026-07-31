@@ -436,11 +436,17 @@ function initWorkflowTable() {
             },
             {
                 data: 'progress',
-                render: data => `
+                // XSS-005: `progress` lands in a CSS width and in element text.
+                // HTML-escaping is the wrong tool for the CSS context, so the value
+                // is coerced to a bounded number once and reused for both.
+                render: data => {
+                    const pct = Math.max(0, Math.min(100, Number(data) || 0));
+                    return `
                     <div class="progress" style="height: 6px; width: 100px;">
-                        <div class="progress-bar" style="width: ${data}%"></div>
+                        <div class="progress-bar" style="width: ${pct}%"></div>
                     </div>
-                    <small class="text-muted">${data}% Complete</small>`
+                    <small class="text-muted">${pct}% Complete</small>`;
+                }
             },
             {
                 data: 'status',
@@ -450,7 +456,7 @@ function initWorkflowTable() {
                     return `<span class="badge bg-${color}-subtle text-${color} text-uppercase px-2">${data}</span>`;
                 }
             },
-            { data: 'user_count', render: data => `<i class="bi bi-people"></i> ${data} assigned` },
+            { data: 'user_count', render: data => `<i class="bi bi-people"></i> ${vkEsc(data)} assigned` }, // XSS-005
             {
                 data: null,
                 className: 'text-end',

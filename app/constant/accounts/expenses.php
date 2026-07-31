@@ -476,11 +476,14 @@ $(document).ready(function() {
         },
         columns: [
             { data: null, orderable: false, searchable: false, className: 'ps-4', render: (d, t, r, m) => m.row + 1 },
-            { data: 'expense_date' },
-            { data: 'member_name', render: d => `<strong>${d}</strong>` },
-            { data: 'phone_number', render: d => `<span class="badge bg-light text-dark border">${d}</span>` },
-            { data: 'deceased_name' },
-            { data: 'deceased_relationship' },
+            { data: 'expense_date', render: d => vkEsc(d) },
+            // XSS-001: api/get_death_expenses.php returns raw rows — escape every
+            // free-text column. deceased_name and deceased_relationship had no
+            // render, so DataTables inserted them as raw HTML.
+            { data: 'member_name', render: d => `<strong>${vkEsc(d)}</strong>` },
+            { data: 'phone_number', render: d => `<span class="badge bg-light text-dark border">${vkEsc(d)}</span>` },
+            { data: 'deceased_name', render: d => vkEsc(d) },
+            { data: 'deceased_relationship', render: d => vkEsc(d) },
             { data: 'amount', render: d => `<strong class="text-danger">${parseFloat(d).toLocaleString('en-US', {minimumFractionDigits: 2})}</strong>` },
             { data: 'status', render: d => {
                 const map = {pending:'warning',reviewed:'info',approved:'success',rejected:'danger',inactive:'secondary',paid:'primary'};

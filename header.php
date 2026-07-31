@@ -160,6 +160,38 @@ try {
     <!-- jQuery first -->
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script>
+    // ── vkEsc: the one HTML-escaping helper for client-side rendering ──────────
+    //
+    // Audit XSS-001/XSS-005. The api/ endpoints return raw database rows — they do
+    // no escaping — so anything a DataTables `render` callback interpolates into
+    // markup has to be escaped here. The knowledge was never missing: the tree
+    // already contained FIVE separate correct implementations (esc() in
+    // meetings.php and manage_voting.php, escHtml() in e_signatures.php and
+    // select_document_add_esignature.php, safeOutput() in email_center.php, plus
+    // txnEsc() in transactions.php). Five copies and no shared one is exactly why
+    // new pages kept getting written without any. This is the shared one.
+    //
+    // It deliberately escapes MORE than the $('<div>').text(s).html() idiom it
+    // replaces. That idiom relies on innerHTML serialisation, which encodes & < >
+    // but leaves quotes alone — fine for element content, unsafe the moment a
+    // value lands in an attribute, and several render callbacks do exactly that
+    // (e.g. `<span title="${d}">`). Escaping the quotes too makes one helper
+    // correct for both contexts, so callers cannot pick the wrong one.
+    //
+    // NOT sufficient for a JavaScript context or a URL scheme — for those, emit
+    // the value with json_encode() server-side or use a data- attribute. See
+    // XSS-002/003/004.
+    window.vkEsc = function (s) {
+        if (s === null || s === undefined) return '';
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    };
+    </script>
+    <script>
     // Audit H6: attach the CSRF token to every same-origin state-changing jQuery
     // AJAX request. ajaxSend is a global hook that always fires and cannot be
     // overridden by a per-call beforeSend, so it covers all $.ajax/$.post calls.

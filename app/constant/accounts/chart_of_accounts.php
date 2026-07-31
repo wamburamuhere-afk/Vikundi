@@ -579,7 +579,7 @@ $(document).ready(function() {
             },
             { 
                 data: 'status',
-                render: data => `<span class="badge bg-${data === 'active' ? 'success' : 'secondary'}">${data.charAt(0).toUpperCase() + data.slice(1)}</span>`
+                render: data => `<span class="badge bg-${data === 'active' ? 'success' : 'secondary'}">${vkEsc(data.charAt(0).toUpperCase() + data.slice(1))}</span>` // XSS-005
             },
             {
                 data: null,
