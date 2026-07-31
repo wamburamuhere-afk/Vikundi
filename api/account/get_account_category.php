@@ -1,5 +1,8 @@
 <?php
 require_once __DIR__ . '/../../roots.php';
+// Audit SEC-003/004/005: this endpoint was reachable with no session at all.
+require_once __DIR__ . '/../../includes/require_auth.php';
+requirePermissionJson('view', 'chart_of_accounts');
 global $pdo, $pdo_accounts;
 header('Content-Type: application/json');
 
@@ -27,6 +30,7 @@ try {
         echo json_encode(['success' => false, 'message' => 'Category not found']);
     }
 } catch (Exception $e) {
-    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    error_log('get_account_category.php: ' . $e->getMessage()); // SEC-018
+    echo json_encode(['success' => false, 'message' => 'An unexpected error occurred. Please try again.']);
 }
 ?>

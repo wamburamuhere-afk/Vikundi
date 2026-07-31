@@ -9,6 +9,10 @@
  * Returns Select2 format: { results: [{ id: member_id, text }] }.
  */
 require_once __DIR__ . '/../includes/config.php';
+// Audit SEC-003/004/005: this endpoint was reachable with no session at all.
+require_once __DIR__ . '/../includes/require_auth.php';
+require_once __DIR__ . '/../core/permissions.php';
+requirePermissionJson('view', 'customers');
 global $pdo;
 
 header('Content-Type: application/json');
@@ -41,6 +45,7 @@ try {
 
     echo json_encode(['results' => $results]);
 } catch (Exception $e) {
-    echo json_encode(['results' => [], 'error' => $e->getMessage()]);
+    error_log('search_expense_members.php: ' . $e->getMessage()); // SEC-018
+    echo json_encode(['results' => [], 'error' => 'An unexpected error occurred. Please try again.']);
 }
 ?>

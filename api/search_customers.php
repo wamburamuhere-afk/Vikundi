@@ -1,5 +1,9 @@
 <?php
 require_once __DIR__ . '/../includes/config.php';
+// Audit SEC-003/004/005: this endpoint was reachable with no session at all.
+require_once __DIR__ . '/../includes/require_auth.php';
+require_once __DIR__ . '/../core/permissions.php';
+requirePermissionJson('view', 'customers');
 
 header('Content-Type: application/json');
 

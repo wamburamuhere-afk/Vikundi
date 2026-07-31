@@ -1,5 +1,8 @@
 <?php
 require_once __DIR__ . '/../../roots.php';
+// Audit SEC-003/004/005: this endpoint was reachable with no session at all.
+require_once __DIR__ . '/../../includes/require_auth.php';
+requirePermissionJson('view', 'chart_of_accounts');
 global $pdo;
 
 // DataTables request
