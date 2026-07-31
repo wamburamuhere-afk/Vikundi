@@ -83,8 +83,20 @@ $_renderSigCol = function (string $label, string $name, string $role,
 
     echo '<div class="signature-line">';
 
-    if ($sigPath) {
-        $sigUrl = $base . '/' . ltrim($sigPath, '/');
+    // SEC-011: uploads/ is denied to direct HTTP, so the signature is served through
+    // the gated reader instead. $sigPath is server-side data
+    // (workflow_signatures.sig_path, copied from user_signatures.file_path) and is
+    // decomposed here into the two constrained identifiers the reader takes — the
+    // owning user id and the bare filename. No path crosses the wire. A path that
+    // does not match the expected shape yields no URL, and the block below falls
+    // back to the plain name/role line rather than emitting a broken <img>.
+    $sigUrl = '';
+    if ($sigPath && preg_match('#/uploads/signatures/(\d+)/([A-Za-z0-9][A-Za-z0-9._-]*)$#', '/' . ltrim($sigPath, '/'), $m)) {
+        $sigUrl = $base . '/api/get_upload.php?type=signature&owner=' . (int) $m[1]
+                . '&name=' . rawurlencode($m[2]);
+    }
+
+    if ($sigUrl !== '') {
         $ts = '';
         if ($signedAt) {
             $dt = new DateTime($signedAt);

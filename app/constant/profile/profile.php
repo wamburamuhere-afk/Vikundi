@@ -825,7 +825,7 @@ require_once 'header.php';
                     <!-- Avatar -->
                     <div class="mb-3 position-relative d-inline-block">
                         <?php if (!empty($member['avatar'])): ?>
-                            <img src="uploads/avatars/<?= htmlspecialchars($member['avatar'] ?? '') ?>" 
+                            <img src="<?= htmlspecialchars(vk_avatar_url($member['avatar'] ?? '')) ?>" 
                                  class="rounded-circle avatar-lg shadow" alt="Avatar"
                                  style="width: 120px; height: 120px; object-fit: cover;">
                         <?php else: ?>
@@ -1167,7 +1167,7 @@ require_once 'header.php';
                                                                     <div class="col-6"><label class="form-label small mb-1 fw-bold">House Number</label><input type="text" name="father_house_number" class="form-control form-control-sm" value="<?= htmlspecialchars($member['father_house_number']??'') ?>"></div>
                                                                     <div class="col-12">
                                                                         <label class="form-label small mb-1 fw-bold">Passport Photo <span class="text-muted fw-normal">(Optional)</span></label>
-                                                                        <?php if (!empty($member['father_photo'])): ?><div class="mb-1"><img src="<?= htmlspecialchars(getUrl('uploads/avatars/'.$member['father_photo'])) ?>" style="height:46px;width:46px;object-fit:cover;border-radius:6px;border:1px solid #ddd;"> <span class="text-muted small">Current — choose a file to replace</span></div><?php endif; ?>
+                                                                        <?php if (!empty($member['father_photo'])): ?><div class="mb-1"><img src="<?= htmlspecialchars(vk_avatar_url($member['father_photo'])) ?>" style="height:46px;width:46px;object-fit:cover;border-radius:6px;border:1px solid #ddd;"> <span class="text-muted small">Current — choose a file to replace</span></div><?php endif; ?>
                                                                         <input type="file" name="father_photo" class="form-control form-control-sm" accept="image/*">
                                                                     </div>
                                                                 </div>
@@ -1188,7 +1188,7 @@ require_once 'header.php';
                                                                     <div class="col-6"><label class="form-label small mb-1 fw-bold">House Number</label><input type="text" name="mother_house_number" class="form-control form-control-sm" value="<?= htmlspecialchars($member['mother_house_number']??'') ?>"></div>
                                                                     <div class="col-12">
                                                                         <label class="form-label small mb-1 fw-bold">Passport Photo <span class="text-muted fw-normal">(Optional)</span></label>
-                                                                        <?php if (!empty($member['mother_photo'])): ?><div class="mb-1"><img src="<?= htmlspecialchars(getUrl('uploads/avatars/'.$member['mother_photo'])) ?>" style="height:46px;width:46px;object-fit:cover;border-radius:6px;border:1px solid #ddd;"> <span class="text-muted small">Current — choose a file to replace</span></div><?php endif; ?>
+                                                                        <?php if (!empty($member['mother_photo'])): ?><div class="mb-1"><img src="<?= htmlspecialchars(vk_avatar_url($member['mother_photo'])) ?>" style="height:46px;width:46px;object-fit:cover;border-radius:6px;border:1px solid #ddd;"> <span class="text-muted small">Current — choose a file to replace</span></div><?php endif; ?>
                                                                         <input type="file" name="mother_photo" class="form-control form-control-sm" accept="image/*">
                                                                     </div>
                                                                 </div>
@@ -1253,7 +1253,7 @@ require_once 'header.php';
                                                                 </div>
                                                                 <div class="col-md-6">
                                                                     <label class="form-label fw-bold small">Passport Photo <span class="text-muted fw-normal">(Optional)</span></label>
-                                                                    <?php if (!empty($member['spouse_photo'])): ?><div class="mb-1"><img src="<?= htmlspecialchars(getUrl('uploads/avatars/'.$member['spouse_photo'])) ?>" style="height:46px;width:46px;object-fit:cover;border-radius:6px;border:1px solid #ddd;"> <span class="text-muted small">Current — choose a file to replace</span></div><?php endif; ?>
+                                                                    <?php if (!empty($member['spouse_photo'])): ?><div class="mb-1"><img src="<?= htmlspecialchars(vk_avatar_url($member['spouse_photo'])) ?>" style="height:46px;width:46px;object-fit:cover;border-radius:6px;border:1px solid #ddd;"> <span class="text-muted small">Current — choose a file to replace</span></div><?php endif; ?>
                                                                     <input type="file" name="spouse_photo" class="form-control" accept="image/*">
                                                                 </div>
                                                             </div>
@@ -1294,7 +1294,7 @@ require_once 'header.php';
                                                                             </select>
                                                                         </td>
                                                                         <td>
-                                                                            <?php if (!empty($child['photo'])): ?><img src="<?= htmlspecialchars(getUrl('uploads/avatars/'.$child['photo'])) ?>" style="height:30px;width:30px;object-fit:cover;border-radius:5px;border:1px solid #ddd;" class="mb-1"><?php endif; ?>
+                                                                            <?php if (!empty($child['photo'])): ?><img src="<?= htmlspecialchars(vk_avatar_url($child['photo'])) ?>" style="height:30px;width:30px;object-fit:cover;border-radius:5px;border:1px solid #ddd;" class="mb-1"><?php endif; ?>
                                                                             <input type="file" name="child_photo[]" class="form-control form-control-sm border-0 bg-transparent" accept="image/*">
                                                                         </td>
                                                                         <td class="text-center">
@@ -1416,7 +1416,7 @@ require_once 'header.php';
                                           <div class="vk-passport d-none d-print-block ms-3">
                                               <div class="vk-passport-frame">
                                                   <?php if (!empty($member['avatar'])): ?>
-                                                      <img src="uploads/avatars/<?= htmlspecialchars($member['avatar'] ?? '') ?>" alt="Passport photo">
+                                                      <img src="<?= htmlspecialchars(vk_avatar_url($member['avatar'] ?? '')) ?>" alt="Passport photo">
                                                   <?php else: ?>
                                                       <span class="vk-passport-hint"><?= $isSw_b ? 'Ambatanisha picha hapa' : 'Affix photo here' ?></span>
                                                   <?php endif; ?>
@@ -1925,7 +1925,7 @@ require_once 'header.php';
                     <div class="text-center p-3 bg-light rounded-4">
                         <div id="avatarPreview" class="mb-0">
                             <?php if (!empty($member['avatar'])): ?>
-                                <img src="uploads/avatars/<?= htmlspecialchars($member['avatar'] ?? '') ?>" 
+                                <img src="<?= htmlspecialchars(vk_avatar_url($member['avatar'] ?? '')) ?>" 
                                      class="rounded-circle shadow avatar-preview" alt="Current Avatar"
                                      style="width: 140px; height: 140px; object-fit: cover;">
                             <?php else: ?>

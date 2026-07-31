@@ -1,6 +1,6 @@
 <?php
 // ajax/delete_collateral_document.php
-require_once __DIR__ . '/../roots.php';
+require_once __DIR__ . '/../../roots.php';
 global $pdo, $pdo_accounts;
 
 header('Content-Type: application/json');
@@ -9,6 +9,13 @@ if (!isset($_SESSION['user_id'])) {
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit();
 }
+
+// The preceding check is authentication only, with no ownership test — it deletes
+// any collateral_attachments row by id. That was harmless while this file fataled
+// on an unresolvable roots.php require; correcting that path (previous commit)
+// makes it reachable, so authorisation has to exist before it does. Keyed on the
+// seeded loan_collaterals permission, which ordinary members do not hold.
+requirePermissionJson('delete', 'loan_collaterals');
 
 $id = (int)($_POST['id'] ?? 0);
 

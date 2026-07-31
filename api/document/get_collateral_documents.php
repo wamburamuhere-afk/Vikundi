@@ -1,6 +1,6 @@
 <?php
 // ajax/get_collateral_documents.php
-require_once __DIR__ . '/../roots.php';
+require_once __DIR__ . '/../../roots.php';
 global $pdo, $pdo_accounts;
 
 header('Content-Type: application/json');

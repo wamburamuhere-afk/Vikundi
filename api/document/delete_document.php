@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../roots.php';
+require_once __DIR__ . '/../../roots.php';
 global $pdo;
 
 header('Content-Type: application/json');
