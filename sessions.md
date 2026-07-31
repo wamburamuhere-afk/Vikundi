@@ -4,6 +4,59 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-07-31 — Fix: loose ends + first database verification — Remediation Batch 2
+**Branch:** `fix/batch2-loose-ends` (from `develop`)
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Closes the live regression Batch 1 knowingly shipped, fixes a require-path bug that had been silently disabling twelve endpoints since before the analysis began, resolves the `api/auto_sync.php` classification, and runs the first database verification in the whole three-phase analysis. Six commits.
+
+### Changed
+- **`api/get_upload.php` (new) + `helpers.php`, `includes/workflow_signature_row.php`, `profile.php`, `my_settings.php` — SEC-011.** Batch 1's `uploads/.htaccess` deny closed a real exposure and blanked member avatars and the e-signature images on printed vouchers. The deny **stays**; rendering is restored through a gated reader instead of the filesystem. The client never supplies a path — it supplies a `type` from a fixed whitelist plus one or two constrained identifiers, and the server owns the base directory. Signatures additionally take an `owner` id and the pair must match a real `user_signatures` row, so an arbitrary file dropped into the directory is still unreachable. `realpath()` + prefix containment as the backstop (shape copied from `api/download_backup.php:18-25`), Content-Type from a whitelist keyed on the *resolved* extension, and a `getimagesize()` check so a renamed script can never be served as an image. 9 render sites repointed — Batch 1 identified 4 avatar sites, there were 8, plus the signature row.
+- **12 files — unresolvable `roots.php` require path.** `api/document/*.php` used `__DIR__ . '/../roots.php'`, which from `api/document/` resolves to `api/roots.php` — nonexistent. `api/account/update_reconciliation_status.php` had the mirror-image bug with one level too many. The brief named four files; a tree-wide sweep found twelve, all the same defect.
+- **`api/document/delete_collateral_document.php`** — gated on `requirePermissionJson('delete','loan_collaterals')`. See "Scope excursions" below.
+- **`analysis/02-security.md`** — SEC-005's `api/auto_sync.php` classification corrected in full.
+- **`analysis/09-db-verification.md` (new)** — database verification results, one verdict per finding.
+
+### The guard-before-require question (item 2)
+This was the rollback risk, so it was checked before anything was edited. **In all twelve files the guard sits after the require and before any write**, so correcting the path makes the guard *run* rather than bypassing it. Five of the twelve write. Their authorisation, verified individually: `delete_document.php` admin-or-owner; `upload_signature.php` and `delete_signature.php` scope to the session user in SQL (`WHERE id = ? AND user_id = ?`); `quick_upload_document.php` and `upload_signed_document.php` use `uploaded_by`; `update_reconciliation_status.php` uses `canEdit`. **The single exception was `delete_collateral_document.php`** — authentication only, no ownership test, deleting any `collateral_attachments` row by id. That was inert while the file fataled; un-breaking it without gating it would have traded a 500-by-accident for an authenticated-any-member delete, so it was gated in its own commit.
+
+### `api/auto_sync.php` — resolved (item 3)
+Neither Batch 1's reading nor SEC-005's is right. It is an **unauthenticated identity-write endpoint that is dead by accident**. It inserts into `users` with `password_hash('123456')` — a hard-coded default — at `status='active'`, and echoes the usernames it creates back to the caller, so had it been reachable the attack was: hit the URL, read the usernames out of the response, log in as any member. That is S0, not the S0-as-read SEC-005 records. It is not reachable because `:2` is `require_once 'includes/config.php'` — a *bare relative* path, the only one in `api/`, `actions/` or `ajax/` — which does not resolve when the file is served directly, and the file is unrouted. The protection is a typo. It also hard-codes `role_id = 15` for Member while **Member is `role_id 13`** and role 15 does not exist, so every account it created would carry an orphan role — which per SEC-008 falls back to role name `'user'` and **fails open** on the member self-access checks. Batch 1's gate at `:4-6` sits after the fatal and does not run today, but is correctly positioned if the path is ever fixed. **Item 2 deliberately did not touch this file.** Recommendation: **delete it**; not implemented, flagged for decision.
+
+### Database verification (item 4)
+**No production credentials were available in this environment**, so the read-only block ran against the local `vikundi` database (182 tables, 338 users, 326 customers, 573 contributions) — populated and plausibly a restored copy, but **not production**. `analysis/09-db-verification.md` grades every verdict by how well it transfers and lists the five queries that must still be run on production. Headlines:
+- **MERGED-ENGINE (S0) CONFIRMED** — 72 MyISAM / 110 InnoDB, exactly as predicted from the stale dump. `users` is MyISAM **and** latin1; `loans` is a second latin1 table the analysis had not identified. The InnoDB migration stands as the next structural priority.
+- **The ledger is empty** — `journal_entries`, `journal_entry_items`, `chart_of_accounts`, `accounts`, `expenses`, `transactions` all 0, and `journal_entries.transaction_id` is absent. The reachability triage holds; SEC-001 stays S3/DEAD-today with its activation dependency intact.
+- **DATA-002 (S0) CONFIRMED AND SIZED — 12 orphan contributions, TSh 600,000**, counted in the dashboard fund and invisible to every member statement. That is a quarter of the approved fund (TSh 2,401,000). The fix now needs a reconciliation decision for those twelve rows, not just a code change.
+- **`STRICT_TRANS_TABLES` is on**, resolving the register's one DISPUTED row (FIN-007 → S3/DEAD).
+- **Five findings de-escalate on evidence:** FIN-007, FIN-009 (0 AGM rows *and* 0 `initial_savings`), FIN-011 (no `''` status rows), DATA-003 (no member has both representations), and the chart-of-accounts half of SEC-005 (`accounts` is empty, so that endpoint leaked an empty result set).
+
+### ⚠️ New live defect found by the verification — not fixed
+`roles.role_name_sw` is declared in `database/schema_sync.sql` but **absent from the live schema**, and three sites read it. `app/constant/accounts/print_petty_cash.php:20` has it unconditionally in the main `SELECT`, so **the petty-cash voucher printout fatals**; `app/constant/communication/message_center.php:179,194` fatal for Swahili users only. Verified by executing the query shape: `SQLSTATE[42S22]: Unknown column 'r1.role_name_sw'`. No static pass could have found this — the code and the committed dump agree with each other and only the live schema disagrees. It is exactly the class `database/check_schema_drift.php` was written for and cannot catch (DATA-011: it scans `INSERT` column lists only). **Not fixed** — rule 5 forbids schema changes, rule 7 forbids work outside the four items. **Confirm on production first**; if production has the column, only this local database is affected.
+
+### Scope excursions, stated plainly
+1. **Item 2 widened from 4 files to 12.** Same bug, same fix, same directory; fixing four and leaving eight identical broken paths would have been arbitrary. All twelve verified guard-after-require first.
+2. **One line beyond the brief**: gating `delete_collateral_document.php`, because my own path fix created the exposure. Separate commit so it reverts independently.
+
+### Deliberately NOT done
+- **`api/auto_sync.php` not deleted and its `:2` path not fixed** — deletion is flagged for a decision, and fixing the path would arm the endpoint.
+- **`role_name_sw` not fixed** — needs either a migration or three code edits; both out of batch.
+- **The petty-cash printout could not be visually verified** for the restored signature, because it fatals on `role_name_sw` in this database.
+- **`uploads/` 403 not re-verified locally** — PHP's built-in server does not process `.htaccess`. It is confirmed 403 in production per the Batch 1 follow-up, and the file is unchanged.
+- CSRF rollout (SEC-012), login rate limiting, the ~28 remaining `getMessage()` echoes, SEC-016's unauthenticated SMS endpoint, ARCH-006, and the four endpoints tracked in `EndpointAuthSweepTest`'s exemption list.
+- **No database change of any kind.** No `ALTER`, `INSERT`, `UPDATE`, `DELETE`, migration or schema edit. Item 4 was `SELECT`/`SHOW` only.
+
+### Tests
+- **New: `tests/Unit/GatedUploadReaderTest.php` (11 tests, 35 assertions).** Behavioural coverage of `vk_avatar_url()` (including that it reduces a stored path to its basename and returns `''` rather than emitting a broken `<img>`), assertions that the auth guard precedes `readfile()` and that containment and the MIME whitelist are present, the name-constraint regex asserted as behaviour, and a whole-tree check that no page renders an avatar or signature by direct `uploads/` URL any more.
+- Suite: **1203 → 1214 tests, 3036 → 3071 assertions, 15 skipped, exit 0.** No existing test changed or broke.
+
+### Verification
+- `composer test` green before and after every commit; `php -l` clean on all changed files.
+- **The gated reader was exercised against a running `php -S` instance**, not just read: unauthenticated → 401 JSON (the auth gate fires *before* input validation, so an anonymous caller cannot even probe it); authenticated + valid avatar → PNG magic bytes; `../../includes/config.php` → 400; `-rf.png` → 400; unknown type → 400; signature with no matching DB row → 404. The probe image and the dev server were removed afterwards.
+- **A real bug was caught by that exercise** and fixed in its own commit: the original name regex required a leading alphanumeric, rejecting any filename starting with `_`. No filename the application generates is affected, but the restriction had no security value; leading `.` and `-` are still rejected.
+- All twelve require-path fixes verified by re-running the resolution sweep — no unresolvable `roots.php` require remains anywhere in the tree.
+
+---
+
 ## Session — 2026-07-31 — Fix: unauthenticated endpoints + session fixation — Remediation Batch 1
 **Branch:** `fix/sec-unauthenticated-endpoints` (from `develop`)
 **Developer:** Claude Code / Jabir Mussa
