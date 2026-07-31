@@ -1,0 +1,17 @@
+# Block all direct HTTP access to uploaded files.
+# Uploads include member documents stored with access_level='private', member
+# e-signature images (a document-forgery input) and contribution evidence, none
+# of which may be fetchable by URL alone. Root .htaccess:28-31 otherwise serves
+# any existing non-PHP file directly, bypassing vk_user_can_access_document()
+# entirely (audit SEC-011).
+#
+# PHP filesystem reads are unaffected: gated readers such as
+# downloadDocumentLocal() (app/constant/document/document_library.php:180-188)
+# readfile() the path server-side and never make an HTTP request.
+Require all denied
+
+# Fallback for older Apache (2.2-style), harmless on 2.4.
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>
