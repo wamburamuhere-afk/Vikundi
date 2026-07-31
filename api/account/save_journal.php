@@ -5,6 +5,7 @@ global $pdo;
 
 // Ensure authentication
 if (!isset($_SESSION['user_id'])) {
+    http_response_code(401); // audit: refusal must not return HTTP 200
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit();
 }
@@ -12,11 +13,13 @@ if (!isset($_SESSION['user_id'])) {
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['user_id'])) {
+    http_response_code(401); // audit: refusal must not return HTTP 200
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit();
 }
 
 if (!canCreate('journals')) {
+    http_response_code(403); // audit: refusal must not return HTTP 200
     echo json_encode(['success' => false, 'message' => 'Permission denied']);
     exit();
 }

@@ -12,6 +12,7 @@ header('Content-Type: application/json');
 // member_approvals page (isAdmin covers Chairman/Mwenyekiti/Treasurer/Secretary),
 // so whoever can see the "Action Required" count can also load the list.
 if (empty($_SESSION['user_id']) || (!isAdmin() && !canView('customers'))) {
+    http_response_code(401); // audit: refusal must not return HTTP 200
     echo json_encode(['error' => 'Access Denied']);
     exit;
 }
