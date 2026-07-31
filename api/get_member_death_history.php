@@ -1,6 +1,10 @@
 <?php
 // File: api/get_member_death_history.php
 require_once __DIR__ . '/../includes/config.php';
+// Audit SEC-003/004/005: this endpoint was reachable with no session at all.
+require_once __DIR__ . '/../includes/require_auth.php';
+require_once __DIR__ . '/../core/permissions.php';
+requirePermissionJson('view', 'death_expenses');
 global $pdo;
 
 header('Content-Type: application/json');
@@ -14,6 +18,7 @@ try {
 
     echo json_encode(['success' => true, 'history' => $history]);
 } catch (Exception $e) {
-    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    error_log('get_member_death_history.php: ' . $e->getMessage()); // SEC-018
+    echo json_encode(['success' => false, 'message' => 'An unexpected error occurred. Please try again.']);
 }
 ?>

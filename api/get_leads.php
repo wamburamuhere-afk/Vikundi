@@ -18,7 +18,8 @@ try {
     $length = isset($_GET['length']) ? intval($_GET['length']) : 10;
     $search = isset($_GET['search']['value']) ? $_GET['search']['value'] : '';
     $order_column_index = isset($_GET['order'][0]['column']) ? intval($_GET['order'][0]['column']) : 0;
-    $order_dir = isset($_GET['order'][0]['dir']) ? $_GET['order'][0]['dir'] : 'desc';
+    // SEC-006: direction was concatenated raw into ORDER BY. Whitelist it.
+    $order_dir = strtolower((string) ($_GET['order'][0]['dir'] ?? 'desc')) === 'asc' ? 'ASC' : 'DESC';
 
     // Filters
     $status = isset($_GET['status']) ? $_GET['status'] : '';

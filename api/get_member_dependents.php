@@ -1,5 +1,8 @@
 <?php
 require_once __DIR__ . '/../roots.php';
+// Audit SEC-003/004/005: this endpoint was reachable with no session at all.
+require_once __DIR__ . '/../includes/require_auth.php';
+requirePermissionJson('view', 'customers');
 global $pdo;
 
 header('Content-Type: application/json');
@@ -106,6 +109,7 @@ try {
 
     echo json_encode(['success' => true, 'dependents' => $dependents]);
 } catch (Exception $e) {
-    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    error_log('get_member_dependents.php: ' . $e->getMessage()); // SEC-018
+    echo json_encode(['success' => false, 'message' => 'An unexpected error occurred. Please try again.']);
 }
 ?>

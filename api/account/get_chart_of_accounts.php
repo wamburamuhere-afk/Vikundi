@@ -1,6 +1,9 @@
 <?php
 // api/get_chart_of_accounts.php
 require_once __DIR__ . '/../../roots.php';
+// Audit SEC-003/004/005: this endpoint was reachable with no session at all.
+require_once __DIR__ . '/../../includes/require_auth.php';
+requirePermissionJson('view', 'chart_of_accounts');
 global $pdo, $pdo_accounts;
 
 // Enable CORS if needed
@@ -173,6 +176,7 @@ try {
     echo json_encode($response);
 
 } catch (Exception $e) {
+    error_log('get_chart_of_accounts.php: ' . $e->getMessage()); // SEC-018
     // Handle errors
     $response = [
         'draw' => isset($draw) ? $draw : 1,
@@ -180,7 +184,7 @@ try {
         'recordsFiltered' => 0,
         'data' => [],
         'success' => false,
-        'message' => 'Error fetching accounts: ' . $e->getMessage()
+        'message' => 'An unexpected error occurred. Please try again.'
     ];
     
     echo json_encode($response);

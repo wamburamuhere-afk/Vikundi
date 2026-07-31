@@ -9,6 +9,15 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+// Audit SEC-009: enforce the idle and absolute session bounds on every UI page.
+require_once __DIR__ . '/includes/session_guard.php';
+if (vk_session_expired()) {
+    vk_session_end();
+    header("Location: login?expired=1");
+    exit();
+}
+vk_session_touch();
+
 $_SESSION['user_id'];
 
 // One lookup for the header's identity + role — was two separate reads of the same

@@ -1,6 +1,9 @@
 <?php
 // ajax/get_accounts.php
 require_once __DIR__ . '/../../roots.php';
+// Audit SEC-003/004/005: this endpoint was reachable with no session at all.
+require_once __DIR__ . '/../../includes/require_auth.php';
+requirePermissionJson('view', 'chart_of_accounts');
 global $pdo, $pdo_accounts;
 header('Content-Type: application/json');
 
@@ -38,9 +41,10 @@ try {
     ]);
     
 } catch (Exception $e) {
+    error_log('get_accounts.php: ' . $e->getMessage()); // SEC-018
     echo json_encode([
         'success' => false,
-        'message' => 'Error loading accounts: ' . $e->getMessage()
+        'message' => 'An unexpected error occurred. Please try again.'
     ]);
 }
 ?>
