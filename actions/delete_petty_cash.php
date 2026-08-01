@@ -20,6 +20,7 @@ $user_id = $_SESSION['user_id'] ?? 0;
 $voucher_id = $_POST['id'] ?? 0;
 
 if (!$user_id || !$voucher_id) {
+    http_response_code(401); // audit: refusal must not return HTTP 200
     echo json_encode(['success' => false, 'message' => 'Unauthorized or missing parameters']);
     exit();
 }

@@ -7,6 +7,7 @@ header('Content-Type: application/json');
 
 // Check permission
 if (!hasPermission('view_leads')) {
+    http_response_code(403); // audit: refusal must not return HTTP 200
     echo json_encode(['error' => 'Permission denied']);
     exit;
 }

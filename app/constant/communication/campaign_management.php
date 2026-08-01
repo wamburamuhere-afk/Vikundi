@@ -256,7 +256,7 @@ $(document).ready(function() {
         columns: [
             { 
                 data: 'campaign_name',
-                render: (data, t, row) => `<strong>${data}</strong><br><small class="text-muted">${row.target_audience || 'Broad Target'}</small>`
+                render: (data, t, row) => `<strong>${vkEsc(data)}</strong><br><small class="text-muted">${vkEsc(row.target_audience || 'Broad Target')}</small>` // XSS-005
             },
             {
                 data: 'type',
@@ -281,7 +281,7 @@ $(document).ready(function() {
             },
             {
                 data: 'start_date',
-                render: (data, t, row) => `<small>${data} to<br>${row.end_date || 'Ongoing'}</small>`
+                render: (data, t, row) => `<small>${vkEsc(data)} to<br>${vkEsc(row.end_date || 'Ongoing')}</small>` // XSS-005
             },
             {
                 data: 'status',

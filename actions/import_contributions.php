@@ -13,6 +13,7 @@ require_once __DIR__ . '/../includes/transaction_import.php';
 require_once __DIR__ . '/../roots.php';
 
 if (!isset($_SESSION['user_id'])) {
+    http_response_code(401); // audit: refusal must not return HTTP 200
     die("Unauthorized access. Please login first.");
 }
 

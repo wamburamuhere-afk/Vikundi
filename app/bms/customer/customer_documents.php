@@ -57,7 +57,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['document_file'])) {
     if ($response['success']) {
         echo '<script>alert("Document uploaded successfully!");</script>';
     } else {
-        echo '<script>alert("Error: ' . $response['message'] . '");</script>';
+        // XSS-004: json_encode with JSON_HEX_TAG so a '</script>' in the message
+        // cannot terminate the block; HTML escaping would not have helped here.
+        echo '<script>alert(' . json_encode('Error: ' . $response['message'],
+            JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ');</script>';
     }
 }
 
@@ -68,7 +71,9 @@ if ($action === 'delete' && isset($_GET['doc_id'])) {
     if ($response['success']) {
         echo '<script>alert("Document deleted successfully!");</script>';
     } else {
-        echo '<script>alert("Error: ' . $response['message'] . '");</script>';
+        // XSS-004: see the upload branch above.
+        echo '<script>alert(' . json_encode('Error: ' . $response['message'],
+            JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ');</script>';
     }
 }
 
@@ -531,8 +536,10 @@ function checkExpiredDocuments($pdo, $customer_id) {
                                                     </a>
                                                     <?php if ($_SESSION['user_role'] === 'Admin'): ?>
                                                     <button type="button" 
-                                                            class="btn btn-outline-danger" 
-                                                            onclick="confirmDelete(<?= $doc['id'] ?>, '<?= htmlspecialchars($doc['document_name']) ?>')"
+                                                            <?php /* XSS-003: data- attribute + dataset. */ ?>
+                                                            class="btn btn-outline-danger js-confirm-delete"
+                                                            data-doc-id="<?= (int) $doc['id'] ?>"
+                                                            data-doc-name="<?= safe_output($doc['document_name'], '') ?>"
                                                             title="Delete Document">
                                                         <i class="bi bi-trash"></i>
                                                     </button>
@@ -589,6 +596,14 @@ function checkExpiredDocuments($pdo, $customer_id) {
 function resetUploadForm() {
     document.getElementById('uploadForm').reset();
 }
+
+// XSS-003: delegated handler replacing the inline onclick.
+document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.js-confirm-delete');
+    if (!btn) return;
+    e.preventDefault();
+    confirmDelete(btn.dataset.docId, btn.dataset.docName);
+});
 
 function confirmDelete(docId, docName) {
     $('#deleteDocName').text(docName);

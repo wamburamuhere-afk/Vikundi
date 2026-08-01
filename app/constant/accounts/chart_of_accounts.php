@@ -133,7 +133,10 @@ try {
                                                     <?php if (canDelete('chart_of_accounts')): ?>
                                                     <li><hr class="dropdown-divider"></li>
                                                     <li>
-                                                        <a class="dropdown-item text-danger" href="#" onclick="deleteCategory(<?= $category['category_id'] ?>, '<?= htmlspecialchars($category['category_name']) ?>')">
+                                                        <?php /* XSS-003: data- attribute + dataset, so the name is never JS source. */ ?>
+                                                        <a class="dropdown-item text-danger js-delete-category" href="#"
+                                                           data-category-id="<?= (int) $category['category_id'] ?>"
+                                                           data-category-name="<?= safe_output($category['category_name'], '') ?>">
                                                             <i class="bi bi-trash"></i> Delete
                                                         </a>
                                                     </li>
@@ -579,7 +582,7 @@ $(document).ready(function() {
             },
             { 
                 data: 'status',
-                render: data => `<span class="badge bg-${data === 'active' ? 'success' : 'secondary'}">${data.charAt(0).toUpperCase() + data.slice(1)}</span>`
+                render: data => `<span class="badge bg-${data === 'active' ? 'success' : 'secondary'}">${vkEsc(data.charAt(0).toUpperCase() + data.slice(1))}</span>` // XSS-005
             },
             {
                 data: null,
@@ -722,6 +725,14 @@ function deleteAccount(accountId, accountName) {
     document.getElementById('deleteForm').action = '/api/account/delete_account.php';
     new bootstrap.Modal(document.getElementById('deleteModal')).show();
 }
+
+// XSS-003: delegated handler replacing the inline onclick.
+document.addEventListener('click', function (e) {
+    const el = e.target.closest('.js-delete-category');
+    if (!el) return;
+    e.preventDefault();
+    deleteCategory(el.dataset.categoryId, el.dataset.categoryName);
+});
 
 function deleteCategory(categoryId, categoryName) {
     document.getElementById('deleteModalTitle').textContent = 'Delete Category';

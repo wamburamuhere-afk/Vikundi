@@ -13,6 +13,7 @@ if (!isset($_SESSION['user_id'])) {
 
 // Check permission
 if (!canCreate('customers')) {
+     http_response_code(403); // audit: refusal must not return HTTP 200
      echo json_encode(['success' => false, 'message' => 'Permission denied']);
      exit;
 }

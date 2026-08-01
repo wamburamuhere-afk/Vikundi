@@ -26,6 +26,32 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// ── Security headers (audit XSS-006) ─────────────────────────────────────────
+// These are also declared in .htaccess, but that block is wrapped in
+// <IfModule mod_headers.c> and mod_headers is NOT enabled on every host — it is
+// absent from mods-enabled on the development box, where the .htaccess block is
+// therefore inert. Setting them here as well means the control cannot silently
+// fail to apply, which is exactly how the uploads/.htaccess fix in Batch 1 nearly
+// shipped as a no-op. Where mod_headers IS enabled, its `Header always set` runs
+// after PHP and simply replaces these — no duplication.
+//
+// The CSP is REPORT-ONLY on purpose. 151 inline <script> blocks, 688 inline event
+// handlers, 55 javascript: hrefs and 896 inline style attributes make
+// 'unsafe-inline' load-bearing today; enforcing without it would break the app.
+if (!headers_sent()) {
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: SAMEORIGIN');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    header(
+        "Content-Security-Policy-Report-Only: default-src 'self'; "
+        . "script-src 'self' 'unsafe-inline' https://code.jquery.com https://cdn.datatables.net https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
+        . "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.datatables.net https://fonts.googleapis.com; "
+        . "font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
+        . "img-src 'self' data:; connect-src 'self'; frame-ancestors 'self'; "
+        . "base-uri 'self'; form-action 'self'; object-src 'none'"
+    );
+}
+
 // Start the buffer to capture content
 if (ob_get_level() === 0) ob_start();
 

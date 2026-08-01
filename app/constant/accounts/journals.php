@@ -323,7 +323,7 @@ $(document).ready(function() {
             },
             { 
                 data: 'status',
-                render: data => `<span class="badge bg-${getStatusBadgeClass(data)}">${data.charAt(0).toUpperCase() + data.slice(1)}</span>`
+                render: data => `<span class="badge bg-${getStatusBadgeClass(data)}">${vkEsc(data.charAt(0).toUpperCase() + data.slice(1))}</span>` // XSS-005
             },
             { 
                 data: 'created_by_name',

@@ -255,11 +255,14 @@ $(document).ready(function() {
                 searchable: false,
                 render: (data, type, row, meta) => `<strong>${meta.row + 1}</strong>`
             },
-            { data: 'expense_date' },
-            { data: 'member_name', render: d => `<strong>${d}</strong>` },
-            { data: 'phone_number', render: d => `<span class="badge bg-light text-dark border">${d}</span>` },
-            { data: 'deceased_name' },
-            { data: 'deceased_relationship', render: d => `<span class="small text-muted">${d}</span>` },
+            { data: 'expense_date', render: d => vkEsc(d) },
+            // XSS-001: api/get_death_expenses.php returns raw rows, so every free-text
+            // column must be escaped here. deceased_name had no render at all, so
+            // DataTables was inserting it as raw HTML.
+            { data: 'member_name', render: d => `<strong>${vkEsc(d)}</strong>` },
+            { data: 'phone_number', render: d => `<span class="badge bg-light text-dark border">${vkEsc(d)}</span>` },
+            { data: 'deceased_name', render: d => vkEsc(d) },
+            { data: 'deceased_relationship', render: d => `<span class="small text-muted">${vkEsc(d)}</span>` },
             { data: 'amount', render: d => `<strong class="text-danger">${formatCurrency(d)}</strong>` },
             { 
                 data: 'status',

@@ -12,11 +12,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 if (!isAuthenticated()) {
+    http_response_code(401); // audit: refusal must not return HTTP 200
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit();
 }
 
 if (!canApprove('petty_cash')) {
+    http_response_code(403); // audit: refusal must not return HTTP 200
     echo json_encode(['success' => false, 'message' => 'You do not have permission to approve petty cash vouchers.']);
     exit();
 }

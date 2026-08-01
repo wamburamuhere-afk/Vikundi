@@ -397,7 +397,7 @@ $(document).ready(function() {
             { data: 'description' },
             { data: null, render: (d, t, r) => renderChargedTo(r) },
             { data: 'amount', render: d => `<strong class="text-danger">${formatCurrency(d)}</strong>` },
-            { data: 'status', render: d => `<span class="badge bg-${getStatusBadgeClass(d)}">${d ? d.charAt(0).toUpperCase()+d.slice(1) : 'Pending'}</span>` },
+            { data: 'status', render: d => `<span class="badge bg-${getStatusBadgeClass(d)}">${vkEsc(d ? d.charAt(0).toUpperCase()+d.slice(1) : 'Pending')}</span>` }, // XSS-005
             {
                 data: null, className: 'text-end',
                 render: (d, t, r) => `
