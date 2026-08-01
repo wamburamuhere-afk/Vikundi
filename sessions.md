@@ -4,6 +4,71 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-08-01 — Fix: escaping, headers and response hygiene — Remediation Batch 3
+**Branch:** `fix/batch3-escaping` (from `develop`)
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Closes the XSS findings from `analysis/08-xss.md`, adds the security headers the app never had, and stops refusals returning HTTP 200. Also settles the last open S0 question in the whole analysis — the answer is that **no S0 exists**. Seven commits, all code; no schema change of any kind. The MyISAM→InnoDB migration is deliberately not here.
+
+### Changed
+- **`header.php` — one shared escaping helper (`window.vkEsc`), plus 15 render sites across 13 files (XSS-001, XSS-005).** The `api/` feeds return raw database rows, so escaping has to happen client-side, and of 26 server-side DataTables only five did it. The cause was missing reuse, not missing knowledge: the tree already held **five** correct private implementations. `vkEsc` deliberately escapes more than the `$('<div>').text(s).html()` idiom it replaces — that idiom leaves quotes alone, which is fine for element content and unsafe the moment a value lands in an attribute, and several callbacks do exactly that.
+- **Five JavaScript-context sites rewired to `data-` attributes + delegated handlers (XSS-002, XSS-003, XSS-004).** `customer_group_details.php`, `customer_group_members.php`, `chart_of_accounts.php`, `customer_documents.php` (delete button), and the two inline `<script>` alerts in `customer_documents.php` (now `json_encode` with `JSON_HEX_TAG`). The four handler functions are unchanged — they only ever used the name in text contexts, so they were never the defect.
+- **`.htaccess` and `roots.php` — security headers (XSS-006).** `X-Content-Type-Options`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy`, and a **report-only** CSP.
+- **68 refusal sites across 63 files patched with a status code; 1 converted (Item 5).**
+- **`analysis/08-xss.md`** — Item 3's verdict and coverage gap #5 recorded.
+
+### Item 3 verdict — the last open S0 question is CLOSED, and there is no S0
+`actions/process_registration.php` is public and writes **76 distinct `$_POST` fields** into `customers`; `reg_valid_name()` guards exactly **two** of them. Every render of the other 74 was traced — spouse, children (`child_name[]`), parents, guarantor, next-of-kin, `middle_name`, religion, birth region and all address components. **All of them escape**, via `safe_output()` on `customer_details.php` and `edit_customer.php`, `htmlspecialchars()` on `profile.php`'s child table, and `member_statement.php` only counting rather than rendering. `ajax/get_member_beneficiaries.php` returns spouse and children as JSON but has no consumer anywhere in `app/`. The XSS-007 validation asymmetry is real but not currently reachable to an unescaped sink; its fix stays worthwhile because the safety now rests entirely on output escaping being universal across six surfaces.
+
+### `message_center.php:317` does NOT render request-derived input
+`$message = trim($_POST['message'])` at `:14` cannot reach `:317`, for two independent reasons: `:315` is `foreach ($success_messages as $message)`, which rebinds it; and `:141-142` unconditionally reset both message arrays **after** the handlers at `:64-135` populate them. `$error_messages` is therefore always empty at render, so the `$e->getMessage()` values pushed at `:64,92,108,135` never reach `:326` either. **Side effect, not fixed:** that reset ordering means every success and error message this page's POST handlers raise is silently discarded — sending, deleting, archiving or marking a message read gives the user no feedback.
+
+### What enforcing the CSP would require
+Measured inline surface: **151 inline `<script>` blocks, 688 inline event handlers, 55 `javascript:` hrefs, 896 inline `style` attributes.** So `'unsafe-inline'` is load-bearing for both `script-src` and `style-src` today, and the policy ships **report-only**. To enforce:
+1. **688 inline handlers → delegated listeners.** Item 2 did five and the pattern is established (`data-` attribute + `closest()` handler). Mechanical but large — the bulk of the work.
+2. **55 `javascript:` hrefs → `type="button"` or `href="#"` + handler.** Small.
+3. **151 inline `<script>` blocks → external files, or a per-request nonce** threaded through `roots.php` into every block. A nonce is far cheaper than extracting 151 blocks and is the realistic route.
+4. **896 inline `style` attributes → classes**, or keep `'unsafe-inline'` for `style-src` only, which is a much weaker concession than allowing it for scripts. Recommended: fix scripts, leave styles.
+5. Watch the report-only violation reports first for anything the static count missed.
+Rough order: **1–2 weeks** for 1–3 with a nonce, and the report-only header should sit in production for a couple of weeks before anyone attempts it.
+
+### Status codes: patched vs converted
+- **Patched 68 sites across 63 files** — `http_response_code()` inserted immediately before the existing `echo`; `401` for authentication failures, `403` where the message is specifically a permission denial. Purely additive: no response body and no control flow changed.
+- **Converted 1 file** — `api/document/delete_document.php`, which threw `Exception('Unauthorized')` inside a `try` so the `catch` echoed it at HTTP 200 and the mechanical pass could not reach it. Now on `includes/require_auth.php`. Its admin-or-owner authorisation is untouched.
+- The rest keep their hand-rolled bodies, flagged for the consolidation onto `requirePermissionJson`/`require_auth` the analysis recommends — that is a behavioural change per endpoint and does not belong in a mechanical pass.
+
+### `safe_output(0)` — investigated, recommendation is DO NOT CHANGE the function
+`safe_output()` tests `!empty($value)`, so `0` and `"0"` both render `'N/A'`. Measured across all **351** call sites (175 on live pages):
+- **No money value passes through it.** Money is rendered by `number_format()` (184 sites) and `format_currency()` (79), neither of which has the falsy problem. The concern in `analysis/08-xss.md` that "a voucher with a zero balance" would show N/A **does not hold** — that was my inference and it is wrong.
+- The 32 numeric-looking arguments are almost all **identifiers** — `reference_number`, `account_code`, `voucher_no`, `registration_number`, `nida_number` — where a zero value is not meaningful.
+- **Exactly one live site can display a genuine zero:** `app/bms/customer/customer_details.php:285`, `safe_output($c['age'])` — an infant under one year old shows `N/A` instead of `0`.
+
+**Recommendation: fix the one site, not the function.** Changing `!empty()` would alter the output of 351 call sites to correct a single cosmetic defect, and the function already takes an explicit default — so `safe_output($c['age'], '0')` fixes it in isolation with zero blast radius. Not changed in this batch, as instructed.
+
+### Deliberately NOT done
+- **The MyISAM→InnoDB migration**, per the brief. It remains the top structural priority.
+- **`safe_output()` itself** — see above; the one affected call site is left for a decision.
+- **`message_center.php`'s discarded status messages** — a real functional bug, out of scope for a security batch.
+- **The remaining hand-rolled refusal bodies** (~110 sites) — flagged for consolidation.
+- **XSS-007's validation extension** — applying `reg_valid_name()` to the other name fields and to the member import. Defence in depth; no sink is currently reachable.
+- **`sms_templates.php:243`** interpolates `${JSON.stringify(row)}` into an HTML attribute. Not on the brief's list and not obviously exploitable, but `JSON.stringify` does not HTML-escape, so a quote in any row value would break the attribute. Flagged, not touched.
+- **`roles.role_name_sw`** (Batch 2 finding) still breaks the petty-cash printout — needs a schema change.
+- **No database or schema change of any kind.**
+
+### Tests
+- **New: `tests/Unit/ClientSideEscapingTest.php` (4 tests, 11 assertions).** A whole-tree invariant matching the arrow + template-literal `render` form specifically — the shape that carried every finding, and the one an earlier `render: function(){…}` scan missed entirely. Add an unescaped render on any live page and it goes red. It also pins that `vkEsc` exists in `header.php`, escapes both quote characters, and is defined before DataTables loads.
+- **Proven non-vacuous:** an unescaped render was reintroduced into `death_expenses.php`, the test failed naming the file and line, and it was restored.
+- **The test found six sites the brief's list did not** — status columns on `journals.php`, `chart_of_accounts.php` and `manage_fines.php`, and `meeting_type`/`status` on `meetings.php`, which had `esc()` and simply had not applied it to those two columns. Two more needed a *different* fix: `document_workflow.php`'s `progress` lands in a CSS `width:` and `meetings.php`'s `present_count` is a count, so both are coerced to bounded numbers rather than escaped.
+- Suite: **1214 → 1218 tests, 3071 → 3082 assertions, 15 skipped, exit 0.** No existing test changed or broke.
+
+### Verification
+- `composer test` green before and after every commit; `php -l` clean on all changed files.
+- **Item 2 verified by execution, both directions.** With payload `';alert(document.domain);//`: the old form renders `onclick="removeMember(1, '&#039;;…')"`, the HTML parser decodes the entity, and the JS engine receives `removeMember(1, '';alert(document.domain);//')` — string closes, `alert()` runs as a statement. The new form renders `data-customer-name="&#039;;…"`, `dataset.customerName` returns the literal string, and it is never parsed as JavaScript.
+- **Item 4 verified against a running server:** all four headers present on a real page request, login page still renders. **`mod_headers` is NOT enabled on the development Apache**, so the `.htaccess` block alone would have been inert — which is why the headers are also set in `roots.php`. That is the Batch 1 `.gitignore` lesson applied: a control that silently fails to apply is worse than no control.
+- **Item 5 verified unauthenticated against a running server:** `delete_document` 401, `get_collateral_documents` 401, `delete_collateral_document` 401, `get_all_documents` 401, plus spot checks on `save_journal` 401, `get_backup_list` 401, `fetch_petty_cash` 401.
+- **Not verified:** no page was exercised as a logged-in user, so the repointed render callbacks and the delegated click handlers are confirmed by inspection and by unit test, not by clicking them. Someone should open the funeral-support grid, a customer group page and the chart-of-accounts delete dialog before merge.
+
+---
+
 ## Session — 2026-07-31 — Fix: loose ends + first database verification — Remediation Batch 2
 **Branch:** `fix/batch2-loose-ends` (from `develop`)
 **Developer:** Claude Code / Jabir Mussa

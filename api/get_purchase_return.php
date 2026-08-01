@@ -6,6 +6,7 @@ require_once __DIR__ . '/../helpers.php';
 header('Content-Type: application/json');
 
 if (!canView('purchase_returns')) {
+    http_response_code(403); // audit: refusal must not return HTTP 200
     echo json_encode(['success' => false, 'message' => 'Permission denied']);
     exit;
 }

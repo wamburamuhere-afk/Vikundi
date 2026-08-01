@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../roots.php';
 global $pdo;
 
 if (!isAuthenticated()) {
+    http_response_code(401); // audit: refusal must not return HTTP 200
     die('Unauthorized access');
 }
 

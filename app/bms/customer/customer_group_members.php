@@ -282,9 +282,11 @@ function formatCustomerName($customer) {
                                         </a>
                                         <?php if ($group['group_type'] === 'static'): ?>
                                         <button type="button" 
-                                                class="btn btn-outline-danger" 
                                                 title="Remove from Group"
-                                                onclick="removeMember(<?= $member['customer_id'] ?>, '<?= addslashes($customer_name) ?>')">
+                                                <?php /* XSS-002 — see customer_group_details.php. */ ?>
+                                                class="btn btn-outline-danger js-remove-member"
+                                                data-customer-id="<?= (int) $member['customer_id'] ?>"
+                                                data-customer-name="<?= $customer_name ?>">
                                             <i class="bi bi-person-dash"></i>
                                         </button>
                                         <?php endif; ?>
@@ -539,6 +541,14 @@ function clearSearch() {
     $('#searchAvailableCustomers').val('');
     $('.customer-row').show();
 }
+
+// XSS-002: delegated handler replacing the inline onclick. See customer_group_details.php.
+document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.js-remove-member');
+    if (!btn) return;
+    e.preventDefault();
+    removeMember(btn.dataset.customerId, btn.dataset.customerName);
+});
 
 function removeMember(customerId, customerName) {
     if (!confirm('Remove ' + customerName + ' from this group?')) {

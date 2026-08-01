@@ -1,14 +1,16 @@
 <?php
 require_once __DIR__ . '/../../roots.php';
+// Converted to the central guard: the old `throw new Exception('Unauthorized')`
+// inside the try was caught below and echoed with HTTP 200, so an anonymous caller
+// was refused but told "success" at the protocol level. require_auth emits a real
+// 401 and exits. The admin-or-owner authorisation further down is unchanged — only
+// the authentication step moved.
+require_once __DIR__ . '/../../includes/require_auth.php';
 global $pdo;
 
 header('Content-Type: application/json');
 
 try {
-    if (!isAuthenticated()) {
-        throw new Exception('Unauthorized');
-    }
-
     $document_id = isset($_POST['document_id']) ? (int)$_POST['document_id'] : 0;
 
     if ($document_id <= 0) {

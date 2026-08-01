@@ -409,7 +409,7 @@ $(document).ready(function() {
                 data: 'document_name',
                 render: (data, t, row) => `<strong>${escapeHtml(data)}</strong><br><small class="text-muted">${escapeHtml(row.description || '')}</small>`
             },
-            { data: 'document_type', render: data => `<span class="badge bg-light text-dark border">${data}</span>` },
+            { data: 'document_type', render: data => `<span class="badge bg-light text-dark border">${vkEsc(data)}</span>` }, // XSS-005
             { data: 'original_filename', render: (d, t, r) => `<span class="small text-muted">${escapeHtml(d)}</span>` },
             { data: 'file_size', render: d => d ? (d/1024).toFixed(1) + ' KB' : '0 KB' },
             { data: 'uploaded_at', render: d => d ? d.split(' ')[0] : 'N/A' },

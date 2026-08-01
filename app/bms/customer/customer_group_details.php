@@ -349,9 +349,16 @@ $operator_display = [
                                                 </a>
                                                 <?php if ($group['group_type'] === 'static'): ?>
                                                 <button type="button" 
-                                                        class="btn btn-outline-danger" 
                                                         title="Remove from Group"
-                                                        onclick="removeMember(<?= $group_id ?>, <?= $member['customer_id'] ?>, '<?= addslashes($customer_name) ?>')">
+                                                        <?php /* XSS-002: the name is passed as a data- attribute and read via
+                                                           dataset, so it never becomes JavaScript source. Previously
+                                                           addslashes(safe_output($name)) — safe_output turns ' into &#039;, so
+                                                           addslashes found no quote to escape, and the HTML parser decoded the
+                                                           entity back to a live quote before the JS engine saw it. */ ?>
+                                                        class="btn btn-outline-danger js-remove-member"
+                                                        data-group-id="<?= (int) $group_id ?>"
+                                                        data-customer-id="<?= (int) $member['customer_id'] ?>"
+                                                        data-customer-name="<?= $customer_name ?>">
                                                     <i class="bi bi-person-dash"></i>
                                                 </button>
                                                 <?php endif; ?>
@@ -475,6 +482,15 @@ function exportGroupMembers(groupId) {
     // Trigger export
     window.location.href = 'api/export_group_members.php?group_id=' + groupId;
 }
+
+// XSS-002: delegated handler replacing the inline onclick. The member name
+// arrives through dataset as a plain string and is never parsed as JavaScript.
+document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.js-remove-member');
+    if (!btn) return;
+    e.preventDefault();
+    removeMember(btn.dataset.groupId, btn.dataset.customerId, btn.dataset.customerName);
+});
 
 function removeMember(groupId, customerId, customerName) {
     if (!confirm('Remove ' + customerName + ' from this group?')) {

@@ -7,6 +7,7 @@ require_once __DIR__ . '/../roots.php';
 
 // Check permissions (basic check for now)
 if (!isset($_SESSION['user_id'])) {
+    http_response_code(401); // audit: refusal must not return HTTP 200
     die("Unauthorized access");
 }
 

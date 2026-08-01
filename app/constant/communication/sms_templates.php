@@ -224,7 +224,7 @@ $(document).ready(function() {
             },
             { 
                 data: 'template_type',
-                render: data => `<span class="badge bg-light text-dark border">${data}</span>`
+                render: data => `<span class="badge bg-light text-dark border">${vkEsc(data)}</span>` // XSS-005
             },
             { 
                 data: 'is_active',

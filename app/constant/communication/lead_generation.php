@@ -248,11 +248,11 @@ $(document).ready(function() {
         columns: [
             { 
                 data: 'first_name',
-                render: (data, t, row) => `<strong>${data} ${row.last_name}</strong><br><small class="text-muted"><i class="bi bi-person-badge"></i> ID: ${row.lead_id}</small>`
+                render: (data, t, row) => `<strong>${vkEsc(data)} ${vkEsc(row.last_name)}</strong><br><small class="text-muted"><i class="bi bi-person-badge"></i> ID: ${vkEsc(row.lead_id)}</small>` // XSS-005
             },
             { 
                 data: 'email',
-                render: (data, t, row) => `<div>${data}</div><small class="text-muted">${row.phone}</small>`
+                render: (data, t, row) => `<div>${vkEsc(data)}</div><small class="text-muted">${vkEsc(row.phone)}</small>` // XSS-005
             },
             { data: 'source' },
             { 

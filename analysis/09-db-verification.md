@@ -7,23 +7,35 @@ No `ALTER`, `INSERT`, `UPDATE`, `DELETE`, migration or schema change of any kind
 
 ## ⚠️ Read this before using any figure below
 
+> **CORRECTION (added after first publication).** This file originally described the local database
+> as "populated and looks like a restored copy or a working sync", inferring that from its size and
+> from a member count close to the ~327 figure in
+> `Vikundi_System_Quality_Pass_24_July_2026.html`. **That inference was wrong. The database holds
+> demo data.** Confirmed by the project owner.
+>
+> This does not change the structural verdicts — engines, charsets, missing columns and absent
+> indexes are properties of the schema, which is built from the same migration scripts regardless of
+> what rows are in it. **It does invalidate every verdict derived from a row count**, which means
+> Blocks B (row counts), D, E, F, G and I below must be read as "what the demo dataset contains",
+> not as evidence about production. Each affected verdict is marked inline.
+>
+> Most consequential: **DATA-002's "12 orphan rows, TSh 600,000" is a demo-data figure and must not
+> be quoted as a production number.** The orphan *mechanism* is confirmed by code reading and is
+> unaffected; the size is unknown until the query runs on production.
+
 **These queries did not run against production.** No credentials for `bjptechn_vikundi` were
 available in this environment — no `~/.my.cnf`, nothing in the environment, and
-`includes/config.php` points at a local database.
-
-They ran against the **local `vikundi` database**, which is populated and looks like a restored
-copy or a working sync: 182 tables, 338 `users`, 326 `customers`, 573 `contributions`, 1,148
-`activity_logs`. The member count is consistent with the ~327 figure in
-`Vikundi_System_Quality_Pass_24_July_2026.html`.
+`includes/config.php` points at a local database holding demo data (182 tables, 338 `users`,
+326 `customers`, 573 `contributions`, 1,148 `activity_logs`).
 
 How much each verdict transfers:
 
 | Question type | Transfers to production? | Why |
 |---|---|---|
-| **Storage engine / charset** (Block A) | **Very likely** | Engines are set at `CREATE TABLE` from the same dumps and migration scripts. But DATA-012 established `sync_schema.php` is create-only, so a table created on production at a different time *could* differ. |
+| **Storage engine / charset** (Block A) | **Very likely** | Engines are set at `CREATE TABLE` from the same dumps and migration scripts, independently of what data is loaded. But DATA-012 established `sync_schema.php` is create-only, so a table created on production at a different time *could* differ. |
 | **Column existence** (B2, J) | **Very likely**, and already proven divergent — see the `role_name_sw` finding, which is itself an instance of the drift |
 | **`sql_mode`** (Block C) | **Unknown** — this is server configuration, not schema. Must be re-run on production. |
-| **Row counts** (B1, D, E, F, G, I) | **Indicative only** | Production has been live longer. `activity_logs` in particular will be far larger. |
+| **Row counts** (B1, D, E, F, G, I) | **NOT TRANSFERABLE — demo data** | These say what the demo dataset contains and nothing more. An absence here is not evidence of absence in production, and a count here is not a production quantity. |
 
 Everything below is labelled with the confidence that follows from this table. **Re-run Block A and
 Block C against production before acting on the engine migration.**
@@ -180,11 +192,12 @@ issue, not an active trust problem. **Re-rate S3, LATENT.**
 them and no row has them. The dead branches in `includes/finance.php:49` and
 `contribution_standing.php:118,266` are confirmed dead. Harmless today, exactly as reported.
 
-**Worth flagging, outside the finding set:** 524 of 573 contributions (91%, TSh 7,968,000) sit at
-`pending`. Only TSh 2,401,000 is approved and therefore counted by `getGroupFundBalance()`. Whether
-that is a real backlog or an artefact of this database is a question for the group, not a code
-defect — but if it reflects production, the dashboard Balance is showing roughly a quarter of the
-money the group has actually collected.
+**Previously flagged here, now withdrawn:** an earlier version of this block observed that 91% of
+contributions sit at `pending` and speculated that, if it reflected production, the dashboard
+Balance would be showing a fraction of the money collected. **That was demo data and the inference
+is withdrawn** — a demo dataset that was never taken through the approval workflow would look
+exactly like this for reasons that say nothing about the group. The status-vocabulary verdict above
+still stands, because it rests on the enum definition rather than on the row counts.
 
 ---
 
@@ -229,22 +242,30 @@ consistent with a dataset in which entrance payments are indistinguishable from 
 
 ### Verdict
 
-**DATA-002, S0 — CONFIRMED AND SIZED. This is the most consequential result in this pass.**
+**DATA-002, S0 — MECHANISM CONFIRMED. Size unknown: the figures below are demo data.**
 
-Twelve contribution rows point at a `customer_id` that no longer exists, all of them `approved`.
+> **Corrected.** This block originally read "CONFIRMED AND SIZED … the most consequential result in
+> this pass" and quoted the amounts as though they were the group's money. The database holds demo
+> data, so **the quantities are meaningless and must not be repeated in any report.** The
+> divergence mechanism is unaffected — it is established by reading the two query sites, not by
+> counting rows.
 
-- `includes/finance.php:49` sums `contributions` with **no join**, so all TSh 600,000 **is counted
+Twelve contribution rows in the demo dataset point at a `customer_id` that no longer exists, all of
+them `approved`. What that demonstrates is the mechanism, which is real and is a code property:
+
+- `includes/finance.php:49` sums `contributions` with **no join**, so an orphaned row **is counted
   in the group fund shown on the dashboard**.
-- `includes/contribution_standing.php:115-120` **joins `customers`**, so the same TSh 600,000 is
-  **absent from every member statement and from `cs_group_savings_total()`**.
+- `includes/contribution_standing.php:115-120` **joins `customers`**, so the same row is **absent
+  from every member statement and from `cs_group_savings_total()`**.
 
-So two figures both labelled as the group's money differ by **TSh 600,000** right now, and because
-the member rows are gone there is no way to attribute it. Against the TSh 2,401,000 of approved
-contributions, that is **exactly a quarter of the approved fund** — not a rounding artefact.
+Any orphan therefore causes two figures both labelled as the group's money to diverge permanently,
+with no way to attribute the difference once the member row is gone. That holds regardless of
+dataset.
 
-This confirms the mechanism the finding predicted, gives the fix a concrete target, and means the
-DATA-002 remediation must include a reconciliation decision for these twelve rows (reattribute,
-write off, or reinstate the members), not just a code change.
+**What is not established:** whether production has any orphans, how many, or what they total. The
+query in §9 must run against `bjptechn_vikundi` before the remediation is scoped, because DATA-002's
+fix needs a reconciliation decision for whatever real records exist (reattribute, write off, or
+reinstate the members) and that decision cannot be made from a demo figure.
 
 ---
 
@@ -390,26 +411,36 @@ production first**: if production has the column, only this local database is af
 | Finding | Was | Now | Basis |
 |---|---|---|---|
 | **MERGED-ENGINE** (DATA-001/FIN-016/FIN-017) | S0 LIVE | **S0 LIVE — confirmed** | 72 MyISAM incl. `users` and all money tables |
-| **DATA-002** | S0 LIVE | **S0 LIVE — confirmed, sized at TSh 600,000 / 12 rows** | Block F |
+| **DATA-002** | S0 LIVE | **S0 LIVE — mechanism confirmed, size UNKNOWN** | Block F (demo data — quantity not transferable) |
 | **DATA-010** | S2 `likely` | **S2 `confirmed`** | `users` is MyISAM, so the FK cannot be created |
 | **DATA-013** | S2 | **S2 — confirmed, `loans` is a second latin1 table** | Block A |
 | **DATA-016** | S3 | **S3 — confirmed, 0 rows in all 64** | Block I |
 | **FIN-007** | S3 **DISPUTED** | **S3 DEAD — resolved** | `STRICT_TRANS_TABLES` on ⇒ the insert throws |
-| **FIN-009** | S1 LIVE | **S2 LATENT** | 0 AGM rows *and* 0 `initial_savings` |
-| **FIN-011** | S2 `likely` | **S3 LATENT** | no `''` status rows exist |
-| **DATA-003** | S1 LIVE | **S2 LATENT** | no member has both representations |
-| **SEC-005** | S0 LIVE | **S0 LIVE — resized** | the chart-of-accounts half exposed empty tables |
-| **SEC-013** | S3 ACTIVATED-BY | **unchanged — now certain** | `expenses` confirmed empty |
-| **PERF-001** | S2 | **S2 — confirmed, 90% is `Viewed` noise** | Block G |
+| **FIN-009** | S1 LIVE | **unchanged pending production** | 0 AGM rows / 0 `initial_savings` **in demo data only** |
+| **FIN-011** | S2 `likely` | **unchanged pending production** | no `''` status rows **in demo data only** |
+| **DATA-003** | S1 LIVE | **unchanged pending production** | no member has both representations **in demo data only** |
+| **SEC-005** | S0 LIVE | **S0 LIVE — unchanged** | the `accounts`-empty observation is demo data; do not resize on it |
+| **SEC-013** | S3 ACTIVATED-BY | **unchanged** | `expenses` empty in demo data; not proof for production |
+| **PERF-001** | S2 | **S2 — shape confirmed, ratio is demo data** | Block G |
 | **I18N-005** | S2 | **S2 → escalate: live fatal** | column absent; 3 readers, incl. a printed voucher |
 
-Net: **five findings de-escalate** (FIN-007, FIN-009, FIN-011, DATA-003, and the accounts half of
-SEC-005), **five are confirmed at their existing severity**, and **one new live defect** was found
-that no static pass could have seen.
+**Corrected net.** The original version of this section claimed "five findings de-escalate". That was
+wrong: **four of those five de-escalations rested on the absence of rows in a demo dataset**, and an
+absence there says nothing about production. FIN-009, FIN-011, DATA-003 and the `accounts`/`expenses`
+observations behind SEC-005 and SEC-013 all revert to their pre-verification severity and stay on the
+work list until the same queries run against `bjptechn_vikundi`.
 
-The two S0s that drive the action list — **MERGED-ENGINE and DATA-002 — both survive verification
-intact.** Nothing in this pass reduces the case for the InnoDB migration or the member-deletion fix;
-Block F strengthens the second considerably by putting a number on it.
+What genuinely survives, because it is schema-derived rather than data-derived:
+
+- **MERGED-ENGINE (S0) — confirmed.** 72 MyISAM tables including `users` and every money table.
+- **DATA-010, DATA-013 — confirmed.** `users` is MyISAM and latin1; `loans` is a second latin1 table.
+- **FIN-003 — confirmed.** `journal_entries.transaction_id` does not exist.
+- **I18N-005 — escalated to a live fatal.** `roles.role_name_sw` is absent while three sites read it.
+- **FIN-007 — resolved**, on `sql_mode`, which is server configuration rather than data. Re-confirm
+  on production, as already flagged.
+
+**DATA-002 keeps its S0 on the strength of the code, not the count.** The two query sites diverge by
+construction; only the magnitude was demo-derived, and that has been struck.
 
 ---
 
