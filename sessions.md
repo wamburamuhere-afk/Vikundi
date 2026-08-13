@@ -4,6 +4,42 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-08-13 — Feat: Member Statement of Transactions — Statements PR 4
+**Branch:** `feat/member-statement-transactions` (from `develop`)
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** The second statement. Same skeleton, same member, same money — laid out by **when it arrived** rather than which months it covers. New page `app/constant/reports/member_transactions.php`, route `member_transactions`, two new module functions. No schema change.
+
+### The difference, and the risk
+One 100,000 payment in January is a **single January event** here and **five covered months** on the Contributions statement. That difference is why the group asked for two documents. It is also the risk: two pages describing the same member's money that disagree on the total are worse than one page, because now nobody knows which to believe.
+
+### So the tie-out is enforced, not hoped for
+- **`cs_member_transactions()` uses exactly the filter `cs_member_schedule()` sums over**, and a test asserts that filter appears twice in the module rather than being retyped. The moment one query accepts a row the other rejects, the statements contradict each other.
+- **`customers.initial_savings` has no date**, so it cannot sit in a month. It shows as an **Opening Brought Forward** line — what a bank statement does with a balance carried in — so opening + dated receipts equals the Contributions total instead of quietly falling short.
+- **Fines are listed but excluded from the contribution total.** The group counts a fine as a real transaction so it appears in the ledger with its own summary line; it is not savings, so it never inflates the figure the two statements must agree on.
+
+Two tests pin the invariant directly, including the case where money received in one calendar year covers months in the next: the **yearly** figures legitimately differ between documents, the **grand totals** may not.
+
+### Nothing here is ever marked "unpaid"
+A transactions statement records what happened. An empty month means no payment arrived — not that the member defaulted. The arrears judgement belongs on the contributions statement, where the target lives. A test enforces that no `unpaid` state can render on this page.
+
+A payment dated before the anchor stretches the grid back to include it: money that exists must never be dropped by a boundary the member did not choose.
+
+### Added
+- **`cs_transaction_grid()`** — pure; buckets dated amounts into the same year × month shape so `stmt_calendar()` and `cs_year_summary()` render both documents.
+- **`cs_member_transactions()`** — dated receipts under the schedule's filter.
+- **`stmt_legend($isSw, 'transactions')`** — three states only (received / none / before joining).
+- Reciprocal links between the two member statements.
+
+### Tests
+`tests/Unit/TransactionStatementTest.php` — 13 tests, 37 assertions. Verified non-vacuous by two mutations: dropping pre-anchor payments, and letting same-month payments overwrite rather than accumulate.
+
+Suite: 1255 → **1268 tests, 3328 assertions, 15 skipped, exit 0**.
+
+### Database Changes
+None.
+
+---
+
 ## Session — 2026-08-13 — Feat: Member Statement of Contributions (NSSF layout) — Statements PR 3
 **Branch:** `feat/member-statement-contributions` (from `develop`)
 **Developer:** Claude Code / Jabir Mussa
