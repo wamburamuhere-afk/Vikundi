@@ -85,6 +85,47 @@ class TransactionStatementTest extends TestCase
         $this->assertSame(285000.0, $this->gridTotal($trans));
     }
 
+    public function testBothStatementsAgreeOnTargetAndVarianceNotJustTotal(): void
+    {
+        // Production member #1, and the case that caught a real contradiction:
+        // receipts dated Jan and Feb 2026 against a join date of 21 Jul 2026.
+        //
+        // The transaction grid must stretch BACK to show that early money, but it
+        // must not bill the months it stretched over. Moving the billing anchor with
+        // the display anchor charged eight months instead of two, and the two
+        // deployed statements printed variances of 125,000 and 245,000 for the same
+        // member. Comparing only the Actual column missed it entirely.
+        $asOf   = new DateTime('2026-08-13');
+        $events = [
+            ['date' => '2026-01-15', 'amount' => 200000.0],
+            ['date' => '2026-02-28', 'amount' => 85000.0],
+        ];
+
+        $sched   = cs_build_schedule(285000, 0, 20000, 0, '2026-01-01', '2026-07-21', $asOf);
+        $contrib = cs_year_summary(cs_calendar_grid($sched, $asOf));
+        $trans   = cs_year_summary(cs_transaction_grid($events, 20000, $sched['anchor_ym'], $asOf));
+
+        $this->assertSame(40000.0, $trans['total']['target'], 'two elapsed months since joining, not eight');
+        $this->assertSame($contrib['total']['target'], $trans['total']['target']);
+        $this->assertSame($contrib['total']['actual'], $trans['total']['actual']);
+        $this->assertSame($contrib['total']['variance'], $trans['total']['variance']);
+        $this->assertSame(245000.0, $trans['total']['variance']);
+    }
+
+    public function testEarlyMoneyIsStillShownEvenThoughItIsNotBilled(): void
+    {
+        // The other half of the same rule: not billing those months must not hide them.
+        $grid = cs_transaction_grid(
+            [['date' => '2026-01-15', 'amount' => 200000.0]],
+            20000, '2026-07-01', new DateTime('2026-08-13')
+        );
+
+        $jan = $grid['years'][2026][1];
+        $this->assertSame(200000.0, $jan['allocated'], 'the money must appear');
+        $this->assertSame('received', $jan['status'], 'and be marked as received, not as pre-join');
+        $this->assertSame(0.0, $jan['target'], 'but that month is not billed');
+    }
+
     // -------------------------------------------------------------------------
     // Receipts land on the month they arrived
     // -------------------------------------------------------------------------
