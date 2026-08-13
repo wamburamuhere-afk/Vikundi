@@ -22,9 +22,16 @@ class MemberStatementSavingsTest extends TestCase
 
     public function testScheduleComesFromTheSharedModule(): void
     {
-        $this->assertStringContainsString('$sched = cs_member_schedule($pdo, $member_id);', $this->src);
-        // The mapped fields the display relies on.
-        $this->assertStringContainsString("\$distribution         = \$sched['distribution'];", $this->src);
+        // The page must never re-derive the schedule. It now passes an "as of" so the
+        // group can reprint an earlier month without the figures moving to today.
+        $this->assertMatchesRegularExpression(
+            '/\$sched\s*=\s*cs_member_schedule\(\$pdo,\s*\$member_id,\s*\$as_of\)/',
+            $this->src
+        );
+        // The calendar and the Target/Actual block are derived from that same schedule,
+        // not recomputed — one source of truth all the way to the page.
+        $this->assertStringContainsString('cs_calendar_grid($sched, $as_of)', $this->src);
+        $this->assertStringContainsString('cs_year_summary($grid)', $this->src);
         $this->assertStringContainsString("\$entrance_status      = \$sched['entrance_status'];", $this->src);
         $this->assertStringContainsString("\$total_months_covered = \$sched['total_months_covered'];", $this->src);
     }
@@ -41,17 +48,24 @@ class MemberStatementSavingsTest extends TestCase
 
     public function testAdvanceRowLabelStaysLocalisedInTheView(): void
     {
-        // The advance/credit label is a display concern and stays in the page (i18n),
-        // appended only when the module reports money beyond the shown months.
-        $this->assertStringContainsString("if (\$sched['advance'] > 0)", $this->src);
-        $this->assertStringContainsString("'ZIADA (ADVANCE)' : 'ADVANCE / CREDIT'", $this->src);
+        // Money the schedule could not lay on any month must still reach the reader.
+        // It used to be a fake 13th column labelled "ADVANCE / CREDIT", which broke the
+        // twelve-month grid; it is now carried through cs_calendar_grid() as
+        // `unallocated` and printed as a bilingual note under the summary total.
+        $layout = file_get_contents(__DIR__ . '/../../includes/statement_layout.php');
+        $this->assertStringContainsString("\$t['unallocated'] > 0", $layout);
+        $this->assertStringContainsString("number_format(\$t['paid'], 0)", $layout);
+        $this->assertStringContainsString('Total contributed:', $layout);
+        $this->assertStringContainsString('Jumla aliyotoa:', $layout);
     }
 
     public function testOpeningTileIsShown(): void
     {
-        // The statement still renders the M-Koba opening balance from $opening (mapped
-        // from the module result).
-        $this->assertStringContainsString('M-Koba Savings', $this->src);
-        $this->assertStringContainsString('number_format($opening, 0)', $this->src);
+        // The M-Koba opening balance must stay visible — it once read 0 for every
+        // imported member, which is the bug the standing module was built to end.
+        // It now sits in the Contribution Details panel rather than a KPI tile.
+        $this->assertStringContainsString('Opening (M-Koba)', $this->src);
+        $this->assertStringContainsString('Akiba ya M-Koba', $this->src);
+        $this->assertStringContainsString('$money($opening)', $this->src);
     }
 }

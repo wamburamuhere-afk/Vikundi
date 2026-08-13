@@ -4,6 +4,47 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-08-13 — Feat: Member Statement of Contributions (NSSF layout) — Statements PR 3
+**Branch:** `feat/member-statement-contributions` (from `develop`)
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** The statement the group actually asked for, in the NSSF layout they handed us as the model. New shared skeleton `includes/statement_layout.php`; `member_statement.php` rebuilt on it plus PR 1's calendar engine. No schema change.
+
+### Added — `includes/statement_layout.php`
+The skeleton once, not four times (member/group × contributions/transactions): organisation header, two-column details panel, full-width benefits band, year-by-month grid, summary, legend, and one stylesheet for screen and print. Functions take plain arrays and echo — no DB access, no globals — so a page decides *what* to show and this file decides *how it looks*.
+
+### The statement now renders
+- Header with group name, logo and registration, titled with the group's exact wording — **"Member Statement of Contributions as of AUG 2026"**
+- **MEMBER DETAILS** from the registration record · **CONTRIBUTION DETAILS** (monthly target, entrance, opening, total, expected, surplus/deficit, months covered)
+- **CONDOLENCES** where NSSF puts "LAST PAID BENEFIT DETAILS" — for this group the benefit *is* the condolence paid when a member loses a beneficiary
+- **CONTRIBUTIONS BREAKDOWN** — one row per year, twelve month columns, colour-coded
+- **SUMMARY** — Target / Actual / Variance per year, then the grand total
+
+### Two decisions that decide whether the document survives a meeting
+- **A pre-join month renders blank and grey, never `0` in red.** A zero in a money column reads as "paid nothing", which is an accusation rather than a fact — and the member it is aimed at is sitting at the table.
+- **Months past "as of" carry no target**, so paying a year ahead reads as a *surplus*, not an overpayment. The live statement currently does the opposite: production member #1 shows JUL 2026 → AUG 2027 all green against a target of 280,000, billing twelve months that have not happened. This PR ends that.
+
+Also: an **"as of" control**, capped at the current month — a statement must say when it was true, and an earlier month must be reprintable without the figures moving to today. Registration fields print an em-dash when unset; production has no registration number or logo, and a blank line is honest where a plausible "Reg/2026/001" would not be.
+
+### Six existing tests failed, and none was wrong to exist
+All six pinned **exact source literals** for behaviour that survives in a different shape. Each was re-pointed at the property it actually protects, not deleted:
+
+| test | property preserved |
+|---|---|
+| `testScheduleComesFromTheSharedModule` ×2 | the page must never re-derive the schedule — now `cs_member_schedule($pdo, $member_id, $as_of)` |
+| `testAdvanceRowLabelStaysLocalisedInTheView` | advance money must still reach the reader — now a bilingual note under the total, instead of a fake 13th column that broke the twelve-month grid |
+| `testOpeningTileIsShown` | the M-Koba opening must stay visible (it once read 0 for every imported member) — now a panel row |
+| `testStatementPrintsLandscapeAndReadable`, `testGridFlowsOntoPageOne` | landscape, no microscopic fonts, no year row split across a page break — rules moved into the shared skeleton |
+
+### Tests
+`tests/Unit/StatementLayoutTest.php` — 16 tests, 49 assertions, which **render the functions and read the output** rather than grepping source for expected strings. That is deliberate: this codebase already carries tests that assert on their own inline copies of production logic and pass while the product changes underneath them (see PR 2). Covers pre-join blanks, paid/partial/unpaid/advance states, twelve columns per year, translated headings, bracketed deficits, the no-monthly-rule total, HTML escaping, and the permission gate — which restyling must never quietly relax.
+
+Suite: 1237 → **1253 tests, 3286 assertions, 15 skipped, exit 0**.
+
+### Database Changes
+None.
+
+---
+
 ## Session — 2026-08-13 — Feat: rename Death Aid to Condolences / Rambirambi — Statements PR 2
 **Branch:** `feat/rename-condolences` (from `develop`)
 **Developer:** Claude Code / Jabir Mussa

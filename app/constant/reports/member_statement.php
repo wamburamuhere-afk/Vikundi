@@ -33,6 +33,8 @@ $member = $member->fetch(PDO::FETCH_ASSOC);
 // Shared contribution-standing rules — the one place every screen agrees on the
 // month-counting and "no fixed rule => no target" behaviour.
 require_once __DIR__ . '/../../../includes/contribution_standing.php';
+// Shared NSSF-style skeleton — the same one the other three statements use.
+require_once __DIR__ . '/../../../includes/statement_layout.php';
 
 // 2. Fetch Group Settings (Monthly Contribution, Entrance Fee, Start Date)
 $settings_raw = $pdo->query("SELECT setting_key, setting_value FROM group_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -56,27 +58,38 @@ $dependant_count = $spouse_active + $active_children;
 
 $isSw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
 
+// "as of" — the period the whole document is true for. A statement handed over in a
+// meeting has to say WHEN it was true, and the group needs to be able to reprint an
+// earlier month without the figures silently moving to today.
+$as_of_raw = (string) ($_GET['as_of'] ?? '');
+$as_of = preg_match('/^\d{4}-\d{2}$/', $as_of_raw)
+    ? DateTime::createFromFormat('Y-m-d', $as_of_raw . '-01')
+    : new DateTime('today');
+if (!$as_of) {
+    $as_of = new DateTime('today');
+}
+$as_of_value = $as_of->format('Y-m');
+
 // 4–7. The member's monthly schedule — the opening-vs-new split, entrance taken from
-// NEW money only, and the pot laid across the elapsed months — now comes from the
-// shared module, so the member statement and the profile page compute it identically.
-$sched = cs_member_schedule($pdo, $member_id);
+// NEW money only, and the pot laid across the elapsed months — comes from the shared
+// module, so the member statement and the profile page compute it identically.
+$sched = cs_member_schedule($pdo, $member_id, $as_of);
 $opening              = $sched['opening'];
 $new_money            = $sched['new_money'];
 $total_paid           = $sched['total_paid'];
 $entrance_paid_amt    = $sched['entrance_paid'];
 $entrance_status      = $sched['entrance_status'];
 $total_months_covered = $sched['total_months_covered'];
-$distribution         = $sched['distribution'];
 
-// Money beyond the shown months = advance / credit (the label stays in the view).
-if ($sched['advance'] > 0) {
-    $distribution[] = [
-        'label'  => $isSw ? 'ZIADA (ADVANCE)' : 'ADVANCE / CREDIT',
-        'amount' => $sched['advance'],
-        'status' => 'paid',
-        'target' => 0,
-    ];
-}
+// The calendar the page actually prints: whole years, twelve columns, plus the
+// Target/Actual block beneath it.
+$grid    = cs_calendar_grid($sched, $as_of);
+$summary = cs_year_summary($grid);
+
+// Expected of this member by now, and where that leaves them. Same helpers the
+// ledger and the dashboard use, so the three screens cannot disagree.
+$expected  = cs_expected_to_date($monthly_amt, $sched['anchor_ym'], $as_of);
+$standing  = cs_standing($opening, $new_money, $expected);
 
 // 7. Expenses (Condolences)
 // Only APPROVED (disbursed) benefits count as "received" — pending/rejected
@@ -86,292 +99,138 @@ $stmt->execute([$member_id]);
 $expenses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $total_expenses = array_sum(array_column($expenses, 'amount'));
 
-?>
-<?php PrintHeader::css(); ?>
-<!-- PRINT HEADER (Visible only during print) -->
-<div class="d-none d-print-block">
-    <?php
-    $is_sw_ms = (($_SESSION['preferred_language'] ?? 'en') === 'sw');
-    PrintHeader::render($pdo,
-        $is_sw_ms ? 'HALI YA KIFEDHA YA MWANACHAMA' : 'MEMBER FINANCIAL STATEMENT',
-        trim($member['first_name'] . ' ' . $member['last_name']) . ' | #' . $member['customer_id']
-    ); ?>
-</div>
+$group = stmt_group($pdo);
 
-<div class="no-print mb-4">
+// The group asked for this wording verbatim, so it is not assembled from parts.
+$doc_title = $isSw ? 'Taarifa ya Michango ya Mwanachama hadi' : 'Member Statement of Contributions as of';
+$as_of_lbl = stmt_as_of_label($as_of, $isSw);
+
+/** Registration fields print blank when unset — never a fabricated placeholder. */
+function ms_val(?string $v): string
+{
+    $v = trim((string) $v);
+    return $v === '' ? '<span class="text-muted">&mdash;</span>' : htmlspecialchars($v);
+}
+function ms_date(?string $v): string
+{
+    return empty($v) || strtotime($v) === false
+        ? '<span class="text-muted">&mdash;</span>'
+        : date('d M Y', strtotime($v));
+}
+
+$member_name = trim(implode(' ', array_filter([
+    $member['first_name'] ?? '', $member['middle_name'] ?? '', $member['last_name'] ?? '',
+])));
+$residence = trim(implode(', ', array_filter([
+    $member['ward'] ?? '', $member['district'] ?? '', $member['state'] ?? '',
+])));
+
+$money = fn(float $n): string => 'TSh ' . number_format($n, 0);
+?>
+<?php stmt_css(); ?>
+
+<div class="no-print mb-3">
     <div class="row align-items-center g-3">
         <div class="col-md">
-            <h3 class="fw-bold text-primary mb-0"><i class="bi bi-bank me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Hali ya Kifedha ya Mwanachama' : 'Member Financial Statement' ?></h3>
-            <p class="text-muted small mb-0"><?= htmlspecialchars($member['first_name'] . ' ' . $member['last_name']) ?> | #<?= $member['customer_id'] ?></p>
+            <h3 class="fw-bold text-primary mb-0"><i class="bi bi-bank me-2"></i>
+                <?= $isSw ? 'Taarifa ya Michango ya Mwanachama' : 'Member Statement of Contributions' ?></h3>
+            <p class="text-muted small mb-0"><?= htmlspecialchars($member_name) ?> | #<?= (int) $member['customer_id'] ?></p>
         </div>
-        <div class="col-md-auto d-flex gap-2">
+        <div class="col-md-auto d-flex gap-2 align-items-center">
+            <form method="get" class="d-flex gap-2 align-items-center" action="">
+                <?php if ($is_leader && !empty($_GET['id'])): ?>
+                    <input type="hidden" name="id" value="<?= (int) $member_id ?>">
+                <?php endif; ?>
+                <label class="small text-muted mb-0"><?= $isSw ? 'Hadi' : 'As of' ?></label>
+                <input type="month" name="as_of" value="<?= htmlspecialchars($as_of_value) ?>"
+                       max="<?= date('Y-m') ?>" class="form-control form-control-sm" style="width:150px;">
+                <button class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold" type="submit">
+                    <?= $isSw ? 'Onesha' : 'Show' ?>
+                </button>
+            </form>
             <a href="<?= getUrl('manage_contributions') ?>" class="btn btn-outline-primary rounded-pill px-4 shadow-sm fw-bold">
-                <i class="bi bi-arrow-left me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Rudi Kwenye Orodha' : 'Back to List' ?>
+                <i class="bi bi-arrow-left me-2"></i> <?= $isSw ? 'Rudi Kwenye Orodha' : 'Back to List' ?>
             </a>
             <button class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold" onclick="window.print()">
-                <i class="bi bi-printer me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Chapisha (Print)' : 'Print Report' ?>
+                <i class="bi bi-printer me-2"></i> <?= $isSw ? 'Chapisha' : 'Print' ?>
             </button>
         </div>
     </div>
 </div>
 
-<div class="row row-cols-2 row-cols-md-5 g-3 mb-4">
-    <!-- INFO CARDS -->
-    <div class="col">
-        <div class="card border shadow-sm h-100" style="background-color: #d1e7dd !important; color: #000000 !important;">
-            <div class="card-body p-3 text-center">
-                <small class="text-uppercase fw-bold small mb-1" style="color: #495057;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jumla Aliyolipa' : 'Total Paid' ?></small>
-                <div class="fs-4 fw-bold">TSh <?= number_format($total_paid, 0) ?></div>
-                <div class="mt-2 small px-2 py-1 rounded-pill bg-white d-inline-block border text-dark">
-                    <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Kiingilio: ' : 'Entrance: ' ?>
-                    <span class="fw-bold"><?= $entrance_status === 'paid' ? (($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'KIMESHAJAA' : 'FULLY PAID') : number_format($entrance_paid_amt, 0) . ' / ' . number_format($entrance_amt, 0) ?></span>
-                </div>
-            </div>
-        </div>
+<div class="vk-stmt-sheet shadow-sm">
+
+    <?php stmt_head($group, $doc_title, $as_of_lbl); ?>
+
+    <?php
+    stmt_panels(
+        [
+            'heading' => $isSw ? 'Taarifa za Mwanachama' : 'Member Details',
+            'rows'    => [
+                ($isSw ? 'Namba ya Mwanachama' : 'Member Number') => ms_val($member['registration_number'] ?: ('#' . $member['customer_id'])),
+                ($isSw ? 'Jina Kamili'         : 'Member Name')   => ms_val($member_name),
+                ($isSw ? 'Namba ya NIDA'       : 'NIDA Number')   => ms_val($member['nida_number'] ?? ''),
+                ($isSw ? 'Simu'                : 'Phone')         => ms_val($member['phone'] ?: ($member['mobile'] ?? '')),
+                ($isSw ? 'Tarehe ya Kuzaliwa'  : 'Date of Birth') => ms_date($member['dob'] ?? null),
+                ($isSw ? 'Tarehe ya Kujiunga'  : 'Date of Join')  => ms_date($member['created_at'] ?? null),
+                ($isSw ? 'Makazi'              : 'Residence')     => ms_val($residence),
+                ($isSw ? 'Wategemezi'          : 'Dependants')    => (int) $dependant_count
+                    . ' (' . $active_children . ' ' . ($isSw ? 'watoto' : 'children') . ', ' . $spouse_active . ' ' . ($isSw ? 'mwenzi' : 'spouse') . ')',
+            ],
+        ],
+        [
+            'heading' => $isSw ? 'Taarifa za Michango' : 'Contribution Details',
+            'rows'    => [
+                ($isSw ? 'Kiwango cha Mwezi'    : 'Monthly Target')     => $monthly_amt > 0 ? $money($monthly_amt) : ($isSw ? 'Hakijawekwa' : 'Not set'),
+                ($isSw ? 'Kiingilio'            : 'Entrance Fee')       => $entrance_amt > 0
+                    ? $money($entrance_paid_amt) . ' / ' . $money($entrance_amt)
+                    : ($isSw ? 'Hakijawekwa' : 'Not set'),
+                ($isSw ? 'Akiba ya M-Koba'      : 'Opening (M-Koba)')   => $money($opening),
+                ($isSw ? 'Michango Mipya'       : 'New Contributions')  => $money($new_money),
+                ($isSw ? 'Jumla Aliyotoa'       : 'Total Contributed')  => '<strong>' . $money($total_paid) . '</strong>',
+                ($isSw ? 'Kinachotakiwa Hadi Sasa' : 'Expected to Date')=> $money($expected),
+                ($isSw ? 'Ziada / Upungufu'     : 'Surplus / Deficit')  => $standing['surplus_deficit'] < 0
+                    ? '<span class="vk-neg">(' . number_format(abs($standing['surplus_deficit']), 0) . ')</span>'
+                    : '<span class="vk-pos">' . number_format($standing['surplus_deficit'], 0) . '</span>',
+                ($isSw ? 'Miezi Iliyofunikwa'   : 'Months Covered')     => (int) $total_months_covered,
+            ],
+        ]
+    );
+    ?>
+
+    <?php
+    // NSSF puts "LAST PAID BENEFIT DETAILS" here. For this group the benefit IS the
+    // condolence paid when the member lost a beneficiary, which is what the band shows.
+    stmt_bar_table(
+        $isSw ? 'Rambirambi' : 'Condolences',
+        [
+            'date'     => $isSw ? 'Tarehe' : 'Date',
+            'deceased' => $isSw ? 'Marehemu' : 'Name of Deceased',
+            'relation' => $isSw ? 'Uhusiano' : 'Relationship',
+            'amount'   => $isSw ? 'Kiasi Kilicholipwa' : 'Amount Paid',
+        ],
+        array_map(fn(array $ex): array => [
+            'date'     => date('d M Y', strtotime($ex['expense_date'])),
+            'deceased' => htmlspecialchars($ex['deceased_name']),
+            'relation' => htmlspecialchars(ucfirst((string) ($ex['deceased_relationship'] ?: $ex['deceased_type']))),
+            'amount'   => '<strong>' . number_format((float) $ex['amount'], 0) . '</strong>',
+        ], $expenses),
+        $isSw ? 'Hakuna rambirambi iliyolipwa kwa mwanachama huyu.' : 'No condolences have been paid to this member.'
+    );
+    ?>
+
+    <div class="vk-stmt-title text-center" style="margin:16px 0 8px;">
+        <?= $isSw ? 'MCHANGANUO WA MICHANGO' : 'CONTRIBUTIONS BREAKDOWN' ?>
     </div>
-    <div class="col">
-        <div class="card border shadow-sm h-100" style="background-color: #eaf3fb !important; color: #000000 !important;">
-            <div class="card-body p-3 text-center">
-                <small class="text-uppercase fw-bold small mb-1 text-primary"><?= $isSw ? 'Akiba ya M-Koba' : 'M-Koba Savings' ?></small>
-                <div class="fs-4 fw-bold">TSh <?= number_format($opening, 0) ?></div>
-                <small class="text-muted"><?= $isSw ? 'Iliyoingizwa (imehesabiwa hapa chini)' : 'Carried in (counted below)' ?></small>
-            </div>
-        </div>
+    <?php stmt_calendar($grid, $isSw); ?>
+    <?php stmt_legend($isSw); ?>
+
+    <div class="vk-stmt-title text-center" style="margin:16px 0 8px;">
+        <?= $isSw ? 'MUHTASARI' : 'SUMMARY' ?>
     </div>
-    <div class="col">
-        <div class="card border shadow-sm h-100" style="background-color: #d1e7dd !important; color: #000000 !important;">
-            <div class="card-body p-3 text-center">
-                <small class="text-uppercase fw-bold small mb-1" style="color: #495057;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Wategemezi Hai' : 'Active Dependants' ?></small>
-                <div class="fs-4 fw-bold"><?= $dependant_count ?> Members</div>
-                <small class="opacity-75"><?= $active_children ?> Children, <?= $spouse_active ?> Spouse</small>
-            </div>
-        </div>
-    </div>
-    <div class="col">
-        <div class="card border shadow-sm h-100" style="background-color: #d1e7dd !important; color: #000000 !important;">
-            <div class="card-body p-3 text-center">
-                <small class="text-uppercase fw-bold small mb-1" style="color: #495057;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Rambirambi Alizopokea' : 'Condolences Received' ?></small>
-                <div class="fs-4 fw-bold">TSh <?= number_format($total_expenses, 0) ?></div>
-            </div>
-        </div>
-    </div>
-    <div class="col">
-        <div class="card border shadow-sm h-100" style="background-color: #f0f7ff !important;">
-            <div class="card-body p-3 text-center">
-                <small class="text-uppercase fw-bold small mb-1 text-primary"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Hali ya Akiba' : 'Savings Status' ?></small>
-                <div class="fs-4 fw-bold">
-                    <?php if ($total_months_covered >= 12): ?>
-                        <span class="text-success">12 + <?= ($total_months_covered - 12) ?> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'MIEZI YA ZIADA' : 'EXTRA MONTHS' ?></span>
-                    <?php else: ?>
-                        <span class="text-dark"><?= $total_months_covered ?> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'MIEZI' : 'MONTHS' ?></span>
-                    <?php endif; ?>
-                </div>
-                <small class="text-muted"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jumla ya Miezi: ' : 'Total Covered: ' ?> <span class="fw-bold"><?= $total_months_covered ?></span></small>
-            </div>
-        </div>
-    </div>
+    <?php stmt_summary($summary, $isSw); ?>
+
 </div>
-
-<!-- FINANCIAL GRID -->
-<div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4 vk-grid-card">
-    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-        <h6 class="mb-0 fw-bold"><i class="bi bi-calendar-check me-2 text-primary"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mchanganuo wa Michango ya Kila Mwezi' : 'Monthly Contribution Analysis' ?></h6>
-        <span class="badge bg-light text-dark border"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mchango: ' : 'Monthly: ' ?> <?= number_format($monthly_amt, 0) ?> TSh</span>
-    </div>
-    <div class="card-body p-0">
-        <div class="table-responsive w-100">
-            <table id="monthly-analysis-table" class="table table-bordered align-middle mb-0 text-center w-100" style="table-layout: auto;">
-                <thead class="bg-light small fw-bold text-uppercase">
-                    <tr>
-                        <th class="py-3 bg-light" style="min-width: 150px; position: sticky; left: 0; z-index: 10;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'PERIOD / MWEZI' : 'PERIOD / MONTH' ?></th>
-                        <?php foreach($distribution as $d): ?>
-                            <th style="min-width: 100px;"><?= $d['label'] ?></th>
-                        <?php endforeach; ?>
-                        <th class="bg-dark text-white" style="min-width: 120px;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'JUMLA (TOTAL)' : 'TOTAL' ?></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td class="fw-bold bg-light text-start ps-3" style="position: sticky; left: 0; z-index: 10;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Kiwango Inatakiwa' : 'Amount Target' ?></td>
-                        <?php foreach($distribution as $d): ?>
-                            <td class="bg-light"><?= number_format($d['target'], 0) ?></td>
-                        <?php endforeach; ?>
-                        <?php 
-                        $total_required = 0;
-                        foreach($distribution as $d) { $total_required += $d['target']; }
-                        ?>
-                        <td class="bg-light fw-bold"><?= number_format($total_required, 0) ?></td>
-                    </tr>
-                    <tr>
-                        <td class="fw-bold text-start ps-3 bg-white" style="position: sticky; left: 0; z-index: 10;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Kiasi Kilicholipwa' : 'Actual Paid' ?></td>
-                        <?php foreach($distribution as $d): ?>
-                            <td class="<?= $d['status'] === 'paid' ? 'bg-success text-white' : ($d['status'] === 'partial' ? 'bg-warning text-dark' : 'bg-danger text-white border-danger border-opacity-25') ?>">
-                                <?= number_format($d['amount'], 0) ?>
-                            </td>
-                        <?php endforeach; ?>
-                        <td class="fw-bold fs-5 bg-dark text-white border-0"><?= number_format($total_paid - $entrance_paid_amt, 0) ?></td>
-                    </tr>
-                    <tr>
-                        <td class="fw-bold text-start ps-3 bg-white" style="position: sticky; left: 0; z-index: 10;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Baki (Balance)' : 'Balance' ?></td>
-                        <?php foreach($distribution as $d): ?>
-                            <td class="small text-muted font-monospace">
-                                <?= number_format(max(0, $d['target'] - $d['amount']), 0) ?>
-                            </td>
-                        <?php endforeach; ?>
-                        <td class="small text-muted bg-light">—</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-    <div class="card-footer bg-white py-3 small d-flex flex-wrap align-items-center gap-3">
-        <div class="d-flex align-items-center"><span class="badge bg-success me-1">&nbsp;</span> Fully Paid</div>
-        <div class="d-flex align-items-center"><span class="badge bg-warning me-1">&nbsp;</span> Partial Payment</div>
-        <div class="d-flex align-items-center"><span class="badge bg-danger me-1">&nbsp;</span> Not Paid</div>
-        <div class="ms-auto text-muted font-italic"><?= $isSw ? 'Kuanzia' : 'Starting from' ?>: <?= date('d M Y', $anchor_ts) ?></div>
-    </div>
-</div>
-
-<!-- EXPENSES SECTION -->
-<?php if (!empty($expenses)): ?>
-<div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-5">
-    <div class="card-header bg-primary text-white py-3">
-        <h6 class="mb-0 fw-bold"><i class="bi bi-heart-break me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Historia ya Rambirambi' : 'Condolence History' ?></h6>
-    </div>
-    <div class="card-body p-0">
-        <div class="table-responsive d-none d-md-block d-print-block">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="bg-light small">
-                    <tr>
-                        <th class="ps-4">DATE</th>
-                        <th>NAME OF DECEASED</th>
-                        <th>TYPE</th>
-                        <th class="text-end pe-4">AMOUNT DISBURSED</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach($expenses as $ex): ?>
-                    <tr>
-                        <td class="ps-4 small text-muted"><?= date('d/m/Y', strtotime($ex['expense_date'])) ?></td>
-                        <td><div class="fw-bold"><?= htmlspecialchars($ex['deceased_name']) ?></div></td>
-                        <td><span class="badge bg-light text-dark border px-2"><?= ucfirst($ex['deceased_type']) ?></span></td>
-                        <td class="text-end pe-4 fw-bold text-danger">- <?= number_format($ex['amount'], 0) ?></td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-        <!-- ═══ CARD VIEW — Mobile Only ═══ -->
-        <?php $_ms_sw = (($_SESSION['preferred_language'] ?? 'en') === 'sw'); ?>
-        <div class="p-3 d-md-none d-print-none vk-cards-wrapper" id="deathBenefitCardsWrapper">
-            <?php foreach ($expenses as $ex):
-                $db_avatar = strtoupper(substr($ex['deceased_name'] ?? 'D', 0, 1));
-            ?>
-            <div class="vk-member-card">
-                <div class="vk-card-header d-flex justify-content-between align-items-center gap-2">
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="vk-card-avatar" style="background:linear-gradient(135deg,#dc3545,#b02a37);"><?= $db_avatar ?></div>
-                        <div class="fw-bold text-dark" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><?= htmlspecialchars($ex['deceased_name']) ?></div>
-                    </div>
-                    <span class="badge bg-light text-dark border px-2" style="font-size:10px;"><?= ucfirst($ex['deceased_type'] ?? '—') ?></span>
-                </div>
-                <div class="vk-card-body">
-                    <div class="vk-card-row">
-                        <span class="vk-card-label"><?= $_ms_sw ? 'Tarehe' : 'Date' ?></span>
-                        <span class="vk-card-value"><?= date('d/m/Y', strtotime($ex['expense_date'])) ?></span>
-                    </div>
-                    <div class="vk-card-row">
-                        <span class="vk-card-label"><?= $_ms_sw ? 'Kiasi' : 'Amount' ?></span>
-                        <span class="vk-card-value fw-bold text-danger">- TSh <?= number_format($ex['amount'], 0) ?></span>
-                    </div>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        </div>
-    </div>
-</div>
-<?php endif; ?>
-
-<style>
-@media print {
-    /* The monthly grid grows one column per covered month, so print landscape
-       to keep it legible as the group accumulates months. */
-    @page { size: A4 landscape; }
-
-    /* Hide UI elements */
-    .header-wrapper, .navbar, .top-header, .bottom-header, .d-print-none, .no-print, .btn, footer, .modal {
-        display: none !important;
-    }
-
-    body { padding-top: 0 !important; margin: 0 !important; background: white !important; font-size: 12px; color: black !important; }
-    .container-fluid, .container { width: 100% !important; max-width: none !important; padding: 0 15px !important; margin: 0 !important; }
-
-    /* Layout Flexibility */
-    .card { border: 1px solid #ccc !important; box-shadow: none !important; margin-bottom: 5px !important; page-break-inside: avoid; background: transparent !important; }
-    .row { display: flex !important; flex-wrap: wrap !important; }
-    .row-cols-md-5 > .col { flex: 1 1 18% !important; width: 18% !important; }
-
-    /* The monthly grid was jumping whole to page 2 (leaving page 1 half-empty)
-       because page-break-inside:avoid + the old tfoot spacer made it too tall to
-       fit under the cards. Let it flow up onto page 1 and keep its rows intact. */
-    .vk-grid-card { page-break-inside: auto !important; }
-    .vk-grid-card tr { page-break-inside: avoid !important; }
-    /* tighten the gap between the summary cards and the grid */
-    .mb-4 { margin-bottom: 8px !important; }
-    
-    /* Default Table Optimization */
-    table { 
-        width: 100% !important; 
-        border-collapse: collapse !important; 
-    }
-    tr { page-break-inside: avoid; page-break-after: auto; }
-    .table th, .table td {
-        padding: 5px 4px !important;
-        border: 1px solid #ccc !important;
-        -webkit-print-color-adjust: exact;
-        font-size: 12px !important; /* Readable font for the standard tables */
-        white-space: normal !important;
-        word-wrap: break-word !important;
-        overflow-wrap: break-word !important;
-    }
-
-    /* SPECIFIC Optimization for the dense Monthly Analysis Table (12+ columns).
-       Landscape gives the width; keep it compact but legible. */
-    #monthly-analysis-table {
-        table-layout: fixed !important;
-        width: 100% !important;
-    }
-    #monthly-analysis-table th,
-    #monthly-analysis-table td {
-        font-size: 9px !important; /* smaller only for the wide many-month grid */
-        padding: 4px 2px !important;
-    }
-    
-    /* Headers specific adjustment */
-    .table thead th {
-        line-height: 1.1 !important;
-    }
-    
-    .bg-light { background-color: #f8f9fa !important; -webkit-print-color-adjust: exact; }
-    .bg-success { background-color: #d1e7dd !important; color: #000 !important; -webkit-print-color-adjust: exact; }
-    .bg-warning { background-color: #fff3cd !important; color: #000 !important; -webkit-print-color-adjust: exact; }
-    .bg-danger { background-color: #f8d7da !important; color: #000 !important; -webkit-print-color-adjust: exact; }
-    .bg-primary { background-color: #cfe2ff !important; color: #000 !important; -webkit-print-color-adjust: exact; }
-    .bg-dark { background-color: #e2e3e5 !important; color: #000 !important; -webkit-print-color-adjust: exact; }
-    
-    .table-responsive { overflow: visible !important; width: 100% !important; }
-    th, td, .fw-bold { position: static !important; }
-}
-
-
-.table-responsive::-webkit-scrollbar { height: 8px; }
-.table-responsive::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
-th { font-size: 0.65rem; letter-spacing: 0.02em; font-weight: 800; }
-.card { border-radius: 12px; }
-@media (min-width: 992px) {
-    #monthly-analysis-table { table-layout: fixed; }
-}
-</style>
 
 <?php include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE; ?>
 
