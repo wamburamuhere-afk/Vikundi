@@ -80,7 +80,7 @@ if ($sched['advance'] > 0) {
 
 // 7. Expenses (Condolences)
 // Only APPROVED (disbursed) benefits count as "received" — pending/rejected
-// claims must not inflate the Benefits Received total or the history table.
+// claims must not inflate the Condolences Received total or the history table.
 $stmt = $pdo->prepare("SELECT * FROM death_expenses WHERE member_id = ? AND status IN ('approved','paid') ORDER BY expense_date DESC");
 $stmt->execute([$member_id]);
 $expenses = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -150,7 +150,7 @@ $total_expenses = array_sum(array_column($expenses, 'amount'));
     <div class="col">
         <div class="card border shadow-sm h-100" style="background-color: #d1e7dd !important; color: #000000 !important;">
             <div class="card-body p-3 text-center">
-                <small class="text-uppercase fw-bold small mb-1" style="color: #495057;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Misaada Aliyopokea' : 'Benefits Received' ?></small>
+                <small class="text-uppercase fw-bold small mb-1" style="color: #495057;"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Rambirambi Alizopokea' : 'Condolences Received' ?></small>
                 <div class="fs-4 fw-bold">TSh <?= number_format($total_expenses, 0) ?></div>
             </div>
         </div>

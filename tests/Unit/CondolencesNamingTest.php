@@ -57,6 +57,18 @@ class CondolencesNamingTest extends TestCase
         'Death Report',
         'Idadi ya Misiba',
         'Ripoti ya Misiba',
+        // The synonym family. Two passes missed these because they never say
+        // "death" or "funeral" at all — the module was also called Aid, Benefit,
+        // Msaada and Mafao, so a sweep for the obvious words left tiles reading
+        // "TOTAL AID PAID" under a heading reading "Condolences".
+        'Total Aid Paid',
+        'Jumla ya Misaada',
+        'Benefit Paid',
+        'Benefit (TSh)',
+        'Benefits Received',
+        'Misaada Aliyopokea',
+        'Kiasi cha Msaada',
+        'Contribution vs Benefit',
     ];
 
     /**

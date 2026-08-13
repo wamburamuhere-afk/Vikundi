@@ -92,7 +92,7 @@ $subtitle = $is_sw ? 'Rekodi na dhibiti misaada kwa wanachama waliofiwa' : 'Reco
         <div class="col-4">
             <div class="card border-0 shadow-sm h-100" style="background-color: #d1e7dd !important;">
                 <div class="card-body p-2 text-center">
-                    <h6 class="text-dark mb-1" style="font-size: 8pt; font-weight: bold; text-transform: uppercase;"><?= $is_sw ? 'Jumla ya Misaada' : 'Total Assistance' ?></h6>
+                    <h6 class="text-dark mb-1" style="font-size: 8pt; font-weight: bold; text-transform: uppercase;"><?= $is_sw ? 'Jumla ya Rambirambi' : 'Total Condolences' ?></h6>
                     <h5 class="fw-bold mb-0 text-dark" id="total_payouts" style="font-size: 11pt;">TSh 0.00</h5>
                 </div>
             </div>
@@ -248,7 +248,7 @@ $subtitle = $is_sw ? 'Rekodi na dhibiti misaada kwa wanachama waliofiwa' : 'Reco
                             <input type="hidden" name="deceased_info" id="selected_deceased">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold small text-muted"><?= $is_sw ? 'Kiasi cha Msaada *' : 'Assistance Amount *' ?></label>
+                            <label class="form-label fw-bold small text-muted"><?= $is_sw ? 'Kiasi cha Rambirambi *' : 'Assistance Amount *' ?></label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light">Tsh</span>
                                 <input type="number" class="form-control" name="amount" required step="0.01">
