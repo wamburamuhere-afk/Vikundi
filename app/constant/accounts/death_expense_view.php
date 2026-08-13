@@ -66,7 +66,7 @@ includeHeader();
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
             <h4 class="mb-0 fw-bold">
-                <?= $is_sw ? 'Maelezo ya Gharama ya Msiba' : 'Death Expense Details' ?>
+                <?= $is_sw ? 'Maelezo ya Rambirambi' : 'Condolence Details' ?>
                 <span class="badge bg-<?= $badge ?> ms-2"><?= ucfirst($status) ?></span>
             </h4>
             <p class="text-muted small mb-0">DE #<?= $de['id'] ?> &mdash; <?= htmlspecialchars($member_name) ?></p>
@@ -97,7 +97,7 @@ includeHeader();
         <div class="col-md-6">
             <div class="card shadow-sm h-100">
                 <div class="card-header bg-white py-2 fw-bold text-danger border-0">
-                    <i class="bi bi-heart-pulse me-1"></i><?= $is_sw ? 'Maelezo ya Msiba' : 'Death Expense Details' ?>
+                    <i class="bi bi-heart-pulse me-1"></i><?= $is_sw ? 'Maelezo ya Rambirambi' : 'Condolence Details' ?>
                 </div>
                 <div class="card-body">
                     <table class="table table-sm table-borderless mb-0">

@@ -155,9 +155,9 @@ class ResponsivePrintTier3Test extends TestCase
         $this->assertStringContainsString('#0dcaf0', $av_color);
     }
 
-    public function test_death_expense_gets_red_avatar(): void
+    public function test_condolence_gets_red_avatar(): void
     {
-        $category   = 'Death Assistance';
+        $category   = 'Condolences';
         $is_general = ($category === 'General');
         $av_color   = $is_general
             ? 'linear-gradient(135deg,#0dcaf0,#0aa2c0)'
@@ -172,9 +172,9 @@ class ResponsivePrintTier3Test extends TestCase
         $this->assertEquals('G', $avatar);
     }
 
-    public function test_death_expense_avatar_letter_is_D(): void
+    public function test_condolence_avatar_letter_is_D(): void
     {
-        $category = 'Death Assistance';
+        $category = 'Condolences';
         $avatar   = ($category === 'General') ? 'G' : 'D';
         $this->assertEquals('D', $avatar);
     }
@@ -187,18 +187,18 @@ class ResponsivePrintTier3Test extends TestCase
     {
         $is_sw    = true;
         $category = 'General';
-        $cat_sw   = $category === 'General' ? 'Matumizi ya Kikundi' : 'Msaada wa Msiba';
+        $cat_sw   = $category === 'General' ? 'Matumizi ya Kikundi' : 'Rambirambi';
         $label    = $is_sw ? $cat_sw : $category;
         $this->assertEquals('Matumizi ya Kikundi', $label);
     }
 
-    public function test_english_death_label(): void
+    public function test_english_condolence_label(): void
     {
         $is_sw    = false;
-        $category = 'Death Assistance';
-        $cat_sw   = $category === 'General' ? 'Matumizi ya Kikundi' : 'Msaada wa Msiba';
+        $category = 'Condolences';
+        $cat_sw   = $category === 'General' ? 'Matumizi ya Kikundi' : 'Rambirambi';
         $label    = $is_sw ? $cat_sw : $category;
-        $this->assertEquals('Death Assistance', $label);
+        $this->assertEquals('Condolences', $label);
     }
 
     // -------------------------------------------------------------------------

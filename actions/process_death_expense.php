@@ -144,7 +144,7 @@ try {
     }
 
     $is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
-    $msg = $is_sw ? 'Taarifa za msiba zimehifadhiwa na zinasubiri idhini.' : 'Death assistance recorded and awaiting approval.';
+    $msg = $is_sw ? 'Rambirambi imehifadhiwa na inasubiri idhini.' : 'Condolence recorded and awaiting approval.';
 
     // ── Activity Log ──────────────────────────────────────────────────────────
     require_once __DIR__ . '/../includes/activity_logger.php';

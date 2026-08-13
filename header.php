@@ -69,7 +69,7 @@ try {
             'manage_shares'             => ['en' => 'Shares',               'sw' => 'Hisa'],
             'manage_fines'              => ['en' => 'Fines',                'sw' => 'Faini'],
             'expenses'                  => ['en' => 'Expenses',             'sw' => 'Matumizi'],
-            'death_expenses'            => ['en' => 'Funeral Support',      'sw' => 'Misaada ya Msiba'],
+            'death_expenses'            => ['en' => 'Condolences',         'sw' => 'Rambirambi'],
             'manage_loans'              => ['en' => 'Loans',                'sw' => 'Mikopo'],
             'loan_repayments'           => ['en' => 'Loan Repayments',      'sw' => 'Marejesho ya Mikopo'],
             'users'                     => ['en' => 'System Users',         'sw' => 'Watumiaji wa Mfumo'],
@@ -634,7 +634,7 @@ try {
                                 <li><hr class="dropdown-divider"></li>
                                 <li><h6 class="dropdown-header"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Usimamizi wa Fedha' : 'Financial Management' ?></h6></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('expense_report') ?>"><i class="bi bi-cash-coin me-2 text-danger"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mchanganuo wa Matumizi' : 'Expense Summary' ?></a></li>
-                                <li><a class="dropdown-item" href="<?= getUrl('death_analysis') ?>"><i class="bi bi-heart-pulse me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Uchambuzi wa Misiba' : 'Funeral Aid Analysis' ?></a></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('death_analysis') ?>"><i class="bi bi-heart-pulse me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Uchambuzi wa Rambirambi' : 'Condolences Analysis' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('reports/financial_ledger') ?>"><i class="bi bi-journal-text me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Ledger ya Fedha' : 'Financial Ledger' ?></a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><h6 class="dropdown-header"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Uchambuzi' : 'Analysis' ?></h6></li>

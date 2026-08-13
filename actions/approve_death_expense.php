@@ -13,7 +13,7 @@ if (!isAuthenticated()) {
 }
 if (!canApprove('death_expenses')) {
     http_response_code(403); // audit: refusal must not return HTTP 200
-    echo json_encode(['success' => false, 'message' => 'You do not have permission to approve death expenses.']); exit;
+    echo json_encode(['success' => false, 'message' => 'You do not have permission to approve condolences.']); exit;
 }
 
 $id = intval($_POST['id'] ?? 0);

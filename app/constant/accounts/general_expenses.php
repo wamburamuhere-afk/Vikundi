@@ -80,7 +80,7 @@ $members_list = $pdo->query("
                         </div>
                         <div class="d-flex flex-wrap justify-content-center gap-2">
                             <a href="<?= getUrl('expenses') ?>" class="btn btn-outline-primary rounded-pill px-3 px-md-4 shadow-sm text-dark fw-bold border-0 btn-sm btn-md-base">
-                                <i class="bi bi-arrow-left me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Misaada ya Misiba' : 'Death Expenses' ?>
+                                <i class="bi bi-arrow-left me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Rambirambi' : 'Condolences' ?>
                             </a>
                             <button type="button" class="btn btn-primary d-flex align-items-center rounded-pill px-3 px-md-4 shadow-sm btn-sm btn-md-base" data-bs-toggle="modal" data-bs-target="#addExpenseModal">
                                 <i class="bi bi-plus-lg me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Rekodi Matumizi' : 'Add Expense' ?>
