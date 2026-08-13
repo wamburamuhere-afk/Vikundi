@@ -113,7 +113,7 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
         <div class="col-6 col-md-3">
             <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
                 <div class="card-body p-4 bg-white border-bottom border-4 border-primary">
-                    <div class="text-uppercase small fw-bold text-muted mb-2 tracking-wider"><?= $is_sw ? 'Jumla ya Misaada' : 'Total Aid Paid' ?></div>
+                    <div class="text-uppercase small fw-bold text-muted mb-2 tracking-wider"><?= $is_sw ? 'Jumla ya Rambirambi' : 'Total Condolences Paid' ?></div>
                     <div class="fs-4 fw-bold text-primary">TSh <?= number_format($total_paid) ?></div>
                 </div>
             </div>
@@ -147,7 +147,7 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
     <!-- Comparative Chart (screen + print) -->
     <div class="card border-0 shadow-sm rounded-4 mb-5">
         <div class="card-header bg-white py-3 border-bottom">
-            <h6 class="mb-0 fw-bold"><?= $is_sw ? 'Mlinganisho wa Michango vs Msaada (Visa 15 vya mwisho)' : 'Contribution vs Benefit Comparison (Top 15 Cases)' ?></h6>
+            <h6 class="mb-0 fw-bold"><?= $is_sw ? 'Mlinganisho wa Michango vs Rambirambi (Visa 15 vya mwisho)' : 'Contributions vs Condolences (Top 15 Cases)' ?></h6>
         </div>
         <div class="card-body">
             <div class="position-relative vk-chart-box" style="height:300px;">
@@ -155,7 +155,7 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
             </div>
             <div class="mt-3 text-center small text-muted">
                 <span class="badge bg-success bg-opacity-25 text-success p-2 px-3 mx-2"><i class="bi bi-graph-up me-1"></i> <?= $is_sw ? 'Michango' : 'Contribution' ?></span>
-                <span class="badge bg-primary bg-opacity-25 text-primary p-2 px-3 mx-2"><i class="bi bi-cash-stack me-1"></i> <?= $is_sw ? 'Msaada' : 'Benefit Paid' ?></span>
+                <span class="badge bg-primary bg-opacity-25 text-primary p-2 px-3 mx-2"><i class="bi bi-cash-stack me-1"></i> <?= $is_sw ? 'Rambirambi' : 'Condolences Paid' ?></span>
             </div>
         </div>
     </div>
@@ -174,7 +174,7 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
                             <th><?= $is_sw ? 'Mwanachama' : 'Member Name' ?></th>
                             <th class="text-center"><?= $is_sw ? 'Visa' : 'Cases' ?></th>
                             <th class="text-end"><?= $is_sw ? 'Michango (TSh)' : 'Contrib (TSh)' ?></th>
-                            <th class="text-end"><?= $is_sw ? 'Msaada (TSh)' : 'Benefit (TSh)' ?></th>
+                            <th class="text-end"><?= $is_sw ? 'Rambirambi (TSh)' : 'Condolences (TSh)' ?></th>
                             <th class="text-end text-primary"><?= $is_sw ? 'Tofauti (TSh)' : 'Variance (TSh)' ?></th>
                             <th class="text-end pe-4"><?= $is_sw ? 'Status' : 'Status' ?></th>
                         </tr>
@@ -269,7 +269,7 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
                             <span class="vk-card-value fw-bold"><?= number_format($r['total_contributed']) ?></span>
                         </div>
                         <div class="vk-card-row">
-                            <span class="vk-card-label"><?= $is_sw ? 'Msaada' : 'Benefit' ?></span>
+                            <span class="vk-card-label"><?= $is_sw ? 'Rambirambi' : 'Condolences' ?></span>
                             <span class="vk-card-value fw-bold text-primary"><?= number_format($r['benefit_paid']) ?></span>
                         </div>
                         <div class="vk-card-row">
@@ -352,7 +352,7 @@ $(document).ready(function() {
                     },
                     {
                         type: 'line',
-                        label: '<?= $is_sw ? "Msaada" : "Benefit Paid" ?>',
+                        label: '<?= $is_sw ? "Rambirambi" : "Condolences Paid" ?>',
                         data: <?= json_encode($chart_benefit) ?>,
                         backgroundColor: 'rgba(13, 110, 253, 0.2)',
                         borderColor: '#0d6efd',

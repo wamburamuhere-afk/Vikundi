@@ -12,7 +12,7 @@ $lang = $_SESSION['preferred_language'] ?? 'sw';
 $is_sw = ($lang === 'sw');
 
 $title = $is_sw ? 'Rambirambi' : 'Condolences';
-$subtitle = $is_sw ? 'Rekodi msaada kwa mwanachama aliyefiwa' : 'Record assistance for a member who has lost a loved one';
+$subtitle = $is_sw ? 'Rekodi rambirambi kwa mwanachama aliyefiwa' : 'Record assistance for a member who has lost a loved one';
 ?>
 
 <div class="container-fluid py-4" style="background-color: #f8f9fa; min-height: 90vh;">
@@ -123,7 +123,7 @@ $subtitle = $is_sw ? 'Rekodi msaada kwa mwanachama aliyefiwa' : 'Record assistan
 
                         <!-- Amount & Date -->
                         <div class="col-md-6">
-                            <label class="form-label fw-bold small text-muted"><?= $is_sw ? 'Kiasi cha Msaada *' : 'Assistance Amount *' ?></label>
+                            <label class="form-label fw-bold small text-muted"><?= $is_sw ? 'Kiasi cha Rambirambi *' : 'Assistance Amount *' ?></label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light">Tsh</span>
                                 <input type="number" class="form-control" name="amount" required placeholder="0.00" step="0.01">
@@ -351,7 +351,7 @@ $(document).ready(function() {
 
     window.approveDeathExpense = function(id) {
         Swal.fire({
-            title: isSw ? 'Idhinisha Msaada huu?' : 'Approve this assistance?',
+            title: isSw ? 'Idhinisha Rambirambi hii?' : 'Approve this assistance?',
             text: isSw ? 'Hali itabadilika kuwa Imeidhinishwa na salio la kikundi litapungua.' : 'The status will change to Approved and group balance will decrease.',
             icon: 'warning',
             showCancelButton: true,
