@@ -162,7 +162,7 @@ if (!function_exists('aiInsightRegistry')) {
             ],
 
             'pending_approvals' => [
-                'description' => 'Everything awaiting approval right now: contributions, general expenses, death benefit claims and unpaid fines.',
+                'description' => 'Everything awaiting approval right now: contributions, general expenses, condolence claims and unpaid fines.',
                 'params' => [],
                 'run' => function (array $a, PDO $pdo) {
                     $cs = $pdo->query("SELECT COUNT(*) n, COALESCE(SUM(amount),0) amt FROM contributions WHERE status IN ('pending','reviewed')")->fetch(PDO::FETCH_ASSOC);

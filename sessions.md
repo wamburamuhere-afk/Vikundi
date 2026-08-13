@@ -4,6 +4,40 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-08-13 — Feat: rename Death Aid to Condolences / Rambirambi — Statements PR 2
+**Branch:** `feat/rename-condolences` (from `develop`)
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** The module the group calls **Condolences** (Swahili **Rambirambi**) was labelled **eleven different ways** across the product — "Funeral Support", "Funeral Aid", "Funeral Assistance", "Death Benefits & Expenses", "Death Assistance Report", "Misaada ya Misiba", "Msaada wa Msiba" and more, sometimes two different names on one screen. All of it is now one name in both languages. Display-only; no schema change.
+
+### Changed
+- **`lang/en.json` / `lang/sw.json`** — two near-duplicate keys (`dashboard.funeral_support`, `dashboard.funeral_supports`) collapsed into one `dashboard.condolences`, since both rendered the same word. Only two call sites, both in `app/dashboard.php`.
+- **`header.php`** — nav label and the Reports dropdown entry.
+- **Accounts module** — `death_expenses.php`, `death_expense_view.php`, `expenses.php`, `general_expenses.php`, `print_death_expense.php` (page titles, print headers, modal titles, the amount label on the voucher).
+- **Reports** — `expense_report.php`, `death_analysis.php`, `vicoba_reports.php`, `member_statement.php` (headings, chart legends, category labels).
+- **`api/review_death_expense.php`, `actions/approve_death_expense.php`, `actions/process_death_expense.php`** — user-facing JSON messages only.
+- **Three stale comments** naming the module by a retired label.
+
+### The boundary — what was deliberately NOT renamed
+Display-only means display-only. Three classes of string keep their old wording, and `CondolencesNamingTest` pins each one down so nobody "finishes the job" later and breaks it:
+- **`$cat_name = "Death Assistance"`** in `process_death_expense.php` is a **lookup key** (`SELECT id FROM document_categories WHERE category_name = ?`). Rename it and the live category stops resolving: a duplicate is created and every previously attached document is stranded under the old one.
+- **Activity-log module names and descriptions** are written to the database. Changing them splits the audit history across two labels with no migration.
+- **Table names, route slugs, permission keys.** Bookmarked URLs and per-role seeded permissions; renaming locks people out for a cosmetic gain.
+
+### A test that was passing while describing a product that no longer existed
+The rename broke **zero** existing tests — which was the finding, not the reassurance. `tests/Unit/ResponsivePrintTier3Test.php` asserts on its **own inline copy** of the report's label logic rather than reading `expense_report.php`, so it carried on passing while asserting `'Death Assistance'`, a string that no longer appeared anywhere in the product. A test that never opens the file it describes cannot notice the file changing. Its literals are corrected here; the deeper tautology is left for a dedicated pass.
+
+### Tests
+`tests/Unit/CondolencesNamingTest.php` — 7 tests, 71 assertions, reading source files rather than re-implementing them. Scans every file under `app/` plus `header.php` and `core/ai_insights.php` for 15 retired labels (activity-log lines stripped first, since those legitimately keep the old name), checks both language files, verifies every `et()` key used in the dashboard exists in both languages, and asserts the three boundary strings above are intact.
+
+**It earned its keep on first run** — caught five sites the manual greps had missed. **Verified non-vacuous** by reintroducing the old label on the module page; the failure names the file and the label.
+
+Suite: 1229 → **1236 tests, 3229 assertions, 15 skipped, exit 0**.
+
+### Database Changes
+None.
+
+---
+
 ## Session — 2026-08-13 — Feat: contribution calendar engine — Statements PR 1
 **Branch:** `feat/contribution-calendar-engine` (from `develop`)
 **Developer:** Claude Code / Jabir Mussa
@@ -33,10 +67,18 @@ Suite: 1218 → **1229 tests, 3158 assertions, 15 skipped, exit 0**.
 ### Database Changes
 None.
 
-### Blocker for PR 3 — the group has no settings
-`group_settings` holds exactly one row: `group_name = 'Umoja Demo VICOBA'`. There is **no `monthly_contribution`, no `entrance_fee`, no `contribution_start_date`, no logo and no registration number.** The engine treats a missing monthly amount as "no fixed target" by design, so today every member's target is 0, nobody has a deficit, and the entire Target/Actual summary would render as zeros. The arrears notification would never fire for anyone. This is a settings decision, not a code fix, and the statements are meaningless until someone supplies the figure.
+### ~~Blocker for PR 3 — the group has no settings~~ — CORRECTED, see below
+The **local demo** `group_settings` holds exactly one row: `group_name = 'Umoja Demo VICOBA'` — no `monthly_contribution`, no `entrance_fee`, no `contribution_start_date`, no logo, no registration number. On that database every member's target is 0 and the Target/Actual summary renders as zeros.
 
-Also relevant to any demo: contributions run **Jan–Jun 2026 only**, all type `monthly`, 573 rows across 322 members (~1.8 each), of which **524 are `pending` and 49 `approved`**. Every statement filters to approved.
+**This was reported as if it described the live group. It does not.** Verified against production after deploying: `Umoja wa Kusaidiana Utulivu - Msakuzi (UKUU MSAKUZI)` has **Cycle Contribution 20,000** and **Entrance Fee 50,000** configured, 327 members, contribution start 03/01/2026. **PR 3 is not blocked on a settings decision.** Registration number and group logo are genuinely unset in production and are worth filling before the statements print a header.
+
+Local demo data remains thin for demo purposes: contributions Jan–Jun 2026 only, all type `monthly`, 573 rows across 322 members (~1.8 each), of which **524 are `pending` and 49 `approved`**. Every statement filters to approved.
+
+### Verified on production after deploy
+Dashboard, Group Financial Ledger, member list and Member Financial Statement all render; no console errors; dashboard figures unchanged. Two findings from that pass:
+
+1. **CI has been red since at least 2026-07-31 — every run, through Batches 2 and 3.** `composer.lock` pins `symfony/options-resolver v8.1.0` (needs PHP ≥ 8.4.1); CI runs PHP 8.2 and cannot install dependencies, so the suite has never executed there. **"Deploy Gate — Pre-merge quality checks" has been failing and merges proceeded anyway** — the gate is decorative. Local passes because this machine runs PHP 8.4.24, while `CLAUDE.md` states the stack is 8.2. Needs its own PR.
+2. **The existing member statement bills the future.** Member #1 renders a grid running **JUL 2026 → AUG 2027** with an "Amount Target" of 280,000 — twelve months that have not happened, reported as satisfied. This is precisely the defect `cs_calendar_grid()` prevents (months past "as of" carry target 0). Under the new engine the same member reads target 40,000, paid 285,000, surplus 245,000.
 
 ---
 

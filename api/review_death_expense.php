@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 if (!canReview('death_expenses')) {
     http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'You do not have permission to review death expenses.']);
+    echo json_encode(['success' => false, 'message' => 'You do not have permission to review condolences.']);
     exit;
 }
 
@@ -32,7 +32,7 @@ try {
     $cur->execute([$id]);
     $row = $cur->fetch(PDO::FETCH_ASSOC);
 
-    if (!$row) throw new Exception('Death expense not found.');
+    if (!$row) throw new Exception('Condolence record not found.');
     assertReviewable($row['status']);
 
     $actor = workflowActorSnapshot();
@@ -50,7 +50,7 @@ try {
         $actor['name'] . ' reviewed Death Expense #' . $id, 'DE#' . $id);
 
     $pdo->commit();
-    echo json_encode(['success' => true, 'message' => 'Death expense marked as reviewed.']);
+    echo json_encode(['success' => true, 'message' => 'Condolence marked as reviewed.']);
 
 } catch (Exception $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();

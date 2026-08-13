@@ -1,6 +1,6 @@
 <?php
 /**
- * Death Expenses Management (Misaada ya Misiba)
+ * Condolences Management (Rambirambi)
  */
 ob_start();
 global $pdo;
@@ -11,7 +11,7 @@ includeHeader();
 $lang = $_SESSION['preferred_language'] ?? 'sw';
 $is_sw = ($lang === 'sw');
 
-$title = $is_sw ? 'Misaada ya Misiba' : 'Death Benefits & Expenses';
+$title = $is_sw ? 'Rambirambi' : 'Condolences';
 $subtitle = $is_sw ? 'Rekodi msaada kwa mwanachama aliyefiwa' : 'Record assistance for a member who has lost a loved one';
 ?>
 
@@ -61,7 +61,7 @@ $subtitle = $is_sw ? 'Rekodi msaada kwa mwanachama aliyefiwa' : 'Record assistan
                 </button>
             </div>
 
-            <h6 class="fw-bold mb-0 text-dark"><?= $is_sw ? 'Ripoti ya Misiba na Misaada' : 'Death Assistance Report' ?></h6>
+            <h6 class="fw-bold mb-0 text-dark"><?= $is_sw ? 'Ripoti ya Rambirambi' : 'Condolences Report' ?></h6>
         </div>
     </div>
         <div class="card-body p-0">

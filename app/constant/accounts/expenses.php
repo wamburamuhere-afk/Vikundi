@@ -52,7 +52,7 @@ $upload_max_bytes = vk_ini_bytes(ini_get('upload_max_filesize') ?: '2M');
 $post_max_mb   = max(1, (int) floor($post_max_bytes / 1048576));
 $upload_max_mb = max(1, (int) floor($upload_max_bytes / 1048576));
 
-$title = $is_sw ? 'Misaada ya Misiba' : 'Death Assistance Expenses';
+$title = $is_sw ? 'Rambirambi' : 'Condolences';
 $subtitle = $is_sw ? 'Rekodi na dhibiti misaada kwa wanachama waliofiwa' : 'Record and manage assistance for bereaved members';
 ?>
 
@@ -60,7 +60,7 @@ $subtitle = $is_sw ? 'Rekodi na dhibiti misaada kwa wanachama waliofiwa' : 'Reco
     <?php PrintHeader::css(); ?>
     <!-- PRINT HEADER (Visible only during print) -->
     <div class="d-none d-print-block">
-        <?php PrintHeader::render($pdo, $title ?? ($is_sw ? 'MATUMIZI YA MISIBA' : 'DEATH BENEFIT EXPENSES')); ?>
+        <?php PrintHeader::render($pdo, $title ?? ($is_sw ? 'RAMBIRAMBI' : 'CONDOLENCES')); ?>
     </div>
 
     <!-- UI Heading (Hidden during print) -->
@@ -127,7 +127,7 @@ $subtitle = $is_sw ? 'Rekodi na dhibiti misaada kwa wanachama waliofiwa' : 'Reco
             'rejected' => $is_sw ? 'Imekataliwa' : 'Rejected',
         ];
         // Pre-select the Status filter from the URL (?status=pending) so the
-        // dashboard "Funeral Supports" chip lands showing ONLY the pending.
+        // dashboard "Condolences" chip lands showing ONLY the pending.
         $preselect_status = (isset($_GET['status']) && isset($f_statuses[$_GET['status']])) ? $_GET['status'] : '';
     ?>
     <div class="card border-0 shadow-sm rounded-4 mb-3 no-print">
@@ -296,7 +296,7 @@ $subtitle = $is_sw ? 'Rekodi na dhibiti misaada kwa wanachama waliofiwa' : 'Reco
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-primary text-white p-4">
-                <h5 class="modal-title fw-bold"><i class="bi bi-info-circle-fill me-2"></i> Death Assistance Details</h5>
+                <h5 class="modal-title fw-bold"><i class="bi bi-info-circle-fill me-2"></i> Condolence Details</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4 bg-white">

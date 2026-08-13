@@ -67,7 +67,7 @@ logActivity('Viewed', 'Death Expenses', 'Printed Death Expense #' . $id, 'DE#' .
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Death Expense #<?= $id ?> — <?= htmlspecialchars($group_name) ?></title>
+<title>Condolence #<?= $id ?> — <?= htmlspecialchars($group_name) ?></title>
 <style>
     * { box-sizing: border-box; }
     body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; color: #1a252f; margin: 0; padding: 16px 22px; }
@@ -93,13 +93,13 @@ logActivity('Viewed', 'Death Expenses', 'Printed Death Expense #' . $id, 'DE#' .
     <button onclick="window.close()" style="padding:6px 16px;cursor:pointer;background:#fff;border:1px solid #dee2e6;border-radius:4px;">Close</button>
 </div>
 
-<?php PrintHeader::render($pdo, 'DEATH BENEFIT EXPENSE', 'REF #DE-' . $de['id']); ?>
+<?php PrintHeader::render($pdo, 'CONDOLENCE PAYMENT', 'REF #DE-' . $de['id']); ?>
 
 <div class="status-strip">Status: <?= strtoupper($status) ?></div>
 
 <div class="amount-highlight">
     <div>
-        <div class="amt-label">Death Benefit Amount</div>
+        <div class="amt-label">Condolence Amount</div>
         <div style="font-size:11px;color:#6c757d;margin-top:2px;"><?= htmlspecialchars($member_name) ?> &mdash; <?= date('d M Y', strtotime($de['expense_date'])) ?></div>
     </div>
     <div class="amt-val"><?= $currency ?> <?= number_format($de['amount'], 2) ?></div>

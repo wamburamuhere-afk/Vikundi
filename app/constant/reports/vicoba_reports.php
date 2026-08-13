@@ -277,7 +277,7 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
                             </thead>
                             <tbody>
                                 <?php foreach ($expenses_data as $idx => $exp):
-                                    $exp_type = $exp['type'] === 'death' ? ($is_sw ? 'Msaada wa Msiba' : 'Funeral Aid') : ($is_sw ? 'Matumizi Kawaida' : 'General');
+                                    $exp_type = $exp['type'] === 'death' ? ($is_sw ? 'Rambirambi' : 'Condolences') : ($is_sw ? 'Matumizi Kawaida' : 'General');
                                     $exp_class = 'bg-primary';
                                 ?>
                                 <tr>
@@ -309,7 +309,7 @@ $chart_values = array_map(fn($m) => round($m['total_savings']), array_slice($sav
                             <p><?= $is_sw ? 'Hakuna matumizi bado' : 'No expenses recorded' ?></p>
                         </div>
                         <?php else: foreach ($expenses_data as $exp):
-                            $exp_type_lbl  = $exp['type'] === 'death' ? ($is_sw ? 'Msaada wa Msiba' : 'Funeral Aid') : ($is_sw ? 'Matumizi Kawaida' : 'General');
+                            $exp_type_lbl  = $exp['type'] === 'death' ? ($is_sw ? 'Rambirambi' : 'Condolences') : ($is_sw ? 'Matumizi Kawaida' : 'General');
                             $exp_avatar    = $exp['type'] === 'death' ? 'F' : 'G';
                             $exp_av_color  = $exp['type'] === 'death'
                                 ? 'linear-gradient(135deg,#dc3545,#b02a37)'
