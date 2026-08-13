@@ -4,6 +4,34 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-08-13 — Feat: member arrears notification — Statements PR 5
+**Branch:** `feat/member-arrears-notification` (from `develop`)
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** A member now sees on their own dashboard how much they still owe and over how many months — shown only when they are actually behind. No schema change.
+
+### One calculation, two surfaces
+`cs_arrears_from_grid()` reads the **same grid the statement prints**. A dashboard announcing "you owe 60,000" above a statement showing a different shortfall is how a member stops trusting both documents. A test asserts the dashboard figure **equals** the statement's variance rather than merely resembling it.
+
+### What can never be counted as a debt
+The same three exclusions as everywhere else in this module: months **before the member joined**, months that **have not happened yet**, and — when the group has no monthly rule — every month. A member who has paid nothing into a save-what-you-can group owes nothing, and the banner stays silent.
+
+A **partial** month counts as one month behind for its shortfall, not as a whole missed month: someone who paid 50,000 of a 60,000 obligation is told they owe 10,000 over one month, not that they missed three.
+
+**No banner when nothing is owed.** A standing "you owe nothing" notice trains people to stop reading notices, and this one needs to be read. Admin accounts have no `customers` row, so the lookup is guarded rather than falling through to a zero-member query.
+
+### A test that was covering nothing
+`testFutureMonthsAreNeverOwed` passes whether or not `cs_arrears_from_grid()` checks `due`, because `cs_calendar_grid()` already zeroes the target on future months — it proves the *grid's* behaviour, not this function's. **Mutation testing caught it**; removing the guard left the suite green. Added a test that feeds a grid deliberately violating the invariant, which is the only way to prove the guard does anything. Grids are now built in two places, and the cost of that guard failing is a member being billed for a month that has not happened.
+
+### Tests
+`tests/Unit/MemberArrearsTest.php` — 13 tests, 33 assertions. Verified non-vacuous by two mutations (counting future months as debt, and never incrementing the month count).
+
+Suite: 1270 → **1283 tests, 3370 assertions, 15 skipped, exit 0, no warnings**.
+
+### Database Changes
+None.
+
+---
+
 ## Session — 2026-08-13 — Feat: Member Statement of Transactions — Statements PR 4
 **Branch:** `feat/member-statement-transactions` (from `develop`)
 **Developer:** Claude Code / Jabir Mussa
