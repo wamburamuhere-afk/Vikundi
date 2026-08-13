@@ -393,17 +393,29 @@ if (!function_exists('cs_transaction_grid')) {
             $earliest = $earliest === null ? $ts : min($earliest, $ts);
         }
 
-        $anchorTs = $anchorYm ? strtotime($anchorYm) : false;
-        if ($anchorTs === false) {
-            $anchorTs = $earliest ?: strtotime(date('Y') . '-01-01');
+        // TWO anchors, deliberately. They are not the same thing and conflating them
+        // makes this statement contradict the contributions one.
+        //
+        //   billing  — where dues start, from the member's schedule. Never moves.
+        //   display  — where the grid starts drawing, stretched back if a receipt
+        //              predates the billing anchor.
+        //
+        // A payment dated before the anchor still has to appear: money that exists
+        // must never be hidden by a boundary the member did not choose. But showing
+        // it must not also BILL those earlier months. Production member #1 pays this
+        // out exactly — receipts dated Jan/Feb 2026 against a join date of Jul 2026.
+        // Moving the billing anchor back charged eight months instead of two, so the
+        // two statements printed variances of 125,000 and 245,000 for one member.
+        $billingTs = $anchorYm ? strtotime($anchorYm) : false;
+        if ($billingTs === false) {
+            $billingTs = $earliest ?: strtotime(date('Y') . '-01-01');
         }
-        // A payment dated before the anchor still has to appear — money that exists
-        // must never be hidden by a boundary the member did not choose.
-        if ($earliest !== null && $earliest < $anchorTs) {
-            $anchorTs = $earliest;
-        }
-        $anchorY = (int) date('Y', $anchorTs);
-        $anchorM = (int) date('n', $anchorTs);
+        $displayTs = ($earliest !== null && $earliest < $billingTs) ? $earliest : $billingTs;
+
+        $billY = (int) date('Y', $billingTs);
+        $billM = (int) date('n', $billingTs);
+        $anchorY = (int) date('Y', $displayTs);
+        $anchorM = (int) date('n', $displayTs);
 
         $asOf  = $asOf ?: new DateTime('today');
         $asOfY = (int) $asOf->format('Y');
@@ -417,13 +429,15 @@ if (!function_exists('cs_transaction_grid')) {
         $years = [];
         for ($y = $anchorY; $y <= $lastYear; $y++) {
             for ($m = 1; $m <= 12; $m++) {
-                $before    = ($y < $anchorY) || ($y === $anchorY && $m < $anchorM);
+                $before    = ($y < $billY) || ($y === $billY && $m < $billM);
                 $due       = ($y < $asOfY) || ($y === $asOfY && $m <= $asOfM);
                 $allocated = (float) ($buckets["$y-$m"] ?? 0);
+                // Billed only from the billing anchor, so the Target column here can
+                // never diverge from cs_expected_to_date() on the other statement.
                 $target    = ($due && !$before && $monthly > 0) ? $monthly : 0.0;
 
                 if ($allocated > 0) {
-                    $status = 'received';
+                    $status = 'received';   // money arrived; that outranks every label
                 } elseif ($before) {
                     $status = 'before_join';
                 } elseif (!$due) {
@@ -445,7 +459,10 @@ if (!function_exists('cs_transaction_grid')) {
             'years'       => $years,
             'first_year'  => $anchorY,
             'last_year'   => $lastYear,
-            'anchor_ym'   => date('Y-m-01', $anchorTs),
+            // Where the grid starts drawing. `billing_ym` is where dues start, and
+            // the two differ whenever a receipt predates the member's join.
+            'anchor_ym'   => date('Y-m-01', $displayTs),
+            'billing_ym'  => date('Y-m-01', $billingTs),
             'as_of_ym'    => sprintf('%04d-%02d-01', $asOfY, $asOfM),
             'unallocated' => 0.0,
         ];
