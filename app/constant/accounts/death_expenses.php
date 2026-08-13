@@ -30,7 +30,7 @@ $subtitle = $is_sw ? 'Rekodi msaada kwa mwanachama aliyefiwa' : 'Record assistan
                                 <i class="bi bi-arrow-left me-2"></i> <?= $is_sw ? 'Kurudi Nyuma' : 'Back' ?>
                             </a>
                             <button type="button" class="btn btn-primary d-flex align-items-center rounded-pill px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#uniqueDeathModal">
-                                <i class="bi bi-plus-lg me-2"></i> <?= $is_sw ? 'Rekodi Msiba Mpya' : 'Record New Death' ?>
+                                <i class="bi bi-plus-lg me-2"></i> <?= $is_sw ? 'Rekodi Rambirambi' : 'Record Condolence' ?>
                             </button>
                         </div>
                     </div>
@@ -89,13 +89,13 @@ $subtitle = $is_sw ? 'Rekodi msaada kwa mwanachama aliyefiwa' : 'Record assistan
     </div>
 </div>
 
-<!-- Record Death Modal -->
+<!-- Record Condolence Modal -->
 <div class="modal fade" id="uniqueDeathModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" role="dialog" aria-labelledby="uniqueDeathLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-primary text-white p-4">
                 <h5 class="modal-title fw-bold">
-                    <i class="bi bi-plus-circle-fill me-2"></i> <?= $is_sw ? 'Rekodi Msiba na Msaada' : 'Record Death & Assistance' ?>
+                    <i class="bi bi-plus-circle-fill me-2"></i> <?= $is_sw ? 'Rekodi Rambirambi' : 'Record Condolence' ?>
                 </h5>
                 <button type="button" class="btn-close btn-close-white" onclick="window.allowModalClose=true; $('#uniqueDeathModal').modal('hide');" aria-label="Close"></button>
             </div>

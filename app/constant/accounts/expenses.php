@@ -78,7 +78,7 @@ $subtitle = $is_sw ? 'Rekodi na dhibiti misaada kwa wanachama waliofiwa' : 'Reco
                                 <i class="bi bi-wallet2 me-2"></i> <?= $is_sw ? 'Matumizi Mengineyo' : 'Other Expenses' ?>
                             </a>
                             <button type="button" class="btn btn-primary d-flex align-items-center rounded-pill px-3 px-md-4 shadow-sm btn-sm" data-bs-toggle="modal" data-bs-target="#recordDeathModal">
-                                <i class="bi bi-plus-lg me-2"></i> <?= $is_sw ? 'Rekodi Msiba Mpya' : 'Record New Death' ?>
+                                <i class="bi bi-plus-lg me-2"></i> <?= $is_sw ? 'Rekodi Rambirambi' : 'Record Condolence' ?>
                             </button>
                         </div>
                     </div>
@@ -100,7 +100,7 @@ $subtitle = $is_sw ? 'Rekodi na dhibiti misaada kwa wanachama waliofiwa' : 'Reco
         <div class="col-4">
             <div class="card border-0 shadow-sm h-100" style="background-color: #d1e7dd !important;">
                 <div class="card-body p-2 text-center">
-                    <h6 class="text-dark mb-1" style="font-size: 8pt; font-weight: bold; text-transform: uppercase;"><?= $is_sw ? 'Idadi ya Misiba' : 'Death Cases' ?></h6>
+                    <h6 class="text-dark mb-1" style="font-size: 8pt; font-weight: bold; text-transform: uppercase;"><?= $is_sw ? 'Idadi ya Rambirambi' : 'Condolence Cases' ?></h6>
                     <h5 class="fw-bold mb-0 text-dark" id="death_count" style="font-size: 11pt;">0</h5>
                 </div>
             </div>
@@ -178,7 +178,7 @@ $subtitle = $is_sw ? 'Rekodi na dhibiti misaada kwa wanachama waliofiwa' : 'Reco
                 </button>
                 <div id="lenContainer" class="ms-1"></div>
             </div>
-            <h6 class="fw-bold mb-0 text-dark d-none d-md-block"><?= $is_sw ? 'Ripoti ya Misiba' : 'Death Report' ?></h6>
+            <h6 class="fw-bold mb-0 text-dark d-none d-md-block"><?= $is_sw ? 'Ripoti ya Rambirambi' : 'Condolences Report' ?></h6>
         </div>
         <div class="card-body p-0 d-none d-md-block d-print-block">
             <div class="table-responsive">
@@ -227,12 +227,12 @@ $subtitle = $is_sw ? 'Rekodi na dhibiti misaada kwa wanachama waliofiwa' : 'Reco
 
 </div>
 
-<!-- Record Death Modal -->
+<!-- Record Condolence Modal -->
 <div class="modal fade" id="recordDeathModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-primary text-white p-4">
-                <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle-fill me-2"></i> <?= $is_sw ? 'Rekodi Msiba Mpya' : 'Record New Death' ?></h5>
+                <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle-fill me-2"></i> <?= $is_sw ? 'Rekodi Rambirambi' : 'Record Condolence' ?></h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="recordDeathForm">
