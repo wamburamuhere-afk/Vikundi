@@ -194,7 +194,7 @@ $display_month = $is_sw ? $sw_months[date('n')] : $en_months[date('n')];
 
                     <?php if ($is_viongozi && $pending_death_expenses > 0): ?>
                     <a href="<?= getUrl('expenses') ?>?status=pending" class="vk-alert-chip vk-chip-red">
-                        <i class="bi bi-heart-pulse"></i> <?= $pending_death_expenses ?> <?= et('dashboard.funeral_supports') ?>
+                        <i class="bi bi-heart-pulse"></i> <?= $pending_death_expenses ?> <?= et('dashboard.condolences') ?>
                     </a>
                     <?php endif; ?>
 
@@ -238,7 +238,7 @@ $display_month = $is_sw ? $sw_months[date('n')] : $en_months[date('n')];
                     <div class="col"><a href="<?= getUrl('manage_contributions') ?>" class="vk-quick-btn vk-qb-green"><i class="bi bi-piggy-bank"></i><span><?= et('dashboard.contributions') ?></span></a></div>
 
                     <?php if ($can_manage_fin): ?>
-                    <div class="col"><a href="<?= getUrl('death_expenses') ?>" class="vk-quick-btn vk-qb-red"><i class="bi bi-heart-pulse"></i><span><?= et('dashboard.funeral_support') ?></span></a></div>
+                    <div class="col"><a href="<?= getUrl('death_expenses') ?>" class="vk-quick-btn vk-qb-red"><i class="bi bi-heart-pulse"></i><span><?= et('dashboard.condolences') ?></span></a></div>
                     <?php endif; ?>
 
                     <?php if ($is_viongozi): ?>

@@ -50,7 +50,7 @@ $is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
 $expenses_data = $pdo->query("
     (SELECT 'General' as category, expense_date as date, amount, description FROM general_expenses WHERE status IN ('approved','paid'))
     UNION ALL
-    (SELECT 'Death Assistance' as category, expense_date as date, amount, description FROM death_expenses WHERE status IN ('approved','paid'))
+    (SELECT 'Condolences' as category, expense_date as date, amount, description FROM death_expenses WHERE status IN ('approved','paid'))
     ORDER BY date DESC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
@@ -126,7 +126,7 @@ $pct_death   = $total_overall > 0 ? round(($total_death   / $total_overall) * 10
         <div class="col-6 col-md-3">
             <div class="card border-0 shadow-sm h-100 rounded-4 overflow-hidden">
                 <div class="card-body p-4 bg-white border-bottom border-4 border-danger">
-                    <div class="text-uppercase small fw-bold text-muted mb-2"><?= $is_sw ? 'Msaada wa Misiba' : 'Funeral Assistance' ?></div>
+                    <div class="text-uppercase small fw-bold text-muted mb-2"><?= $is_sw ? 'Rambirambi' : 'Condolences' ?></div>
                     <div class="fs-4 fw-bold text-danger">TSh <?= number_format($total_death) ?></div>
                 </div>
             </div>
@@ -162,7 +162,7 @@ $pct_death   = $total_overall > 0 ? round(($total_death   / $total_overall) * 10
                             </thead>
                             <tbody>
                                 <?php foreach ($expenses_data as $idx => $exp):
-                                    $cat_sw = $exp['category'] === 'General' ? 'Matumizi ya Kikundi' : 'Msaada wa Msiba';
+                                    $cat_sw = $exp['category'] === 'General' ? 'Matumizi ya Kikundi' : 'Rambirambi';
                                     $cat_en = $exp['category'];
                                     $cat_class = $exp['category'] === 'General' ? 'bg-info' : 'bg-danger';
                                 ?>
@@ -186,7 +186,7 @@ $pct_death   = $total_overall > 0 ? round(($total_death   / $total_overall) * 10
                         </div>
                         <?php else: foreach ($expenses_data as $exp):
                             $er_is_general = ($exp['category'] === 'General');
-                            $er_cat_lbl    = $is_sw ? ($er_is_general ? 'Matumizi ya Kikundi' : 'Msaada wa Msiba') : $exp['category'];
+                            $er_cat_lbl    = $is_sw ? ($er_is_general ? 'Matumizi ya Kikundi' : 'Rambirambi') : $exp['category'];
                             $er_avatar     = $er_is_general ? 'G' : 'D';
                             $er_av_color   = $er_is_general
                                 ? 'linear-gradient(135deg,#0dcaf0,#0aa2c0)'
@@ -235,7 +235,7 @@ $pct_death   = $total_overall > 0 ? round(($total_death   / $total_overall) * 10
                                 <span class="small fw-bold text-nowrap">TSh <?= number_format($total_general) ?> <span class="text-muted fw-normal">· <?= $pct_general ?>%</span></span>
                             </div>
                             <div class="d-flex justify-content-between align-items-center">
-                                <span class="small"><span class="d-inline-block rounded-circle me-2 align-middle" style="width:10px;height:10px;background:#dc3545;"></span><?= $is_sw ? 'Ya Misiba' : 'Funeral Aid' ?></span>
+                                <span class="small"><span class="d-inline-block rounded-circle me-2 align-middle" style="width:10px;height:10px;background:#dc3545;"></span><?= $is_sw ? 'Rambirambi' : 'Condolences' ?></span>
                                 <span class="small fw-bold text-nowrap">TSh <?= number_format($total_death) ?> <span class="text-muted fw-normal">· <?= $pct_death ?>%</span></span>
                             </div>
                         </div>
@@ -324,7 +324,7 @@ $(document).ready(function() {
         new Chart(propCtx, {
             type: 'doughnut',
             data: {
-                labels: ['<?= $is_sw ? "Ya Kawaida" : "General" ?>', '<?= $is_sw ? "Ya Misiba" : "Funeral Aid" ?>'],
+                labels: ['<?= $is_sw ? "Ya Kawaida" : "General" ?>', '<?= $is_sw ? "Rambirambi" : "Condolences" ?>'],
                 datasets: [{
                     data: [<?= (float) $total_general ?>, <?= (float) $total_death ?>],
                     backgroundColor: ['#0dcaf0', '#dc3545'],

@@ -78,7 +78,7 @@ if ($sched['advance'] > 0) {
     ];
 }
 
-// 7. Expenses (Death Benefits)
+// 7. Expenses (Condolences)
 // Only APPROVED (disbursed) benefits count as "received" — pending/rejected
 // claims must not inflate the Benefits Received total or the history table.
 $stmt = $pdo->prepare("SELECT * FROM death_expenses WHERE member_id = ? AND status IN ('approved','paid') ORDER BY expense_date DESC");
@@ -236,7 +236,7 @@ $total_expenses = array_sum(array_column($expenses, 'amount'));
 <?php if (!empty($expenses)): ?>
 <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-5">
     <div class="card-header bg-primary text-white py-3">
-        <h6 class="mb-0 fw-bold"><i class="bi bi-heart-break me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Historia ya Misaada ya Misiba' : 'Death Benefit History' ?></h6>
+        <h6 class="mb-0 fw-bold"><i class="bi bi-heart-break me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Historia ya Rambirambi' : 'Condolence History' ?></h6>
     </div>
     <div class="card-body p-0">
         <div class="table-responsive d-none d-md-block d-print-block">

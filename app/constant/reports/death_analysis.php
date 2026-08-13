@@ -90,8 +90,8 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4 d-print-none">
         <div>
-            <h4 class="mb-0 fw-bold text-primary"><i class="bi bi-heart-pulse me-2"></i> <?= $is_sw ? 'Uchambuzi wa Mafao ya Misiba' : 'Funeral Aid Sustainability Analysis' ?></h4>
-            <div class="text-muted small"><?= $is_sw ? 'Tofauti kati ya michango ya mwanachama na msaada aliopewa akifariki' : 'Comparison between lifetime contributions and funeral assistance paid' ?></div>
+            <h4 class="mb-0 fw-bold text-primary"><i class="bi bi-heart-pulse me-2"></i> <?= $is_sw ? 'Uchambuzi wa Uendelevu wa Rambirambi' : 'Condolences Sustainability Analysis' ?></h4>
+            <div class="text-muted small"><?= $is_sw ? 'Tofauti kati ya michango ya mwanachama na rambirambi alizopewa akifariki' : 'Comparison between lifetime contributions and condolences paid' ?></div>
         </div>
         <div class="d-flex gap-2">
             <button onclick="window.print()" class="btn btn-primary rounded-pill px-4 shadow-sm border-0 d-flex align-items-center">
@@ -103,7 +103,7 @@ $chart_benefit = array_column($chart_cases, 'benefit_paid');
     <?php PrintHeader::css(); ?>
     <!-- PRINT HEADER (Visible only during print) -->
     <div class="d-none d-print-block">
-        <?php PrintHeader::render($pdo, $is_sw ? 'UCHAMBUZI WA MAFAO YA MISIBA' : 'FUNERAL AID SUSTAINABILITY ANALYSIS'); ?>
+        <?php PrintHeader::render($pdo, $is_sw ? 'UCHAMBUZI WA UENDELEVU WA RAMBIRAMBI' : 'CONDOLENCES SUSTAINABILITY ANALYSIS'); ?>
     </div>
 
 
