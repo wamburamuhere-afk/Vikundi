@@ -264,6 +264,31 @@ if (!function_exists('cs_calendar_grid')) {
     {
         $anchorYm     = $schedule['anchor_ym'] ?? date('Y-01-01');
         $distribution = $schedule['distribution'] ?? [];
+        $monthly      = (float) ($schedule['monthly_amt'] ?? 0);
+        $unallocated  = (float) ($schedule['advance'] ?? 0);
+
+        // cs_build_schedule() covers whole months only (floor), so a payment that is
+        // not an exact multiple of the target leaves a remainder smaller than one
+        // month sitting outside every column. Lay it on the next month as a partial.
+        //
+        // This is not cosmetic. Without it the grid totals 280,000 for a member who
+        // paid 285,000, so the statement prints a Surplus of 245,000 in the details
+        // panel and a Variance of 240,000 in the summary — two figures on one page
+        // that must agree, differing by the lost remainder. A treasurer sees that
+        // immediately and stops trusting the whole document.
+        //
+        // Only when a monthly rule exists. With no rule nothing can be laid on any
+        // month, and the pot stays genuinely unallocated (reported below).
+        if ($monthly > 0 && $unallocated > 0) {
+            $distribution[] = [
+                'label'  => '',
+                'amount' => $unallocated,
+                'status' => 'partial',
+                'target' => $monthly,
+            ];
+            $unallocated = 0.0;
+        }
+
         $anchorTs     = strtotime($anchorYm) ?: strtotime(date('Y') . '-01-01');
         $anchorY      = (int) date('Y', $anchorTs);
         $anchorM      = (int) date('n', $anchorTs);
@@ -327,9 +352,10 @@ if (!function_exists('cs_calendar_grid')) {
             'last_year'  => $lastYear,
             'anchor_ym'  => $anchorYm,
             'as_of_ym'   => sprintf('%04d-%02d-01', $asOfY, $asOfM),
-            // Money the schedule could not lay on any month — the whole pot when the
-            // group has no monthly rule. Carried so the totals below stay honest.
-            'unallocated' => (float) ($schedule['advance'] ?? 0),
+            // Money the schedule could not lay on any month. With a monthly rule in
+            // place this is always 0 (any remainder became a partial month above), so
+            // it is non-zero only in the genuine save-what-you-can case.
+            'unallocated' => $unallocated,
         ];
     }
 }
