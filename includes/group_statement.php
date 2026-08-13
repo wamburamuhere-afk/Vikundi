@@ -74,7 +74,7 @@ foreach ($schedules as $cid => $row) {
     ];
 }
 
-$group_grid    = cs_merge_grids($grids);
+$group_grid    = cs_merge_grids($grids, $vk_statement_type);
 $group_summary = cs_year_summary($group_grid);
 
 $member_count  = count($per_member);

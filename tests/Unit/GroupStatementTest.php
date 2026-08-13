@@ -202,6 +202,73 @@ class GroupStatementTest extends TestCase
         $this->assertSame(160000.0, $merged['unallocated']);
     }
 
+    public function testTheGroupTransactionsGridNeverMarksAMonthUnpaid(): void
+    {
+        // Found on the deployed page: the merged grid recomputed states using the
+        // CONTRIBUTIONS vocabulary, so July and August rendered red with "0" on the
+        // Group Statement of Transactions — a document whose own legend has no red
+        // in it. A transactions grid records what arrived; the arrears judgement
+        // lives on the other statement.
+        $d = new DateTime('2026-08-13');
+        $merged = cs_merge_grids([
+            cs_transaction_grid([['date' => '2026-01-15', 'amount' => 200000.0]], 20000, '2026-01-01', $d),
+            cs_transaction_grid([['date' => '2026-02-05', 'amount' => 85000.0]], 20000, '2026-01-01', $d),
+        ], 'transactions');
+
+        $seen = [];
+        foreach ($merged['years'] as $cells) {
+            foreach ($cells as $cell) {
+                $seen[$cell['status']] = true;
+            }
+        }
+
+        $this->assertArrayNotHasKey('unpaid', $seen);
+        $this->assertArrayNotHasKey('partial', $seen);
+        $this->assertArrayNotHasKey('paid', $seen);
+        $this->assertArrayHasKey('received', $seen);
+        $this->assertArrayHasKey('none', $seen);
+
+        // July had no receipts but is elapsed: empty, not a debt.
+        $this->assertSame('none', $merged['years'][2026][7]['status']);
+        $this->assertSame(0.0, $merged['years'][2026][7]['allocated']);
+    }
+
+    public function testAnEmptyTransactionMonthRendersBlankNotZero(): void
+    {
+        $d = new DateTime('2026-08-13');
+        $merged = cs_merge_grids([
+            cs_transaction_grid([['date' => '2026-01-15', 'amount' => 200000.0]], 20000, '2026-01-01', $d),
+        ], 'transactions');
+
+        $html = $this->render(fn() => stmt_calendar($merged, false));
+        $this->assertStringNotContainsString('vk-c-unpaid', $html);
+        $this->assertStringContainsString('vk-c-none', $html);
+    }
+
+    public function testTheContributionsMergeStillUsesItsOwnStates(): void
+    {
+        // The default must not have shifted: a contributions grid still says unpaid.
+        $d = new DateTime('2026-04-15');
+        $merged = cs_merge_grids([
+            cs_calendar_grid(cs_build_schedule(0, 0, 20000, 0, '2026-01-01', null, $d), $d),
+        ]);
+
+        $this->assertSame('unpaid', $merged['years'][2026][1]['status']);
+    }
+
+    public function testTheGroupPagePassesItsTypeToTheMerge(): void
+    {
+        $src = file_get_contents(__DIR__ . '/../../includes/group_statement.php');
+        $this->assertStringContainsString('cs_merge_grids($grids, $vk_statement_type)', $src);
+    }
+
+    private function render(callable $fn): string
+    {
+        ob_start();
+        $fn();
+        return (string) ob_get_clean();
+    }
+
     // -------------------------------------------------------------------------
     // Page wiring
     // -------------------------------------------------------------------------
