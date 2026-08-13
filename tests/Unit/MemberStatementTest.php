@@ -31,17 +31,27 @@ class MemberStatementTest extends TestCase
 
     public function testStatementPrintsLandscapeAndReadable(): void
     {
-        $this->assertStringContainsString('@page { size: A4 landscape; }', $this->src);
-        // the tiny 10px print fonts are gone
-        $this->assertStringNotContainsString('font-size: 10px', $this->src);
-        $this->assertStringNotContainsString('font-size: 7.5px', $this->src);
+        // The print rules moved into includes/statement_layout.php when the statement
+        // adopted the shared NSSF skeleton — all four statements print the same way,
+        // so the rules live with the skeleton rather than being copied four times.
+        $layout = file_get_contents(__DIR__ . '/../../includes/statement_layout.php');
+        $this->assertMatchesRegularExpression('/@page\s*\{[^}]*size:\s*A4 landscape/', $layout);
+        // the tiny print fonts are gone
+        $this->assertStringNotContainsString('font-size: 10px', $layout);
+        $this->assertStringNotContainsString('font-size: 7.5px', $layout);
+        // Colour carries meaning in the grid (paid / partial / unpaid / before joining),
+        // so it has to survive the printer rather than washing out to identical greys.
+        $this->assertStringContainsString('print-color-adjust:exact', $layout);
     }
 
     public function testGridFlowsOntoPageOne(): void
     {
+        $layout = file_get_contents(__DIR__ . '/../../includes/statement_layout.php');
         // the tall 2.2cm tfoot spacer that pushed the grid whole to page 2 is gone
+        $this->assertStringNotContainsString('height: 2.2cm', $layout);
         $this->assertStringNotContainsString('height: 2.2cm', $this->src);
-        // the grid card may flow up onto page 1 instead of jumping to page 2
-        $this->assertStringContainsString('.vk-grid-card { page-break-inside: auto', $this->src);
+        // A year row must not be split across a page break — half a member's year on
+        // one sheet and half on the next is unreadable at a meeting table.
+        $this->assertStringContainsString('.vk-stmt-grid tr { page-break-inside:avoid; }', $layout);
     }
 }

@@ -42,7 +42,10 @@ class StatementUsesStandingModuleTest extends TestCase
     {
         // The whole per-member schedule (including month counting) now comes from the
         // module's cs_member_schedule(); the hand-rolled arithmetic is gone.
-        $this->assertStringContainsString('$sched = cs_member_schedule($pdo, $member_id);', $this->src);
+        $this->assertMatchesRegularExpression(
+            '/\$sched\s*=\s*cs_member_schedule\(\$pdo,\s*\$member_id,\s*\$as_of\)/',
+            $this->src
+        );
         $this->assertStringNotContainsString(
             "intval(date('m')) - intval(date('m', \$anchor_ts))",
             $this->src
