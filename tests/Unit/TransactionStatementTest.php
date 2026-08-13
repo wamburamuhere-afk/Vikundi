@@ -210,19 +210,38 @@ class TransactionStatementTest extends TestCase
         $this->assertStringNotContainsString('Not paid', $html);
     }
 
-    public function testTheReceiptQueryMatchesTheScheduleFilterExactly(): void
+    public function testEveryStatementQueryUsesOneSharedFilter(): void
     {
-        // cs_member_transactions() and cs_member_schedule() must accept the same rows.
-        // The moment one takes a row the other rejects, the two statements stop
-        // agreeing on the member's total.
+        // Four queries decide which contribution rows count on a statement: a
+        // member's schedule, a member's receipts, every member's schedule, every
+        // member's receipts. The moment one accepts a row another rejects, a
+        // member's own statement and the group statement disagree about that member.
+        //
+        // This originally asserted the filter appeared exactly twice. Adding the
+        // group statements made it four, and the test failing was the correct
+        // outcome — the fix was to extract cs_statement_filter_sql(), not to raise
+        // the count. So it now asserts there is exactly ONE definition.
         $src = file_get_contents(__DIR__ . '/../../includes/contribution_standing.php');
 
-        preg_match_all(
-            "/status IN \('confirmed','approved',''\)\s*\n\s*AND \(contribution_type IN \('monthly','entrance','other'\)/",
-            $src,
-            $m
-        );
-        $this->assertCount(2, $m[0], 'the schedule and the receipt list must share one filter');
+        preg_match_all("/contribution_type IN \('monthly','entrance','other'\)/", $src, $m);
+        $this->assertCount(1, $m[0], 'the filter must be defined once, in cs_statement_filter_sql()');
+
+        // ...and all four queries must go through it (occurrences, less the definition).
+        $this->assertSame(4, substr_count($src, 'cs_statement_filter_sql(') - 1,
+            'every statement query must call the shared filter');
+    }
+
+    public function testTheSharedFilterAppliesCleanlyWithAndWithoutAnAlias(): void
+    {
+        $bare    = cs_statement_filter_sql();
+        $aliased = cs_statement_filter_sql('co');
+
+        $this->assertStringContainsString("status IN ('confirmed','approved','')", $bare);
+        $this->assertStringNotContainsString('co.', $bare);
+        $this->assertStringContainsString("co.status IN ('confirmed','approved','')", $aliased);
+        $this->assertStringContainsString('co.contribution_type', $aliased);
+        // A trailing dot from the caller must not produce "co..status".
+        $this->assertSame($aliased, cs_statement_filter_sql('co.'));
     }
 
     public function testPageIsRoutedAndGatedLikeTheContributionsStatement(): void
