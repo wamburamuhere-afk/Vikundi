@@ -360,6 +360,61 @@ if (!function_exists('cs_calendar_grid')) {
     }
 }
 
+if (!function_exists('cs_arrears_from_grid')) {
+    /**
+     * How far behind a member is: how much, and over how many months. Pure — feed it
+     * cs_calendar_grid() output.
+     *
+     * Derived from the SAME grid the statement prints, deliberately. The dashboard
+     * telling a member they owe 60,000 while their statement shows a different
+     * shortfall is the fastest way to lose an argument in a meeting, and the only
+     * reliable way to prevent it is for both to read one calculation.
+     *
+     * Only DUE months with a target count. Months before the member joined and
+     * months that have not happened yet are not debts, so they can never appear in
+     * this figure — same rule as everywhere else in this module.
+     *
+     * @return array{behind:bool, amount:float, months:int, oldest:?string}
+     */
+    function cs_arrears_from_grid(array $grid): array
+    {
+        $amount = 0.0;
+        $months = 0;
+        $oldest = null;
+
+        foreach (($grid['years'] ?? []) as $year => $cells) {
+            foreach ($cells as $m => $cell) {
+                if (empty($cell['due']) || $cell['target'] <= 0) {
+                    continue;
+                }
+                $short = (float) $cell['target'] - (float) $cell['allocated'];
+                if ($short <= 0) {
+                    continue;
+                }
+                $amount += $short;
+                $months++;
+                $oldest = $oldest ?? sprintf('%04d-%02d', $year, $m);
+            }
+        }
+
+        return [
+            'behind' => $months > 0,
+            'amount' => $amount,
+            'months' => $months,
+            'oldest' => $oldest,
+        ];
+    }
+}
+
+if (!function_exists('cs_member_arrears')) {
+    /** cs_arrears_from_grid() for one member, straight from the database. */
+    function cs_member_arrears(PDO $pdo, int $memberId, ?DateTimeInterface $asOf = null): array
+    {
+        $sched = cs_member_schedule($pdo, $memberId, $asOf);
+        return cs_arrears_from_grid(cs_calendar_grid($sched, $asOf));
+    }
+}
+
 if (!function_exists('cs_transaction_grid')) {
     /**
      * The same year x month calendar, but filled by WHEN THE MONEY ARRIVED rather

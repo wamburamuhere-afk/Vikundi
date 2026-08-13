@@ -82,6 +82,20 @@ if (!$is_viongozi) {
     $stmt->execute([$user_id]); $my_total_contributions = (float) $stmt->fetchColumn();
 }
 
+// ── Am I behind on contributions? ────────────────────────────────────────
+// Read from the same module the statement prints, never recomputed here. A
+// dashboard saying "you owe 60,000" above a statement showing a different figure
+// is how a member stops trusting both, so there is exactly one calculation.
+require_once ROOT_DIR . '/includes/contribution_standing.php';
+$my_arrears = ['behind' => false, 'amount' => 0.0, 'months' => 0, 'oldest' => null];
+$my_member_id = 0;
+$own = $pdo->prepare("SELECT customer_id FROM customers WHERE user_id = ?");
+$own->execute([$user_id]);
+$my_member_id = (int) ($own->fetchColumn() ?: 0);
+if ($my_member_id) {
+    $my_arrears = cs_member_arrears($pdo, $my_member_id);
+}
+
 // ── Monthly contributions trend (last 6 months) ───────────────────────────
 // Two grouped queries fill six pre-seeded month buckets. This was a 6-iteration
 // loop firing 2 queries each (12 round-trips) for the identical result; letting
@@ -157,6 +171,45 @@ $display_month = $is_sw ? $sw_months[date('n')] : $en_months[date('n')];
 ?>
 
 <div class="vk-dashboard">
+
+    <!-- ── CONTRIBUTION ARREARS ───────────────────────────────────────────
+         Shown only to a member who is actually behind. Never shown to someone
+         who is up to date or ahead: a standing "you owe nothing" banner trains
+         people to stop reading the banner. -->
+    <?php if ($my_arrears['behind']): ?>
+    <div class="vk-arrears-note shadow-sm mb-3">
+        <div class="d-flex flex-wrap align-items-center gap-3 px-3 px-md-4 py-3">
+            <i class="bi bi-exclamation-triangle-fill fs-4"></i>
+            <div class="flex-grow-1">
+                <div class="fw-bold" style="font-size:1.05rem;">
+                    <?php if ($is_sw): ?>
+                        Unadaiwa <strong>TSh <?= number_format($my_arrears['amount'], 0) ?></strong>
+                        kwa <?= $my_arrears['months'] ?> <?= $my_arrears['months'] === 1 ? 'mwezi' : 'miezi' ?>
+                    <?php else: ?>
+                        You owe <strong>TSh <?= number_format($my_arrears['amount'], 0) ?></strong>
+                        for <?= $my_arrears['months'] ?> <?= $my_arrears['months'] === 1 ? 'month' : 'months' ?>
+                    <?php endif; ?>
+                </div>
+                <div class="small opacity-75">
+                    <?= $is_sw
+                        ? 'Michango ambayo haijakamilika. Angalia taarifa yako kuona miezi husika.'
+                        : 'Contributions not yet complete. Open your statement to see which months.' ?>
+                </div>
+            </div>
+            <a href="<?= getUrl('member_statement') ?>" class="btn btn-light btn-sm rounded-pill px-3 fw-bold">
+                <i class="bi bi-file-earmark-text me-1"></i>
+                <?= $is_sw ? 'Taarifa Yangu' : 'My Statement' ?>
+            </a>
+        </div>
+    </div>
+    <style>
+    .vk-arrears-note {
+        background:linear-gradient(135deg,#b02a37,#8b1f2a); color:#fff; border-radius:12px;
+    }
+    .vk-arrears-note .btn-light { color:#b02a37; }
+    </style>
+    <?php endif; ?>
+
     <!-- ── ALERT BANNER ─────────────────── -->
     <?php 
     if ($is_viongozi) {
