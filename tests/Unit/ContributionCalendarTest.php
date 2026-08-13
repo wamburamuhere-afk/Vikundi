@@ -154,6 +154,49 @@ class ContributionCalendarTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
+    // The two figures on the page must reconcile
+    // -------------------------------------------------------------------------
+
+    public function testARemainderSmallerThanOneMonthStillLandsOnTheGrid(): void
+    {
+        // Production member #1: 285,000 against a 20,000 target = 14 whole months and
+        // 5,000 left over. cs_build_schedule() covers whole months only, so without
+        // handling that remainder it falls outside every column.
+        $grid = cs_calendar_grid(
+            $this->schedule(285000, 20000, '2026-07-01', null, '2026-08-13'),
+            new DateTime('2026-08-13')
+        );
+
+        $total = 0.0;
+        foreach ($grid['years'] as $cells) {
+            foreach ($cells as $cell) {
+                $total += $cell['allocated'];
+            }
+        }
+        $this->assertSame(285000.0, $total, 'every shilling paid must appear somewhere on the grid');
+        $this->assertSame(0.0, $grid['unallocated'], 'with a monthly rule nothing may be left unallocated');
+    }
+
+    public function testPanelSurplusAndSummaryVarianceCannotDisagree(): void
+    {
+        // The statement prints Surplus/Deficit in the details panel (from cs_standing)
+        // and Variance in the summary (from the grid). They are derived by different
+        // routes and appear on the same page, so a member reading 245,000 in one place
+        // and 240,000 in the other is being shown a document that contradicts itself.
+        $asOf  = new DateTime('2026-08-13');
+        $sched = $this->schedule(285000, 20000, '2026-07-01', null, '2026-08-13');
+        $grid  = cs_calendar_grid($sched, $asOf);
+
+        $expected = cs_expected_to_date(20000, $sched['anchor_ym'], $asOf);
+        $panel    = cs_standing(0, 285000, $expected);
+        $summary  = cs_year_summary($grid);
+
+        $this->assertSame(40000.0, $expected, 'two elapsed months at 20,000');
+        $this->assertSame($panel['surplus_deficit'], $summary['total']['variance']);
+        $this->assertSame(245000.0, $summary['total']['variance']);
+    }
+
+    // -------------------------------------------------------------------------
     // No fixed monthly rule (the group's current state)
     // -------------------------------------------------------------------------
 
