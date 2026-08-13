@@ -4,6 +4,42 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-08-13 — Feat: contribution calendar engine — Statements PR 1
+**Branch:** `feat/contribution-calendar-engine` (from `develop`)
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** First PR of six delivering the member and group statements the group asked for. This one is the engine only — two pure functions, no screen. Purely additive: no existing code path changes, so it is safe to promote to `main` ahead of the pages that will consume it.
+
+### The rule these encode
+Money is **pooled and laid forward from the member's own anchor month, arrears first**. 100,000 paid against a 20,000 monthly target covers five months, whichever day the money arrived. The **Transactions** statement shows the single 100,000 event on its real date; the **Contributions** statement shows the five months. Same money, two views, and their grand totals must always agree.
+
+### Added — `includes/contribution_standing.php`
+- **`cs_calendar_grid()`** — reshapes `cs_build_schedule()`'s flat run of months into whole calendar years (NSSF layout: one row per year, twelve month columns). Six cell states, not three: `before_join`, `no_target`, `paid`, `partial`, `unpaid`, `advance`, `future`. The distinction that matters is `before_join` vs `unpaid` — a member who joined in May must show Jan–Apr as *not yet a member*, never as debt.
+- **`cs_year_summary()`** — the per-year Target / Actual / Variance block plus the grand total.
+
+Both pure, no DB, fully unit-testable.
+
+### Two decisions worth recording
+- **Months past "as of" carry target 0**, whatever the group rule is. They are not owed yet, and billing them manufactures a deficit that does not exist — the same principle as `cs_expected_to_date()` counting only elapsed months. Consequence: a member who paid a year ahead reads as a **surplus**, not an overpayment.
+- **`total.paid` is NOT the sum of the yearly actuals.** With no monthly rule the whole pot is unallocated, every cell reads 0, and a naive sum would print "Total 0" for a member who has paid 500,000. This is the **live** case, not hypothetical — see below.
+
+### Deliberately NOT in this PR
+The dead status filter. `cs_group_savings_total()`, `cs_group_standing()` and `cs_member_schedule()` all filter `status IN ('confirmed','approved','')`, but `contributions.status` is `enum('pending','reviewed','approved','cancelled')` — two of those three values can never match. It is provably a no-op on local data, but it could not be proved against production, and this PR was the first trip through the deploy pipeline. It gets its own PR with a proof step.
+
+### Tests
+`tests/Unit/ContributionCalendarTest.php` — 11 tests, 76 assertions. Covers both worked examples the group gave, allocation spilling across a year boundary (100k in November reaches March), mid-year joins, paying ahead, paying nothing, and the no-target case. **Verified non-vacuous by three mutations** — billing future months, turning pre-join months into debts, and dropping unallocated money from the total — each caught by a different test.
+
+Suite: 1218 → **1229 tests, 3158 assertions, 15 skipped, exit 0**.
+
+### Database Changes
+None.
+
+### Blocker for PR 3 — the group has no settings
+`group_settings` holds exactly one row: `group_name = 'Umoja Demo VICOBA'`. There is **no `monthly_contribution`, no `entrance_fee`, no `contribution_start_date`, no logo and no registration number.** The engine treats a missing monthly amount as "no fixed target" by design, so today every member's target is 0, nobody has a deficit, and the entire Target/Actual summary would render as zeros. The arrears notification would never fire for anyone. This is a settings decision, not a code fix, and the statements are meaningless until someone supplies the figure.
+
+Also relevant to any demo: contributions run **Jan–Jun 2026 only**, all type `monthly`, 573 rows across 322 members (~1.8 each), of which **524 are `pending` and 49 `approved`**. Every statement filters to approved.
+
+---
+
 ## Session — 2026-08-01 — Fix: escaping, headers and response hygiene — Remediation Batch 3
 **Branch:** `fix/batch3-escaping` (from `develop`)
 **Developer:** Claude Code / Jabir Mussa

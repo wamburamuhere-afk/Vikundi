@@ -236,6 +236,156 @@ if (!function_exists('cs_build_schedule')) {
     }
 }
 
+if (!function_exists('cs_calendar_grid')) {
+    /**
+     * Reshape a schedule into the calendar the statements print: one row per YEAR,
+     * twelve month columns, NSSF-style. Pure — feed it cs_build_schedule() output.
+     *
+     * cs_build_schedule() returns a flat run of months starting at the member's own
+     * anchor. That is right for the arithmetic and wrong for the page: a member who
+     * joined in May must still be shown a January-to-December row, with Jan-Apr
+     * visibly NOT owed rather than absent (an absent cell reads as a missed payment
+     * to anyone scanning the row, which is the opposite of the truth).
+     *
+     * Hence six cell states, not three:
+     *   before_join — earlier than this member's anchor. Never owed, never a debt.
+     *   no_target   — in range, but the group has no fixed monthly rule.
+     *   paid        — allocation met the month's target.
+     *   partial     — some money landed, short of target. The deficit is target-allocated.
+     *   unpaid      — due, nothing allocated.
+     *   advance     — beyond "as of", already covered by money paid ahead.
+     *   future      — beyond "as of", nothing allocated.
+     *
+     * A month past "as of" carries target 0 whatever the group rule is: it is not
+     * owed yet, and billing it would manufacture a deficit that does not exist. This
+     * is the same principle as cs_expected_to_date() counting only elapsed months.
+     */
+    function cs_calendar_grid(array $schedule, ?DateTimeInterface $asOf = null): array
+    {
+        $anchorYm     = $schedule['anchor_ym'] ?? date('Y-01-01');
+        $distribution = $schedule['distribution'] ?? [];
+        $anchorTs     = strtotime($anchorYm) ?: strtotime(date('Y') . '-01-01');
+        $anchorY      = (int) date('Y', $anchorTs);
+        $anchorM      = (int) date('n', $anchorTs);
+
+        $asOf   = $asOf ?: new DateTime('today');
+        $asOfY  = (int) $asOf->format('Y');
+        $asOfM  = (int) $asOf->format('n');
+
+        // The grid runs from the anchor year to whichever ends later: "as of", or the
+        // last month money reaches. Paying a year ahead must not truncate the page.
+        $lastIndex = count($distribution) - 1;
+        $lastY     = $anchorY;
+        if ($lastIndex >= 0) {
+            $lastY = (int) date('Y', strtotime("$lastIndex months", $anchorTs));
+        }
+        $lastYear  = max($asOfY, $lastY, $anchorY);
+
+        $years = [];
+        for ($y = $anchorY; $y <= $lastYear; $y++) {
+            for ($m = 1; $m <= 12; $m++) {
+                $index = ($y - $anchorY) * 12 + ($m - $anchorM);
+                $due   = ($y < $asOfY) || ($y === $asOfY && $m <= $asOfM);
+
+                if ($index < 0) {
+                    $years[$y][$m] = [
+                        'target' => 0.0, 'allocated' => 0.0,
+                        'status' => 'before_join', 'due' => false,
+                    ];
+                    continue;
+                }
+
+                $cell      = $distribution[$index] ?? null;
+                $allocated = (float) ($cell['amount'] ?? 0);
+                // Only an elapsed month can carry a target; see the note above.
+                $target    = $due ? (float) ($cell['target'] ?? 0) : 0.0;
+
+                if (!$due) {
+                    $status = $allocated > 0 ? 'advance' : 'future';
+                } elseif ($target <= 0) {
+                    $status = 'no_target';
+                } elseif ($allocated >= $target) {
+                    $status = 'paid';
+                } elseif ($allocated > 0) {
+                    $status = 'partial';
+                } else {
+                    $status = 'unpaid';
+                }
+
+                $years[$y][$m] = [
+                    'target'    => $target,
+                    'allocated' => $allocated,
+                    'status'    => $status,
+                    'due'       => $due,
+                ];
+            }
+        }
+
+        return [
+            'years'      => $years,
+            'first_year' => $anchorY,
+            'last_year'  => $lastYear,
+            'anchor_ym'  => $anchorYm,
+            'as_of_ym'   => sprintf('%04d-%02d-01', $asOfY, $asOfM),
+            // Money the schedule could not lay on any month — the whole pot when the
+            // group has no monthly rule. Carried so the totals below stay honest.
+            'unallocated' => (float) ($schedule['advance'] ?? 0),
+        ];
+    }
+}
+
+if (!function_exists('cs_year_summary')) {
+    /**
+     * The per-year Target vs Actual block printed under the breakdown, plus the
+     * grand total. Pure — feed it cs_calendar_grid() output.
+     *
+     * target   — dues for ELAPSED months only, so it never bills the future.
+     * actual   — every shilling laid on that year's months, advance included, so a
+     *            member paying ahead reads as a surplus rather than an overpayment.
+     * variance — actual - target. Negative is a deficit.
+     *
+     * total.paid is deliberately NOT the sum of the yearly actuals: when the group
+     * has no monthly rule the whole pot is unallocated, every month reads 0, and a
+     * naive sum would print "Total 0" for a member who has paid for years. The grand
+     * total is what they actually brought in, always.
+     */
+    function cs_year_summary(array $grid): array
+    {
+        $years   = [];
+        $tTarget = 0.0;
+        $tActual = 0.0;
+
+        foreach (($grid['years'] ?? []) as $year => $months) {
+            $target = 0.0;
+            $actual = 0.0;
+            foreach ($months as $cell) {
+                $target += (float) $cell['target'];
+                $actual += (float) $cell['allocated'];
+            }
+            $years[$year] = [
+                'target'   => $target,
+                'actual'   => $actual,
+                'variance' => $actual - $target,
+            ];
+            $tTarget += $target;
+            $tActual += $actual;
+        }
+
+        $unallocated = (float) ($grid['unallocated'] ?? 0);
+
+        return [
+            'years' => $years,
+            'total' => [
+                'target'      => $tTarget,
+                'actual'      => $tActual,
+                'variance'    => $tActual - $tTarget,
+                'unallocated' => $unallocated,
+                'paid'        => $tActual + $unallocated,
+            ],
+        ];
+    }
+}
+
 if (!function_exists('cs_member_schedule')) {
     /**
      * cs_build_schedule() for one member, reading everything from the DB: the group's
