@@ -360,6 +360,195 @@ if (!function_exists('cs_calendar_grid')) {
     }
 }
 
+if (!function_exists('cs_statement_filter_sql')) {
+    /**
+     * The one definition of "a contribution row that counts on a statement".
+     *
+     * Four queries need it — a member's schedule, a member's dated receipts, every
+     * member's schedule, and every member's receipts. It was written out four times
+     * and a test caught the duplication. Retyped filters are exactly how a member's
+     * own statement and the group statement end up disagreeing about that member,
+     * so there is one copy and everything calls it.
+     *
+     * Contains no user input: the alias is a caller-supplied literal, never request
+     * data, and nothing is interpolated but that alias.
+     *
+     * NOTE a pre-existing divergence, deliberately left alone: cs_group_standing()
+     * and cs_group_savings_total() use `contribution_type <> 'fine'` instead, which
+     * ADMITS 'agm' rows that this filter excludes. Reconciling them would move money
+     * figures on the dashboard and the ledger, so it needs its own change with its
+     * own verification rather than riding along here.
+     */
+    function cs_statement_filter_sql(string $alias = ''): string
+    {
+        $p = $alias === '' ? '' : rtrim($alias, '.') . '.';
+        return "{$p}status IN ('confirmed','approved','')
+                AND ({$p}contribution_type IN ('monthly','entrance','other')
+                     OR {$p}contribution_type = '' OR {$p}contribution_type IS NULL)";
+    }
+}
+
+if (!function_exists('cs_group_schedules')) {
+    /**
+     * Every member's schedule in ONE query, keyed by customer_id.
+     *
+     * The group statements need a calendar per member across 327 members. Calling
+     * cs_member_schedule() in a loop would fire two queries each — around 650 round
+     * trips to render one page. This does the same arithmetic from a single grouped
+     * scan and then builds the schedules in PHP, where they are pure anyway.
+     *
+     * The CASE expressions and the status/type filter are deliberately identical to
+     * cs_member_schedule(); if they drift, a member's own statement and the group
+     * statement stop agreeing about that member.
+     *
+     * @return array<int,array> customer_id => ['name','joined','schedule']
+     */
+    function cs_group_schedules(PDO $pdo, ?DateTimeInterface $asOf = null): array
+    {
+        $settings  = $pdo->query("SELECT setting_key, setting_value FROM group_settings")
+                         ->fetchAll(PDO::FETCH_KEY_PAIR);
+        $monthly   = (float) ($settings['monthly_contribution'] ?? 0);
+        $entrance  = (float) ($settings['entrance_fee'] ?? 0);
+        $startDate = $settings['contribution_start_date']
+                     ?? ($settings['group_founded_date'] ?? date('Y') . '-01-01');
+
+        $rows = $pdo->query("
+            SELECT c.customer_id, c.first_name, c.middle_name, c.last_name,
+                   c.created_at, c.initial_savings,
+                   COALESCE(SUM(CASE WHEN (co.mkoba_trans_id IS NOT NULL AND co.mkoba_trans_id <> '') OR co.account = 'M-Koba'
+                                     THEN co.amount ELSE 0 END), 0) AS opening,
+                   COALESCE(SUM(CASE WHEN (co.mkoba_trans_id IS NULL OR co.mkoba_trans_id = '') AND (co.account IS NULL OR co.account <> 'M-Koba')
+                                     THEN co.amount ELSE 0 END), 0) AS newmoney
+              FROM customers c
+              LEFT JOIN contributions co
+                     ON c.customer_id = co.member_id
+                    AND " . cs_statement_filter_sql('co') . "
+             WHERE c.status <> 'deleted'
+             GROUP BY c.customer_id
+             ORDER BY c.first_name, c.last_name
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        $out = [];
+        foreach ($rows as $r) {
+            $newMoney = (float) ($r['initial_savings'] ?? 0) + (float) $r['newmoney'];
+            $out[(int) $r['customer_id']] = [
+                'name'     => trim(implode(' ', array_filter([$r['first_name'], $r['middle_name'], $r['last_name']]))),
+                'joined'   => $r['created_at'],
+                'schedule' => cs_build_schedule(
+                    (float) $r['opening'], $newMoney, $monthly, $entrance,
+                    $startDate, $r['created_at'] ?? null, $asOf
+                ),
+            ];
+        }
+        return $out;
+    }
+}
+
+if (!function_exists('cs_group_receipts')) {
+    /**
+     * Every member's dated receipts in one query, keyed by customer_id — the
+     * transactions equivalent of cs_group_schedules(). Same filter again.
+     *
+     * @return array<int,array<int,array{date:string,amount:float}>>
+     */
+    function cs_group_receipts(PDO $pdo): array
+    {
+        $rows = $pdo->query("
+            SELECT member_id, contribution_date AS date, amount
+              FROM contributions
+             WHERE " . cs_statement_filter_sql() . "
+             ORDER BY contribution_date ASC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        $out = [];
+        foreach ($rows as $r) {
+            $out[(int) $r['member_id']][] = ['date' => $r['date'], 'amount' => (float) $r['amount']];
+        }
+        return $out;
+    }
+}
+
+if (!function_exists('cs_merge_grids')) {
+    /**
+     * Sum many members' calendars into the group's own. Pure.
+     *
+     * A cell's status is recomputed from the SUMMED figures rather than inherited,
+     * because "partial" means something different for a group than for a person: the
+     * group met 900,000 of a 1,000,000 month. Inheriting one member's status would
+     * paint the whole group red because a single member missed.
+     *
+     * before_join and future only survive where they hold for EVERY member — if one
+     * member owed something that month, the group owed something that month.
+     */
+    function cs_merge_grids(array $grids): array
+    {
+        $years = [];
+        $first = null;
+        $last  = null;
+        $unallocated = 0.0;
+        $asOfYm = null;
+
+        foreach ($grids as $grid) {
+            $unallocated += (float) ($grid['unallocated'] ?? 0);
+            $asOfYm = $asOfYm ?? ($grid['as_of_ym'] ?? null);
+            foreach (($grid['years'] ?? []) as $y => $cells) {
+                $first = $first === null ? $y : min($first, $y);
+                $last  = $last === null ? $y : max($last, $y);
+                foreach ($cells as $m => $cell) {
+                    if (!isset($years[$y][$m])) {
+                        $years[$y][$m] = ['target' => 0.0, 'allocated' => 0.0, 'any_due' => false];
+                    }
+                    $years[$y][$m]['target']    += (float) $cell['target'];
+                    $years[$y][$m]['allocated'] += (float) $cell['allocated'];
+                    $years[$y][$m]['any_due']    = $years[$y][$m]['any_due']
+                        || ($cell['status'] !== 'before_join' && $cell['status'] !== 'future');
+                }
+            }
+        }
+
+        // Whether a month has elapsed has to come from the as-of date, not from the
+        // members' `due` flags: a pre-join cell carries due=false, so a month that
+        // everybody had elapsed past but nobody had joined for would read as "future".
+        $asOfTs = $asOfYm ? strtotime($asOfYm) : time();
+        $asOfY  = (int) date('Y', $asOfTs);
+        $asOfM  = (int) date('n', $asOfTs);
+
+        ksort($years);
+        foreach ($years as $y => $cells) {
+            ksort($cells);
+            foreach ($cells as $m => $cell) {
+                $elapsed = ($y < $asOfY) || ($y === $asOfY && $m <= $asOfM);
+                if (!$cell['any_due']) {
+                    $status = $elapsed ? 'before_join' : 'future';
+                } elseif ($cell['target'] <= 0) {
+                    $status = $cell['allocated'] > 0 ? 'advance' : 'no_target';
+                } elseif ($cell['allocated'] >= $cell['target']) {
+                    $status = 'paid';
+                } elseif ($cell['allocated'] > 0) {
+                    $status = 'partial';
+                } else {
+                    $status = 'unpaid';
+                }
+                $cells[$m] = [
+                    'target'    => $cell['target'],
+                    'allocated' => $cell['allocated'],
+                    'status'    => $status,
+                    'due'       => $elapsed,
+                ];
+            }
+            $years[$y] = $cells;
+        }
+
+        return [
+            'years'       => $years,
+            'first_year'  => $first ?? (int) date('Y'),
+            'last_year'   => $last ?? (int) date('Y'),
+            'as_of_ym'    => $asOfYm ?? date('Y-m-01'),
+            'unallocated' => $unallocated,
+        ];
+    }
+}
+
 if (!function_exists('cs_arrears_from_grid')) {
     /**
      * How far behind a member is: how much, and over how many months. Pure — feed it
@@ -538,9 +727,7 @@ if (!function_exists('cs_member_transactions')) {
             SELECT contribution_date AS date, amount, contribution_type AS type,
                    receipt_number, description, mkoba_trans_id, account
               FROM contributions
-             WHERE member_id = ? AND status IN ('confirmed','approved','')
-               AND (contribution_type IN ('monthly','entrance','other')
-                    OR contribution_type = '' OR contribution_type IS NULL)
+             WHERE member_id = ? AND " . cs_statement_filter_sql() . "
              ORDER BY contribution_date ASC, contribution_id ASC");
         $stmt->execute([$memberId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -626,8 +813,7 @@ if (!function_exists('cs_member_schedule')) {
               COALESCE(SUM(CASE WHEN (mkoba_trans_id IS NULL OR mkoba_trans_id = '') AND (account IS NULL OR account <> 'M-Koba')
                                 THEN amount ELSE 0 END), 0) AS newmoney
             FROM contributions
-            WHERE member_id = ? AND status IN ('confirmed','approved','')
-              AND (contribution_type IN ('monthly','entrance','other') OR contribution_type = '' OR contribution_type IS NULL)");
+            WHERE member_id = ? AND " . cs_statement_filter_sql());
         $split->execute([$memberId]);
         $split = $split->fetch(PDO::FETCH_ASSOC) ?: ['opening' => 0, 'newmoney' => 0];
 

@@ -4,6 +4,48 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-08-13 — Feat: group statements — Statements PR 6 (final)
+**Branch:** `feat/group-statements` (from `develop`)
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** The last two documents on the group's list — **Group Statement of Contributions** and **Group Statement of Transactions**. Same NSSF skeleton, two switchable views. No schema change.
+
+### Two views
+- **Combined** — the group treated as a single member: one calendar, one summary.
+- **Per Member** — one row per member with their own target, actual and variance, and a TOTAL row.
+
+The per-member rows must sum to the combined totals: two different code paths over the same money on two tabs of one document, and the first thing a treasurer does is add the column up and check it against the other view.
+
+Both documents share one renderer (`includes/group_statement.php`); the two page files are eight lines each and differ only by `$vk_statement_type`.
+
+### Performance
+334 members needing a calendar each would be **~670 round trips** through `cs_member_schedule()`. `cs_group_schedules()` and `cs_group_receipts()` do it in **two queries** and build the schedules in PHP, where they are pure anyway. Measured on the real dataset: **0.052s total**, of which 0.043s is the two queries.
+
+### A group is not a person
+Merged cell states are **recomputed from the summed figures**, never inherited. "Partial" for a group means it met 900,000 of a 1,000,000 month — inheriting one member's status would paint the whole group red because a single member missed. `before_join` and `future` survive only where they hold for **every** member: if one member owed that month, the group owed that month.
+
+Whether a month has elapsed comes from the **as-of date**, not the members' `due` flags — a pre-join cell carries `due=false`, so a month everybody had elapsed past but nobody had joined for read as "future". A test caught that.
+
+### The tie-out is on `paid`, not `actual`
+With no monthly rule the contributions document can allocate nothing (every cell 0) while the transactions document still records every receipt by date. So `actual` legitimately differs between the two, and **`paid` (allocated + unallocated) is what must always tie**. A tie-out written against `actual` alone would pass on a configured group and mean nothing on an unconfigured one — which is this group's state locally. Verified on the real dataset: **1,801,000 both sides**.
+
+### One shared filter
+Four queries now decide which contribution rows count on a statement. The test asserting the filter appeared exactly **twice** failed when this PR made it four — **and that failing was correct**. The fix was to extract `cs_statement_filter_sql()` so there is exactly **one** definition, not to raise the expected count.
+
+A pre-existing divergence is documented and deliberately untouched: `cs_group_standing()` and `cs_group_savings_total()` use `contribution_type <> 'fine'`, which **admits `agm` rows this filter excludes**. Reconciling them moves dashboard and ledger figures and needs its own change with its own verification.
+
+### Gate
+`canView('vicoba_reports')` — identical to the existing Group Financial Ledger and Group Reports. Group-wide figures are already visible to members by existing policy; this page neither widens nor narrows it.
+
+### Tests
+`tests/Unit/GroupStatementTest.php` — 16 tests, 39 assertions. Verified non-vacuous by two mutations (dropping unallocated money, dropping targets).
+
+Suite: 1283 → **1300 tests, 3415 assertions, 15 skipped, exit 0, no warnings**.
+
+### Database Changes
+None.
+
+---
+
 ## Session — 2026-08-13 — Feat: member arrears notification — Statements PR 5
 **Branch:** `feat/member-arrears-notification` (from `develop`)
 **Developer:** Claude Code / Jabir Mussa
