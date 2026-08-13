@@ -479,8 +479,14 @@ if (!function_exists('cs_merge_grids')) {
      *
      * before_join and future only survive where they hold for EVERY member — if one
      * member owed something that month, the group owed something that month.
+     *
+     * $kind matters. A transactions grid records what arrived, so its only states are
+     * received / none / before_join / future — it can never say "unpaid". Merging
+     * without knowing that produced red "0" cells on the Group Statement of
+     * Transactions, a document whose own legend has no red in it, accusing the whole
+     * group of defaulting in months where the arrears judgement does not even live.
      */
-    function cs_merge_grids(array $grids): array
+    function cs_merge_grids(array $grids, string $kind = 'contributions'): array
     {
         $years = [];
         $first = null;
@@ -518,7 +524,17 @@ if (!function_exists('cs_merge_grids')) {
             ksort($cells);
             foreach ($cells as $m => $cell) {
                 $elapsed = ($y < $asOfY) || ($y === $asOfY && $m <= $asOfM);
-                if (!$cell['any_due']) {
+                if ($kind === 'transactions') {
+                    // Four states only. Money arriving outranks every other label, and
+                    // a month with none is simply empty — never a debt.
+                    if ($cell['allocated'] > 0) {
+                        $status = 'received';
+                    } elseif (!$cell['any_due']) {
+                        $status = $elapsed ? 'before_join' : 'future';
+                    } else {
+                        $status = $elapsed ? 'none' : 'future';
+                    }
+                } elseif (!$cell['any_due']) {
                     $status = $elapsed ? 'before_join' : 'future';
                 } elseif ($cell['target'] <= 0) {
                     $status = $cell['allocated'] > 0 ? 'advance' : 'no_target';
