@@ -46,6 +46,27 @@ class CondolencesNamingTest extends TestCase
         'Msaada wa Msiba',
         'Msaada wa Misiba',
         'Mafao ya Misiba',
+        // Action labels. The first pass renamed the module heading but left the
+        // primary button reading "Record New Death" — the module said Condolences
+        // while its own button said Death, which is worse than either name alone.
+        'Record New Death',
+        'Record Death & Assistance',
+        'Rekodi Msiba Mpya',
+        'Rekodi Msiba na Msaada',
+        'Death Cases',
+        'Death Report',
+        'Idadi ya Misiba',
+        'Ripoti ya Misiba',
+    ];
+
+    /**
+     * Wording that stays. "Death certificate" is the real name of a real document,
+     * and "Amefariki" describes a person who has died, not the module — renaming
+     * either would be a euphemism, not a correction.
+     */
+    private const KEPT_WORDING = [
+        'app/constant/accounts/expenses.php'     => 'Death Cert',
+        'app/bms/customer/dormant_members.php'   => 'Amefariki',
     ];
 
     private string $root;
@@ -99,6 +120,17 @@ class CondolencesNamingTest extends TestCase
             }
         }
         $this->assertSame([], $offences, "retired labels found:\n" . implode("\n", $offences));
+    }
+
+    public function testWordingAboutActualDeathIsNotEuphemised(): void
+    {
+        foreach (self::KEPT_WORDING as $relative => $phrase) {
+            $this->assertStringContainsString(
+                $phrase,
+                file_get_contents($this->root . '/' . $relative),
+                "$relative should still say \"$phrase\" — it describes a real thing, not the module"
+            );
+        }
     }
 
     public function testNavigationUsesTheAgreedNameInBothLanguages(): void
