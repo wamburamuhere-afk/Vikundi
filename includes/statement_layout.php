@@ -166,6 +166,9 @@ if (!function_exists('stmt_calendar')) {
             'before_join' => 'vk-c-before',
             'future'      => 'vk-c-future',
             'no_target'   => 'vk-c-notarget',
+            // Transactions statement: money actually received in that month.
+            'received'    => 'vk-c-received',
+            'none'        => 'vk-c-none',
         ];
         ?>
         <table class="vk-stmt-grid">
@@ -188,7 +191,7 @@ if (!function_exists('stmt_calendar')) {
                         $cls = $classes[$cell['status']] ?? '';
                     ?>
                         <td class="<?= $cls ?>">
-                            <?php if ($cell['status'] === 'before_join' || $cell['status'] === 'future'): ?>
+                            <?php if (in_array($cell['status'], ['before_join', 'future', 'none'], true)): ?>
                                 &nbsp;
                             <?php else: ?>
                                 <?= number_format($cell['allocated'], 0) ?>
@@ -266,13 +269,22 @@ if (!function_exists('stmt_summary')) {
 
 if (!function_exists('stmt_legend')) {
     /** Key to the cell colours. Printed, because the page is handed to people. */
-    function stmt_legend(bool $isSw): void
+    function stmt_legend(bool $isSw, string $kind = 'contributions'): void
     {
-        $items = $isSw
-            ? ['vk-c-paid' => 'Imelipwa', 'vk-c-partial' => 'Sehemu', 'vk-c-unpaid' => 'Haijalipwa',
-               'vk-c-advance' => 'Malipo ya mbele', 'vk-c-before' => 'Kabla ya kujiunga']
-            : ['vk-c-paid' => 'Paid in full', 'vk-c-partial' => 'Partial', 'vk-c-unpaid' => 'Not paid',
-               'vk-c-advance' => 'Paid in advance', 'vk-c-before' => 'Before joining'];
+        if ($kind === 'transactions') {
+            // Only three states can occur when the grid records receipts by date.
+            $items = $isSw
+                ? ['vk-c-received' => 'Fedha zilizopokelewa', 'vk-c-none' => 'Hakuna muamala',
+                   'vk-c-before' => 'Kabla ya kujiunga']
+                : ['vk-c-received' => 'Money received', 'vk-c-none' => 'No transaction',
+                   'vk-c-before' => 'Before joining'];
+        } else {
+            $items = $isSw
+                ? ['vk-c-paid' => 'Imelipwa', 'vk-c-partial' => 'Sehemu', 'vk-c-unpaid' => 'Haijalipwa',
+                   'vk-c-advance' => 'Malipo ya mbele', 'vk-c-before' => 'Kabla ya kujiunga']
+                : ['vk-c-paid' => 'Paid in full', 'vk-c-partial' => 'Partial', 'vk-c-unpaid' => 'Not paid',
+                   'vk-c-advance' => 'Paid in advance', 'vk-c-before' => 'Before joining'];
+        }
         ?>
         <div class="vk-stmt-legend">
             <?php foreach ($items as $cls => $text): ?>
@@ -331,6 +343,8 @@ if (!function_exists('stmt_css')) {
         .vk-c-advance  { background:#2f6fa8; color:#fff; font-weight:700; }
         .vk-c-before   { background:repeating-linear-gradient(45deg,#eef1f4,#eef1f4 4px,#e3e7ec 4px,#e3e7ec 8px); }
         .vk-c-future   { background:#fbfcfd; }
+        .vk-c-received { background:#1c7c4a; color:#fff; font-weight:700; }
+        .vk-c-none     { background:#fbfcfd; }
         .vk-c-notarget { background:#eef4fa; color:#333; }
 
         .vk-stmt-legend { display:flex; flex-wrap:wrap; gap:14px; font-size:8.5pt; color:#444; margin-bottom:14px; }
@@ -348,7 +362,7 @@ if (!function_exists('stmt_css')) {
             /* Colour carries the meaning here, so it must survive the printer. */
             .vk-stmt-bar, .vk-stmt-bar-total, .vk-stmt-rowtotal, .vk-stmt-total td,
             .vk-c-paid, .vk-c-partial, .vk-c-unpaid, .vk-c-advance, .vk-c-before,
-            .vk-c-notarget, .vk-stmt-year, .vk-stmt-label, .vk-stmt-note td {
+            .vk-c-notarget, .vk-c-received, .vk-stmt-year, .vk-stmt-label, .vk-stmt-note td {
                 -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;
             }
             .vk-stmt-bar { background:var(--vk-stmt-bar) !important; }

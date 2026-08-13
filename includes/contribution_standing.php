@@ -360,6 +360,121 @@ if (!function_exists('cs_calendar_grid')) {
     }
 }
 
+if (!function_exists('cs_transaction_grid')) {
+    /**
+     * The same year x month calendar, but filled by WHEN THE MONEY ARRIVED rather
+     * than which months it covers. This is the whole difference between the two
+     * statements the group asked for: one 100,000 payment in January is a single
+     * January event here, and five covered months on the contributions statement.
+     *
+     * Pure. $events is a list of ['date' => 'Y-m-d', 'amount' => float].
+     *
+     * Targets are still carried, so cs_year_summary() renders the same
+     * Target/Actual/Variance block on both documents — the group asked for both
+     * sides to read alike. Note the yearly figures legitimately differ between the
+     * two statements (money received in 2026 may cover months in 2027); it is the
+     * GRAND TOTALS that must agree, and a test pins that.
+     */
+    function cs_transaction_grid(
+        array $events,
+        float $monthly,
+        ?string $anchorYm,
+        ?DateTimeInterface $asOf = null
+    ): array {
+        $buckets = [];
+        $earliest = null;
+        foreach ($events as $e) {
+            $ts = strtotime((string) ($e['date'] ?? ''));
+            if ($ts === false) {
+                continue;
+            }
+            $key = date('Y-n', $ts);
+            $buckets[$key] = ($buckets[$key] ?? 0) + (float) ($e['amount'] ?? 0);
+            $earliest = $earliest === null ? $ts : min($earliest, $ts);
+        }
+
+        $anchorTs = $anchorYm ? strtotime($anchorYm) : false;
+        if ($anchorTs === false) {
+            $anchorTs = $earliest ?: strtotime(date('Y') . '-01-01');
+        }
+        // A payment dated before the anchor still has to appear — money that exists
+        // must never be hidden by a boundary the member did not choose.
+        if ($earliest !== null && $earliest < $anchorTs) {
+            $anchorTs = $earliest;
+        }
+        $anchorY = (int) date('Y', $anchorTs);
+        $anchorM = (int) date('n', $anchorTs);
+
+        $asOf  = $asOf ?: new DateTime('today');
+        $asOfY = (int) $asOf->format('Y');
+        $asOfM = (int) $asOf->format('n');
+
+        $lastYear = max($asOfY, $anchorY);
+        foreach (array_keys($buckets) as $key) {
+            $lastYear = max($lastYear, (int) explode('-', $key)[0]);
+        }
+
+        $years = [];
+        for ($y = $anchorY; $y <= $lastYear; $y++) {
+            for ($m = 1; $m <= 12; $m++) {
+                $before    = ($y < $anchorY) || ($y === $anchorY && $m < $anchorM);
+                $due       = ($y < $asOfY) || ($y === $asOfY && $m <= $asOfM);
+                $allocated = (float) ($buckets["$y-$m"] ?? 0);
+                $target    = ($due && !$before && $monthly > 0) ? $monthly : 0.0;
+
+                if ($allocated > 0) {
+                    $status = 'received';
+                } elseif ($before) {
+                    $status = 'before_join';
+                } elseif (!$due) {
+                    $status = 'future';
+                } else {
+                    $status = 'none';
+                }
+
+                $years[$y][$m] = [
+                    'target'    => $target,
+                    'allocated' => $allocated,
+                    'status'    => $status,
+                    'due'       => $due,
+                ];
+            }
+        }
+
+        return [
+            'years'       => $years,
+            'first_year'  => $anchorY,
+            'last_year'   => $lastYear,
+            'anchor_ym'   => date('Y-m-01', $anchorTs),
+            'as_of_ym'    => sprintf('%04d-%02d-01', $asOfY, $asOfM),
+            'unallocated' => 0.0,
+        ];
+    }
+}
+
+if (!function_exists('cs_member_transactions')) {
+    /**
+     * A member's contribution receipts as dated events, using EXACTLY the filter
+     * cs_member_schedule() sums over. The two must never drift: the moment this
+     * query accepts a row the schedule rejects, the Transactions statement and the
+     * Contributions statement stop agreeing on the member's total, and the first
+     * thing anyone does with two statements is check the totals match.
+     */
+    function cs_member_transactions(PDO $pdo, int $memberId): array
+    {
+        $stmt = $pdo->prepare("
+            SELECT contribution_date AS date, amount, contribution_type AS type,
+                   receipt_number, description, mkoba_trans_id, account
+              FROM contributions
+             WHERE member_id = ? AND status IN ('confirmed','approved','')
+               AND (contribution_type IN ('monthly','entrance','other')
+                    OR contribution_type = '' OR contribution_type IS NULL)
+             ORDER BY contribution_date ASC, contribution_id ASC");
+        $stmt->execute([$memberId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+}
+
 if (!function_exists('cs_year_summary')) {
     /**
      * The per-year Target vs Actual block printed under the breakdown, plus the

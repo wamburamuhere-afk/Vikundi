@@ -341,6 +341,7 @@ $routes = [
     'vicoba_reports'      => REPORTS_DIR . '/vicoba_reports.php',
     'financial-ledger'    => REPORTS_DIR . '/vicoba_reports.php',
     'member_statement'    => REPORTS_DIR . '/member_statement.php',
+    'member_transactions' => REPORTS_DIR . '/member_transactions.php',
 
     // Routes for Sales, Products, and Purchases are disabled for Vikundi System
 
