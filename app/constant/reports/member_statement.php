@@ -148,6 +148,10 @@ $money = fn(float $n): string => 'TSh ' . number_format($n, 0);
                     <?= $isSw ? 'Onesha' : 'Show' ?>
                 </button>
             </form>
+            <a href="<?= getUrl('member_transactions') ?><?= $is_leader && !empty($_GET['id']) ? '?id=' . (int) $member_id : '' ?>"
+               class="btn btn-outline-primary rounded-pill px-4 shadow-sm fw-bold">
+                <i class="bi bi-journal-text me-2"></i> <?= $isSw ? 'Miamala' : 'Transactions' ?>
+            </a>
             <a href="<?= getUrl('manage_contributions') ?>" class="btn btn-outline-primary rounded-pill px-4 shadow-sm fw-bold">
                 <i class="bi bi-arrow-left me-2"></i> <?= $isSw ? 'Rudi Kwenye Orodha' : 'Back to List' ?>
             </a>
