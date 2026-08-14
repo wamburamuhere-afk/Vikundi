@@ -31,7 +31,11 @@ try {
     }
 
     $pdo->beginTransaction();
-    foreach (['vote_ballots', 'vote_participation', 'vote_eligibility', 'vote_options'] as $tbl) {
+    // leadership_applications hangs off a vote too. It was added later, and leaving
+    // it out of this list orphaned every application when an election was deleted —
+    // rows pointing at a vote id that no longer exists, invisible to the member
+    // (their page JOINs votes) and impossible to clean up from the interface.
+    foreach (['vote_ballots', 'vote_participation', 'vote_eligibility', 'vote_options', 'leadership_applications'] as $tbl) {
         $pdo->prepare("DELETE FROM `$tbl` WHERE vote_id = ?")->execute([$vote_id]);
     }
     $pdo->prepare("DELETE FROM votes WHERE id = ?")->execute([$vote_id]);
