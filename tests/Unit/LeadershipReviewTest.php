@@ -170,6 +170,19 @@ class LeadershipReviewTest extends TestCase
         $this->assertStringContainsString("safe_output(\$a['review_note'])", $this->page);
     }
 
+    public function testTheBallotLabelDropsAnEmptyMiddleName(): void
+    {
+        // CONCAT_WS skips NULL but keeps ''. 326 of this group's 334 members have
+        // middle_name = '', so the plain form yields a name with a double space in
+        // the middle. Everywhere else that is merely untidy; here the value is
+        // WRITTEN INTO vote_options.label and printed on a ballot people vote from.
+        $this->assertStringContainsString("NULLIF(TRIM(c.middle_name), '')", $this->action);
+        $this->assertStringNotContainsString(
+            "CONCAT_WS(' ', c.first_name, c.middle_name, c.last_name)",
+            $this->action
+        );
+    }
+
     public function testItIsRoutedAndInTheMenuBehindItsPermission(): void
     {
         $roots  = file_get_contents(__DIR__ . '/../../roots.php');
