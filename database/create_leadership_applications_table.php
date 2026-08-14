@@ -175,4 +175,15 @@ $grantTo('leadership_applications', $everyone, [1, 1, 0, 0]);
 // and vote, they do not approve.
 $grantTo('manage_leadership_applications', $leadership, [1, 1, 1, 0]);
 
+// Applications whose election has been deleted. Before actions/delete_vote.php
+// learned about this table it removed the vote and left these behind, pointing at
+// an id that no longer exists. Idempotent: after the first sweep there are none.
+$orphans = $pdo->exec("
+    DELETE a FROM leadership_applications a
+      LEFT JOIN votes v ON v.id = a.vote_id
+     WHERE v.id IS NULL");
+if ($orphans) {
+    echo "  Removed $orphans application(s) whose election no longer exists.\n";
+}
+
 echo "Leadership applications ready.\n";

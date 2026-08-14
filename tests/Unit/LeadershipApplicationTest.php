@@ -231,6 +231,28 @@ class LeadershipApplicationTest extends TestCase
         $this->assertStringContainsString("'create_leadership_applications_table.php'", $runner);
     }
 
+    public function testDeletingAnElectionAlsoRemovesItsApplications(): void
+    {
+        // leadership_applications hangs off a vote, but it was added after
+        // actions/delete_vote.php was written. Leaving it out of that cleanup list
+        // orphaned every application when an election was deleted — rows pointing at
+        // an id that no longer exists, invisible to the member (their page JOINs
+        // votes) and unreachable from the interface.
+        $src = file_get_contents(__DIR__ . '/../../actions/delete_vote.php');
+        $this->assertStringContainsString("'leadership_applications'", $src);
+        $this->assertMatchesRegularExpression(
+            "/foreach \(\[[^\]]*'vote_options',\s*'leadership_applications'\]/",
+            $src
+        );
+    }
+
+    public function testExistingOrphansAreSweptUp(): void
+    {
+        // Elections deleted before that fix left applications behind.
+        $this->assertStringContainsString('DELETE a FROM leadership_applications a', $this->migration);
+        $this->assertStringContainsString('WHERE v.id IS NULL', $this->migration);
+    }
+
     public function testSubmissionsAreAudited(): void
     {
         $this->assertStringContainsString("logCreate('Leadership Applications'", $this->action);
