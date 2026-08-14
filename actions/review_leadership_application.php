@@ -30,9 +30,14 @@ if ($app_id <= 0 || !in_array($decision, ['approve', 'reject', 'reset'], true)) 
     exit;
 }
 
+// NULLIF drops an EMPTY middle name as well as a NULL one. CONCAT_WS skips NULLs
+// but keeps '', and 326 of this group's 334 members have middle_name = '', so the
+// plain form produces a name with a double space in the middle. On a screen that is
+// merely untidy; here the value is written into vote_options.label and printed on a
+// ballot, so it has to be right.
 $q = $pdo->prepare("
     SELECT a.*, v.status AS election_status, v.title AS election_title,
-           TRIM(CONCAT_WS(' ', c.first_name, c.middle_name, c.last_name)) AS member_name
+           TRIM(CONCAT_WS(' ', NULLIF(TRIM(c.first_name), ''), NULLIF(TRIM(c.middle_name), ''), NULLIF(TRIM(c.last_name), ''))) AS member_name
       FROM leadership_applications a
       JOIN votes v ON v.id = a.vote_id
       LEFT JOIN customers c ON c.customer_id = a.member_id
