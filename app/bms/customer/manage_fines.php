@@ -12,7 +12,7 @@ $is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
 $t = function ($en, $sw) use ($is_sw) { return $is_sw ? $sw : $en; };
 
 $members_list = $pdo->query("
-    SELECT customer_id, TRIM(CONCAT_WS(' ', first_name, middle_name, last_name)) AS name
+    SELECT customer_id, TRIM(CONCAT_WS(' ', NULLIF(TRIM(first_name), ''), NULLIF(TRIM(middle_name), ''), NULLIF(TRIM(last_name), ''))) AS name
       FROM customers WHERE (status IS NULL OR status <> 'deleted')
      ORDER BY first_name, last_name
 ")->fetchAll(PDO::FETCH_ASSOC);
@@ -27,7 +27,14 @@ $members_list = $pdo->query("
                         <h3 class="fw-bold mb-1 text-danger"><i class="bi bi-cash-coin me-2"></i><?= $t('Fines', 'Faini') ?></h3>
                         <p class="text-muted mb-0 small"><?= $t('View member fines, mark them paid or waive them', 'Angalia faini za wanachama, weka zimelipwa au zisamehe') ?></p>
                     </div>
-                    <button type="button" class="btn btn-outline-primary rounded-pill px-4" onclick="printFinesRegister()"><i class="bi bi-printer me-2"></i><?= $t('Print', 'Chapisha') ?></button>
+                    <div class="d-flex flex-wrap gap-2">
+                        <?php if (canCreate('manage_fines')): ?>
+                        <button type="button" class="btn btn-danger rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#recordFineModal">
+                            <i class="bi bi-plus-lg me-2"></i><?= $t('Record Fine', 'Rekodi Faini') ?>
+                        </button>
+                        <?php endif; ?>
+                        <button type="button" class="btn btn-outline-primary rounded-pill px-4" onclick="printFinesRegister()"><i class="bi bi-printer me-2"></i><?= $t('Print', 'Chapisha') ?></button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -171,6 +178,72 @@ function setStatus(id, status){
         },'json').fail(()=>Swal.fire('Error','Server error','error'));
     });
 }
+</script>
+
+
+<!-- Record a fine. Until now the only writer of the fines table was the
+     meeting-absence sweep, so an ordinary fine could not be recorded at all. -->
+<?php if (canCreate('manage_fines')): ?>
+<div class="modal fade" id="recordFineModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title fw-bold"><i class="bi bi-cash-coin me-2"></i><?= $t('Record Fine', 'Rekodi Faini') ?></h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="recordFineForm">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-bold small"><?= $t('Member', 'Mwanachama') ?> <span class="text-danger">*</span></label>
+            <select name="customer_id" class="form-select" required>
+              <option value=""><?= $t('— choose —', '— chagua —') ?></option>
+              <?php foreach ($members_list as $m): ?>
+                <option value="<?= (int) $m['customer_id'] ?>"><?= safe_output($m['name']) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold small"><?= $t('Amount (TSh)', 'Kiasi (TSh)') ?> <span class="text-danger">*</span></label>
+            <input type="number" name="amount" class="form-control" min="1" step="0.01" required placeholder="0.00">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold small"><?= $t('Reason', 'Sababu') ?> <span class="text-danger">*</span></label>
+            <textarea name="reason" class="form-control" rows="2" maxlength="500" required
+                      placeholder="<?= $t('e.g. Late to the monthly meeting', 'mfano: Kuchelewa mkutano wa mwezi') ?>"></textarea>
+            <div class="form-text"><?= $t('A fine with no reason is a figure nobody can explain when the member asks.', 'Faini isiyo na sababu ni kiasi ambacho hakuna atakayeweza kukielezea mwanachama akiuliza.') ?></div>
+          </div>
+          <div class="mb-1">
+            <label class="form-label fw-bold small"><?= $t('Status', 'Hali') ?></label>
+            <select name="status" class="form-select">
+              <option value="pending"><?= $t('Pending — the member still owes it', 'Inasubiri — bado anadaiwa') ?></option>
+              <option value="paid"><?= $t('Paid — already settled', 'Imelipwa — tayari amelipa') ?></option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal"><?= $t('Cancel', 'Ghairi') ?></button>
+          <button type="submit" class="btn btn-danger rounded-pill px-4"><i class="bi bi-check2 me-1"></i><?= $t('Save Fine', 'Hifadhi Faini') ?></button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
+
+<script>
+$('#recordFineForm').on('submit', function (e) {
+    e.preventDefault();
+    $.post('/actions/save_fine', $(this).serialize(), function (res) {
+        if (res.success) {
+            bootstrap.Modal.getInstance(document.getElementById('recordFineModal')).hide();
+            document.getElementById('recordFineForm').reset();
+            $('#finesTable').DataTable().ajax.reload();
+            Swal.fire({ icon:'success', title: isSw ? 'Imehifadhiwa' : 'Saved', text: res.message, timer: 1600, showConfirmButton: false });
+        } else {
+            Swal.fire(isSw ? 'Hitilafu' : 'Error', res.message || 'Error', 'error');
+        }
+    }, 'json').fail(() => Swal.fire(isSw ? 'Hitilafu' : 'Error', isSw ? 'Hitilafu ya seva' : 'Server error', 'error'));
+});
 </script>
 
 <?php includeFooter(); ob_end_flush(); ?>
