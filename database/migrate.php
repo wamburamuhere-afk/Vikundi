@@ -45,6 +45,7 @@ $migrations = [
     'add_paid_status_to_expenses.php', // 'paid' state (+ paid_at/paid_by) for death/general/petty-cash expenses
     'backfill_approved_expenses_paid.php', // cash-basis cutover: mark pre-cutover approved expenses as paid (one-time, future-safe)
     'create_leadership_applications_table.php', // leadership applications + positions list + apply/review permissions
+    'move_fine_contributions_to_fines.php',     // fines recorded as contributions -> the fines table (income-preserving)
 ];
 
 echo "== Vikundi database migrations ==\n";
