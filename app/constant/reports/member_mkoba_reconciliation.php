@@ -80,7 +80,9 @@ $member_name = trim(implode(' ', array_filter([
     $member['first_name'] ?? '', $member['middle_name'] ?? '', $member['last_name'] ?? '',
 ])));
 $money = fn(float $n): string => 'TSh ' . number_format($n, 0);
-$title = $isSw ? 'Ulinganishaji wa M-Koba' : 'M-Koba Reconciliation';
+// stmt_head() joins these two with a space, so the title carries the connecting
+// word — "M-KOBA RECONCILIATION ABDALLAH ALLY" ran together without it.
+$title = $isSw ? 'Ulinganishaji wa M-Koba kwa' : 'M-Koba Reconciliation for';
 ?>
 <?php stmt_css(); ?>
 <style>
@@ -116,7 +118,8 @@ $title = $isSw ? 'Ulinganishaji wa M-Koba' : 'M-Koba Reconciliation';
 
 <div class="vk-stmt-sheet shadow-sm">
 
-    <?php stmt_head($group, $title, htmlspecialchars($member_name)); ?>
+    <?php // stmt_head() escapes what it is given; pre-escaping here would double it. ?>
+    <?php stmt_head($group, $title, $member_name); ?>
 
     <div class="vk-rec-tiles">
         <div class="vk-rec-tile"><b><?= count($rows) ?></b><span><?= $isSw ? 'Miamala' : 'Transactions' ?></span></div>
