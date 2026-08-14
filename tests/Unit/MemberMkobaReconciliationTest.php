@@ -130,6 +130,23 @@ class MemberMkobaReconciliationTest extends TestCase
         $this->assertStringContainsString("htmlspecialchars((string) \$r['receipt'])", $this->src);
     }
 
+    public function testTheMemberNameIsNotDoubleEscapedInTheHeading(): void
+    {
+        // stmt_head() escapes what it is handed. Passing an already-escaped name
+        // turns O'Brien into O&amp;#039;Brien on the printed heading.
+        $this->assertStringContainsString('stmt_head($group, $title, $member_name);', $this->src);
+        $this->assertStringNotContainsString('stmt_head($group, $title, htmlspecialchars(', $this->src);
+    }
+
+    public function testTheHeadingReadsAsASentence(): void
+    {
+        // stmt_head() joins title and label with a single space, so without a
+        // connecting word the heading ran together as
+        // "M-KOBA RECONCILIATION ABDALLAH ALLY".
+        $this->assertStringContainsString("'M-Koba Reconciliation for'", $this->src);
+        $this->assertStringContainsString("'Ulinganishaji wa M-Koba kwa'", $this->src);
+    }
+
     public function testColourIsPreservedWhenPrinted(): void
     {
         // The status column carries the meaning; washed to grey it says nothing.
