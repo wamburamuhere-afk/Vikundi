@@ -380,6 +380,7 @@ $routes = [
     'voting' => VOTING_DIR . '/voting.php',
     'leadership_application' => VOTING_DIR . '/leadership_application.php',
     'leadership_applications' => VOTING_DIR . '/leadership_application.php',
+    'manage_leadership_applications' => VOTING_DIR . '/manage_leadership_applications.php',
     'voting.php' => VOTING_DIR . '/voting.php',
     'library' => ROOT_DIR . '/app/constant/library/library.php',
     'library' => ROOT_DIR . '/app/constant/library/library.php',
