@@ -58,6 +58,35 @@ class LeadershipApplicationTest extends TestCase
         $this->assertStringContainsString("'treasurer'", $m[1]);
     }
 
+    public function testTheGrantIsReAssertedBecauseTheSeederResetsMemberEveryDeploy(): void
+    {
+        // seed_vicoba_roles.php runs earlier in the migration list and resets the
+        // Member role to view-only on EVERY run — deliberately; Member is meant to be
+        // view-only almost everywhere. Applying for leadership is an exception to
+        // that, so the grant must be re-asserted after each reseed.
+        //
+        // An insert-if-missing grant worked on the first deploy (the permission did
+        // not exist yet, so the seeder could not touch it) and silently failed on the
+        // second: the seeder re-seeded Member view-only across every page including
+        // this one, and the grant then saw a row and did nothing. A member could open
+        // the application page and not submit it.
+        $this->assertStringContainsString('UPDATE role_permissions', $this->migration);
+        $this->assertStringContainsString('can_create = GREATEST(can_create, ?)', $this->migration);
+    }
+
+    public function testRightsAreRaisedNeverLowered(): void
+    {
+        // GREATEST, not assignment: an administrator who widened a leadership role's
+        // access through the Roles screen must keep it across deploys.
+        foreach (['can_view', 'can_create', 'can_edit', 'can_delete'] as $col) {
+            $this->assertMatchesRegularExpression(
+                '/' . $col . '\s*=\s*GREATEST\(\s*' . $col . '\s*,/',
+                $this->migration,
+                "$col must be raised, not assigned"
+            );
+        }
+    }
+
     public function testApplicantsCannotEditOrDeleteTheirSubmission(): void
     {
         // view + create only. An application is withdrawn, not deleted, so the record
