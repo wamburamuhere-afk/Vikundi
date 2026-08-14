@@ -31,12 +31,35 @@ class VotingTest extends TestCase
         $this->assertNotEmpty($errs);
     }
 
-    public function testCandidateNeedsTwoOptions(): void
+    public function testCandidateElectionTakesTwoNamesOrNone(): void
     {
+        // One name is a mistake — an election with a single candidate is not an
+        // election.
         $one = vk_vote_input_errors(['title' => 'Election', 'vote_type' => 'candidate'], ['Amina']);
         $this->assertNotEmpty($one);
+
         $two = vk_vote_input_errors(['title' => 'Election', 'vote_type' => 'candidate'], ['Amina', 'Juma']);
         $this->assertSame([], $two);
+    }
+
+    public function testACandidateElectionMayBeCreatedEmptyForApplicants(): void
+    {
+        // A leadership election is created empty and left in draft so members can
+        // apply into it; each approved application adds a candidate. Demanding two
+        // names up front made that impossible — the Committee would have had to
+        // invent two candidates before anyone had applied.
+        $this->assertSame([], vk_vote_input_errors(['title' => 'Chairperson 2026', 'vote_type' => 'candidate'], []));
+
+        // Blank boxes count as none, not as one: the form ships with two empty rows.
+        $this->assertSame([], vk_vote_input_errors(['title' => 'Chairperson 2026', 'vote_type' => 'candidate'], ['', '  ']));
+    }
+
+    public function testAnEmptyElectionStillCannotBeOpened(): void
+    {
+        // Relaxing creation is only safe because the rule survives where it matters.
+        $src = file_get_contents(__DIR__ . '/../../actions/set_vote_status.php');
+        $this->assertStringContainsString('A vote needs at least two options.', $src);
+        $this->assertStringContainsString('opts', $src);
     }
 
     public function testMotionNeedsNoCandidateOptions(): void
