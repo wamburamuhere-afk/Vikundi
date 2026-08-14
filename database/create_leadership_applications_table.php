@@ -110,7 +110,25 @@ foreach ($keys as [$key, $name, $desc]) {
     }
 }
 
-/** Grant a page-key to a set of roles, skipping any grant that already exists. */
+/**
+ * Grant a page-key to a set of roles, RAISING the rights on a row that already
+ * exists rather than skipping it.
+ *
+ * Skipping was wrong, and it failed in a way that only appeared on the second
+ * deploy. seed_vicoba_roles.php runs earlier in the migration list and resets the
+ * Member role to view-only on EVERY run — that is deliberate, Member is meant to
+ * be view-only almost everywhere. On the first deploy this permission did not
+ * exist yet, so the seeder could not touch it and the grant landed with create=1.
+ * On the next deploy the seeder re-seeded Member across every page including this
+ * new one, view-only; an insert-if-missing grant then saw a row and did nothing.
+ * A member could open the application page and not submit it.
+ *
+ * Applying for leadership is a deliberate exception to "Member is view-only", so
+ * the grant has to be re-asserted after each reseed.
+ *
+ * Rights are raised, never lowered: an administrator who has widened a leadership
+ * role's access through the Roles screen keeps it.
+ */
 $grantTo = function (string $pageKey, array $roleNames, array $rights) use ($pdo, $permCheck): void {
     $permCheck->execute([$pageKey]);
     $pid = $permCheck->fetchColumn();
@@ -123,15 +141,25 @@ $grantTo = function (string $pageKey, array $roleNames, array $rights) use ($pdo
 
     $has   = $pdo->prepare("SELECT COUNT(*) FROM role_permissions WHERE role_id = ? AND permission_id = ?");
     $grant = $pdo->prepare("INSERT INTO role_permissions (role_id, permission_id, can_view, can_create, can_edit, can_delete) VALUES (?,?,?,?,?,?)");
-    $n = 0;
+    $raise = $pdo->prepare("
+        UPDATE role_permissions
+           SET can_view   = GREATEST(can_view,   ?),
+               can_create = GREATEST(can_create, ?),
+               can_edit   = GREATEST(can_edit,   ?),
+               can_delete = GREATEST(can_delete, ?)
+         WHERE role_id = ? AND permission_id = ?");
+    $added = $raised = 0;
     foreach ($ids->fetchAll(PDO::FETCH_COLUMN) as $rid) {
         $has->execute([$rid, $pid]);
         if ((int) $has->fetchColumn() === 0) {
             $grant->execute([$rid, $pid, $rights[0], $rights[1], $rights[2], $rights[3]]);
-            $n++;
+            $added++;
+        } else {
+            $raise->execute([$rights[0], $rights[1], $rights[2], $rights[3], $rid, $pid]);
+            $raised += $raise->rowCount() > 0 ? 1 : 0;
         }
     }
-    echo "  Granted $pageKey to $n role(s).\n";
+    echo "  Granted $pageKey to $added role(s), re-asserted on $raised.\n";
 };
 
 $leadership = ['admin', 'administrator', 'chairperson', 'mwenyekiti', 'chairman',
