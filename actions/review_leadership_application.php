@@ -8,6 +8,7 @@
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/require_auth.php';
 require_once __DIR__ . '/../includes/require_csrf.php';
+require_once __DIR__ . '/../core/permissions.php';
 require_once __DIR__ . '/../includes/leadership_helpers.php';
 require_once __DIR__ . '/../includes/activity_logger.php';
 global $pdo;
