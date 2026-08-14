@@ -30,8 +30,22 @@ if (!function_exists('vk_default_motion_options')) {
 
 if (!function_exists('vk_vote_input_errors')) {
     /**
-     * Validate a vote definition (pure). Title required; a candidate election
-     * needs at least two options; closing date, if given, must be valid.
+     * Validate a vote definition (pure). Title required; a candidate election needs
+     * either two candidates or none at all; closing date, if given, must be valid.
+     *
+     * WHY NONE IS ALLOWED. A leadership election is now created empty and left in
+     * draft so members can apply into it; the Committee approves applications and
+     * each approval adds the candidate. Demanding two names up front made that
+     * flow impossible — the Committee would have had to invent two candidates
+     * before anyone had applied.
+     *
+     * Nothing is lost by relaxing it. actions/set_vote_status.php already refuses to
+     * OPEN a vote with fewer than two options, which is where the rule actually
+     * belongs: two candidates are needed to HOLD an election, not to draft one.
+     *
+     * One name is still rejected. A half-filled candidate list is a mistake — an
+     * election with a single candidate is not an election — whereas an empty one is
+     * a deliberate "the applicants will fill this".
      *
      * @param array $post   title, vote_type, closes_at
      * @param array $labels the option labels the caller extracted (already trimmed)
@@ -46,8 +60,10 @@ if (!function_exists('vk_vote_input_errors')) {
         }
         if ($type === 'candidate') {
             $clean = array_values(array_filter(array_map('trim', $labels), fn($l) => $l !== ''));
-            if (count($clean) < 2) {
-                $errors[] = $sw ? 'Weka angalau wagombea wawili.' : 'Add at least two candidates.';
+            if (count($clean) === 1) {
+                $errors[] = $sw
+                    ? 'Weka wagombea wawili au usiweke yeyote (wanachama wataomba).'
+                    : 'Add two candidates, or none at all (members will apply).';
             }
         }
         $closes = trim((string) ($post['closes_at'] ?? ''));
