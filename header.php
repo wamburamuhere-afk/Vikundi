@@ -585,6 +585,7 @@ try {
                                 <li><h6 class="dropdown-header"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Taarifa Zangu' : 'My Information' ?></h6></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('member_statement') ?>"><i class="bi bi-cash-stack text-success me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Michango Yangu' : 'My Contributions' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('member_transactions') ?>"><i class="bi bi-arrow-left-right text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Miamala Yangu' : 'My Transactions' ?></a></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('my_mkoba_reconciliation') ?>"><i class="bi bi-clipboard-check text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Ulinganishaji wa M-Koba Wangu' : 'My M-Koba Reconciliation' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('my_fines') ?>"><i class="bi bi-person-badge text-warning me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Faini Zangu' : 'My Fines' ?></a></li>
                                 <?php endif; ?>
                             </ul>
