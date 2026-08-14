@@ -38,6 +38,21 @@ if (empty($username)) $username = $user['username'] ?? '';
 $user_role = $user['role_name'] ?? 'user';
 $user_role_lower = strtolower($user_role); // Normalized role check
 
+// The member record behind this login, resolved once and cached for the session.
+// The nav items that show a person their OWN money are hidden when there is no
+// member record: an Admin account has none, and a menu entry that leads to
+// "Member not found" is worse than no menu entry.
+//
+// Cached like the permissions are (at login), so a customers row created mid-session
+// needs a fresh login to appear. Only 0 is re-checked, which costs one query per page
+// for the handful of accounts that are not members.
+if (empty($_SESSION['vk_member_id'])) {
+    $vk_m = $pdo->prepare("SELECT customer_id FROM customers WHERE user_id = ? LIMIT 1");
+    $vk_m->execute([$_SESSION['user_id']]);
+    $_SESSION['vk_member_id'] = (int) ($vk_m->fetchColumn() ?: 0);
+}
+$vk_is_member = ((int) ($_SESSION['vk_member_id'] ?? 0)) > 0;
+
 // Get company type and branding from settings
 $settings_all_stmt = $pdo->prepare("SELECT setting_key, setting_value FROM group_settings");
 $settings_all_stmt->execute();
@@ -562,7 +577,16 @@ try {
                                 <?php if (canView('manage_fines')): ?>
                                 <li><a class="dropdown-item" href="<?= getUrl('manage_fines') ?>"><i class="bi bi-cash-coin text-danger me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Faini' : 'Fines' ?></a></li>
                                 <?php endif; ?>
+                                <?php if ($vk_is_member): ?>
+                                <!-- A member's own money, kept clearly apart from the group-wide
+                                     entries above. Hidden entirely for accounts with no member
+                                     record, which would otherwise land on "Member not found". -->
+                                <li><hr class="dropdown-divider"></li>
+                                <li><h6 class="dropdown-header"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Taarifa Zangu' : 'My Information' ?></h6></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('member_statement') ?>"><i class="bi bi-cash-stack text-success me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Michango Yangu' : 'My Contributions' ?></a></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('member_transactions') ?>"><i class="bi bi-arrow-left-right text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Miamala Yangu' : 'My Transactions' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('my_fines') ?>"><i class="bi bi-person-badge text-warning me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Faini Zangu' : 'My Fines' ?></a></li>
+                                <?php endif; ?>
                             </ul>
                         </li>
                         
