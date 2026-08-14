@@ -44,6 +44,7 @@ $migrations = [
     'repair_mkoba_scientific_trans_ids.php', // recover Excel-mangled ("3.8E+15") M-Koba trans ids from the receipt
     'add_paid_status_to_expenses.php', // 'paid' state (+ paid_at/paid_by) for death/general/petty-cash expenses
     'backfill_approved_expenses_paid.php', // cash-basis cutover: mark pre-cutover approved expenses as paid (one-time, future-safe)
+    'create_leadership_applications_table.php', // leadership applications + positions list + apply/review permissions
 ];
 
 echo "== Vikundi database migrations ==\n";
