@@ -2,8 +2,26 @@
 // app/bms/customer/group_settings.php
 require_once 'header.php';
 
-if (!in_array($user_role, ['Admin', 'Secretary', 'Katibu'])) {
-    header("Location: " . getUrl('dashboard') . "?error=Access Denied");
+// Admins (which includes the Chairperson — see includes/roles.php) plus the
+// Secretary. The list that used to be here was ['Admin','Secretary','Katibu'],
+// which omitted 'Chairperson' — the exact role name seed_vicoba_roles.php
+// creates — so the head of the group could not open the group's own settings
+// while isAdmin() treated them as an admin on every other screen. Same defect
+// as app/dashboard.php had.
+require_once ROOT_DIR . '/includes/roles.php';
+$__secretary = in_array(strtolower(trim((string) $user_role)), ['secretary', 'katibu'], true);
+if (!vk_role_is_admin($_SESSION['role_id'] ?? null, $user_role) && !$__secretary) {
+    // header.php has already emitted output, so a Location header here never
+    // takes effect — the caller previously got a blank shell with no
+    // explanation. Say what happened instead.
+    echo '<div class="container py-5"><div class="alert alert-danger">'
+       . '<i class="bi bi-shield-lock me-2"></i>'
+       . (($_SESSION['preferred_language'] ?? 'en') === 'sw'
+            ? 'Huna ruhusa ya kufikia mipangilio ya kikundi.'
+            : 'You do not have permission to view group settings.')
+       . '</div><a class="btn btn-secondary" href="' . getUrl('dashboard') . '">'
+       . (($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Rudi' : 'Back') . '</a></div>';
+    require_once ROOT_DIR . '/footer.php';
     exit();
 }
 

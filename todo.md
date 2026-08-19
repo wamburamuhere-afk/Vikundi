@@ -45,20 +45,29 @@ used by both transports.
 
 ## 3. Members
 
-- [ ] `GET /api/v1/members` — list, paginated, filters: status, group — leadership only (`customers` permission)
-- [ ] `GET /api/v1/members/{id}` — detail (`app/bms/customer/customer_details.php`)
+- [x] `GET /api/v1/members` — list, paginated, filters: status, group, search (`customers` view; sensitive fields masked for non-editors)
+- [x] `GET /api/v1/members/{id}` — detail (`app/bms/customer/customer_details.php`) — a member may only open their own record
 - [ ] `POST /api/v1/members` — register a member
 - [ ] `PUT /api/v1/members/{id}` — edit (`edit_customer.php`)
 - [ ] `POST /api/v1/members/{id}/approve` — member_approvals.php (leaders: Admin/Secretary/Katibu)
 - [ ] `POST /api/v1/members/{id}/reject`
-- [ ] `GET /api/v1/members/dormant` — dormant_members.php list
+- [x] `GET /api/v1/members/dormant` — dormant_members.php list
 - [ ] `POST /api/v1/members/{id}/reactivate`
 - [ ] `GET /api/v1/member-groups` — list (`customer_groups.php`)
 - [ ] `GET /api/v1/member-groups/{id}` — detail + members (`customer_group_details.php`, `customer_group_members.php`)
 - [ ] `POST /api/v1/member-groups` — create
 - [ ] `POST /api/v1/members/import` — bulk import (`customer_import.php`) — likely a distinct upload flow, scope separately
-- [ ] `GET /api/v1/group-settings` — group_settings.php (name, logo, org type)
+- [x] `GET /api/v1/group-settings` — group_settings.php (name, logo, org type) — whitelisted keys
 - [ ] `PUT /api/v1/group-settings` — leadership only
+
+**Module 3 read surface shipped in PR #437.** REST sub-paths (`/members/{id}`, `/members/dormant`) are
+resolved by `roots.php`; handlers are flat files (`members_detail.php`) because a directory named
+`api/v1/members/` makes Apache 301 the collection URL and the list endpoint stops answering.
+Sensitive fields use the web's own `vk_mask_member_row()`. Writes are the next PR.
+
+Fixed on the way: `group_settings.php` gated on `['Admin','Secretary','Katibu']`, omitting `Chairperson`,
+so the group's chairperson could not open their own group settings — and the denial rendered a blank
+page because `header()` ran after output had started.
 
 ## 4. Contributions
 
