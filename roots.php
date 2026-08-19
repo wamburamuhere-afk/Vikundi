@@ -1359,16 +1359,58 @@ if (!function_exists('handleRoute')) {
         foreach ($possible_files as $f) {
             if (file_exists($f) && is_file($f)) {
                 $ext = pathinfo($f, PATHINFO_EXTENSION);
-                
+
                 // Allow non-PHP files (assets) OR PHP files that are in internal folders
-                $isInternal = str_contains($uri_no_query, 'actions/') || 
-                              str_contains($uri_no_query, 'ajax/') || 
+                $isInternal = str_contains($uri_no_query, 'actions/') ||
+                              str_contains($uri_no_query, 'ajax/') ||
                               str_contains($uri_no_query, 'api/');
 
                 if ($ext !== 'php' || $isInternal) {
                     require_once $f;
                     return true;
                 }
+            }
+        }
+
+        // 3. REST sub-paths for the mobile API only.
+        //
+        //    Rule 2 resolves /api/v1/auth/login to api/v1/auth/login.php, which
+        //    covers static paths that live in a directory. It cannot express an
+        //    id, so /api/v1/members/5 would 404.
+        //
+        //    Handlers are FLAT FILES joined by an underscore, never a directory:
+        //
+        //      /api/v1/members/5          -> api/v1/members_detail.php   id=5
+        //      /api/v1/members/5/approve  -> api/v1/members_approve.php  id=5
+        //      /api/v1/members/dormant    -> api/v1/members_dormant.php
+        //
+        //    Flat because a directory named api/v1/members/ would shadow the
+        //    collection URL /api/v1/members: mod_dir's DirectorySlash sees the
+        //    directory and 301s to /api/v1/members/, so the list endpoint stops
+        //    answering. Keeping handlers as files avoids the collision entirely.
+        //
+        //    Scoped to api/v1. Both segments are restricted to [a-z0-9_-] and the
+        //    resolved file must exist, so this cannot be walked to an arbitrary
+        //    path — '..' cannot match the character class.
+        if (preg_match('#^api/v1/([a-z0-9-]+)/(\d+)(?:/([a-z0-9_-]+))?$#', $clean_uri, $m)) {
+            $target = ROOT_DIR . '/api/v1/' . $m[1] . '_' . ($m[3] ?? 'detail') . '.php';
+            if (is_file($target)) {
+                // Handlers read the id from $_GET like any other parameter, so a
+                // handler behaves identically whether it was reached by path or
+                // by query string.
+                $_GET['id'] = $m[2];
+                $_REQUEST['id'] = $m[2];
+                require_once $target;
+                return true;
+            }
+        }
+
+        // Static sub-resource: /api/v1/members/dormant -> api/v1/members_dormant.php
+        if (preg_match('#^api/v1/([a-z0-9-]+)/([a-z][a-z0-9_-]*)$#', $clean_uri, $m)) {
+            $target = ROOT_DIR . '/api/v1/' . $m[1] . '_' . $m[2] . '.php';
+            if (is_file($target)) {
+                require_once $target;
+                return true;
             }
         }
 
