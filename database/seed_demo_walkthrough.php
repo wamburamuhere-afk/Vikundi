@@ -224,7 +224,13 @@ $locations = ['Ukumbi wa Kata, Kinondoni', 'Nyumbani kwa Mwenyekiti', 'Ofisi ya 
 
 $meetingIds = [];
 for ($i = 8; $i >= 1; $i--) {
-    $date  = $now->modify("-{$i} months")->modify('+' . mt_rand(2, 12) . ' days');
+    $date = $now->modify("-{$i} months")->modify('+' . mt_rand(2, 12) . ' days');
+    // Nobody holds a savings-group meeting on Christmas Day or New Year's Day.
+    // Left alone, an AGM eight months back from an August seeding run lands on
+    // 25 December, which is the sort of detail that makes a demo look generated.
+    while (in_array($date->format('m-d'), ['12-25', '12-26', '01-01'], true)) {
+        $date = $date->modify('+3 days');
+    }
     $type  = $i === 8 ? 'agm' : ($i % 4 === 0 ? 'special' : 'regular');
     $title = match ($type) {
         'agm'     => 'Mkutano Mkuu wa Mwaka (AGM)',
@@ -314,24 +320,39 @@ $makeElection = function (
         return [$voteId, $optionIds];
     }
 
-    // Weight the candidates so there is a clear winner rather than a tie.
-    $weights = [];
-    $w = count($optionIds) + 2;
-    foreach (array_keys($optionIds) as $idx) {
-        $weights[$idx] = $w--;
-    }
-    $bag = [];
-    foreach ($weights as $idx => $weight) {
-        for ($i = 0; $i < $weight; $i++) { $bag[] = $idx; }
-    }
-
     $voters = $roster;
     shuffle($voters);
     $voterCount = (int) round(count($voters) * $turnout);
-    foreach (array_slice($voters, 0, $voterCount) as $v) {
-        $when   = $opens->modify('+' . mt_rand(0, max(1, (int) $opens->diff($closes)->days)) . ' days');
-        $choice = $bag[mt_rand(0, count($bag) - 1)];
-        $insBallot->execute([$voteId, $optionIds[$choice], $stamp($when)]);
+
+    // Allocate the ballots deterministically rather than sampling at random.
+    // Random sampling produced an 11-11 tie on a three-way race, and elected
+    // someone other than the member actually holding the office — both of
+    // which read as a bug to anyone being shown the system. The first
+    // candidate passed in is the winner, by a margin that cannot tie.
+    $shares  = match (count($optionIds)) {
+        2       => [0.58, 0.42],
+        3       => [0.48, 0.32, 0.20],
+        default => array_fill(0, count($optionIds), 1 / max(1, count($optionIds))),
+    };
+    $idxList    = array_keys($optionIds);
+    $allocation = [];
+    $assigned   = 0;
+    foreach ($idxList as $n => $idx) {
+        $take = $n === 0 ? 0 : (int) floor($voterCount * $shares[$n]);
+        $allocation[$idx] = $take;
+        $assigned += $take;
+    }
+    $allocation[$idxList[0]] = $voterCount - $assigned; // winner takes the remainder
+
+    $choices = [];
+    foreach ($allocation as $idx => $count) {
+        for ($i = 0; $i < $count; $i++) { $choices[] = $idx; }
+    }
+    shuffle($choices); // so ballot timestamps do not reveal the order
+
+    foreach (array_slice($voters, 0, $voterCount) as $n => $v) {
+        $when = $opens->modify('+' . mt_rand(0, max(1, (int) $opens->diff($closes)->days)) . ' days');
+        $insBallot->execute([$voteId, $optionIds[$choices[$n]], $stamp($when)]);
         $insPart->execute([$voteId, (int) $v['customer_id'], $stamp($when)]);
         $bump('ballots');
     }
@@ -355,10 +376,21 @@ $idxPool = range(0, count($roster) - 1);
     $now->modify('-90 days'), $now->modify('-83 days'), true, 0.83
 );
 
+// The Treasurer's own election, so the member holding that office was visibly
+// elected to it like the other two.
 [$treasVoteId, $treasOptions] = $makeElection(
     'Uchaguzi wa Mweka Hazina 2026',
-    'Uchaguzi unaoendelea. Piga kura kabla ya tarehe ya kufunga.',
-    'open', [$idxPool[2], $idxPool[6], $idxPool[7]],
+    'Uchaguzi wa Mweka Hazina wa kikundi kwa kipindi cha miaka miwili (2026–2028).',
+    'closed', [$idxPool[2], $idxPool[6]],
+    $now->modify('-90 days'), $now->modify('-83 days'), true, 0.80
+);
+
+// One election still running, for a seat nobody holds yet — this is the screen
+// where a member can actually cast a vote during a demo.
+[$openVoteId, $openOptions] = $makeElection(
+    'Uchaguzi wa Mjumbe wa Kamati Kuu',
+    'Uchaguzi unaoendelea kujaza nafasi ya Mjumbe. Piga kura kabla ya tarehe ya kufunga.',
+    'open', [$idxPool[7], $idxPool[8], $idxPool[9]],
     $now->modify('-3 days'), $now->modify('+4 days'), false, 0.45
 );
 
@@ -409,7 +441,8 @@ $experiences = [
 $reviewedAt = $now->modify('-95 days');
 foreach ([[$chairVoteId, $chairOptions, 'Chairperson / Mwenyekiti'],
           [$secVoteId, $secOptions, 'Secretary / Katibu'],
-          [$treasVoteId, $treasOptions, 'Treasurer / Mweka Hazina']] as [$vid, $opts, $position]) {
+          [$treasVoteId, $treasOptions, 'Treasurer / Mweka Hazina'],
+          [$openVoteId, $openOptions, 'Committee Member / Mjumbe']] as [$vid, $opts, $position]) {
     foreach ($opts as $idx => $optionId) {
         $m = $roster[$idx];
         $insApp->execute([
@@ -423,11 +456,11 @@ foreach ([[$chairVoteId, $chairOptions, 'Chairperson / Mwenyekiti'],
 }
 
 // Still awaiting review on the open election.
-foreach ([8, 9] as $idx) {
+foreach ([11, 12] as $idx) {
     if (!isset($roster[$idx])) { continue; }
     $m = $roster[$idx];
     $insApp->execute([
-        $treasVoteId, (int) $m['customer_id'], 'Committee Member / Mjumbe',
+        $openVoteId, (int) $m['customer_id'], 'Committee Member / Mjumbe',
         $pick($statements), $pick($experiences),
         (int) $roster[($idx + 2) % count($roster)]['customer_id'], 'pending',
         null, null, null, null, $stamp($now->modify('-' . mt_rand(1, 5) . ' days')),
@@ -436,11 +469,11 @@ foreach ([8, 9] as $idx) {
 }
 
 // One rejected, with the reason recorded.
-if (isset($roster[10])) {
+if (isset($roster[13])) {
     $insApp->execute([
-        $treasVoteId, (int) $roster[10]['customer_id'], 'Treasurer / Mweka Hazina',
+        $openVoteId, (int) $roster[13]['customer_id'], 'Committee Member / Mjumbe',
         $pick($statements), 'Hakuna uzoefu wa usimamizi wa fedha.',
-        (int) $roster[11 % count($roster)]['customer_id'], 'rejected',
+        (int) $roster[14 % count($roster)]['customer_id'], 'rejected',
         'Ana deni la mkopo ambalo halijalipwa; kwa mujibu wa katiba hawezi kugombea.',
         $chairUser, $stamp($now->modify('-4 days')), null, $stamp($now->modify('-6 days')),
     ]);
