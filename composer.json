@@ -23,5 +23,10 @@
         "test-feature":  "@php vendor/bin/phpunit --testsuite Feature",
         "test-coverage": "@php vendor/bin/phpunit -c phpunit.coverage.xml --coverage-html coverage",
         "check-schema":  "@php database/check_schema_drift.php"
+    },
+    "config": {
+        "platform": {
+            "php": "8.2.0"
+        }
     }
 }
