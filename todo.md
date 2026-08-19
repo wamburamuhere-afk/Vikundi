@@ -30,7 +30,18 @@ carried in the token. Shared plumbing for every later module lives in `includes/
 
 ## 2. Dashboard
 
-- [ ] `GET /api/v1/dashboard` — role-aware summary (group totals for leadership; own arrears banner for a member) — mirrors `app/dashboard.php`
+- [x] `GET /api/v1/dashboard` — role-aware summary (group totals for leadership; own arrears banner for a member) — mirrors `app/dashboard.php`
+
+**Shipped in PR #435.** Leadership (Admin/Chairperson/Secretary/Treasurer) receive the group block —
+members, contributions, expenses, balance, fines, pending queue, 6-month trend; a plain member receives
+only their own position. The audit trail is admin-only, matching the web. Group figures are *withheld*,
+not merely hidden, because JSON has no template to hide behind. Every money figure delegates to
+`cs_group_savings_total()`, `cs_member_arrears()`, `getGroupFundBalance()` and
+`approvedNotYetPaidExpenses()` — verified figure-for-figure against the web dashboard.
+
+Fixed on the way: `app/dashboard.php` hard-coded a role list omitting `chairperson`, so the group's
+Chairperson was served the *member* dashboard. Leadership now has one definition in `includes/roles.php`
+used by both transports.
 
 ## 3. Members
 

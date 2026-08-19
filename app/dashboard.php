@@ -9,8 +9,16 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $user_id = $_SESSION['user_id'];
-$viongozi_roles = ['admin', 'secretary', 'katibu', 'chairman', 'mwenyekiti', 'mhazini', 'treasurer'];
-$is_viongozi = in_array($user_role_lower, $viongozi_roles);
+// Leadership is defined once, in includes/roles.php, because the mobile API has
+// to answer the same question without a session. The list that used to live
+// here omitted 'chairperson' — the exact name seed_vicoba_roles.php creates —
+// so the Chairperson was served the ordinary member dashboard while isAdmin()
+// treated them as an admin everywhere else.
+require_once ROOT_DIR . '/includes/roles.php';
+$is_viongozi = vk_role_is_leadership(
+    isset($_SESSION['role_id']) ? (int) $_SESSION['role_id'] : null,
+    $user_role_lower
+);
 
 // ── ROLES PERMISSIONS FOR DASHBOARD UI ──────────────────────────────────────
 $can_manage_members = canView('customers');
