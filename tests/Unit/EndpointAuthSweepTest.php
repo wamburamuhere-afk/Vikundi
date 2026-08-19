@@ -58,6 +58,12 @@ class EndpointAuthSweepTest extends TestCase
         'requireEditPermission',
         'requireDeletePermission',
         'requirePermissionJson',
+        // The mobile API's token equivalent (includes/api_bootstrap.php). It is a
+        // real gate, not a weaker one: it verifies a signed access token AND
+        // re-reads the account's status on every request, so a disabled account
+        // stops working immediately rather than when its token expires.
+        'vk_api_require_auth',
+        'vk_api_require_permission',
         'hasPermission',
         'canView',
         'canCreate',
@@ -75,6 +81,8 @@ class EndpointAuthSweepTest extends TestCase
     private const EXEMPT = [
         // — Public by design: these ARE the unauthenticated entry points. —
         'actions/login.php'                => 'Creates the session; cannot require one.',
+        'api/v1/auth/login.php'            => 'Issues the token; cannot require one. Token equivalent of actions/login.php.',
+        'api/v1/auth/refresh.php'          => 'Authorised by the refresh token it is given, not by an access token.',
         'actions/process_registration.php' => 'Public self-registration (MAP §2.3).',
         'actions/forgot_password.php'      => 'Public password-reset request.',
         'actions/reset_password.php'       => 'Public; authorised by the emailed token, not a session.',
