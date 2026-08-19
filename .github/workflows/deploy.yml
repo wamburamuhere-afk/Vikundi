@@ -9,22 +9,59 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    strategy:
+      # Never let one site's failure cancel the other's deploy. If demo breaks,
+      # production must still go out (and vice versa) — the red job tells us
+      # which one needs attention.
+      fail-fast: false
+      # One at a time: both targets are the same box and share composer's cache
+      # directory, so parallel runs can race on it. Production goes first.
+      max-parallel: 1
+      matrix:
+        include:
+          - name: production
+            path: /var/www/vikundi.bjptechnologies.co.tz/public_html
+          - name: demo
+            path: /var/www/demo.vikundi.bjptechnologies.co.tz/public_html
+
+    name: Deploy ${{ matrix.name }}
+
     steps:
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          SITE_NAME: ${{ matrix.name }}
+          SITE_PATH: ${{ matrix.path }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          envs: SITE_NAME,SITE_PATH
           script: |
             set -e
-            cd /var/www/vikundi.bjptechnologies.co.tz/public_html
+
+            echo "==> Target: $SITE_NAME ($SITE_PATH)"
+
+            # Fail loudly rather than skipping. A silent skip is how the live
+            # site sat on stale code before — an absent or non-git directory is
+            # a setup problem we need told about, not swallowed.
+            if [ ! -d "$SITE_PATH" ]; then
+              echo "ERROR: $SITE_PATH does not exist on this server." >&2
+              exit 1
+            fi
+            cd "$SITE_PATH"
+            if [ ! -d .git ]; then
+              echo "ERROR: $SITE_PATH is not a git checkout. Clone the repo there once:" >&2
+              echo "  git clone <repo-url> $SITE_PATH" >&2
+              exit 1
+            fi
 
             echo "==> Force-syncing working tree to origin/main"
             # A plain 'git pull' silently fails when the server tree is dirty,
             # leaving the live site on stale code (e.g. missing SMS Settings).
             # Force it to match main. config.php and vendor/ are gitignored,
-            # so they are preserved by reset --hard.
+            # so they are preserved by reset --hard — which is what keeps each
+            # site pointed at its own database.
             git fetch origin main
             git reset --hard origin/main
 
@@ -42,4 +79,4 @@ jobs:
             php -r 'if (function_exists("opcache_reset")) { opcache_reset(); echo "opcache reset\n"; }' || true
 
             echo "==> Deployed commit: $(git rev-parse --short HEAD) at $(date)"
-            echo "Deployment was successful!"
+            echo "Deployment of $SITE_NAME was successful!"
