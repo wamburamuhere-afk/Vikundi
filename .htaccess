@@ -4,6 +4,18 @@
 RewriteEngine On
 RewriteBase /
 
+# Pass the Authorization header through to PHP (mobile API bearer tokens).
+# Apache does not populate $_SERVER['HTTP_AUTHORIZATION'] on every SAPI — on
+# this stack it carried no Authorization entry at all, so every authenticated
+# API request failed with the same 401 as an unauthenticated one. PHP code has
+# a getallheaders() fallback, but that function does not exist under some
+# FPM/nginx setups, so the header is propagated here as well.
+<IfModule mod_setenvif.c>
+    SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+</IfModule>
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
 # Disable directory listing & content negotiation
 Options -Indexes -MultiViews
 

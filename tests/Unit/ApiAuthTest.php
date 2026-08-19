@@ -175,10 +175,75 @@ class ApiAuthTest extends TestCase
 
     public function testMalformedAuthorizationHeadersYieldNoToken(): void
     {
+        // Pass an explicit empty header bag so the result cannot depend on the
+        // SAPI the suite happens to run under.
         foreach ([[], ['HTTP_AUTHORIZATION' => ''], ['HTTP_AUTHORIZATION' => 'Basic abc'],
                   ['HTTP_AUTHORIZATION' => 'Bearer'], ['HTTP_AUTHORIZATION' => 'Bearer a b']] as $server) {
-            $this->assertSame('', vk_api_bearer_token($server));
+            $this->assertSame('', vk_api_bearer_token($server, []));
         }
+    }
+
+    /**
+     * The defect that made every authenticated endpoint unusable in production.
+     *
+     * On apache2handler this stack passes NO Authorization entry in $_SERVER at
+     * all — verified by probing a live request, which returned an empty set of
+     * auth-related $_SERVER keys while getallheaders() carried the header
+     * intact. Reading only $_SERVER meant a valid token produced exactly the
+     * same 401 as no token, which is indistinguishable from a broken secret and
+     * is why it survived review.
+     */
+    public function testBearerTokenFallsBackToTheHeaderBagWhenServerHasNothing(): void
+    {
+        $this->assertSame(
+            'abc123',
+            vk_api_bearer_token([], ['Authorization' => 'Bearer abc123']),
+            'A token present only in the header bag must still be found.'
+        );
+    }
+
+    /**
+     * HTTP header names are case-insensitive and the SAPI picks the casing it
+     * hands back, so an exact-key lookup would work on one server and fail on
+     * the next.
+     */
+    public function testTheHeaderBagLookupIsCaseInsensitive(): void
+    {
+        foreach (['Authorization', 'authorization', 'AUTHORIZATION', 'AuThOrIzAtIoN'] as $name) {
+            $this->assertSame(
+                'abc123',
+                vk_api_bearer_token([], [$name => 'Bearer abc123']),
+                "Header name '{$name}' should have been matched."
+            );
+        }
+    }
+
+    public function testServerVariablesTakePrecedenceOverTheHeaderBag(): void
+    {
+        $this->assertSame(
+            'fromserver',
+            vk_api_bearer_token(
+                ['HTTP_AUTHORIZATION' => 'Bearer fromserver'],
+                ['Authorization' => 'Bearer fromheaders']
+            )
+        );
+    }
+
+    /** The fallback must not weaken any refusal the $_SERVER path enforced. */
+    public function testTheHeaderBagFallbackStillRejectsMalformedValues(): void
+    {
+        foreach (['', 'Basic abc', 'Bearer', 'Bearer a b', 'Token abc'] as $value) {
+            $this->assertSame(
+                '',
+                vk_api_bearer_token([], ['Authorization' => $value]),
+                "Value '{$value}' must not yield a token."
+            );
+        }
+    }
+
+    public function testAnEmptyHeaderBagYieldsNoToken(): void
+    {
+        $this->assertSame('', vk_api_bearer_token([], []));
     }
 
     // -------------------------------------------------------------------------

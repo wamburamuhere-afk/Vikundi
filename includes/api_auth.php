@@ -199,11 +199,32 @@ function vk_api_revoke_all_for_user(PDO $pdo, int $userId, ?int $now = null): in
 }
 
 /** Read the bearer token out of the request, or '' when absent. */
-function vk_api_bearer_token(array $server): string
+function vk_api_bearer_token(array $server, ?array $headers = null): string
 {
     $header = $server['HTTP_AUTHORIZATION']
         ?? $server['REDIRECT_HTTP_AUTHORIZATION']  // Apache strips it into this under some configs
         ?? '';
+
+    // Neither key is guaranteed. On this stack (apache2handler) $_SERVER carries
+    // no Authorization entry at all — verified by probing a live request — while
+    // getallheaders() returns it intact. Without this fallback every
+    // authenticated endpoint returns exactly the same 401 for a valid token as
+    // for no token, which is indistinguishable from a broken secret.
+    if ((!is_string($header) || $header === '')) {
+        if ($headers === null && function_exists('getallheaders')) {
+            $headers = getallheaders() ?: [];
+        }
+        if (is_array($headers)) {
+            // HTTP header names are case-insensitive and the SAPI decides the
+            // casing it hands back, so never match on an exact key.
+            foreach ($headers as $name => $value) {
+                if (strcasecmp((string) $name, 'Authorization') === 0) {
+                    $header = $value;
+                    break;
+                }
+            }
+        }
+    }
 
     if (!is_string($header) || $header === '') {
         return '';
