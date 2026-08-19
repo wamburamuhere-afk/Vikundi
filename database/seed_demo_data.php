@@ -81,9 +81,15 @@ if ($fresh) {
         $pdo->exec("TRUNCATE TABLE `{$t}`");
     }
     $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
-    // Members are users too — remove previously-seeded demo member accounts
-    // (matched by the demo email domain), but never the real admin.
-    $pdo->exec("DELETE FROM users WHERE user_role = 'Member' AND email LIKE '%@example.co.tz'");
+    // Members are users too — remove previously-seeded demo accounts, matched by
+    // the demo email domain. Deliberately NOT filtered on user_role: the
+    // walkthrough seeder promotes three of these members into Chairperson,
+    // Secretary and Treasurer, so a role filter leaves those three behind and
+    // the next run appends a numeric suffix — producing rmollel AND rmollel1,
+    // two half-populated leaders, and printed credentials that do not match the
+    // account holding the office. The @example.co.tz domain is the demo marker
+    // and never matches a real admin.
+    $pdo->exec("DELETE FROM users WHERE email LIKE '%@example.co.tz'");
 }
 
 // ---------------------------------------------------------------------------
