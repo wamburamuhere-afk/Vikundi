@@ -32,6 +32,7 @@ if (PHP_SAPI !== 'cli') {
 }
 
 require_once __DIR__ . '/../includes/config.php'; // provides $pdo
+require_once __DIR__ . '/demo_seed_guard.php';
 
 // ---------------------------------------------------------------------------
 // Arguments
@@ -44,6 +45,11 @@ foreach ($argv as $a) {
         $members = max(1, (int) $m[1]);
     }
 }
+
+// Refuse outright if this connection points at a database holding real member
+// records. --fresh truncates the money tables, and demo/production sit in two
+// directories on the same server running identical code.
+vk_demo_seed_guard($pdo, $argv);
 
 const GROUP_NAME = 'Umoja VICOBA Group';
 mt_srand(20260627); // reproducible demo dataset
