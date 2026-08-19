@@ -93,6 +93,19 @@ try {
     // 3. Seed default permissions. Leadership roles seed only when empty; Member
     //    (enforce=true) is reset to its view-only defaults on every run.
     $perms      = $pdo->query("SELECT permission_id, page_key FROM permissions")->fetchAll(PDO::FETCH_KEY_PAIR);
+
+    // An empty catalogue means every grant loop below is a no-op. Without this
+    // the script still prints "Seeded default permissions for: ..." and the
+    // install looks healthy while every non-admin role holds zero grants — which
+    // is precisely how the demo site came up with 4 roles and 32 permissions.
+    if (!$perms) {
+        $pdo->rollBack();
+        fwrite(STDERR,
+            "  ABORTING: the `permissions` catalogue is empty, so no grants can be seeded.\n" .
+            "  Run database/seed_permissions_catalogue.php first (it is registered ahead of\n" .
+            "  this script in database/migrate.php).\n");
+        exit(1);
+    }
     $countPerms = $pdo->prepare("SELECT COUNT(*) FROM role_permissions WHERE role_id = ?");
     $insPerm    = $pdo->prepare(
         "INSERT INTO role_permissions (role_id, permission_id, can_view, can_create, can_edit, can_delete, can_review, can_approve)
