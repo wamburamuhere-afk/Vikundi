@@ -18,3 +18,11 @@ try {
 } catch (PDOException $e) {
     die(json_encode(['status' => 'error', 'message' => 'Database connection failed']));
 }
+
+// Mobile API (Module 1: Auth) — signs and verifies the JSON Web Tokens issued
+// on login. Generate a real value with:
+//   php -r 'echo bin2hex(random_bytes(32)), PHP_EOL;'
+// A guessable or shared secret lets anyone forge a valid token for any user,
+// so includes/api_auth.php refuses to issue or verify tokens if this is left
+// as the placeholder below.
+define('JWT_SECRET', 'REPLACE_ME_WITH_A_RANDOM_64_CHAR_HEX_STRING');
