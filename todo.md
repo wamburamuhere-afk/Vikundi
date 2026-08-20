@@ -47,12 +47,12 @@ used by both transports.
 
 - [x] `GET /api/v1/members` — list, paginated, filters: status, group, search (`customers` view; sensitive fields masked for non-editors)
 - [x] `GET /api/v1/members/{id}` — detail (`app/bms/customer/customer_details.php`) — a member may only open their own record
-- [ ] `POST /api/v1/members` — register a member
-- [ ] `PUT /api/v1/members/{id}` — edit (`edit_customer.php`)
-- [ ] `POST /api/v1/members/{id}/approve` — member_approvals.php (leaders: Admin/Secretary/Katibu)
-- [ ] `POST /api/v1/members/{id}/reject`
+- [x] `POST /api/v1/members` — register a member (multipart/form-data; payment slip mandatory, as on the web)
+- [x] `PUT /api/v1/members/{id}` — edit (`edit_customer.php`) — whitelisted columns only; POST for photo uploads
+- [x] `POST /api/v1/members/{id}/approve` — member_approvals.php (admins incl. Chairperson, Secretary/Katibu)
+- [x] `POST /api/v1/members/{id}/reject`
 - [x] `GET /api/v1/members/dormant` — dormant_members.php list
-- [ ] `POST /api/v1/members/{id}/reactivate`
+- [x] `POST /api/v1/members/{id}/reactivate`
 - [ ] `GET /api/v1/member-groups` — list (`customer_groups.php`)
 - [ ] `GET /api/v1/member-groups/{id}` — detail + members (`customer_group_details.php`, `customer_group_members.php`)
 - [ ] `POST /api/v1/member-groups` — create
