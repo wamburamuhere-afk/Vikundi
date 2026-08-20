@@ -24,7 +24,7 @@ $role_stmt->execute([$_SESSION['user_id']]);
 $user_role = $role_stmt->fetchColumn() ?: 'user';
 
 // Only admins/leaders can view other profiles
-$viongozi_roles = ['Admin', 'Secretary', 'Katibu'];
+$viongozi_roles = ['Admin', 'Chairperson', 'Mwenyekiti', 'Secretary', 'Katibu'];
 if (!$is_own_profile && !in_array($user_role, $viongozi_roles)) {
     header("Location: " . getUrl('dashboard') . "?error=Ufikiaji Umekataliwa");
     exit();

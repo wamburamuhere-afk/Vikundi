@@ -21,7 +21,7 @@ $stmt_check = $pdo->prepare("
 $stmt_check->execute([$user_id_session]);
 $user_role_db = $stmt_check->fetchColumn();
 
-$allowed_roles = ['Admin', 'Secretary', 'Katibu', 'Administrator'];
+$allowed_roles = ['Admin', 'Administrator', 'Chairperson', 'Mwenyekiti', 'Secretary', 'Katibu'];
 if (!in_array($user_role_db, $allowed_roles) && !in_array($_SESSION['user_role'] ?? '', $allowed_roles)) {
     $lang = $_SESSION['preferred_language'] ?? 'en';
     $msg = ($lang === 'sw') ? "Huna ruhusa ya kufanya kitendo hiki." : "You do not have permission to perform this action.";

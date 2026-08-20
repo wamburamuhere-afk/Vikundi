@@ -22,7 +22,7 @@ $stmt->execute([$user_id]);
 $user_data = $stmt->fetch(PDO::FETCH_ASSOC);
 $current_user_role = $user_data['role_name'] ?? $user_data['user_role'] ?? 'Member';
 
-$viongozi_roles = ['Admin', 'Secretary', 'Katibu', 'Treasurer', 'Mhasibu'];
+$viongozi_roles = ['Admin', 'Chairperson', 'Mwenyekiti', 'Secretary', 'Katibu', 'Treasurer', 'Mhasibu'];
 if (!in_array($current_user_role, $viongozi_roles)) {
     echo json_encode(['success' => false, 'message' => 'Huna mamlaka ya kubadilisha hali ya mwanachama.']);
     exit();

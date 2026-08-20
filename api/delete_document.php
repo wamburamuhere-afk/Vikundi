@@ -30,7 +30,7 @@ try {
     }
 
     // Management roles that can delete any document
-    $can_manage_roles = ['Admin', 'Chairman', 'Secretary', 'Katibu', 'Treasurer'];
+    $can_manage_roles = ['Admin', 'Chairman', 'Chairperson', 'Mwenyekiti', 'Secretary', 'Katibu', 'Treasurer'];
     $can_manage = in_array($_SESSION['user_role'] ?? '', $can_manage_roles);
 
     // Fetch document info
