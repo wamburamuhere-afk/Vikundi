@@ -8,7 +8,7 @@ includeHeader();
 $is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
 
 // Same role-based access as petty_cash.php list ($user_role is now set by header)
-$allowed_roles = ['Admin', 'Secretary', 'Katibu', 'Treasurer', 'Mhazini'];
+$allowed_roles = ['Admin', 'Chairperson', 'Mwenyekiti', 'Secretary', 'Katibu', 'Treasurer', 'Mhazini'];
 if (!in_array($user_role ?? '', $allowed_roles) && !isAdmin()) {
     redirectTo('dashboard');
 }

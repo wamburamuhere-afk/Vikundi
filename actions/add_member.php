@@ -33,7 +33,7 @@ $stmt = $pdo->prepare("
 $stmt->execute([$user_id]);
 $current_role = strtolower($stmt->fetchColumn() ?: '');
 
-$viongozi_roles = ['admin', 'super admin', 'secretary', 'katibu', 'treasurer', 'mhasibu'];
+$viongozi_roles = ['admin', 'super admin', 'chairperson', 'mwenyekiti', 'secretary', 'katibu', 'treasurer', 'mhasibu'];
 
 if (!in_array($current_role, $viongozi_roles)) {
     // Fallback: Check if there's an is_admin column or role column in users table

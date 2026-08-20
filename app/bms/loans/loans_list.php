@@ -3,7 +3,7 @@
 $page_title = ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Orodha ya Mikopo - VICoBA' : 'Loans List - VICoBA';
 require_once 'header.php';
 
-if (!in_array($user_role, ['Admin', 'Secretary', 'Katibu', 'Treasurer'])) {
+if (!in_array($user_role, ['Admin', 'Chairperson', 'Mwenyekiti', 'Secretary', 'Katibu', 'Treasurer'])) {
     header("Location: " . getUrl('dashboard') . "?error=Access Denied");
     exit();
 }

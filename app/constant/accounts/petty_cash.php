@@ -8,7 +8,7 @@ $is_sw = ($lang === 'sw');
 $isSwahili = $is_sw; // Maintain compatibility with existing code
 
 // Authorization check (example roles)
-$allowed_roles = ['Admin', 'Secretary', 'Katibu', 'Treasurer', 'Mhazini'];
+$allowed_roles = ['Admin', 'Chairperson', 'Mwenyekiti', 'Secretary', 'Katibu', 'Treasurer', 'Mhazini'];
 if (!in_array($user_role, $allowed_roles)) {
     header("Location: " . getUrl('dashboard') . "?error=Access Denied");
     exit();
