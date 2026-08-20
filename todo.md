@@ -53,12 +53,20 @@ used by both transports.
 - [x] `POST /api/v1/members/{id}/reject`
 - [x] `GET /api/v1/members/dormant` — dormant_members.php list
 - [x] `POST /api/v1/members/{id}/reactivate`
-- [ ] `GET /api/v1/member-groups` — list (`customer_groups.php`)
-- [ ] `GET /api/v1/member-groups/{id}` — detail + members (`customer_group_details.php`, `customer_group_members.php`)
-- [ ] `POST /api/v1/member-groups` — create
-- [ ] `POST /api/v1/members/import` — bulk import (`customer_import.php`) — likely a distinct upload flow, scope separately
+~~`GET /api/v1/member-groups` — list (`customer_groups.php`)~~ — **excluded, see below**
+~~`GET /api/v1/member-groups/{id}` — detail + members (`customer_group_details.php`, `customer_group_members.php`)~~ — **excluded, see below**
+~~`POST /api/v1/member-groups` — create~~ — **excluded, see below**
+- [ ] `POST /api/v1/members/import` — bulk import (`customer_import.php`) — distinct upload flow, still to scope
+
+**Member-groups excluded as BMS leftover.** Evidence gathered 2026-08-20: no nav link anywhere in the
+app (reachable only by typing the URL), the routes `api/create_customer_group` and
+`api/delete_customer_group` point at files that do not exist on disk, and the real data carries zero
+rows in `customer_groups`. Building an API for a feature nobody can reach and whose write endpoints are
+already broken would be waste.
+
+**Module 3 writes shipped in PR #441; group-settings write in PR #443.**
 - [x] `GET /api/v1/group-settings` — group_settings.php (name, logo, org type) — whitelisted keys
-- [ ] `PUT /api/v1/group-settings` — leadership only
+- [x] `PUT /api/v1/group-settings` — admins (incl. Chairperson) + Secretary; whitelisted keys, validated
 
 **Module 3 read surface shipped in PR #437.** REST sub-paths (`/members/{id}`, `/members/dormant`) are
 resolved by `roots.php`; handlers are flat files (`members_detail.php`) because a directory named

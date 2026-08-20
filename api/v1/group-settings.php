@@ -19,9 +19,14 @@
 require_once __DIR__ . '/../../includes/api_bootstrap.php';
 
 vk_api_cors();
-vk_api_require_method(['GET']);
+vk_api_require_method(['GET', 'PUT']);
 
-vk_api_require_auth();
+$auth = vk_api_require_auth();
+
+if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
+    require __DIR__ . '/group_settings_update.php';
+    exit;
+}
 
 /** Keys the client legitimately needs, and their defaults. */
 const VK_GROUP_SETTING_KEYS = [
