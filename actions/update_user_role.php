@@ -22,7 +22,7 @@ $stmt->execute([$user_id]);
 $user_data = $stmt->fetch(PDO::FETCH_ASSOC);
 $current_user_role = $user_data['role_name'] ?? $user_data['user_role'] ?? 'Member';
 
-$viongozi_roles = ['Admin', 'Secretary', 'Katibu', 'Treasurer', 'Mhasibu'];
+$viongozi_roles = ['Admin', 'Chairperson', 'Mwenyekiti', 'Secretary', 'Katibu', 'Treasurer', 'Mhasibu'];
 if (!in_array($current_user_role, $viongozi_roles)) {
     echo json_encode(['success' => false, 'message' => 'Huna mamlaka ya kubadilisha nafasi ya mwanachama.']);
     exit();
@@ -40,16 +40,34 @@ if (!$target_user_id || !$new_role) {
 try {
     $pdo->beginTransaction();
 
-    // Mapping roles to IDs (Adjust based on your roles table if necessary)
-    $role_map = [
-        'Admin' => 1,
-        'Member' => 2,
-        'Secretary' => 3,
-        'Treasurer' => 4,
-        'Katibu' => 3 
-    ];
-    
-    $role_id = $role_map[$new_role] ?? 2;
+    // Resolve the role id from the roles table by name.
+    //
+    // This used to be a hard-coded map, and it granted the opposite of what it
+    // read as:
+    //
+    //     'Member' => 2,   // role_id 2 is CHAIRPERSON
+    //     $role_id = $role_map[$new_role] ?? 2;
+    //
+    // Setting a user to "Member" therefore gave them role_id 2, which isAdmin()
+    // and vk_api_is_admin() both treat as a full admin — a demotion that handed
+    // out administrative access. The `?? 2` default did the same for any role
+    // name not in the map. The real Member role is id 13 on a freshly seeded
+    // install and 15 on the live system, which is exactly why ids must never be
+    // hard-coded here.
+    $rs = $pdo->prepare('SELECT role_id FROM roles WHERE LOWER(role_name) = LOWER(?) LIMIT 1');
+    $rs->execute([$new_role]);
+    $role_id = (int) ($rs->fetchColumn() ?: 0);
+
+    if ($role_id <= 0) {
+        // Refuse rather than fall back. A default here is a silent grant of
+        // whatever role that id happens to be on this install.
+        $pdo->rollBack();
+        $is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
+        echo json_encode(['success' => false, 'message' => $is_sw
+            ? "Nafasi \"$new_role\" haipo kwenye mfumo."
+            : "The role \"$new_role\" does not exist in this system."]);
+        exit();
+    }
 
     // Update users table - syncing all role-related columns
     $stmt = $pdo->prepare("UPDATE users SET user_role = ?, role = ?, role_id = ? WHERE user_id = ?");

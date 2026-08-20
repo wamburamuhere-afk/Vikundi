@@ -158,6 +158,56 @@ class RoleLeadershipTest extends TestCase
         );
     }
 
+    /**
+     * Role IDS must never be hard-coded when assigning a role.
+     *
+     * actions/update_user_role.php carried a map that read as a demotion and
+     * acted as a promotion:
+     *
+     *     'Member' => 2,                      // role_id 2 is CHAIRPERSON
+     *     $role_id = $role_map[$new_role] ?? 2;
+     *
+     * Setting a user to "Member" gave them role_id 2, which both isAdmin() and
+     * vk_api_is_admin() treat as a full admin — so the demotion handed out
+     * administrative access, and the `?? 2` default did the same for any role
+     * name not in the map. The real Member role is 13 on a freshly seeded
+     * install and 15 on the live system, which is why the id has to be looked
+     * up rather than assumed.
+     */
+    public function testRoleAssignmentResolvesTheIdFromTheRolesTable(): void
+    {
+        $src = (string) file_get_contents(dirname(__DIR__, 2) . '/actions/update_user_role.php');
+
+        // Comments describe the old map on purpose; assertions must see code only.
+        $code = '';
+        foreach (token_get_all($src) as $t) {
+            if (is_array($t)) {
+                if ($t[0] === T_COMMENT || $t[0] === T_DOC_COMMENT) {
+                    continue;
+                }
+                $code .= $t[1];
+                continue;
+            }
+            $code .= $t;
+        }
+
+        $this->assertStringContainsString(
+            'FROM roles WHERE LOWER(role_name)',
+            $code,
+            'The role id must be resolved from the roles table, not a hard-coded map.'
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            "/'Member'\s*=>\s*2/",
+            $code,
+            "'Member' => 2 assigns the Chairperson role id and grants admin access."
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/\$role_map\[[^\]]*\]\s*\?\?\s*\d+/',
+            $code,
+            'Defaulting to a numeric role id silently grants whatever role that id is here.'
+        );
+    }
+
     /** And so must the API, or the two transports drift apart again. */
     public function testTheApiDashboardUsesTheSameDefinition(): void
     {

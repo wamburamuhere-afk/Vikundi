@@ -4,7 +4,7 @@ require_once __DIR__ . '/../../../roots.php';
 require_once ROOT_DIR . '/header.php';
 
 // Only leaders can access this
-$viongozi_roles = ['Admin', 'Secretary', 'Katibu'];
+$viongozi_roles = ['Admin', 'Chairperson', 'Mwenyekiti', 'Secretary', 'Katibu'];
 if (!in_array($user_role, $viongozi_roles)) {
     header("Location: " . getUrl('dashboard') . "?error=Ufikiaji Umekataliwa");
     exit();

@@ -6,7 +6,7 @@ require_once HEADER_FILE;
 $isSwahili = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
 
 // Allowed roles
-$allowed_roles = ['Admin', 'Secretary', 'Katibu'];
+$allowed_roles = ['Admin', 'Chairperson', 'Mwenyekiti', 'Secretary', 'Katibu'];
 if (!in_array($user_role, $allowed_roles)) {
     header("Location: " . getUrl('dashboard') . "?error=Access Denied");
     exit();
