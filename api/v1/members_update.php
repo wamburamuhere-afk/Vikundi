@@ -20,9 +20,15 @@
  * another login, or marking someone dead — none of which this endpoint is for.
  */
 
+// Required here, not just by the includer: the router can reach this file
+// directly, and without the bootstrap vk_api_require_auth() would be undefined
+// and the request would die on a fatal instead of a clean 401.
+require_once __DIR__ . '/../../includes/api_bootstrap.php';
 require_once __DIR__ . '/../../includes/activity_logger.php';
 
-/** @var array $auth  resolved by members_detail.php */
+// See the note in members_create.php: the router can reach this file directly,
+// so it authenticates rather than assuming its includer did.
+$auth = $auth ?? vk_api_require_auth();
 vk_api_require_permission($auth, 'edit', 'customers');
 
 $memberId = (int) ($_GET['id'] ?? 0);

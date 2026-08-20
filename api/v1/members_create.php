@@ -22,11 +22,19 @@
  * password is username@123. The app must tell the member to change it.
  */
 
+// Required here, not just by the includer: the router can reach this file
+// directly, and without the bootstrap vk_api_require_auth() would be undefined
+// and the request would die on a fatal instead of a clean 401.
+require_once __DIR__ . '/../../includes/api_bootstrap.php';
 require_once __DIR__ . '/../../includes/api_upload.php';
 require_once __DIR__ . '/../../includes/member_identity.php';
 require_once __DIR__ . '/../../includes/activity_logger.php';
 
-/** @var array $auth  resolved by members.php */
+// $auth normally arrives from members.php. This file also sits in api/v1, and
+// the router maps /api/v1/members/{id}/create straight onto it, so it must be
+// able to authenticate on its own — trusting a caller to have done it is how an
+// include becomes an unauthenticated endpoint.
+$auth = $auth ?? vk_api_require_auth();
 vk_api_require_permission($auth, 'create', 'customers');
 
 $body = vk_api_body(); // multipart lands in $_POST; see includes/api_bootstrap.php
