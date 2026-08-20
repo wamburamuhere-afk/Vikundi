@@ -25,9 +25,18 @@ require_once __DIR__ . '/../../includes/roles.php';
 require_once __DIR__ . '/../../helpers.php';
 
 vk_api_cors();
-vk_api_require_method(['GET']);
+// PUT is accepted for JSON edits. A photo upload must use POST: PHP populates
+// $_POST and $_FILES only for POST, so a multipart PUT arrives with an empty
+// body and would silently save nothing.
+vk_api_require_method(['GET', 'PUT', 'POST']);
 
 $auth = vk_api_require_auth();
+
+if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+    require __DIR__ . '/members_update.php';
+    exit;
+}
+
 vk_api_require_permission($auth, 'view', 'customers');
 
 $memberId = (int) ($_GET['id'] ?? 0);

@@ -147,12 +147,53 @@ class EndpointAuthSweepTest extends TestCase
         if (trim($src) === '') {
             return true; // zero-byte
         }
+
+        // Strip comments via the tokenizer rather than by prefix: these files
+        // carry docblocks, and a line-based filter only removed `//`.
+        $stripped = '';
+        foreach (token_get_all($src) as $t) {
+            if (is_array($t)) {
+                if ($t[0] === T_COMMENT || $t[0] === T_DOC_COMMENT) {
+                    $stripped .= "\n";
+                    continue;
+                }
+                $stripped .= $t[1];
+                continue;
+            }
+            $stripped .= $t;
+        }
+
         $code = array_values(array_filter(
-            array_map('trim', explode("\n", $src)),
-            static fn ($l) => $l !== '' && $l !== '<?php' && $l !== '?>' && !str_starts_with($l, '//')
+            array_map('trim', explode("\n", $stripped)),
+            static fn ($l) => $l !== '' && $l !== '<?php' && $l !== '?>'
         ));
-        return count($code) === 1
-            && (bool) preg_match('#^require(?:_once)?\s+__DIR__\s*\.\s*[\'"][^\'"]+\.php[\'"];$#', $code[0]);
+
+        if ($code === []) {
+            return true;
+        }
+
+        // A delegating stub: one require of a sibling file, optionally preceded
+        // by scalar assignments that select which behaviour the sibling runs
+        // (api/v1/members_approve.php sets $vkTargetStatus = 'active' and
+        // requires members_status_change.php, where the gate lives).
+        //
+        // The assignment form is restricted to a quoted literal, so a stub
+        // cannot call anything, and exactly one require is permitted. A file
+        // that grows any real statement stops qualifying and the sweep demands
+        // a gate again — which is the property that makes this safe to widen.
+        $requires = 0;
+        foreach ($code as $line) {
+            if (preg_match('#^require(?:_once)?\s+__DIR__\s*\.\s*[\'"][^\'"]+\.php[\'"];$#', $line)) {
+                $requires++;
+                continue;
+            }
+            if (preg_match('#^\$[A-Za-z_][A-Za-z0-9_]*\s*=\s*\'[^\']*\';$#', $line)) {
+                continue;
+            }
+            return false;
+        }
+
+        return $requires === 1;
     }
 
     public function testEveryEndpointReachesAnAuthCheck(): void

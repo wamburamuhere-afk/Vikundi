@@ -25,9 +25,17 @@ require_once __DIR__ . '/../../includes/roles.php';
 require_once __DIR__ . '/../../helpers.php';
 
 vk_api_cors();
-vk_api_require_method(['GET']);
+vk_api_require_method(['GET', 'POST']);
 
 $auth = vk_api_require_auth();
+
+// POST creates a member; the handler lives in its own file so this one stays a
+// read. It exits.
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require __DIR__ . '/members_create.php';
+    exit;
+}
+
 vk_api_require_permission($auth, 'view', 'customers');
 
 // -----------------------------------------------------------------------------
