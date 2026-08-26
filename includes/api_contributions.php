@@ -45,6 +45,7 @@
  * them.
  */
 require_once __DIR__ . '/api_auth.php';             // vk_api_is_admin(), vk_api_can()
+require_once __DIR__ . '/contribution_access.php';  // vk_contrib_leader_from() — one rule, both transports
 require_once __DIR__ . '/roles.php';
 require_once __DIR__ . '/contribution_standing.php'; // cs_is_opening() and the statement rules
 require_once __DIR__ . '/activity_logger.php';
@@ -84,8 +85,14 @@ if (!function_exists('vk_api_contrib_is_leader')) {
      */
     function vk_api_contrib_is_leader(array $auth): bool
     {
-        return vk_api_is_admin((int) $auth['role_id'])
-            || vk_api_can($auth, 'edit', 'manage_contributions');
+        // Delegates to the shared rule so the API and the web cannot answer this
+        // differently. They already did once: six web endpoints tested `view`,
+        // which the Member role holds, and served the whole group's savings to
+        // any signed-in member. See includes/contribution_access.php.
+        return vk_contrib_leader_from(
+            vk_api_is_admin((int) $auth['role_id']),
+            vk_api_can($auth, 'edit', 'manage_contributions')
+        );
     }
 }
 
