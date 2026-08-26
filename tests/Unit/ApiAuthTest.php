@@ -398,10 +398,32 @@ class ApiAuthTest extends TestCase
     {
         // SEC-015: the web app treats certain role *names* as admin, so renaming a
         // role silently grants or revokes admin. The API must not inherit that.
-        $src = $this->read('includes/api_bootstrap.php');
+        //
+        // vk_api_is_admin() and vk_api_can() moved from api_bootstrap.php to
+        // api_auth.php so that code needing only the RULES can load them without
+        // pulling in config.php and a database connection. api_bootstrap.php
+        // requires api_auth.php, so every endpoint still gets them.
+        $src = $this->read('includes/api_auth.php');
         $this->assertStringContainsString('in_array($roleId, [1, 2, 12], true)', $src);
-        $this->assertStringNotContainsString("'mwenyekiti'", $src);
-        $this->assertStringNotContainsString("'treasurer'", $src);
+
+        // Wherever they live, no role NAME may take part in the decision.
+        foreach (['includes/api_auth.php', 'includes/api_bootstrap.php'] as $rel) {
+            $this->assertStringNotContainsString("'mwenyekiti'", $this->read($rel));
+            $this->assertStringNotContainsString("'treasurer'", $this->read($rel));
+        }
+    }
+
+    /**
+     * The move above is only safe while the bootstrap actually pulls the rules
+     * in. If that require were dropped, every endpoint would fatal on
+     * vk_api_can() — or worse, a file defining its own would silently take over.
+     */
+    public function testTheBootstrapStillLoadsTheAuthorisationRules(): void
+    {
+        $this->assertStringContainsString(
+            "require_once __DIR__ . '/api_auth.php';",
+            $this->read('includes/api_bootstrap.php')
+        );
     }
 
     public function testResponsesAreNeverCached(): void
