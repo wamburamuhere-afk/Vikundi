@@ -4,6 +4,94 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-08-26 — Security: a member could read the whole group's savings — PR 5
+
+**Branch:** `fix/contribution-endpoints-leak` (from `develop`)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** Found while starting Module 5 (Transactions), which is built on these same
+endpoints. Seven of them gated group-wide financial data on
+`canView('manage_contributions')` — and `view` is the grant the **Member** role holds, since
+it is what lets a member open their own contributions page. Every one of them was therefore
+readable by any signed-in member.
+
+### Verified live, as an ordinary member
+
+Demo site, `hmbwana1` (member 30), a plain Member:
+
+| Endpoint | What came back |
+|---|---|
+| `api/get_transactions.php` | all 333 group transactions — amounts, receipts, every member |
+| `contribution_view?id=255` | another member's TZS 50,000 contribution |
+| `contribution_statement?member_id=1` | the chairperson's complete savings statement |
+| `api/export_contributions_statement.php` | the group's savings as a CSV download |
+| `api/export_contributions_statement_mkoba.php` | the same, M-Koba layout |
+| `transactions` | the recording hub, every member in the picker |
+
+### Not caused by the Module 4 migration
+
+Checked, because PR #447 had just added a `manage_contributions` grant. The Member role held
+**24 permission keys before that migration and 24 after**, and the migration only ever
+`INSERT`s — it cannot add a key without raising the count. Member already had
+`manage_contributions.view`; the grant that migration added went to a role that was missing
+one. The defect is older than the mobile API.
+
+### The fix
+
+One rule in `includes/contribution_access.php`, used by the web and the mobile API:
+
+```
+group-wide data  ->  LEADERSHIP (admin, or `edit`)
+a single record  ->  OWNERSHIP  (it is yours), or leadership
+```
+
+`edit` is the leadership test **precisely because** `view` is the Member grant. Testing
+`view` is what caused this. `vk_api_contrib_is_leader()` now derives from the same function,
+so the two transports cannot drift again — they already did once.
+
+Statements and exports are **scoped, not blocked**: a member printing or exporting their own
+statement is legitimate and is the same screen, so `vk_statement_apply_scope()` overwrites
+`member_id` with the caller's own rather than refusing. `member_id` 0 means "the whole
+group", so an account with no member record is refused rather than falling through to it.
+
+Per-record pages refuse with **404, not 403** — ids are sequential and a 403 confirms which
+ones exist.
+
+`app/bms/customer/manage_contributions.php` deliberately keeps `view`: it already branches on
+`$is_leader` and shows a member only their own rows, which is the pattern the other six now
+follow. A test pins that so a sweep of this bug class does not lock members out of their own
+page.
+
+### Three tests were pinning the bug
+
+`TransactionsTableTest`, `ContributionGridTest` and `MkobaStatementExportTest` all asserted
+the old gate string. `TransactionsTableTest`'s carried the comment `// leadership only`
+directly beside an assertion for `canView(...)` — the comment described the intent while the
+assertion locked in its opposite.
+
+### Mutation testing
+
+**17 applied, 17 caught.** One survived the first pass and was the genuine hole: changing the
+scope to `if ($f['member_id'] <= 0) { ... }` fills a blank id but leaves an explicitly
+requested other member untouched, so `?member_id=1` still prints the chairperson's statement.
+No source assertion can tell that from the fix, so the scope is now tested behaviourally —
+five requested ids all pinned to the caller, plus a leader whose request is honoured.
+
+### Tests
+
+`tests/Unit/ContributionAccessTest.php` (new, 20 tests) · `TransactionsTableTest`,
+`ContributionGridTest`, `MkobaStatementExportTest` updated.
+
+Suite: 1676 → **1696 tests, 4377 assertions, 15 skipped, exit 0**.
+
+### Database Changes
+
+None.
+
+---
+
+---
+
 ## Session — 2026-08-26 — Mobile API Module 4: contributions — PR 4
 
 **Branch:** `feat/api-v1-contributions` (from `develop`)
