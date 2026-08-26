@@ -4,6 +4,108 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-08-26 — Mobile API Module 4: contributions — PR 4
+
+**Branch:** `feat/api-v1-contributions` (from `develop`)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** Eight endpoints covering the money module — the ledger, a member's own
+standing, and the pending → reviewed → approved workflow. Building it surfaced four
+defects in the existing contributions code, all of which failed silently.
+
+### Endpoints
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/api/v1/contributions` | Ledger — filtered, paginated, scoped |
+| POST | `/api/v1/contributions` | Record one (JSON or multipart) |
+| GET | `/api/v1/contributions/{id}` | One row + approval trail |
+| POST | `/api/v1/contributions/{id}/review` | pending → reviewed |
+| POST | `/api/v1/contributions/{id}/approve` | reviewed → approved |
+| POST | `/api/v1/contributions/{id}/cancel` | → cancelled |
+| GET | `/api/v1/contributions/standing` | A member's savings position |
+| GET | `/api/v1/contributions/summary` | Group collection position (leadership) |
+
+The scoping rule mirrors the web page exactly: a leader sees the group, anyone else is
+**pinned to their own member id** by overwriting the requested value, never by trusting
+the client to omit it. Verified by trying to escape it.
+
+### Four defects found while building it
+
+**1. `manage_contributions` was never a real permission.** The page has always opened
+with `requireViewPermission('manage_contributions')`, and the review/approve endpoints
+gate on the same key — but no row for it existed in `permissions`. Every such check
+resolved false for anyone not caught by the `isAdmin()` **name** bypass. So the module
+was reachable by role name only, a renamed role would silently lose it, and a plain
+Member could not see their own contributions at all. Registered by a migration that
+mirrors the `expenses` grants rather than hardcoding role ids.
+
+**2. The approval trail named the database user, not the officer.**
+`workflowActorSnapshot()` read `global $username` on the assumption it is what
+header.php sets. `includes/config.php:7` also declares `$username` — for the PDO
+connection — so on every path that skips header.php (all of `api/`, all of `actions/`,
+the whole mobile API) the signature recorded the **database account** as the approver.
+Every `workflow_signatures` row locally read `vikundi`. This affects contributions,
+expenses, petty cash, budgets and documents — every three-approval workflow in the
+system. Now resolved from the session only.
+
+**3. `actions/update_contribution.php` was a workflow bypass.** It wrote `$_POST['status']`
+straight into the row behind a single `canEdit()` check. Anyone with edit could post
+`status=approved`: approving without the approve permission, skipping review entirely,
+with no signature and no approver recorded. Approved contributions count toward every
+member's savings and the group total. Now restricted to `cancelled`, with a FROM-status
+guard under a row lock.
+
+**4. `actions/process_contribution.php` had an unrestricted upload.** The stored filename
+came from `pathinfo($_FILES['evidence']['name'], PATHINFO_EXTENSION)` — the client's own
+string — into a web-served directory. `receipt.php` landed as `receipt.php`. Now uses
+`vk_api_store_upload()`, the same validating helper as the API.
+
+### One divergence deliberately NOT fixed
+
+`cs_group_standing()` anchors expected contributions at a member's first contribution;
+`cs_member_schedule()` anchors at their join date. For members imported from M-Koba the
+two disagree about the same person — observed live: expected 400,000 and "behind" by one,
+150,000 and "ahead" by the other. **This is pre-existing and shows on the web today.**
+Changing an anchor moves every savings figure on the dashboard, ledger, reports and
+printed statements, so it needs its own change with the treasurer confirming which anchor
+the group means. Pinned by a test so it cannot be half-fixed, and documented in `API.md`.
+
+### Refactor
+
+`vk_api_is_admin()` and `vk_api_can()` moved from `api_bootstrap.php` to `api_auth.php`.
+Both are pure; the move lets the contribution rules be loaded and tested without
+`config.php`, which is gitignored and absent in CI.
+
+### Verification
+
+Driven against a live server as four identities (Admin, Treasurer, Member, and an account
+with no member record): scoping, escape attempts, every workflow transition in and out of
+order, all validation refusals, the `has_target` on/off branches, and evidence upload with
+a genuine PNG, a PHP file renamed `.png` (refused on content) and a `.php` (refused on
+extension). All local test data removed afterwards; row count back to 573.
+
+**27 mutations applied, 27 caught.** Two survived on the first pass — no test pinned the
+review endpoint's own permission, and the migration's idempotency assertion matched even
+with the `continue` deleted. Both closed.
+
+### Tests
+
+`tests/Unit/ContributionsApiTest.php` (new, 56 tests) ·
+`tests/Unit/WorkflowActorTest.php` (new, 6 tests) · `tests/Unit/ApiAuthTest.php` extended.
+
+Suite: 1669 → **1675 tests, 4318 assertions, 15 skipped, exit 0**.
+
+### Database Changes
+
+`database/add_contributions_permission.php` — registers the `manage_contributions`
+permission and mirrors the `expenses` grants. Idempotent; never overwrites an existing
+grant. Registered in `migrate.php` before `seed_vicoba_roles.php`, so deploys apply it.
+
+---
+
+---
+
 ## Session — 2026-08-13 — Feat: group statements — Statements PR 6 (final)
 **Branch:** `feat/group-statements` (from `develop`)
 **Developer:** Claude Code / Jabir Mussa

@@ -271,3 +271,36 @@ function vk_api_load_permissions(PDO $pdo, int $roleId): array
     }
     return $out;
 }
+
+// --- Authorisation ------------------------------------------------------------
+// These two are pure — a role id and a permission map in, a boolean out — and
+// live here beside vk_api_load_permissions() rather than in api_bootstrap.php so
+// that code needing only the RULES can load them without pulling in config.php
+// and a database connection. api_bootstrap.php requires this file, so every
+// endpoint still gets them.
+
+if (!function_exists('vk_api_is_admin')) {
+    /**
+     * Admin bypass, matching core/permissions.php's isAdmin() by role_id.
+     *
+     * Only the numeric role ids are honoured here. The web app also treats a set
+     * of role *names* as admin, which is finding SEC-015 — renaming a role
+     * silently grants or revokes admin. That behaviour is not carried into the
+     * API.
+     */
+    function vk_api_is_admin(int $roleId): bool
+    {
+        return in_array($roleId, [1, 2, 12], true);
+    }
+}
+
+if (!function_exists('vk_api_can')) {
+    /** @param array $auth The array returned by vk_api_require_auth() */
+    function vk_api_can(array $auth, string $action, string $pageKey): bool
+    {
+        if (vk_api_is_admin((int) $auth['role_id'])) {
+            return true;
+        }
+        return !empty($auth['permissions'][$pageKey][$action]);
+    }
+}
