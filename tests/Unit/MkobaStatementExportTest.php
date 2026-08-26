@@ -110,7 +110,7 @@ class MkobaStatementExportTest extends TestCase
         $exp = $this->src('api/export_contributions_statement_mkoba.php');
         $this->assertStringContainsString('vk_mkoba_statement_columns', $exp);
         $this->assertStringContainsString('vk_mkoba_statement_row', $exp);
-        $this->assertStringContainsString("canView('manage_contributions')", $exp); // leadership-gated
+        $this->assertStringContainsString("vk_statement_apply_scope(\$pdo, \$f)", $exp); // leadership-gated
         $this->assertStringContainsString('\xEF\xBB\xBF', $exp);                     // Excel BOM
         $this->assertStringContainsString('mkoba_trans_id', $exp);                   // reads the mirror columns
         $this->assertStringNotContainsString('TOTAL', $exp);                         // no footer -> diff-clean

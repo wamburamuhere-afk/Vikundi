@@ -14,11 +14,17 @@ global $pdo;
 header('Content-Type: application/json');
 
 // Group-wide financial data — leadership only.
-if (!isAdmin() && !canView('manage_contributions')) {
-    http_response_code(403);
-    echo json_encode(['error' => 'Not authorized.']);
-    exit;
-}
+//
+// This said `view`, and view is the grant an ordinary MEMBER holds: it is what
+// lets them open their own contributions page. So every signed-in member could
+// pull the entire group's transaction history — every other member's payments,
+// amounts and receipts. Verified on the live demo site: 333 rows returned to a
+// plain member.
+//
+// `edit` is the leadership test precisely because view is not. The rule lives in
+// includes/contribution_access.php so the web and the mobile API cannot drift.
+require_once __DIR__ . '/../includes/contribution_access.php';
+vk_contrib_web_require_leader();
 
 $draw   = (int) ($_GET['draw'] ?? 1);
 $start  = max(0, (int) ($_GET['start'] ?? 0));

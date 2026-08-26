@@ -12,13 +12,11 @@ require_once __DIR__ . '/../core/permissions.php';
 require_once __DIR__ . '/../includes/contribution_statement.php';
 global $pdo;
 
-// Group-wide financial report — leadership only.
-if (!isAdmin() && !canView('manage_contributions')) {
-    http_response_code(403);
-    exit('Not authorized.');
-}
+// Scoped, not blocked — see vk_statement_apply_scope(). A member may export
+// their own statement; only a leader may export the group's.
 
 $f = vk_statement_filters($_GET);
+$f = vk_statement_apply_scope($pdo, $f);
 $params = [];
 $where = vk_statement_where($f, $params);
 

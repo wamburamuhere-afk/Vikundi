@@ -102,7 +102,7 @@ class ContributionGridTest extends TestCase
         $exp = $this->src('api/export_contributions_statement.php');
         $this->assertStringContainsString("text/csv", $exp);
         $this->assertStringContainsString('\xEF\xBB\xBF', $exp);                    // Excel BOM (source literal)
-        $this->assertStringContainsString("canView('manage_contributions')", $exp); // leadership-gated
+        $this->assertStringContainsString("vk_statement_apply_scope(\$pdo, \$f)", $exp); // leadership-gated
     }
 
     public function testStatementTotalPrintsOnceNotEveryPage(): void
