@@ -97,6 +97,11 @@ Use `has_more` for infinite scroll rather than comparing counts yourself.
 
 - Amounts are **numbers**, not strings, in whole Tanzanian shillings. Currency is `TZS`
   (`/group-settings` confirms it).
+- **A money value is not reliably a Dart `double`.** The server casts to float, but
+  `json_encode` writes `10000` for a whole amount and `10000.5` for a fractional one — so
+  `jsonDecode` hands you an **`int`** for most real rows and `x as double` throws. Use
+  `(x as num).toDouble()` for every money field, in every module. Verified live:
+  `"monthly_contribution": 10000`, `"total_saved": 440000`.
 - Timestamps are **ISO-8601** (`2026-08-19T14:22:31+03:00`). Dates are `YYYY-MM-DD`.
 - The server never sends a pre-formatted "2 hours ago" string — format in the app so it follows
   the user's language.
@@ -993,10 +998,15 @@ parameter is overwritten, not validated — and the response tells you what actu
 happened:
 
 ```json
-"scope": { "is_leader": false, "member_id": 3, "own_member_id": 3 }
+"scope": { "is_leader": false, "member_id": 30, "own_member_id": 30 }
 ```
 
-Render from `scope`, never from what you asked for.
+Render from `scope`, never from what you asked for. For a leader viewing the whole group,
+`member_id` is `null`; for the system Admin, `own_member_id` is `null` too — **both fields
+are `int?` in Dart.**
+
+Verified live on the demo site as `hmbwana1`: `?member_id=8` and `?member_id=1` both
+returned only member 30's own nine rows.
 
 An account with **no member record** (the system Admin) gets `403 no_member_record`
 on the member-scoped endpoints. That is not an error to retry — it means "this
@@ -1056,9 +1066,9 @@ The ledger. Paginated, filtered, scoped as above.
         "actions": { "review": false, "approve": false, "cancel": false }
       }
     ],
-    "scope":  { "is_leader": false, "member_id": 3, "own_member_id": 3 },
-    "totals": { "filtered_amount": 300000.0, "filtered_count": 6 },
-    "pagination": { "page": 1, "per_page": 25, "total": 6, "total_pages": 1, "has_more": false }
+    "scope":  { "is_leader": false, "member_id": 30, "own_member_id": 30 },
+    "totals": { "filtered_amount": 420000.0, "filtered_count": 9 },
+    "pagination": { "page": 1, "per_page": 25, "total": 9, "total_pages": 1, "has_more": false }
   }
 }
 ```
@@ -1182,26 +1192,33 @@ pass one, or gets `422 member_required`.
 {
   "status": "success",
   "data": {
-    "member": { "member_id": 3, "full_name": "Neema Joseph Mushi", "is_self": true },
-    "group":  { "currency": "TZS", "monthly_contribution": 50000.0, "has_target": true },
-    "entrance": { "amount": 0.0, "paid": 0.0, "status": "paid" },
+    "member": { "member_id": 30, "full_name": "Hamisi Mbwana", "is_self": true },
+    "group":  { "currency": "TZS", "monthly_contribution": 10000.0, "has_target": true },
+    "entrance": { "amount": 20000.0, "paid": 20000.0, "status": "paid" },
     "standing": {
       "opening": 0.0,
-      "new": 316821.0,
-      "total_saved": 316821.0,
-      "expected": 150000.0,
-      "surplus_deficit": 166821.0,
+      "new": 440000.0,
+      "total_saved": 440000.0,
+      "expected": 80000.0,
+      "surplus_deficit": 360000.0,
       "status": "ahead"
     },
     "arrears": { "behind": false, "amount": 0.0, "months": 0, "oldest_month": null },
     "months": [
-      { "month": "2026-08", "label": "Aug 2026", "target": 50000.0, "paid": 50000.0, "shortfall": 0.0, "status": "paid" }
+      { "month": "2026-08", "label": "Aug 2026", "target": 10000.0, "paid": 10000.0, "shortfall": 0.0, "status": "paid" }
     ],
-    "year_summary": { "years": { "2026": { "target": 150000.0, "actual": 316821.0, "variance": 166821.0 } },
-                      "total": { "target": 150000.0, "actual": 316821.0, "variance": 166821.0, "unallocated": 0.0, "paid": 316821.0 } }
+    "year_summary": { "years": { "2026": { "target": 80000, "actual": 420000, "variance": 340000 } },
+                      "total": { "target": 80000, "actual": 420000, "variance": 340000, "unallocated": 0, "paid": 420000 } }
   }
 }
 ```
+
+> **`standing.total_saved` and `year_summary.total.paid` are not the same number**, and
+> that is correct. Above: 440,000 vs 420,000. The 20,000 gap is the **entrance fee** — it
+> is real savings, so it is in `total_saved`, but it is not a monthly payment, so the
+> month calendar never allocates it. That is why `entrance` is returned separately. If
+> both figures appear on one screen, label them ("Total saved" vs "Allocated to months")
+> or show only `total_saved`.
 
 **`has_target` is the switch the whole screen hangs on.** The group may not have set
 a monthly amount. When it is `false`: nothing is expected, nobody is behind,
@@ -1226,20 +1243,20 @@ about other people. A member's equivalent is `/contributions/standing`.
   "status": "success",
   "data": {
     "currency": "TZS",
-    "group": { "monthly_contribution": 50000.0, "has_target": true },
+    "group": { "monthly_contribution": 10000.0, "has_target": true },
     "totals": {
-      "all_time": 1817821.0,
-      "expected_to_date": 2400000.0,
-      "this_month": { "month": "2026-08", "amount": 16821.0, "count": 2 }
+      "all_time": 18460000.0,
+      "expected_to_date": 3320000.0,
+      "this_month": { "month": "2026-08", "amount": 1750000.0, "count": 30 }
     },
     "awaiting_action": {
-      "pending_review":   { "count": 524, "amount": 7968000.0 },
-      "pending_approval": { "count": 0,   "amount": 0.0 }
+      "pending_review":   { "count": 0, "amount": 0.0 },
+      "pending_approval": { "count": 0, "amount": 0.0 }
     },
     "members": {
-      "total": 334, "behind": 6, "ahead": 0,
-      "total_deficit": 582179.0,
-      "collection_rate": 75.7
+      "total": 30, "behind": 0, "ahead": 30,
+      "total_deficit": 0.0,
+      "collection_rate": 100.0
     }
   }
 }
