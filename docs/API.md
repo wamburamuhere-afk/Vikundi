@@ -1305,9 +1305,16 @@ member side, because that is the only role where fields are removed rather than 
 | 1. Auth | 4 | ✅ live |
 | 2. Dashboard | 1 | ✅ live |
 | 3. Members | 8 | ✅ live |
-| 3. Group settings | 2 | ✅ live |
+| — Group settings | 2 | ✅ live |
 | 4. Contributions | 8 | ✅ live |
-| 5. Fines | — | next |
+| 5. Transactions | — | in progress |
+| 6. Fines | — | queued |
+
+**23 endpoints live** on both `vikundi.bjptechnologies.co.tz` and
+`demo.vikundi.bjptechnologies.co.tz`.
 
 Shipped shapes are treated as a contract: if a field has to change, you will be told before it
 deploys. This file is updated with every module.
+
+See `docs/handover/README.md` for the short version — what is live, the four rules that apply
+to every module, and the test accounts.
