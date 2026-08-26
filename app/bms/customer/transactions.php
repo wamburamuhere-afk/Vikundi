@@ -10,6 +10,12 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 requireViewPermission('manage_contributions');
+// ...and then leadership, because this page is not scoped: the member picker
+// lists every member and the table below it is the whole group's transaction
+// history. `view` alone is what a Member holds, so this page was fully readable
+// by any signed-in member.
+require_once __DIR__ . '/../../../includes/contribution_access.php';
+vk_contrib_web_require_leader(false);
 
 $isSw = (($_SESSION['preferred_language'] ?? 'en') === 'sw');
 $can_record = isAdmin() || canCreate('manage_contributions');

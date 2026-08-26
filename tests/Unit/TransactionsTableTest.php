@@ -21,8 +21,21 @@ class TransactionsTableTest extends TestCase
     {
         $e = $this->src('api/get_transactions.php');
         $this->assertStringContainsString('require_auth.php', $e);                 // must be logged in
-        $this->assertStringContainsString("canView('manage_contributions')", $e);  // leadership only
-        $this->assertStringContainsString('http_response_code(403)', $e);
+        // Was assertStringContainsString("canView('manage_contributions')") — and the
+        // comment beside it already said "leadership only", which is exactly what
+        // canView() does NOT mean: `view` is the grant the Member role holds so a
+        // member can open their own contributions. This endpoint returns the whole
+        // group's transaction list, and a plain member could pull all 333 rows of
+        // it on the live demo site. The test pinned the bug.
+        $this->assertStringContainsString('vk_contrib_web_require_leader(', $e);   // leadership only
+        $this->assertStringNotContainsString("!canView('manage_contributions')", $e);
+        // The 403 itself now lives in the shared gate rather than being repeated in
+        // each endpoint — that repetition is how seven of them ended up with the
+        // same wrong test.
+        $this->assertStringContainsString(
+            'http_response_code(403)',
+            $this->src('includes/contribution_access.php')
+        );
         // page size is clamped (never let the client request the whole table)
         $this->assertStringContainsString('$length > 200', $e);
         // sort column comes from a whitelist, never interpolated from the request

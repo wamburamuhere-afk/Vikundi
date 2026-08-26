@@ -35,6 +35,13 @@ $stmt->execute([$id]);
 $con = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$con) die('Contribution not found');
 
+// Loaded by id, and ids are sequential — so without this any signed-in member
+// could print every contribution in the group. `manage_contributions.view` is
+// held by the Member role (it is what opens their OWN page) and was being read
+// here as permission to print anyone's.
+require_once __DIR__ . '/../../../includes/contribution_access.php';
+vk_contrib_web_require_own_or_leader($pdo, (int) $con['member_id']);
+
 $settings = $pdo->query("SELECT setting_key, setting_value FROM group_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $currency   = $settings['currency']   ?? 'TZS';
 $group_name = $settings['group_name'] ?? 'VIKUNDI';

@@ -34,13 +34,13 @@ carried in the token. Shared plumbing for every later module lives in `includes/
 
 **Shipped in PR #435.** Leadership (Admin/Chairperson/Secretary/Treasurer) receive the group block —
 members, contributions, expenses, balance, fines, pending queue, 6-month trend; a plain member receives
-only their own position. The audit trail is admin-only, matching the web. Group figures are *withheld*,
+only their own position. The audit trail is admin-only, matching the web. Group figures are _withheld_,
 not merely hidden, because JSON has no template to hide behind. Every money figure delegates to
 `cs_group_savings_total()`, `cs_member_arrears()`, `getGroupFundBalance()` and
 `approvedNotYetPaidExpenses()` — verified figure-for-figure against the web dashboard.
 
 Fixed on the way: `app/dashboard.php` hard-coded a role list omitting `chairperson`, so the group's
-Chairperson was served the *member* dashboard. Leadership now has one definition in `includes/roles.php`
+Chairperson was served the _member_ dashboard. Leadership now has one definition in `includes/roles.php`
 used by both transports.
 
 ## 3. Members
@@ -53,9 +53,9 @@ used by both transports.
 - [x] `POST /api/v1/members/{id}/reject`
 - [x] `GET /api/v1/members/dormant` — dormant_members.php list
 - [x] `POST /api/v1/members/{id}/reactivate`
-~~`GET /api/v1/member-groups` — list (`customer_groups.php`)~~ — **excluded, see below**
-~~`GET /api/v1/member-groups/{id}` — detail + members (`customer_group_details.php`, `customer_group_members.php`)~~ — **excluded, see below**
-~~`POST /api/v1/member-groups` — create~~ — **excluded, see below**
+      ~~`GET /api/v1/member-groups` — list (`customer_groups.php`)~~ — **excluded, see below**
+      ~~`GET /api/v1/member-groups/{id}` — detail + members (`customer_group_details.php`, `customer_group_members.php`)~~ — **excluded, see below**
+      ~~`POST /api/v1/member-groups` — create~~ — **excluded, see below**
 - [ ] `POST /api/v1/members/import` — bulk import (`customer_import.php`) — distinct upload flow, still to scope
 
 **Member-groups excluded as BMS leftover.** Evidence gathered 2026-08-20: no nav link anywhere in the
@@ -65,6 +65,7 @@ rows in `customer_groups`. Building an API for a feature nobody can reach and wh
 already broken would be waste.
 
 **Module 3 writes shipped in PR #441; group-settings write in PR #443.**
+
 - [x] `GET /api/v1/group-settings` — group_settings.php (name, logo, org type) — whitelisted keys
 - [x] `PUT /api/v1/group-settings` — admins (incl. Chairperson) + Secretary; whitelisted keys, validated
 
@@ -79,13 +80,44 @@ page because `header()` ran after output had started.
 
 ## 4. Contributions
 
-- [ ] `GET /api/v1/contributions` — list, paginated, filters: member_id, status, date range — leadership only (`manage_contributions`)
-- [ ] `GET /api/v1/contributions/{id}` — detail (`contribution_view.php`)
-- [ ] `POST /api/v1/contributions` — record (`submit_contribution.php`)
-- [ ] `PUT /api/v1/contributions/{id}` — edit
-- [ ] `POST /api/v1/contributions/{id}/approve`
-- [ ] `POST /api/v1/contributions/{id}/reject`
-- [ ] `GET /api/v1/my/contributions` — signed-in member's own statement, NSSF-layout data (target/actual/variance) — no pagination, bounded by year
+- [x] `GET /api/v1/contributions` — list, paginated, filters: member_id, status, type, date range, search
+- [x] `GET /api/v1/contributions/{id}` — detail + approval trail (`contribution_view.php`)
+- [x] `POST /api/v1/contributions` — record, JSON or multipart evidence (`submit_contribution.php`)
+- [x] `POST /api/v1/contributions/{id}/review` — pending → reviewed
+- [x] `POST /api/v1/contributions/{id}/approve` — reviewed → approved
+- [x] `POST /api/v1/contributions/{id}/cancel` — pending|reviewed → cancelled
+- [x] `GET /api/v1/contributions/standing` — a member's own statement: target/actual/variance, arrears, month calendar
+- [x] `GET /api/v1/contributions/summary` — group collection position — leadership only
+- [ ] `PUT /api/v1/contributions/{id}` — edit an unapproved row. **Deliberately deferred**: the web has
+      no edit either (cancel and re-file is the flow), so this would be new behaviour, not parity.
+
+**Shipped in PR #447.** Two corrections to the plan above. It said "leadership only
+(`manage_contributions`)" — wrong: a member must see their OWN contributions, so the list is
+authenticated-only and *scoped*, with `manage_contributions.edit` widening it to the whole group.
+And `/my/contributions` became `/contributions/standing`, keeping one resource rather than a
+parallel `/my/` tree — worth applying to the remaining modules below.
+
+Four defects found while building it, every one silent:
+
+1. **`manage_contributions` has no permission row on a fresh schema.** The page has gated on that key
+   since it was written. On the live servers the row existed but a role was missing its grant; on a
+   fresh install the key is absent entirely, so every check resolves false outside the `isAdmin()`
+   *name* bypass. `database/add_contributions_permission.php` registers it, mirroring whatever the
+   target database already grants for `expenses` rather than hardcoding role ids.
+2. **The approval trail recorded the database user, not the officer.** `workflowActorSnapshot()` read
+   `global $username`, which `includes/config.php` also sets for the PDO connection, so every
+   signature written outside `header.php` named the DB account. This affected contributions, general
+   and death expenses, petty cash, budgets and documents — every three-approval workflow in the app.
+3. **`actions/update_contribution.php` was a workflow bypass** — it wrote `$_POST['status']` behind a
+   single `edit` check, so anyone with edit could approve without the approve permission and skip
+   review entirely.
+4. **Contribution evidence uploads were unrestricted** — the stored filename came from the client's
+   own extension, into a web-served directory.
+
+Left open deliberately: `cs_group_standing()` anchors "expected" at a member's first contribution,
+`cs_member_schedule()` at their join date, so the two disagree about members imported from M-Koba.
+Pre-existing and visible on the web today. Pinned by a test, documented in `docs/API.md`, and it needs
+the treasurer to say which anchor the group means before anything changes.
 
 ## 5. Transactions
 

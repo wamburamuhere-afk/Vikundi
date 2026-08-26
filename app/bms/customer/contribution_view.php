@@ -38,6 +38,14 @@ $con = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$con) { redirectTo('manage_contributions'); }
 
+// The row is loaded by id and ids are sequential, so without this any signed-in
+// member could walk every contribution in the group. `manage_contributions.view`
+// is held by the Member role — it is what opens their OWN page — and was being
+// treated here as permission to read anyone's. Verified live: a member read
+// another member's TZS 50,000 contribution.
+require_once __DIR__ . '/../../../includes/contribution_access.php';
+vk_contrib_web_require_own_or_leader($pdo, (int) $con['member_id']);
+
 $settings = $pdo->query("SELECT setting_key, setting_value FROM group_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $currency = $settings['currency'] ?? 'TZS';
 

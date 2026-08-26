@@ -13,6 +13,10 @@ $is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
 $t = function ($en, $sw) use ($is_sw) { return $is_sw ? $sw : $en; };
 
 $f = vk_statement_filters($_GET);
+// A member may print their OWN statement; member_id 0 means the whole group, so
+// without this any signed-in member could print anyone's. See
+// vk_statement_apply_scope().
+$f = vk_statement_apply_scope($pdo, $f);
 $isMkoba = (($_GET['layout'] ?? '') === 'mkoba'); // M-Koba statement layout (reconciliation)
 $params = [];
 $where = vk_statement_where($f, $params);

@@ -21,6 +21,51 @@ if (!function_exists('vk_statement_filters')) {
     }
 }
 
+if (!function_exists('vk_statement_apply_scope')) {
+    /**
+     * Pin a non-leader's statement to their OWN member id.
+     *
+     * vk_statement_filters() reads member_id straight from the request, and
+     * member_id 0 means "the whole group". Every consumer of it — the printable
+     * statement and both exports — therefore served the entire group's savings
+     * to anyone holding `manage_contributions.view`, which is the grant the
+     * MEMBER role holds. Verified live: an ordinary member printed the
+     * chairperson's complete statement.
+     *
+     * Scoped rather than blocked, deliberately: a member printing or exporting
+     * their own statement is a legitimate thing to do, and it is the same screen.
+     * What they may not do is name someone else. The requested id is OVERWRITTEN,
+     * not validated — validating it invites the next caller to skip the check.
+     *
+     * Returns the corrected filter array. Exits 403 for an account with no member
+     * record, which has no statement of its own and must not fall through to 0.
+     *
+     * @param array $f from vk_statement_filters()
+     */
+    function vk_statement_apply_scope(\PDO $pdo, array $f, bool $json = false): array {
+        require_once __DIR__ . '/contribution_access.php';
+
+        if (vk_contrib_web_is_leader()) {
+            return $f;
+        }
+
+        $own = vk_contrib_web_member_id($pdo);
+        if ($own <= 0) {
+            http_response_code(403);
+            if ($json && !headers_sent()) { header('Content-Type: application/json'); }
+            echo $json
+                ? json_encode(['error' => 'Not authorized.'])
+                : '<!doctype html><meta charset="utf-8"><title>Not authorized</title>'
+                  . '<p style="font-family:system-ui;padding:2rem">This account has no member '
+                  . 'record, so it has no statement of its own.</p>';
+            exit;
+        }
+
+        $f['member_id'] = $own;
+        return $f;
+    }
+}
+
 if (!function_exists('vk_statement_where')) {
     /**
      * Build the WHERE clause + bound params for the statement query. Alias `con`
