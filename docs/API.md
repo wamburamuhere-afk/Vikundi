@@ -22,7 +22,8 @@ Same code on both. Demo has synthetic data and is safe to hit freely.
 4. [Dashboard](#4-dashboard)
 5. [Members](#5-members)
 6. [Group settings](#6-group-settings)
-7. [Demo logins](#7-demo-logins)
+7. [Contributions](#7-contributions)
+8. [Demo logins](#8-demo-logins)
 
 ---
 
@@ -972,7 +973,296 @@ Keys outside the list are not writable and produce 422 `no_fields` if nothing el
 
 ---
 
-## 7. Demo logins
+## 7. Contributions
+
+The money module. Eight endpoints covering three screens: a member's own standing,
+the leadership ledger, and the approval workflow.
+
+### Who sees whose money
+
+One rule decides everything here, and it is not the same as the members roster.
+The roster is shared — you can see who else is in your group. **Savings are not.**
+
+```
+leader  =  role_id in (1, 2, 12)  OR  permissions['manage_contributions'].edit
+```
+
+A leader sees the whole group. Anyone else is **pinned to their own member record**,
+server-side. Passing `?member_id=4` as a Member does not widen anything — the
+parameter is overwritten, not validated — and the response tells you what actually
+happened:
+
+```json
+"scope": { "is_leader": false, "member_id": 3, "own_member_id": 3 }
+```
+
+Render from `scope`, never from what you asked for.
+
+An account with **no member record** (the system Admin) gets `403 no_member_record`
+on the member-scoped endpoints. That is not an error to retry — it means "this
+account has no savings of its own". Show the group view instead.
+
+### The approval workflow
+
+```
+pending ──review──▶ reviewed ──approve──▶ approved
+   │                   │
+   └────── cancel ─────┘                (approved cannot be cancelled)
+```
+
+Every new contribution is `pending`. **You cannot post a status** — the field is
+ignored. Only an `approved` contribution counts toward savings.
+
+Each row carries what *this* caller may do to it, so you never re-derive the rules:
+
+```json
+"actions": { "review": true, "approve": false, "cancel": true }
+```
+
+Bind buttons to `actions`. A transition the server would refuse returns `409
+invalid_status_transition` with a message naming the current status.
+
+---
+
+### GET `/contributions`
+
+The ledger. Paginated, filtered, scoped as above.
+
+**Query:** `page`, `per_page` (max 100), `member_id` (leaders only), `status`,
+`type`, `date_from`, `date_to` (both `YYYY-MM-DD`), `search`.
+
+```json
+{
+  "status": "success",
+  "data": {
+    "contributions": [
+      {
+        "contribution_id": 2150,
+        "member_id": 3,
+        "member_name": "Neema Joseph Mushi",
+        "amount": 12500.0,
+        "type": "monthly",
+        "status": "approved",
+        "date": "2026-08-26",
+        "description": "August savings",
+        "receipt_number": null,
+        "account": "Cash",
+        "evidence_url": "uploads/contributions/receipt_1787738939_d277.png",
+        "is_opening": false,
+        "counts_toward_savings": true,
+        "created_at": "2026-08-26T13:04:23+00:00",
+        "reviewed_at": "2026-08-26T13:04:38+00:00",
+        "approved_at": "2026-08-26T13:04:38+00:00",
+        "actions": { "review": false, "approve": false, "cancel": false }
+      }
+    ],
+    "scope":  { "is_leader": false, "member_id": 3, "own_member_id": 3 },
+    "totals": { "filtered_amount": 300000.0, "filtered_count": 6 },
+    "pagination": { "page": 1, "per_page": 25, "total": 6, "total_pages": 1, "has_more": false }
+  }
+}
+```
+
+`totals` reflects the **filters, not the page** — use it for "TZS 300,000 across 6
+records" without paging the whole set.
+
+`counts_toward_savings` is computed server-side. Do not add up `amount` yourself:
+`fine` and `agm` rows and anything not approved are excluded from savings, so your
+sum would disagree with the member's statement.
+
+`is_opening` marks money carried in from M-Koba — an opening balance, not a fresh
+payment. Worth labelling differently in the UI.
+
+`evidence_url` is **relative to the site root**, not the API base. Build it as
+`https://<host>/<evidence_url>`.
+
+---
+
+### GET `/contributions/{id}`
+
+One contribution plus its approval trail — who reviewed, who approved, when. This
+is what a member disputing a figure actually asks for.
+
+```json
+{
+  "status": "success",
+  "data": {
+    "contribution": { "...as above..." },
+    "trail": {
+      "created":  { "by": "Neema Joseph Mushi", "role": "",          "at": "2026-08-26T13:04:23+00:00", "signed": false, "completed": true },
+      "reviewed": { "by": "Juma Hassan Mwakyusa", "role": "Treasurer", "at": "2026-08-26T13:04:38+00:00", "signed": false, "completed": true },
+      "approved": { "by": "Juma Hassan Mwakyusa", "role": "Treasurer", "at": "2026-08-26T13:04:38+00:00", "signed": false, "completed": true }
+    }
+  }
+}
+```
+
+`completed` is the flag to drive a stepper. `signed` says whether an e-signature
+image was on file — the signature image itself is never returned.
+
+A row belonging to someone else returns **404, not 403**, so ids cannot be probed.
+
+---
+
+### POST `/contributions`
+
+Record a contribution. Accepts **JSON or multipart** — multipart only when
+attaching evidence.
+
+```json
+{
+  "member_id": 3,
+  "amount": 12500,
+  "type": "monthly",
+  "date": "2026-08-26",
+  "description": "August savings",
+  "receipt_number": "MK-0099",
+  "account": "Cash"
+}
+```
+
+| Field | Required | Notes |
+|---|---|---|
+| `member_id` | leaders only | Ignored otherwise — you always file your own |
+| `amount` | ✅ | > 0 |
+| `type` | | `entrance` · `monthly` · `agm` · `fine` · `other` — default `monthly` |
+| `date` | | `YYYY-MM-DD`, defaults to today, **cannot be in the future** |
+| `description` | | |
+| `receipt_number` | | max 100 chars |
+| `account` | | `M-Koba` · `Bank` · `Cash` · `Mobile Money` |
+| `evidence` | | multipart file — JPG, PNG, GIF, WEBP, PDF, max 5 MB |
+
+**Any signed-in member may file their own contribution.** That is the normal case
+in a savings group. `permissions['manage_contributions'].create` is what allows
+filing against *someone else*.
+
+Returns **201** with the created row. Status is always `pending`.
+
+Refusals are `422` with a distinct code: `invalid_amount`, `invalid_type`,
+`invalid_date`, `invalid_account`, `invalid_upload`, `member_not_found`.
+
+Evidence is validated by **content**, not filename — a PHP file renamed `.png` is
+rejected with `The file contents do not match its extension.`
+
+---
+
+### POST `/contributions/{id}/review` · `/approve` · `/cancel`
+
+| Endpoint | From | To | Needs |
+|---|---|---|---|
+| `/review` | `pending` | `reviewed` | `view` + `review` |
+| `/approve` | `reviewed` | `approved` | `view` + `approve` |
+| `/cancel` | `pending`, `reviewed` | `cancelled` | `edit` |
+
+No body. All return the updated row.
+
+`/approve` may include `sig_warning` when the approver has no e-signature on file.
+The approval still succeeded — show it as a note, not a failure.
+
+Wrong-order calls return `409`:
+
+```json
+{ "status": "error", "code": "invalid_status_transition",
+  "message": "A contribution that is pending cannot be approved. Expected: reviewed." }
+```
+
+There is **no DELETE**. A contribution that existed and was withdrawn stays in the
+audit trail.
+
+---
+
+### GET `/contributions/standing`
+
+**The member screen.** "Am I up to date?"
+
+`?member_id=` is honoured for leaders only. An account with no member record must
+pass one, or gets `422 member_required`.
+
+```json
+{
+  "status": "success",
+  "data": {
+    "member": { "member_id": 3, "full_name": "Neema Joseph Mushi", "is_self": true },
+    "group":  { "currency": "TZS", "monthly_contribution": 50000.0, "has_target": true },
+    "entrance": { "amount": 0.0, "paid": 0.0, "status": "paid" },
+    "standing": {
+      "opening": 0.0,
+      "new": 316821.0,
+      "total_saved": 316821.0,
+      "expected": 150000.0,
+      "surplus_deficit": 166821.0,
+      "status": "ahead"
+    },
+    "arrears": { "behind": false, "amount": 0.0, "months": 0, "oldest_month": null },
+    "months": [
+      { "month": "2026-08", "label": "Aug 2026", "target": 50000.0, "paid": 50000.0, "shortfall": 0.0, "status": "paid" }
+    ],
+    "year_summary": { "years": { "2026": { "target": 150000.0, "actual": 316821.0, "variance": 166821.0 } },
+                      "total": { "target": 150000.0, "actual": 316821.0, "variance": 166821.0, "unallocated": 0.0, "paid": 316821.0 } }
+  }
+}
+```
+
+**`has_target` is the switch the whole screen hangs on.** The group may not have set
+a monthly amount. When it is `false`: nothing is expected, nobody is behind,
+`expected` is `0`, `status` is always `ontrack`, and every month reads `no_target`.
+**Do not draw a progress bar or an arrears warning** — the member is simply saving
+what they can. Getting this wrong tells a member in good standing that they owe money.
+
+`status`: `ahead` · `behind` · `ontrack`. `months` is newest-first and contains only
+months that were actually due — a member who joined in June is not shown January.
+
+Month `status`: `paid` · `partial` · `unpaid` · `no_target`.
+
+---
+
+### GET `/contributions/summary`
+
+**The leadership screen.** `403 forbidden` for anyone else — every figure here is
+about other people. A member's equivalent is `/contributions/standing`.
+
+```json
+{
+  "status": "success",
+  "data": {
+    "currency": "TZS",
+    "group": { "monthly_contribution": 50000.0, "has_target": true },
+    "totals": {
+      "all_time": 1817821.0,
+      "expected_to_date": 2400000.0,
+      "this_month": { "month": "2026-08", "amount": 16821.0, "count": 2 }
+    },
+    "awaiting_action": {
+      "pending_review":   { "count": 524, "amount": 7968000.0 },
+      "pending_approval": { "count": 0,   "amount": 0.0 }
+    },
+    "members": {
+      "total": 334, "behind": 6, "ahead": 0,
+      "total_deficit": 582179.0,
+      "collection_rate": 75.7
+    }
+  }
+}
+```
+
+`collection_rate` is **`null`** when the group has no target — guard it, or the
+dashboard shows `NaN%`.
+
+`awaiting_action` is split by which action is waiting, so the two queues can be two
+separate cards.
+
+> **Known divergence — do not "fix" this in the app.**
+> `summary.members.behind` and `standing.status` are anchored differently in the
+> server's shared standing module: the group figure counts from a member's first
+> contribution, the member figure from their join date. For members imported from
+> M-Koba the two can disagree about the same person. This shows on the web today
+> too. It is a server-side change that moves every savings figure on every report,
+> so it is being handled separately. If a member asks why the two disagree, that is
+> why — do not paper over it client-side.
+
+---
+
+## 8. Demo logins
 
 All on the demo site, password `Demo@2026`:
 
@@ -999,7 +1289,8 @@ member side, because that is the only role where fields are removed rather than 
 | 2. Dashboard | 1 | ✅ live |
 | 3. Members | 8 | ✅ live |
 | 3. Group settings | 2 | ✅ live |
-| 4. Contributions | — | next |
+| 4. Contributions | 8 | ✅ live |
+| 5. Fines | — | next |
 
 Shipped shapes are treated as a contract: if a field has to change, you will be told before it
 deploys. This file is updated with every module.

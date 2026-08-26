@@ -32,36 +32,63 @@ if (!function_exists('canEditDocument')) {
 
 if (!function_exists('workflowActorSnapshot')) {
     /**
-     * Returns ['name' => ..., 'role' => ...] for the logged-in user.
-     * Reads $username / $user_role set by header.php from DB.
-     * Falls back to a direct DB query when those vars are absent (e.g. API calls).
+     * Returns ['name' => ..., 'role' => ...] for the signed-in user — the person
+     * whose name goes onto an e-signature and into the approval trail.
+     *
+     * WHY THIS NO LONGER READS $username. It used to open with:
+     *
+     *     global $pdo, $username, $user_role;
+     *     $name = !empty($username) ? $username : '';
+     *
+     * on the assumption that $username is the value header.php:34 sets from the
+     * users table. It is not the only thing that sets it: includes/config.php:7
+     * declares `$username = '...'` for the PDO connection, and config.php is
+     * included by every endpoint. On any path that does NOT go through
+     * header.php — which is every AJAX endpoint under api/, every handler under
+     * actions/, and the whole mobile API — the global still holds the DATABASE
+     * user, and !empty() accepted it.
+     *
+     * The result: workflow_signatures recorded the database account as the
+     * approver. Every signature row in the local database read "vikundi"; on the
+     * server it would read the production DB user. The three-approval rule the
+     * group's books rest on was recording, for each step, a name that identifies
+     * nobody — and it looked completely normal in the UI.
+     *
+     * So the session is now the only input. It is what the endpoints have already
+     * authenticated, it cannot be confused with a connection string, and the
+     * lookup is one row by primary key. The globals are gone rather than merely
+     * reordered: a fallback to them would restore the same bug the moment the
+     * query missed.
      */
     function workflowActorSnapshot(): array
     {
-        global $pdo, $username, $user_role;
+        global $pdo;
 
-        $name = !empty($username) ? $username : '';
-        $role = !empty($user_role) ? $user_role : '';
+        $userId = (int) ($_SESSION['user_id'] ?? 0);
+        if ($userId <= 0 || !$pdo) {
+            return ['name' => 'System', 'role' => 'System'];
+        }
 
-        if (($name === '' || $role === '') && !empty($_SESSION['user_id']) && $pdo) {
-            $stmt = $pdo->prepare(
-                'SELECT TRIM(CONCAT_WS(" ", first_name, middle_name, last_name)) AS full_name,
-                        username, r.role_name
-                   FROM users u
-                   JOIN roles r ON u.role_id = r.role_id
-                  WHERE u.user_id = ?'
-            );
-            $stmt->execute([$_SESSION['user_id']]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($row) {
-                if ($name === '') $name = trim($row['full_name']) ?: $row['username'];
-                if ($role === '') $role = $row['role_name'] ?? 'Member';
-            }
+        // LEFT JOIN, not JOIN: a user whose role_id no longer matches a roles row
+        // must still be named. The inner join silently returned nothing, which
+        // sent the caller to the fallback and lost the person entirely.
+        $stmt = $pdo->prepare(
+            'SELECT TRIM(CONCAT_WS(" ", u.first_name, u.middle_name, u.last_name)) AS full_name,
+                    u.username, r.role_name
+               FROM users u
+               LEFT JOIN roles r ON u.role_id = r.role_id
+              WHERE u.user_id = ?'
+        );
+        $stmt->execute([$userId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$row) {
+            return ['name' => 'System', 'role' => 'System'];
         }
 
         return [
-            'name' => $name ?: ($_SESSION['username'] ?? 'System'),
-            'role' => $role ?: 'Member',
+            'name' => trim((string) $row['full_name']) ?: (string) $row['username'],
+            'role' => (string) ($row['role_name'] ?? '') ?: 'Member',
         ];
     }
 }

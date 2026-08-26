@@ -183,32 +183,6 @@ if (!function_exists('vk_api_require_auth')) {
     }
 }
 
-if (!function_exists('vk_api_is_admin')) {
-    /**
-     * Admin bypass, matching core/permissions.php's isAdmin() by role_id.
-     *
-     * Only the numeric role ids are honoured here. The web app also treats a set
-     * of role *names* as admin, which is finding SEC-015 — renaming a role
-     * silently grants or revokes admin. That behaviour is not carried into the
-     * API.
-     */
-    function vk_api_is_admin(int $roleId): bool
-    {
-        return in_array($roleId, [1, 2, 12], true);
-    }
-}
-
-if (!function_exists('vk_api_can')) {
-    /** @param array $auth The array returned by vk_api_require_auth() */
-    function vk_api_can(array $auth, string $action, string $pageKey): bool
-    {
-        if (vk_api_is_admin((int) $auth['role_id'])) {
-            return true;
-        }
-        return !empty($auth['permissions'][$pageKey][$action]);
-    }
-}
-
 if (!function_exists('vk_api_require_permission')) {
     function vk_api_require_permission(array $auth, string $action, string $pageKey): void
     {

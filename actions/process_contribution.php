@@ -50,20 +50,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Handle Receipt Upload (Evidence)
+    //
+    // This used to build the stored filename from the CLIENT's extension:
+    //
+    //     $file_ext = pathinfo($_FILES['evidence']['name'], PATHINFO_EXTENSION);
+    //     $file_name = 'receipt_' . time() . '_' . uniqid() . '.' . $file_ext;
+    //
+    // with no whitelist and no content check, into a directory the web server
+    // serves. A file named receipt.php landed as receipt.php. The uploads
+    // directory carries an .htaccess guard, but that guard is one AllowOverride
+    // away from being ignored and must not be the only thing between an upload
+    // and code execution.
+    //
+    // vk_api_store_upload() takes the extension from the whitelist key, sniffs
+    // the bytes with finfo, and caps the size — the same helper the mobile API
+    // uses, so the two doors cannot drift apart.
     $evidence_path = null;
-    if (isset($_FILES['evidence']) && $_FILES['evidence']['error'] === 0) {
-        $upload_dir = __DIR__ . '/../uploads/contributions/';
-        if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0777, true);
+    if (isset($_FILES['evidence']) && (int) ($_FILES['evidence']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+        require_once __DIR__ . '/../includes/api_upload.php';
+        [$stored, $upload_error] = vk_api_store_upload(
+            $_FILES['evidence'],
+            __DIR__ . '/../uploads/contributions',
+            'receipt'
+        );
+        if ($upload_error !== null) {
+            http_response_code(422);
+            echo json_encode(['success' => false, 'message' => $upload_error]);
+            exit();
         }
-        
-        $file_ext = pathinfo($_FILES['evidence']['name'], PATHINFO_EXTENSION);
-        $file_name = 'receipt_' . time() . '_' . uniqid() . '.' . $file_ext;
-        $target_file = $upload_dir . $file_name;
-        
-        if (move_uploaded_file($_FILES['evidence']['tmp_name'], $target_file)) {
-            $evidence_path = 'uploads/contributions/' . $file_name;
-        }
+        $evidence_path = 'uploads/contributions/' . $stored;
     }
 
     try {
