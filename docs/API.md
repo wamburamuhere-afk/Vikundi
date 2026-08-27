@@ -898,7 +898,13 @@ rather than an error — so a retry after a dropped connection is not a failure:
 
 ### GET `/group-settings`
 
-Any signed-in user. The app needs the group name, logo and currency to render its own chrome.
+Any signed-in user gets the top four blocks — the app needs the group name, logo and currency
+to render its own chrome, and the monthly target and absence fine are the rules a member is
+personally held to.
+
+`settings` is the **edit form's pre-fill**, so it is returned only to those who may submit that
+form: admins (including the Chairperson) and the Secretary. For everyone else it is `null`.
+`can_edit` tells you which case you are in — branch on it rather than on `settings == null`.
 
 ```json
 {
@@ -910,71 +916,146 @@ Any signed-in user. The app needs the group name, logo and currency to render it
       "org_type": "vicoba",
       "currency": "TZS"
     },
-    "contributions": {
-      "monthly_target": null
-    },
-    "fines": {
-      "meeting_absence": 2000
-    },
-    "leadership_positions": [
-      "Chairperson / Mwenyekiti",
-      "Vice Chairperson / Makamu Mwenyekiti",
-      "Secretary / Katibu",
-      "Assistant Secretary / Katibu Msaidizi",
-      "Treasurer / Mweka Hazina",
-      "Committee Member / Mjumbe"
-    ]
+    "contributions": { "monthly_target": null },
+    "fines":         { "meeting_absence": 2000 },
+    "leadership_positions": ["Chairperson / Mwenyekiti", "..."],
+
+    "can_edit": true,
+    "settings": {
+      "group_name": "Umoja VICOBA Group",
+      "group_email": "",
+      "group_phone": "",
+      "group_physical_address": "",
+      "group_postal_address": "",
+      "group_registration_number": "",
+      "currency": "TZS",
+      "meeting_day": "Jumatatu",
+      "cycle_type": "monthly",
+      "monthly_contribution": null,
+      "entrance_fee": 20000,
+      "meeting_absence_fine": 2000,
+      "fine_late_meeting": null,
+      "fine_late_contribution": null,
+      "fine_absent_meeting": null,
+      "max_members": 30,
+      "contribution_grace_days": null,
+      "deadline_day": 15,
+      "auto_termination": "off"
+    }
   }
 }
 ```
 
-`monthly_target` is `null` when no target is set — that is a real state, and it means arrears
-are not calculated at all. Do not render it as 0.
+**Every key in `settings` is a key `PUT` accepts, spelled identically.** Read it, edit it, send
+back the changed subset — no name mapping. The two lists come from one definition
+(`includes/api_group_settings.php`), so they cannot drift apart.
 
-`leadership_positions` is already split into a list; no client-side parsing needed.
+The older `contributions.monthly_target` and `fines.meeting_absence` are unchanged and still
+correct; they are the same values as `settings.monthly_contribution` and
+`settings.meeting_absence_fine`, published to callers who cannot see `settings`.
+
+#### Dart types
+
+| Field | Dart | Notes |
+|---|---|---|
+| `group_name` | `String` | never empty — PUT refuses a blank |
+| `group_email`, `group_phone`, `group_physical_address`, `group_postal_address`, `group_registration_number`, `currency` | `String` | `""` when unset, never `null` |
+| `meeting_day` | `String?` | a **Swahili** day name — see below |
+| `cycle_type` | `String` | `"monthly"` or `"weekly"` |
+| `monthly_contribution`, `entrance_fee`, `meeting_absence_fine`, `fine_late_meeting`, `fine_late_contribution`, `fine_absent_meeting` | `num?` | **`num`, not `double`** — see §1 |
+| `max_members`, `contribution_grace_days` | `int?` | |
+| `deadline_day` | `int` **or** `String?` | depends on `cycle_type` — see below |
+| `auto_termination` | `String` | `"on"` or `"off"` |
+
+`null` on a number means **not set**, which is a different state from `0`. For
+`monthly_contribution` it means the group has no monthly target and arrears are not calculated
+at all; `0` would mean the target is nothing and put every member permanently in credit. Never
+render `null` as 0, and never send `0` when you meant to clear — send `""`.
+
+Defaults are applied server-side to match the web form, so the app and the web page open on the
+same numbers: `currency` `TZS`, `cycle_type` `monthly`, `max_members` `30`, `deadline_day` `15`,
+`auto_termination` `off`.
+
+#### `meeting_day` and `deadline_day`
+
+The web form stores **Swahili** day names regardless of display language, so those are the
+canonical values:
+
+| English | Stored |
+|---|---|
+| Monday | `Jumatatu` |
+| Tuesday | `Jumanne` |
+| Wednesday | `Jumatano` |
+| Thursday | `Alhamisi` |
+| Friday | `Ijumaa` |
+| Saturday | `Jumamosi` |
+| Sunday | `Jumapili` |
+
+Translate for display; store what you were given. PUT also accepts the English name and
+normalises it, so `"Monday"` is safe to send — but GET always returns the Swahili form.
+
+`deadline_day` carries **two different types in one key**, decided by `cycle_type`:
+
+- `cycle_type: "monthly"` → an `int` day of the month, 1–31
+- `cycle_type: "weekly"` → a `String` day name, as above
+
+So decode it as `dynamic` and branch on `cycle_type`. Do not parse it as an int
+unconditionally — `int.tryParse("Jumatatu")` is `null`, and coercing it to `0` is exactly the
+corruption the server now refuses (see PUT below).
 
 ---
 
 ### PUT `/group-settings`
 
 Admins (including the Chairperson) and the Secretary. Everyone else gets **403**, including the
-Treasurer.
+Treasurer. This is the same rule that decides `can_edit` on GET, so a screen you were allowed
+to pre-fill is a screen you are allowed to submit.
 
-Send only what you are changing.
+Send only what you are changing — a key you omit is left alone.
 
-| Field | Type |
+| Field | Accepts |
 |---|---|
 | `group_name` | text, cannot be empty |
-| `group_email`, `group_phone`, `group_physical_address`, `group_postal_address`, `group_registration_number`, `currency`, `meeting_day` | text |
-| `monthly_contribution`, `entrance_fee`, `meeting_absence_fine`, `fine_late_meeting`, `fine_late_contribution`, `fine_absent_meeting` | number ≥ 0 |
-| `max_members`, `contribution_grace_days`, `deadline_day` | integer ≥ 0 |
+| `group_email`, `group_phone`, `group_physical_address`, `group_postal_address`, `group_registration_number`, `currency` | text |
+| `meeting_day`, `deadline_day` | 1–31, or a day name (Swahili or English) |
+| `cycle_type` | `monthly` or `weekly` |
+| `monthly_contribution`, `entrance_fee`, `meeting_absence_fine`, `fine_late_meeting`, `fine_late_contribution`, `fine_absent_meeting` | number ≥ 0, or `""` to clear |
+| `max_members`, `contribution_grace_days` | integer ≥ 0, or `""` to clear |
 | `auto_termination` | `on` or `off` |
 
 ```json
 {
   "status": "success",
-  "data": {
-    "updated": [
-      "meeting_absence_fine"
-    ],
-    "count": 1
-  }
+  "data": { "updated": ["meeting_absence_fine"], "count": 1 }
 }
 ```
 
 Sending `""` for a numeric field **clears** it rather than setting 0. For
-`monthly_contribution` that means "no monthly target", which switches arrears off — not a target
-of zero.
+`monthly_contribution` that means "no monthly target", which switches arrears off — not a
+target of zero.
 
-Keys outside the list are not writable and produce 422 `no_fields` if nothing else was sent:
+A day outside 1–31, or a name that is not one of the seven, is now **refused** rather than
+stored:
 
 ```json
 {
   "status": "error",
   "code": "invalid_settings",
-  "message": "monthly_contribution must be a number of 0 or more."
+  "message": "deadline_day must be a day of the month from 1 to 31, or a day name."
 }
 ```
+
+> **Round-trip safety.** Until this change `deadline_day` was validated as an integer, so a
+> weekly group's stored `"Jumatatu"` became `"0"` on the way back in. A pre-filled edit form
+> would have committed that on every save without anyone touching the field. It is now typed as
+> a day and preserved. This is the one field where blindly echoing GET back to PUT used to
+> destroy data, and it is fixed on the server — no client workaround needed.
+
+Keys outside the list are ignored; if nothing writable was sent you get 422 `no_fields`.
+
+Not writable through the API: the loan and share-out parameters (web only, because a value
+nobody can see on the device is a value nobody can check before saving), and the operational
+keys `auto_termination_last_run` and `group_balance`.
 
 ---
 
@@ -1305,9 +1386,16 @@ member side, because that is the only role where fields are removed rather than 
 | 1. Auth | 4 | ✅ live |
 | 2. Dashboard | 1 | ✅ live |
 | 3. Members | 8 | ✅ live |
-| 3. Group settings | 2 | ✅ live |
+| — Group settings | 2 | ✅ live |
 | 4. Contributions | 8 | ✅ live |
-| 5. Fines | — | next |
+| 5. Transactions | — | in progress |
+| 6. Fines | — | queued |
+
+**23 endpoints live** on both `vikundi.bjptechnologies.co.tz` and
+`demo.vikundi.bjptechnologies.co.tz`.
 
 Shipped shapes are treated as a contract: if a field has to change, you will be told before it
 deploys. This file is updated with every module.
+
+See `docs/handover/README.md` for the short version — what is live, the four rules that apply
+to every module, and the test accounts.

@@ -44,39 +44,71 @@ class GroupSettingsAuthTest extends TestCase
         return $out;
     }
 
-    /** Both handlers that can write settings. */
+    /**
+     * Both handlers that can write settings, and the call each one's gate is
+     * expressed as.
+     *
+     * The web action still inlines the role check. The API delegates to
+     * vk_group_settings_may_edit(), which GET uses too so that the form and the
+     * permission to submit it are one decision — see
+     * testTheSharedGateStillChecksTheRole() for the other half of that.
+     */
     public static function writers(): array
     {
         return [
-            ['actions/save_group_settings.php'],
-            ['api/v1/group_settings_update.php'],
+            ['actions/save_group_settings.php', 'vk_role_is_admin('],
+            ['api/v1/group_settings_update.php', 'vk_group_settings_may_edit('],
         ];
     }
 
-    #[DataProvider('writers')]
-    public function testWritingSettingsRequiresMoreThanBeingSignedIn(string $rel): void
+    /**
+     * The API's gate is a function call, so this is what stops that indirection
+     * from becoming a gate that checks nothing.
+     */
+    public function testTheSharedGateStillChecksTheRole(): void
     {
-        $code = self::code($rel);
+        $code = self::code('includes/api_group_settings.php');
 
         $this->assertStringContainsString(
             'vk_role_is_admin(',
             $code,
-            "{$rel} must check the caller's role, not merely that a session exists."
+            'vk_group_settings_may_edit() must check the role, not just return true.'
         );
         $this->assertMatchesRegularExpression(
             "/\['secretary',\s*'katibu'\]/i",
             $code,
-            "{$rel} must name the officers allowed alongside admins."
+            'It must name the officers allowed alongside admins.'
+        );
+
+        require_once __DIR__ . '/../../includes/api_group_settings.php';
+        $this->assertFalse(
+            vk_group_settings_may_edit(['role_id' => 15, 'user' => ['user_role' => 'Member']]),
+            'A member must not be able to change the group configuration.'
+        );
+        $this->assertTrue(
+            vk_group_settings_may_edit(['role_id' => 99, 'user' => ['user_role' => 'Secretary']])
+        );
+    }
+
+    #[DataProvider('writers')]
+    public function testWritingSettingsRequiresMoreThanBeingSignedIn(string $rel, string $gate): void
+    {
+        $code = self::code($rel);
+
+        $this->assertStringContainsString(
+            $gate,
+            $code,
+            "{$rel} must check the caller's role, not merely that a session exists."
         );
     }
 
     /** The refusal must come before anything is written. */
     #[DataProvider('writers')]
-    public function testTheRefusalPrecedesAnyWrite(string $rel): void
+    public function testTheRefusalPrecedesAnyWrite(string $rel, string $gate): void
     {
         $code = self::code($rel);
 
-        $gate = strpos($code, 'vk_role_is_admin(');
+        $gate = strpos($code, $gate);
         $this->assertNotFalse($gate);
 
         foreach (['INSERT INTO group_settings', 'REPLACE INTO group_settings'] as $write) {
@@ -120,16 +152,25 @@ class GroupSettingsAuthTest extends TestCase
      */
     public function testTheApiWhitelistExcludesOperationalState(): void
     {
-        $code = self::code('api/v1/group_settings_update.php');
+        // The whitelist moved to includes/api_group_settings.php when GET began
+        // sharing it, so assert on the list itself rather than on a literal that
+        // no longer lives in this file.
+        require_once __DIR__ . '/../../includes/api_group_settings.php';
 
-        $this->assertSame(1, preg_match('/const VK_GROUP_SETTINGS_WRITABLE = \[(.*?)\];/s', $code, $m));
+        $writable = vk_group_settings_writable();
         foreach (['auto_termination_last_run', 'group_balance'] as $operational) {
-            $this->assertStringNotContainsString(
-                "'{$operational}'",
-                $m[1],
+            $this->assertArrayNotHasKey(
+                $operational,
+                $writable,
                 "'{$operational}' is operational state, not a client-editable setting."
             );
         }
+
+        $this->assertStringContainsString(
+            'vk_group_settings_writable()',
+            self::code('api/v1/group_settings_update.php'),
+            'PUT must loop the shared list, or the exclusion above proves nothing.'
+        );
     }
 
     /**
@@ -139,11 +180,24 @@ class GroupSettingsAuthTest extends TestCase
      */
     public function testAnEmptyNumericSettingIsPreservedRatherThanCoerced(): void
     {
-        $code = self::code('api/v1/group_settings_update.php');
-        $this->assertMatchesRegularExpression(
-            "/if \(\\\$value !== ''\)/",
-            $code,
+        // The validation moved into vk_group_settings_validate() when GET and PUT
+        // began sharing one definition, so assert the behaviour rather than the
+        // shape of the branch that used to implement it.
+        require_once __DIR__ . '/../../includes/api_group_settings.php';
+
+        $this->assertSame(
+            ['', null],
+            vk_group_settings_validate('monthly_contribution', 'money', ''),
             'An empty numeric setting must be stored as empty, not as 0.'
+        );
+        $this->assertSame(
+            ['', null],
+            vk_group_settings_validate('max_members', 'int', '')
+        );
+        $this->assertSame(
+            ['0', null],
+            vk_group_settings_validate('monthly_contribution', 'money', '0'),
+            'An explicit 0 is a different instruction from a blank and must survive.'
         );
     }
 

@@ -19,6 +19,21 @@ Plus record + the approval workflow.
 
 ---
 
+## 0. A note if you tested against the web app
+
+On 2026-08-26, seven **web** endpoints were found serving the whole group's savings to any
+signed-in member — they gated on `manage_contributions.view`, which is the grant a Member
+legitimately holds so they can open their own contributions. An ordinary member could read
+all 333 group transactions, another member's contribution, and the chairperson's full
+statement.
+
+**The mobile API was never affected** — it has always used the correct test, and nothing in
+this document changed because of that fix. But if you were checking behaviour against the
+web to work out what a Member should see, the web was the wrong reference until that deploy.
+Both now enforce the identical rule, described next.
+
+---
+
 ## 1. The scoping rule — read this before anything else
 
 The members roster is shared. **Savings are not.** One rule decides the whole module:
