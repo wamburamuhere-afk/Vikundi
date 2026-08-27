@@ -16,10 +16,11 @@
  * actions/save_group_settings.php in the same change as this endpoint; the rule
  * lives in one place so the two transports cannot disagree about it again.
  *
- * Keys are whitelisted in both directions. GET returns only what a client needs
- * to render; PUT accepts only what an officer may legitimately change, so
- * operational state kept in the same table — auto_termination_last_run, the
- * cached group_balance — can neither be read nor written through the API.
+ * Keys are whitelisted, and GET and PUT now share the one whitelist
+ * (includes/api_group_settings.php) so an officer can read back exactly the
+ * fields they may write, under the same names. Operational state kept in the
+ * same free-form table — auto_termination_last_run, the cached group_balance —
+ * is absent from that list and so can neither be read nor written here.
  */
 
 // Required here, not just by the includer: the router can reach this file
@@ -28,89 +29,45 @@
 require_once __DIR__ . '/../../includes/api_bootstrap.php';
 require_once __DIR__ . '/../../includes/roles.php';
 require_once __DIR__ . '/../../includes/activity_logger.php';
+require_once __DIR__ . '/../../includes/api_group_settings.php';
 
 // The router maps /api/v1/group/{id}/settings_update onto this file, so it
 // authenticates itself rather than relying on group-settings.php having done so.
 $auth = $auth ?? vk_api_require_auth();
 
-$isSecretary = in_array(
-    strtolower(trim((string) ($auth['user']['user_role'] ?? ''))),
-    ['secretary', 'katibu'],
-    true
-);
-
-if (!vk_role_is_admin($auth['role_id'], $auth['user']['user_role'] ?? null) && !$isSecretary) {
+// Admin (which includes the Chairperson) or Secretary — the same helper GET
+// uses to decide whether to return the pre-fill block, so a client is never
+// shown a form it cannot submit.
+if (!vk_group_settings_may_edit($auth)) {
     vk_api_error(403, 'forbidden', 'You do not have permission to change group settings.');
 }
 
 /**
- * Writable keys, and how each is validated.
- *
- * 'text'  — trimmed string
- * 'money' — non-negative number
- * 'int'   — non-negative integer
- * 'enum'  — one of a fixed set
- *
- * Deliberately narrower than save_group_settings.php's list: this covers what a
- * phone can sensibly edit. The loan and share-out parameters are left to the web
- * until there is a screen asking for them, because a value nobody can see on the
- * device is a value nobody can check before saving.
+ * The writable keys and their rules live in includes/api_group_settings.php,
+ * shared with GET. They used to be a const here, which meant GET published
+ * seven hand-named fields while PUT accepted eighteen raw ones — an edit form
+ * could not pre-fill itself, and a client that tried had to keep its own
+ * name-mapping table. One list, both directions, so they cannot drift.
  */
-const VK_GROUP_SETTINGS_WRITABLE = [
-    'group_name'               => 'text',
-    'group_email'              => 'text',
-    'group_phone'              => 'text',
-    'group_physical_address'   => 'text',
-    'group_postal_address'     => 'text',
-    'group_registration_number' => 'text',
-    'currency'                 => 'text',
-    'meeting_day'              => 'text',
-    'monthly_contribution'     => 'money',
-    'entrance_fee'             => 'money',
-    'meeting_absence_fine'     => 'money',
-    'fine_late_meeting'        => 'money',
-    'fine_late_contribution'   => 'money',
-    'fine_absent_meeting'      => 'money',
-    'max_members'              => 'int',
-    'contribution_grace_days'  => 'int',
-    'deadline_day'             => 'int',
-    'auto_termination'         => 'enum:on,off',
-];
-
 $body = vk_api_body();
 
 $updates = [];
 $errors  = [];
 
-foreach (VK_GROUP_SETTINGS_WRITABLE as $key => $rule) {
+foreach (vk_group_settings_writable() as $key => $rule) {
     if (!array_key_exists($key, $body)) {
-        continue;
+        continue; // absent means "leave alone" — this is a partial update
     }
     $raw = $body[$key];
     if (is_array($raw)) {
         $errors[] = "{$key} must be a single value.";
         continue;
     }
-    $value = trim((string) $raw);
 
-    if (str_starts_with($rule, 'enum:')) {
-        $allowed = explode(',', substr($rule, 5));
-        if (!in_array($value, $allowed, true)) {
-            $errors[] = "{$key} must be one of: " . implode(', ', $allowed) . '.';
-            continue;
-        }
-    } elseif ($rule === 'money' || $rule === 'int') {
-        // An empty string is a real instruction here: clearing
-        // monthly_contribution means "no monthly target", which switches the
-        // arrears calculation off rather than setting it to zero. Preserved
-        // rather than coerced to 0.
-        if ($value !== '') {
-            if (!is_numeric($value) || (float) $value < 0) {
-                $errors[] = "{$key} must be a number of 0 or more.";
-                continue;
-            }
-            $value = $rule === 'int' ? (string) (int) $value : (string) (float) $value;
-        }
+    [$value, $error] = vk_group_settings_validate($key, $rule, trim((string) $raw));
+    if ($error !== null) {
+        $errors[] = $error;
+        continue;
     }
 
     if ($key === 'group_name' && $value === '') {

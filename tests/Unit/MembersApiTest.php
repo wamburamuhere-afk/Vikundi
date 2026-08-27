@@ -187,20 +187,20 @@ class MembersApiTest extends TestCase
     {
         $src = self::src('api/v1/group-settings.php');
 
-        $this->assertStringContainsString('VK_GROUP_SETTING_KEYS', $src);
+        // The whitelist moved to includes/api_group_settings.php so that GET and
+        // PUT describe the same fields. Assert on that list, not on a constant
+        // this file no longer declares.
+        require_once __DIR__ . '/../../includes/api_group_settings.php';
 
-        // Assert on the whitelist itself, not the whole file: the docblock names
-        // the operational keys precisely to explain why they are excluded, and
-        // matching the file would test the wording of a comment.
-        $this->assertSame(
-            1,
-            preg_match('/const VK_GROUP_SETTING_KEYS = \[(.*?)\];/s', $src, $m),
-            'The whitelist constant must be declared as an array literal.'
+        $this->assertStringContainsString(
+            'vk_group_settings_writable()',
+            $src,
+            'GET must build its output from the shared whitelist.'
         );
         foreach (['auto_termination_last_run', 'group_balance'] as $operational) {
-            $this->assertStringNotContainsString(
+            $this->assertArrayNotHasKey(
                 $operational,
-                $m[1],
+                vk_group_settings_writable(),
                 "'{$operational}' is operational state, not client configuration."
             );
         }
