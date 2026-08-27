@@ -68,6 +68,11 @@ already broken would be waste.
 
 - [x] `GET /api/v1/group-settings` — group_settings.php (name, logo, org type) — whitelisted keys
 - [x] `PUT /api/v1/group-settings` — admins (incl. Chairperson) + Secretary; whitelisted keys, validated
+- [x] GET/PUT field parity — PR #453. GET returned 7 renamed fields, PUT accepted 18 raw ones, so a
+      mobile edit form could not pre-fill. One shared list (`includes/api_group_settings.php`) now
+      drives both; GET gains `settings` (officer-only) + `can_edit`. Fixed `deadline_day`, which held
+      a Swahili day name for weekly groups but was typed `int` — `(int) 'Jumatatu'` is `0`, so a
+      pre-filled form would have zeroed a weekly group's payment deadline on every save.
 
 **Module 3 read surface shipped in PR #437.** REST sub-paths (`/members/{id}`, `/members/dormant`) are
 resolved by `roots.php`; handlers are flat files (`members_detail.php`) because a directory named
