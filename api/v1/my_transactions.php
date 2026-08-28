@@ -52,7 +52,7 @@ if ($memberId <= 0) {
 }
 
 $m = $pdo->prepare(
-    'SELECT customer_id, customer_name,
+    'SELECT customer_id, customer_name, initial_savings,
             TRIM(CONCAT_WS(" ", first_name, middle_name, last_name)) AS full_name
        FROM customers WHERE customer_id = ?'
 );
@@ -75,6 +75,10 @@ $summary = cs_year_summary($grid);
 $settings = $pdo->query('SELECT setting_key, setting_value FROM group_settings')
                 ->fetchAll(PDO::FETCH_KEY_PAIR);
 $currency = (string) ($settings['currency'] ?? 'TZS');
+
+// Undated money carried in when the member was registered. It belongs in the
+// total but in no month — see vk_api_txn_received_total().
+$openingBf = (float) ($member['initial_savings'] ?? 0);
 if ($currency === '') {
     $currency = 'TZS';
 }
@@ -138,10 +142,15 @@ vk_api_ok([
     'receipts' => $receipts,
     'months'   => $months,
     'totals'   => [
-        // The grand total, which MUST equal /contributions/standing's
-        // total_saved for the same member. A test pins that.
-        'received_total' => (float) ($summary['total']['paid'] ?? 0),
-        'receipt_count'  => count($receipts),
+        // Carried-in savings have no date, so they sit in no month and appear in
+        // no receipt. Shown as a brought-forward line, exactly as the web
+        // statement does, so the app can print the same three figures.
+        'opening_brought_forward' => $openingBf,
+        'receipts_total'          => (float) ($summary['total']['actual'] ?? 0),
+        // opening + receipts. MUST equal /contributions/standing's total_saved
+        // for the same member — see vk_api_txn_received_total().
+        'received_total'          => vk_api_txn_received_total($openingBf, $summary),
+        'receipt_count'           => count($receipts),
     ],
     'year_summary' => $summary,
     'scope' => [
