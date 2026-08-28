@@ -73,6 +73,11 @@ already broken would be waste.
       drives both; GET gains `settings` (officer-only) + `can_edit`. Fixed `deadline_day`, which held
       a Swahili day name for weekly groups but was typed `int` — `(int) 'Jumatatu'` is `0`, so a
       pre-filled form would have zeroed a weekly group's payment deadline on every save.
+- [x] `POST /api/v1/group-settings/logo` — PR #456. Multipart, officer-gated, JPG/PNG/GIF/WEBP,
+      2 MB; stored in `assets/images/` so the web and the TCPDF printouts see it too. GET gains
+      `group.logo_url` (absolute) — `group.logo` was the raw stored FILENAME and unloadable.
+      Fixed on the way: the default logo was committed as `LOGO1.png` while 18 call sites ask for
+      `logo1.png`, so on the case-sensitive servers the login page rendered a broken image.
 
 **Module 3 read surface shipped in PR #437.** REST sub-paths (`/members/{id}`, `/members/dormant`) are
 resolved by `roots.php`; handlers are flat files (`members_detail.php`) because a directory named
