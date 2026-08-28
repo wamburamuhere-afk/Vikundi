@@ -252,3 +252,98 @@ if (!function_exists('vk_group_settings_may_edit')) {
         return vk_role_is_admin($auth['role_id'] ?? null, $auth['user']['user_role'] ?? null);
     }
 }
+
+// -----------------------------------------------------------------------------
+// The group logo
+// -----------------------------------------------------------------------------
+//
+// group_settings.group_logo stores a BARE FILENAME — 'group_logo_1775154296.png'
+// — served from /assets/images/. It is not a URL and never has been, so a mobile
+// client handed the raw value has nothing it can load. These build the absolute
+// URL once, here, rather than in each consumer.
+
+if (!function_exists('vk_group_settings_default_logo')) {
+    /**
+     * The logo shown when the group has not uploaded one.
+     *
+     * The file on disk was committed as LOGO1.png while eighteen call sites ask
+     * for 'logo1.png'. Windows and macOS do not care; the Linux servers do, so
+     * the default logo 404'd on every page that fell back to it — visibly, on
+     * the login screen. The file is now named in lower case to match the
+     * references, and this constant is what the API resolves against.
+     */
+    function vk_group_settings_default_logo(): string
+    {
+        return 'logo1.png';
+    }
+}
+
+if (!function_exists('vk_group_settings_logo_name')) {
+    /** The stored logo filename with the default applied, stripped of any path. */
+    function vk_group_settings_logo_name(?string $stored): string
+    {
+        $name = basename(trim((string) $stored));
+        return $name !== '' ? $name : vk_group_settings_default_logo();
+    }
+}
+
+if (!function_exists('vk_group_settings_logo_url')) {
+    /**
+     * An absolute URL for a logo filename.
+     *
+     * The base path is derived the way roots.php's getUrl() derives it, so a
+     * subdirectory install (localhost/vikundi) and a document-root install (the
+     * live sites) both produce a URL that resolves.
+     *
+     * @param array|null $server Override for $_SERVER (testing).
+     */
+    function vk_group_settings_logo_url(?string $stored, ?array $server = null): string
+    {
+        require_once __DIR__ . '/env.php';
+
+        $server = $server ?? $_SERVER;
+        $name   = vk_group_settings_logo_name($stored);
+
+        $host = trim((string) ($server['HTTP_HOST'] ?? $server['SERVER_NAME'] ?? ''));
+        if ($host === '') {
+            // No host to build against — return the app-relative path rather
+            // than a URL with an empty authority, which resolves nowhere.
+            return '/assets/images/' . rawurlencode($name);
+        }
+
+        $scheme = vikundi_is_https($server) ? 'https' : 'http';
+
+        // Only strip the document root when the project genuinely sits inside
+        // it. roots.php's getUrl() does a bare str_replace, which on a server
+        // whose DOCUMENT_ROOT is not a prefix of the project path leaves the
+        // whole filesystem path in the URL — leaking it, and resolving nowhere.
+        $docRoot  = rtrim(str_replace('\\', '/', (string) ($server['DOCUMENT_ROOT'] ?? '')), '/');
+        $projRoot = rtrim(str_replace('\\', '/', dirname(__DIR__)), '/');
+
+        $base = '';
+        if ($docRoot !== '' && $projRoot !== $docRoot && str_starts_with($projRoot, $docRoot . '/')) {
+            $base = '/' . trim(substr($projRoot, strlen($docRoot)), '/');
+        }
+
+        return $scheme . '://' . $host . $base . '/assets/images/' . rawurlencode($name);
+    }
+}
+
+if (!function_exists('vk_group_settings_logo_types')) {
+    /**
+     * Extensions accepted for a logo.
+     *
+     * Narrower than vk_api_allowed_upload_types(), which also allows PDF: a PDF
+     * cannot render in an <img>, and a logo that silently fails to display is
+     * worse than an upload that is refused.
+     *
+     * SVG is absent deliberately, matching actions/save_group_settings.php.
+     * assets/images/ is web-served from the app's own origin, and
+     * <svg><script>…</script></svg> is stored XSS with the session cookie in
+     * reach. Raster formats cannot do that.
+     */
+    function vk_group_settings_logo_types(): array
+    {
+        return ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    }
+}
