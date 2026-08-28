@@ -24,7 +24,8 @@ Same code on both. Demo has synthetic data and is safe to hit freely.
 6. [Group settings](#6-group-settings)
 7. [Contributions](#7-contributions)
 8. [Transactions](#8-transactions)
-9. [Demo logins](#9-demo-logins)
+9. [Fines](#9-fines)
+10. [Demo logins](#10-demo-logins)
 
 ---
 
@@ -1512,7 +1513,118 @@ they are transactions but not savings, and they get their own module.
 
 ---
 
-## 9. Demo logins
+## 9. Fines
+
+**Fines are more open than contributions, on purpose.** Any member can see every fine in the
+group through `?view=all` — the group asked for this, and it is the same disclosure the Group
+Financial Ledger already makes. Do not build a stricter screen than the API allows; showing the
+group its own fines is the point.
+
+**Writing is leadership only.** Recording needs `create` on `manage_fines`; editing, paying and
+waiving need `edit`. Every row carries `actions` — render buttons from it, never from the role.
+
+`status` is `pending` | `paid` | `waived`. **Only `pending` is money still owed**, and
+`is_outstanding` says so per row. Do not sum every row: you would tell a member they owe what
+they have already paid or what was forgiven. `totals.outstanding` is the figure to show.
+
+---
+
+### GET `/fines`
+
+The leadership list. 403 for anyone else — a member's own fines are at `/my/fines`.
+
+Query: `page`, `per_page` (max 100), `member_id`, `status`, `date_from`, `date_to`, `search`
+(member name or reason).
+
+```json
+{
+  "fines": [{
+    "fine_id": 4, "member_id": 15, "member_name": "Rehema Ngowi", "is_self": false,
+    "amount": 20000, "reason": "Kutohudhuria (absence)",
+    "status": "paid", "is_outstanding": false,
+    "meeting_id": null, "meeting_title": null,
+    "created_at": "2026-08-06T00:00:00+03:00", "updated_at": "2026-08-19T17:38:43+03:00",
+    "actions": {"edit": true, "pay": false, "waive": true}
+  }],
+  "totals": {"outstanding": 65000, "paid": 60000, "waived": 0, "count": 8},
+  "pagination": {"page": 1, "per_page": 25, "total": 8, "total_pages": 1, "has_more": false}
+}
+```
+
+`amount` is `num` (whole shillings come back as `int` — see §1). `reason`, `meeting_id` and
+`meeting_title` are nullable. `totals` covers the whole filtered set, not the page.
+
+---
+
+### GET `/my/fines`
+
+The member's own fines. **The member comes from the token — there is no `member_id` parameter.**
+
+`?view=all` switches to every fine in the group, paginated. `view` is echoed back so you can
+render the toggle. **`mine` is the default**: anything other than an explicit `view=all` scopes
+to the member.
+
+```json
+{
+  "fines": [ ... ],
+  "view": "all",
+  "scope": {"own_member_id": 30, "is_leader": false},
+  "totals": {"outstanding": 65000, "paid": 60000, "waived": 2000, "count": 9, "fined_members": 8},
+  "pagination": { ... }
+}
+```
+
+In the group view, `is_self` marks the reader's own rows — highlight them, as the web page does.
+`fined_members` (how many different people are fined) is `null` in the `mine` view.
+
+An account with no member record gets 403 `no_member_record` on `view=mine`, and is told to use
+`view=all`.
+
+---
+
+### GET `/fines/{id}`
+
+One fine. Readable by any signed-in user, because `?view=all` already lists it — refusing a
+single row someone can see in a list would be theatre.
+
+---
+
+### POST `/fines`
+
+Record a fine. `create` on `manage_fines`.
+
+| Field | |
+|---|---|
+| `member_id` | required; 404 `member_not_found` if unknown |
+| `amount` | required, > 0. **Thousands separators are accepted** — `"1,500"` stores 1500 |
+| `reason` | **required** — 422 `reason_required` on a blank |
+| `status` | optional, `pending` (default) or `paid` only |
+| `meeting_id` | optional; 404 `meeting_not_found` if unknown |
+
+A fine **cannot be created already waived** — forgiving something never owed is not a state the
+group has a word for. Returns 201 with the created row.
+
+---
+
+### POST `/fines/{id}/pay` · `/waive`
+
+Mark a fine paid, or forgive it. `edit` on `manage_fines`. No body.
+
+Repeating a transition is **409** (`already_paid` / `already_waived`), not a silent success — a
+second audit entry would record the treasurer doing something they did not do. Check
+`actions.pay` / `actions.waive` before offering the button and you will not hit it.
+
+---
+
+### PUT `/fines/{id}`
+
+Edit `amount`, `reason` and/or `status`. `edit` on `manage_fines`. Send only what changes; 422
+`no_fields` if you send nothing. A blank `reason` is refused, and an unrecognised `status` is
+**422, never silently coerced** — a typo must not reopen a settled fine.
+
+---
+
+## 10. Demo logins
 
 All on the demo site, password `Demo@2026`:
 
