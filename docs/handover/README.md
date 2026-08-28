@@ -1,6 +1,6 @@
 # Vikundi mobile API — handover
 
-Everything the Flutter session needs, current as of **2026-08-26**.
+Everything the Flutter session needs, current as of **2026-08-28**.
 
 Read these in order. `docs/API.md` is the reference; the files here are the parts that
 are easy to get wrong.
@@ -10,6 +10,8 @@ are easy to get wrong.
 | `docs/API.md` | Always. Every endpoint, every field, every error code. |
 | `auth-me-permissions-fix.md` | Before writing any permission check. |
 | `contributions-module.md` | Before building the contributions screens. |
+| `transactions-module.md` | Before building Transactions — and before you sum anything. |
+| `fines-module.md` | Before building Fines. Its access rules are **not** the contributions ones. |
 
 ---
 
@@ -22,11 +24,37 @@ Both `vikundi.bjptechnologies.co.tz` and `demo.vikundi.bjptechnologies.co.tz`.
 | 1. Auth | 4 | Login, session, token refresh, logout |
 | 2. Dashboard | 1 | Home — role-aware |
 | 3. Members | 8 | Roster, detail, register, edit, approve/reject/reactivate |
-| — Group settings | 2 | Group name, logo, currency for your own chrome |
+| — Group settings | 3 | Chrome, the editable settings form, logo upload |
 | 4. Contributions | 8 | My Contributions, the ledger, the approval workflow |
+| 5. Transactions | 2 | The group ledger by date, the member's own receipts |
+| 6. Fines | 7 | Manage Fines, My Fines, the group-fines view |
 
-**23 endpoints.** Not yet built: Transactions, Fines, Expenses, Meetings, Documents,
-Loans. Anything on those screens has to stub or wait.
+**33 endpoints.** Group settings also gained a full read/write field set and a logo upload
+since the last handover — see below.
+
+Not yet built: Condolences / Death Expenses, Financial Ledger, Expenses & Petty Cash,
+Budgets, Payouts, Meetings, Documents, Loans. Anything on those screens has to stub or wait.
+
+---
+
+## Changed since the 2026-08-26 handover
+
+**Group settings now round-trips.** `GET /group-settings` returns a flat `settings` object keyed
+**exactly** as `PUT` accepts, so an edit form pre-fills itself with no name mapping. It is
+returned only to admins/Chairperson/Secretary — branch on the new `can_edit`, not on
+`settings == null`. The Treasurer gets `null` here despite being leadership everywhere else.
+
+Two traps in it, both fixed server-side and documented in `docs/API.md` §6:
+
+- `deadline_day` holds an **`int` for a monthly cycle and a Swahili day name for a weekly one**.
+  Decode it as `dynamic` and branch on the new `cycle_type`. It used to be typed as an integer,
+  so echoing a weekly group's value back would have written `0`.
+- `meeting_day` is **always Swahili** (`Jumatatu` … `Jumapili`), whatever the display language.
+  `PUT` accepts English and normalises it; `GET` always returns Swahili.
+
+**The group logo is now uploadable and loadable.** `POST /group-settings/logo` (multipart, field
+`logo`, officer-only, JPG/PNG/GIF/WEBP, 2 MB). `group.logo` was always the raw stored *filename*,
+not a URL — use the new **`group.logo_url`**, which is absolute and has the default applied.
 
 ---
 
@@ -63,6 +91,10 @@ permission map.
 | `scope.member_id` | `null` when a leader is viewing the whole group |
 | `scope.own_member_id` | `null` for the Admin |
 | `collection_rate` | `null` when the group has no monthly target — **not** `0`. And when it is present it arrives as `num`, not `double`: live it came back as `100`, an `int`. |
+| `settings` (group settings) | `null` for anyone who cannot edit — branch on `can_edit` |
+| `mkoba.*` (transactions) | `null`, never `""`, on a row not imported from M-Koba |
+| `reason`, `meeting_title` (fines) | `null` when absent |
+| `totals.fined_members` (fines) | `null` in the `mine` view — it only means something for the group |
 
 ### 4. Responses are shape-variant by role
 
