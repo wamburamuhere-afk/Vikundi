@@ -143,12 +143,16 @@ the treasurer to say which anchor the group means before anything changes.
 
 ## 6. Fines
 
-- [ ] `GET /api/v1/fines` — group list, paginated — leadership only (`manage_fines`)
-- [ ] `POST /api/v1/fines` — record a fine, reason required
-- [ ] `PUT /api/v1/fines/{id}` — edit
-- [ ] `POST /api/v1/fines/{id}/waive`
-- [ ] `GET /api/v1/my/fines` — own fines
-- [ ] `GET /api/v1/my/fines?view=all` — group view from a member's own screen (mirrors the web toggle) — paginated, 327+ rows
+**Module 6 shipped in PR #464.**
+
+- [x] `GET /api/v1/fines` — group list, paginated, filters: member_id, status, date range, search — leadership only
+- [x] `POST /api/v1/fines` — record a fine; reason required, `create` on `manage_fines`, cannot be created waived
+- [x] `GET /api/v1/fines/{id}` — detail (read is open, matching the ?view=all disclosure)
+- [x] `PUT /api/v1/fines/{id}` — edit amount / reason / status; status validated, never normalised
+- [x] `POST /api/v1/fines/{id}/waive`
+- [x] `POST /api/v1/fines/{id}/pay` — added: marking a fine paid is the main leadership action and the web has it
+- [x] `GET /api/v1/my/fines` — own fines, scoped from the token (no member_id parameter exists)
+- [x] `GET /api/v1/my/fines?view=all` — group view, paginated, mirroring the web toggle the group asked for
 
 ## 7. Condolences / Death Expenses
 

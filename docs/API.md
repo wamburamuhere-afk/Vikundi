@@ -23,7 +23,8 @@ Same code on both. Demo has synthetic data and is safe to hit freely.
 5. [Members](#5-members)
 6. [Group settings](#6-group-settings)
 7. [Contributions](#7-contributions)
-8. [Demo logins](#8-demo-logins)
+8. [Transactions](#8-transactions)
+9. [Demo logins](#9-demo-logins)
 
 ---
 
@@ -1406,7 +1407,112 @@ separate cards.
 
 ---
 
-## 8. Demo logins
+## 8. Transactions
+
+The same `contributions` table as §7, read a different way.
+
+| | Answers | One 100,000 payment in January |
+|---|---|---|
+| §7 `/contributions` | money by the month it **covers** | five covered months |
+| §8 `/transactions` | money by the date it **arrived** | one January event of 100,000 |
+
+Year totals legitimately differ between the two — money received in 2026 can cover months in
+2027. **The grand totals must agree**, and do.
+
+---
+
+### GET `/transactions`
+
+The group ledger. **Leadership only — 403 for everyone else**, including a plain member. This is
+not narrowed to your own rows; your own receipts are a different document at `/my/transactions`,
+and the 403 body says so.
+
+```json
+{"status":"error","code":"forbidden",
+ "message":"Group financial records are available to leadership only. Your own transactions are at /api/v1/my/transactions."}
+```
+
+Query: `page`, `per_page` (max 100), `member_id`, `status`, `type`, **`account`**, `date_from`,
+`date_to`, `search`.
+
+`search` covers member name, receipt number, **M-Koba trans id and S/No** — what someone holding
+a paper statement actually types. `account` is one of `M-Koba`, `Bank`, `Cash`, `Mobile Money`;
+anything else is 422 `invalid_account`. An unparseable date is 422 `invalid_date` rather than a
+silently ignored filter.
+
+Every row is a §7 contribution row — same `amount`, `status`, `is_opening`,
+`counts_toward_savings`, `actions` — **plus** the M-Koba statement block, which `/contributions`
+does not carry:
+
+```json
+"mkoba": {
+  "sno": "12", "trans_id": "DBS2N6S4DVM", "member_id_str": "0783459353",
+  "source": "Hawa Mtui", "destination": "UKUU Msakuzi", "trans_type": "Deposit"
+}
+```
+
+Every field is `String?` and is **`null`, not `""`**, when the row was recorded in Vikundi rather
+than imported from M-Koba. Render null as absent — an empty string looks like data.
+
+`totals.filtered_amount` and `filtered_count` describe the whole filtered set, not the page, so
+you can head the screen without paging everything to add it up.
+
+---
+
+### GET `/my/transactions`
+
+The signed-in member's own receipts, month grid and year summary. `?member_id=` is honoured for
+leadership only; for anyone else it is **silently overwritten** with their own — asking for
+someone else's id returns your own record, with no error.
+
+An Admin has no member record, so it must name one: 422 `member_required`.
+
+```json
+{
+  "member": {"member_id": 30, "full_name": "Hamisi Mbwana", "is_self": true},
+  "group":  {"currency": "TZS", "monthly_contribution": 10000, "has_target": true},
+  "receipts": [
+    {"date": "2026-08-04", "amount": 50000, "type": "monthly",
+     "receipt_number": null, "description": "Mchango wa mwezi",
+     "account": null, "is_opening": false, "mkoba_trans_id": null}
+  ],
+  "months": [{"month": "2026-08", "target": 10000, "received": 50000, "status": "received"}],
+  "totals": {
+    "opening_brought_forward": 20000,
+    "receipts_total": 420000,
+    "received_total": 440000,
+    "receipt_count": 9
+  }
+}
+```
+
+**Read `totals` carefully — three figures, not one.**
+
+`opening_brought_forward` is `customers.initial_savings`: money the member carried in when they
+were registered. It **has no date**, so it appears in no receipt and in no month — exactly as a
+bank statement shows a balance brought forward. `receipts_total` is the dated receipts.
+`received_total` is the sum.
+
+> **`received_total` equals `/contributions/standing`'s `standing.total_saved` for the same
+> member.** If you show a different number on the two screens, the group will notice — checking
+> that two statements agree is the first thing anyone does with them. Verified live: member 30 is
+> 20,000 + 420,000 = 440,000 on both.
+>
+> Do **not** compute the total by summing `receipts` yourself. You will be short by
+> `opening_brought_forward` for every member who carried savings in, and it will look right in
+> testing because members with nothing carried in reconcile fine.
+
+`months[].status` is `received` | `none` | `before_join` | `future`. Padding cells with no money
+are already dropped.
+
+**This endpoint shows only money that counts** — approved/confirmed, savings types. A
+contribution submitted this morning is not here; it is on `/contributions` with
+`status: "pending"`. That is the statement's definition, not a gap. Fines are *not* included —
+they are transactions but not savings, and they get their own module.
+
+---
+
+## 9. Demo logins
 
 All on the demo site, password `Demo@2026`:
 
