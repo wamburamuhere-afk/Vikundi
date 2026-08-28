@@ -73,6 +73,11 @@ already broken would be waste.
       drives both; GET gains `settings` (officer-only) + `can_edit`. Fixed `deadline_day`, which held
       a Swahili day name for weekly groups but was typed `int` — `(int) 'Jumatatu'` is `0`, so a
       pre-filled form would have zeroed a weekly group's payment deadline on every save.
+- [x] `POST /api/v1/group-settings/logo` — PR #456. Multipart, officer-gated, JPG/PNG/GIF/WEBP,
+      2 MB; stored in `assets/images/` so the web and the TCPDF printouts see it too. GET gains
+      `group.logo_url` (absolute) — `group.logo` was the raw stored FILENAME and unloadable.
+      Fixed on the way: the default logo was committed as `LOGO1.png` while 18 call sites ask for
+      `logo1.png`, so on the case-sensitive servers the login page rendered a broken image.
 
 **Module 3 read surface shipped in PR #437.** REST sub-paths (`/members/{id}`, `/members/dormant`) are
 resolved by `roots.php`; handlers are flat files (`members_detail.php`) because a directory named
@@ -126,8 +131,15 @@ the treasurer to say which anchor the group means before anything changes.
 
 ## 5. Transactions
 
-- [ ] `GET /api/v1/transactions` — list, paginated, filters: member_id, date range — leadership only
-- [ ] `GET /api/v1/my/transactions` — signed-in member's own, dated receipts (distinct shape from contributions: money on the date it arrived, not the month it covers)
+**Module 5 shipped in PR #459.**
+
+- [x] `GET /api/v1/transactions` — list, paginated, filters: member_id, status, type, account, date range,
+      search (receipt / M-Koba trans id / S-No / name) — **leadership only, hard 403**. Adds the M-Koba
+      statement columns (`mkoba.sno / trans_id / member_id_str / source / destination / trans_type`) that
+      `/contributions` does not carry, plus the `account` filter.
+- [x] `GET /api/v1/my/transactions` — signed-in member's own dated receipts, plus the month grid and year
+      summary. Built from `cs_member_transactions()` / `cs_transaction_grid()` / `cs_year_summary()`, so the
+      grand total is guaranteed to equal `/contributions/standing`'s `total_saved` — pinned by a test.
 
 ## 6. Fines
 
