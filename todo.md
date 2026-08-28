@@ -131,8 +131,15 @@ the treasurer to say which anchor the group means before anything changes.
 
 ## 5. Transactions
 
-- [ ] `GET /api/v1/transactions` — list, paginated, filters: member_id, date range — leadership only
-- [ ] `GET /api/v1/my/transactions` — signed-in member's own, dated receipts (distinct shape from contributions: money on the date it arrived, not the month it covers)
+**Module 5 shipped in PR #459.**
+
+- [x] `GET /api/v1/transactions` — list, paginated, filters: member_id, status, type, account, date range,
+      search (receipt / M-Koba trans id / S-No / name) — **leadership only, hard 403**. Adds the M-Koba
+      statement columns (`mkoba.sno / trans_id / member_id_str / source / destination / trans_type`) that
+      `/contributions` does not carry, plus the `account` filter.
+- [x] `GET /api/v1/my/transactions` — signed-in member's own dated receipts, plus the month grid and year
+      summary. Built from `cs_member_transactions()` / `cs_transaction_grid()` / `cs_year_summary()`, so the
+      grand total is guaranteed to equal `/contributions/standing`'s `total_saved` — pinned by a test.
 
 ## 6. Fines
 
