@@ -76,8 +76,13 @@ $canEdit = vk_group_settings_may_edit($auth);
 vk_api_ok([
     // Unchanged shape — Modules 1-3 are already built against these names.
     'group' => [
-        'name'     => $stored('group_name'),
-        'logo'     => (string) ($raw['group_logo'] ?? ''),
+        'name' => $stored('group_name'),
+        // The raw stored value: a bare filename, kept for the web and for any
+        // consumer already reading it. It is NOT a URL.
+        'logo' => (string) ($raw['group_logo'] ?? ''),
+        // What a client can actually load. Absolute, and with the same default
+        // the web pages fall back to, so the app and the site show one logo.
+        'logo_url' => vk_group_settings_logo_url($raw['group_logo'] ?? null),
         'org_type' => (string) ($raw['company_type'] ?? ''),
         'currency' => $stored('currency'),
     ],

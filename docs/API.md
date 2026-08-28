@@ -912,7 +912,8 @@ form: admins (including the Chairperson) and the Secretary. For everyone else it
   "data": {
     "group": {
       "name": "Umoja VICOBA Group",
-      "logo": "",
+      "logo": "group_logo_1775154296.png",
+      "logo_url": "https://demo.vikundi.bjptechnologies.co.tz/assets/images/group_logo_1775154296.png",
       "org_type": "vicoba",
       "currency": "TZS"
     },
@@ -953,6 +954,51 @@ back the changed subset — no name mapping. The two lists come from one definit
 The older `contributions.monthly_target` and `fines.meeting_absence` are unchanged and still
 correct; they are the same values as `settings.monthly_contribution` and
 `settings.meeting_absence_fine`, published to callers who cannot see `settings`.
+
+#### The logo
+
+`logo` is the **raw stored filename**, not a URL — that is what `group_settings.group_logo`
+holds and what the web pages and TCPDF printouts read. Use **`logo_url`**, which is absolute and
+already has the default applied, so the app and the site show the same image.
+
+`logo_url` is never null: a group that has never uploaded one gets the default
+(`/assets/images/logo1.png`), the same fallback the web uses.
+
+---
+
+### POST `/group-settings/logo`
+
+Replace the group's logo. **Multipart only**, field name `logo`. Same permission as
+`PUT /group-settings` — admins (including the Chairperson) and the Secretary; everyone else gets
+403.
+
+It is a separate endpoint because `PUT /group-settings` is JSON: you should not have to switch
+the whole settings form to multipart to save a phone number.
+
+| | |
+|---|---|
+| Field | `logo` (multipart file) |
+| Accepts | JPG, PNG, GIF, WEBP |
+| Refused | PDF (cannot render in an `<img>`), SVG (script-carrying on a served origin), anything whose bytes disagree with its extension |
+| Max size | 2 MB |
+
+```json
+{
+  "status": "success",
+  "data": {
+    "logo": "group_logo_1756377600_9f3a2b1c8d4e5f60.png",
+    "logo_url": "https://demo.vikundi.bjptechnologies.co.tz/assets/images/group_logo_1756377600_9f3a2b1c8d4e5f60.png",
+    "message": "The group logo was updated."
+  }
+}
+```
+
+Errors: `no_file` (422) when the part is missing, `invalid_logo` (422) for a bad type, oversize,
+or a byte/extension mismatch, `forbidden` (403) for anyone who cannot edit settings.
+
+The previous logo file is left on disk — already-issued PDFs reference it by name.
+
+---
 
 #### Dart types
 
