@@ -157,3 +157,32 @@ if (!function_exists('vk_api_txn_filters')) {
         return [$where, $params];
     }
 }
+
+if (!function_exists('vk_api_txn_received_total')) {
+    /**
+     * What the member has actually brought in: the brought-forward opening plus
+     * every dated receipt.
+     *
+     * customers.initial_savings CARRIES NO DATE, so cs_transaction_grid() — which
+     * buckets money by the month it arrived — cannot place it in any month and
+     * cs_member_transactions() never returns it. cs_member_schedule() does count
+     * it, so a statement built only from dated receipts falls short of
+     * /contributions/standing's total_saved by exactly the member's carried-in
+     * savings, and the two documents disagree.
+     *
+     * app/constant/reports/member_transactions.php already solved this: it shows
+     * the carried-in amount as a brought-forward opening line, the way a bank
+     * statement does with a balance carried in. This is that same sum, so the
+     * grand totals agree by construction rather than by luck.
+     *
+     * Verified live on demo member 30: 20,000 carried in + 420,000 in dated
+     * receipts = the 440,000 /contributions/standing reports.
+     */
+    function vk_api_txn_received_total(float $openingBroughtForward, array $summary): float
+    {
+        // 'actual', matching the web statement. On a transaction grid
+        // 'unallocated' is always 0, so 'paid' would give the same figure — but
+        // only 'actual' is the sum the web prints.
+        return $openingBroughtForward + (float) ($summary['total']['actual'] ?? 0);
+    }
+}

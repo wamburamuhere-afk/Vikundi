@@ -289,11 +289,85 @@ final class TransactionsApiTest extends TestCase
         );
     }
 
+    /**
+     * THE ONE THAT ACTUALLY BROKE. customers.initial_savings carries no date, so
+     * it sits in no month: cs_transaction_grid() cannot bucket it and
+     * cs_member_transactions() never returns it. cs_member_schedule() DOES count
+     * it, so a statement built only from dated receipts falls short of
+     * /contributions/standing's total_saved by exactly the carried-in amount.
+     *
+     * Shipped that way and caught live: demo member 30 read 420,000 here against
+     * 440,000 on standing — their 20,000 of carried-in savings. It passed
+     * locally only because every member in the dev database has 0.
+     */
+    public function testCarriedInSavingsAreCountedInTheGrandTotal(): void
+    {
+        $summary = ['total' => ['actual' => 420000.0, 'paid' => 420000.0]];
+
+        $this->assertSame(440000.0, vk_api_txn_received_total(20000.0, $summary));
+        $this->assertSame(
+            420000.0,
+            vk_api_txn_received_total(0.0, $summary),
+            'A member with nothing carried in is unaffected.'
+        );
+    }
+
+    public function testTheBroughtForwardOpeningIsReadFromTheMemberRecord(): void
+    {
+        $code = self::code('api/v1/my_transactions.php');
+
+        $this->assertStringContainsString('initial_savings', $code, 'it must be selected');
+        // Not merely selected: a mutation setting $openingBf = 0.0 left every
+        // other assertion here passing.
+        $this->assertMatchesRegularExpression(
+            '/\$openingBf = \(float\) \(\$member\[.initial_savings.\] \?\? 0\);/',
+            $code,
+            'The opening must come from the member record, not a literal.'
+        );
+        $this->assertStringContainsString(
+            'vk_api_txn_received_total($openingBf, $summary)',
+            $code,
+            'and it must reach the total, not merely be fetched.'
+        );
+        $this->assertStringContainsString(
+            "'opening_brought_forward' => \$openingBf",
+            $code,
+            'The app needs it as its own line, the way the web statement prints it.'
+        );
+    }
+
+    /**
+     * The web already solved this and the API must not diverge from it:
+     * member_transactions.php shows the carried-in amount as a brought-forward
+     * opening line so opening + dated receipts equals the contributions total.
+     */
+    public function testTheWebStatementStillCarriesTheSameOpeningLine(): void
+    {
+        $code = self::code('app/constant/reports/member_transactions.php');
+
+        $this->assertStringContainsString('initial_savings', $code);
+        $this->assertMatchesRegularExpression(
+            '/\$opening_bf\s*=/',
+            $code,
+            'If the web drops its opening line the two statements disagree again.'
+        );
+    }
+
+    public function testTheReceiptsSubtotalIsPublishedSeparatelyFromTheTotal(): void
+    {
+        // Three figures, because the member is owed an explanation of why the
+        // receipts they can count do not add up to the total they are shown.
+        $code = self::code('api/v1/my_transactions.php');
+        foreach (["'opening_brought_forward'", "'receipts_total'", "'received_total'"] as $k) {
+            $this->assertStringContainsString($k, $code);
+        }
+    }
+
     public function testTheOwnEndpointTakesItsTotalFromTheSharedSummary(): void
     {
         $code = self::code('api/v1/my_transactions.php');
 
-        $this->assertStringContainsString("\$summary['total']['paid']", $code);
+        $this->assertStringContainsString("\$summary['total']['actual']", $code);
         $this->assertStringContainsString('cs_year_summary($grid)', $code);
         $this->assertStringContainsString('cs_transaction_grid(', $code);
         $this->assertStringContainsString('cs_member_transactions(', $code);
