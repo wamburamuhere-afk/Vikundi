@@ -1,6 +1,6 @@
 # Vikundi mobile API — handover
 
-Everything the Flutter session needs, current as of **2026-08-28**.
+Everything the Flutter session needs, current as of **2026-09-02**.
 
 Read these in order. `docs/API.md` is the reference; the files here are the parts that
 are easy to get wrong.
@@ -12,6 +12,7 @@ are easy to get wrong.
 | `contributions-module.md` | Before building the contributions screens. |
 | `transactions-module.md` | Before building Transactions — and before you sum anything. |
 | `fines-module.md` | Before building Fines. Its access rules are **not** the contributions ones. |
+| `condolences-module.md` | Before building Condolences. Its access rules are **not** the fines ones either — read it even if you've read fines-module.md. |
 
 ---
 
@@ -28,33 +29,33 @@ Both `vikundi.bjptechnologies.co.tz` and `demo.vikundi.bjptechnologies.co.tz`.
 | 4. Contributions | 8 | My Contributions, the ledger, the approval workflow |
 | 5. Transactions | 2 | The group ledger by date, the member's own receipts |
 | 6. Fines | 7 | Manage Fines, My Fines, the group-fines view |
+| 7. Condolences | 7 | Manage Condolences, My Condolences, review/approve, the sustainability report |
 
-**33 endpoints.** Group settings also gained a full read/write field set and a logo upload
-since the last handover — see below.
+**40 endpoints.**
 
-Not yet built: Condolences / Death Expenses, Financial Ledger, Expenses & Petty Cash,
-Budgets, Payouts, Meetings, Documents, Loans. Anything on those screens has to stub or wait.
+Not yet built: Financial Ledger, Expenses & Petty Cash, Budgets, Payouts, Meetings, Documents,
+Loans. Anything on those screens has to stub or wait.
 
 ---
 
-## Changed since the 2026-08-26 handover
+## Changed since the 2026-08-28 handover
 
-**Group settings now round-trips.** `GET /group-settings` returns a flat `settings` object keyed
-**exactly** as `PUT` accepts, so an edit form pre-fills itself with no name mapping. It is
-returned only to admins/Chairperson/Secretary — branch on the new `can_edit`, not on
-`settings == null`. The Treasurer gets `null` here despite being leadership everywhere else.
+**Module 7 — Condolences — is live.** `condolences-module.md` covers it in full; the one thing to
+absorb before touching it: **its access rule is not fines' rule.** No web screen ever showed a
+member their own condolence cases, so `GET /condolences` is leadership-only outright — a member's
+own cases are the new `GET /my/condolences`, a separate endpoint, not a `?view=all` toggle.
 
-Two traps in it, both fixed server-side and documented in `docs/API.md` §6:
+**A member's condolence data was leaking group-wide before this handover.** The same shape of bug
+as the 2026-08-26 contributions leak — `death_expenses.view` (a Member's own grant) was being read
+as group-wide access on four endpoints, including the leadership console having **no permission
+check at all**. Fixed and deployed before Module 7 was built on top of it. Nothing you need to do
+differently — it's mentioned so you know the access rule in `condolences-module.md` was written
+against a server that had already been corrected, not one you need to route around.
 
-- `deadline_day` holds an **`int` for a monthly cycle and a Swahili day name for a weekly one**.
-  Decode it as `dynamic` and branch on the new `cycle_type`. It used to be typed as an integer,
-  so echoing a weekly group's value back would have written `0`.
-- `meeting_day` is **always Swahili** (`Jumatatu` … `Jumapili`), whatever the display language.
-  `PUT` accepts English and normalises it; `GET` always returns Swahili.
-
-**The group logo is now uploadable and loadable.** `POST /group-settings/logo` (multipart, field
-`logo`, officer-only, JPG/PNG/GIF/WEBP, 2 MB). `group.logo` was always the raw stored *filename*,
-not a URL — use the new **`group.logo_url`**, which is absolute and has the default applied.
+**Approving a condolence case can change a member's own record.** Not a client concern to
+implement — the server does it — but the app should warn a leader before they approve a case whose
+`deceased.id` is `"member"`, because that approval marks the member's own account deceased and
+dormant. See `condolences-module.md` for the full table of what each `deceased.id` shape does.
 
 ---
 
@@ -95,6 +96,7 @@ permission map.
 | `mkoba.*` (transactions) | `null`, never `""`, on a row not imported from M-Koba |
 | `reason`, `meeting_title` (fines) | `null` when absent |
 | `totals.fined_members` (fines) | `null` in the `mine` view — it only means something for the group |
+| `deceased.type`, `deceased.id`, `deceased.relationship` (condolences) | `null` when absent; `deceased.name` is never null |
 
 ### 4. Responses are shape-variant by role
 
