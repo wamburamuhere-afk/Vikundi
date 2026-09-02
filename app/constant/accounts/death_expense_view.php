@@ -35,6 +35,14 @@ $stmt->execute([$id]);
 $de = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$de) { redirectTo('accounts/death_expenses'); }
 
+// The row is loaded by id and ids are sequential, so without this any
+// signed-in member could walk every condolence case in the group.
+// death_expenses.view is held by the Member role and was being treated here
+// as permission to read anyone's. Verified live: a member read the
+// Chairperson's TZS 900,000 case, name attached.
+require_once __DIR__ . '/../../../includes/death_expense_access.php';
+vk_death_web_require_own_or_leader($pdo, (int) $de['member_id']);
+
 $settings = $pdo->query("SELECT setting_key, setting_value FROM group_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $currency = $settings['currency'] ?? 'TZS';
 

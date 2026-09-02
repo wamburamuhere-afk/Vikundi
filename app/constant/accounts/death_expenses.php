@@ -8,6 +8,14 @@ global $pdo;
 require_once __DIR__ . '/../../../roots.php';
 includeHeader();
 
+// This page had NO permission check at all — any signed-in user could open
+// the leadership console: the record button, the modal form, and (via
+// api/get_death_expenses.php, fixed separately) the whole group's cases.
+// Unlike manage_contributions.php, nothing here branches for a member's own
+// view, so the gate is leadership outright, not merely `view`.
+require_once __DIR__ . '/../../../core/permissions.php';
+requireEditPermission('death_expenses');
+
 $lang = $_SESSION['preferred_language'] ?? 'sw';
 $is_sw = ($lang === 'sw');
 
