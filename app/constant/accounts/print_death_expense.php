@@ -34,6 +34,12 @@ $stmt->execute([$id]);
 $de = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$de) die('Not found');
 
+// Same gap as death_expense_view.php: death_expenses.view is a Member's own
+// grant, and a printable receipt loaded by sequential id would otherwise hand
+// anyone signed in a PDF of anyone else's condolence case.
+require_once __DIR__ . '/../../../includes/death_expense_access.php';
+vk_death_web_require_own_or_leader($pdo, (int) $de['member_id']);
+
 $settings   = $pdo->query("SELECT setting_key, setting_value FROM group_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $currency   = $settings['currency']   ?? 'TZS';
 $group_name = $settings['group_name'] ?? 'VIKUNDI';

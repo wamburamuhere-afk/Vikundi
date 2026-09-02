@@ -4,6 +4,16 @@ require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/require_auth.php';
 require_once __DIR__ . '/../core/permissions.php';
 requirePermissionJson('view', 'death_expenses');
+
+// `view` above only confirms the caller is signed in and holds the Member
+// grant — the same grant that is supposed to open a member's OWN screen. No
+// web page branches on that here the way manage_contributions.php does, so
+// this endpoint backs one screen only: the leadership console. Verified live
+// as an ordinary member: both condolence records in the group, including the
+// Chairperson's TZS 900,000 case with her name attached.
+require_once __DIR__ . '/../includes/death_expense_access.php';
+vk_death_web_require_leader();
+
 global $pdo;
 
 header('Content-Type: application/json');
