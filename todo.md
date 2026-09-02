@@ -103,7 +103,7 @@ page because `header()` ran after output had started.
 
 **Shipped in PR #447.** Two corrections to the plan above. It said "leadership only
 (`manage_contributions`)" — wrong: a member must see their OWN contributions, so the list is
-authenticated-only and *scoped*, with `manage_contributions.edit` widening it to the whole group.
+authenticated-only and _scoped_, with `manage_contributions.edit` widening it to the whole group.
 And `/my/contributions` became `/contributions/standing`, keeping one resource rather than a
 parallel `/my/` tree — worth applying to the remaining modules below.
 
@@ -112,7 +112,7 @@ Four defects found while building it, every one silent:
 1. **`manage_contributions` has no permission row on a fresh schema.** The page has gated on that key
    since it was written. On the live servers the row existed but a role was missing its grant; on a
    fresh install the key is absent entirely, so every check resolves false outside the `isAdmin()`
-   *name* bypass. `database/add_contributions_permission.php` registers it, mirroring whatever the
+   _name_ bypass. `database/add_contributions_permission.php` registers it, mirroring whatever the
    target database already grants for `expenses` rather than hardcoding role ids.
 2. **The approval trail recorded the database user, not the officer.** `workflowActorSnapshot()` read
    `global $username`, which `includes/config.php` also sets for the PDO connection, so every
@@ -155,6 +155,13 @@ the treasurer to say which anchor the group means before anything changes.
 - [x] `GET /api/v1/my/fines?view=all` — group view, paginated, mirroring the web toggle the group asked for
 
 ## 7. Condolences / Death Expenses
+
+**Security fix shipped first, in PR #469/#470 — deployed & verified live 2026-09-02.**
+`death_expenses.view` (the Member's own grant) was being read as group-wide access on 4 endpoints,
+the same shape as the contributions leak from 2026-08-26. Fixed by `includes/death_expense_access.php`,
+mirroring `includes/contribution_access.php`. Unlike contributions, the list is leadership-only
+outright (no web screen scopes it to "my own" the way manage_contributions.php does) — a member's
+own condolence history will be `/my/condolences` in the API module below.
 
 - [ ] `GET /api/v1/condolences` — list, paginated — leadership only (`death_expenses`)
 - [ ] `GET /api/v1/condolences/{id}` — detail (`death_expense_view.php`)
