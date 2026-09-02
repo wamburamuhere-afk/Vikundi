@@ -103,7 +103,7 @@ page because `header()` ran after output had started.
 
 **Shipped in PR #447.** Two corrections to the plan above. It said "leadership only
 (`manage_contributions`)" — wrong: a member must see their OWN contributions, so the list is
-authenticated-only and *scoped*, with `manage_contributions.edit` widening it to the whole group.
+authenticated-only and _scoped_, with `manage_contributions.edit` widening it to the whole group.
 And `/my/contributions` became `/contributions/standing`, keeping one resource rather than a
 parallel `/my/` tree — worth applying to the remaining modules below.
 
@@ -112,7 +112,7 @@ Four defects found while building it, every one silent:
 1. **`manage_contributions` has no permission row on a fresh schema.** The page has gated on that key
    since it was written. On the live servers the row existed but a role was missing its grant; on a
    fresh install the key is absent entirely, so every check resolves false outside the `isAdmin()`
-   *name* bypass. `database/add_contributions_permission.php` registers it, mirroring whatever the
+   _name_ bypass. `database/add_contributions_permission.php` registers it, mirroring whatever the
    target database already grants for `expenses` rather than hardcoding role ids.
 2. **The approval trail recorded the database user, not the officer.** `workflowActorSnapshot()` read
    `global $username`, which `includes/config.php` also sets for the PDO connection, so every
@@ -156,11 +156,37 @@ the treasurer to say which anchor the group means before anything changes.
 
 ## 7. Condolences / Death Expenses
 
-- [ ] `GET /api/v1/condolences` — list, paginated — leadership only (`death_expenses`)
-- [ ] `GET /api/v1/condolences/{id}` — detail (`death_expense_view.php`)
-- [ ] `POST /api/v1/condolences` — record
-- [ ] `POST /api/v1/condolences/{id}/approve`
-- [ ] `GET /api/v1/reports/death-analysis` — `death_analysis.php` report data
+**Security fix shipped first, in PR #469/#470 — deployed & verified live 2026-09-02.**
+`death_expenses.view` (the Member's own grant) was being read as group-wide access on 4 endpoints,
+the same shape as the contributions leak from 2026-08-26. Fixed by `includes/death_expense_access.php`,
+mirroring `includes/contribution_access.php`. Unlike contributions, the list is leadership-only
+outright (no web screen scopes it to "my own" the way manage_contributions.php does) — a member's
+own condolence history will be `/my/condolences` in the API module below.
+
+**Module 7 shipped in PR #472.**
+
+- [x] `GET /api/v1/condolences` — list, paginated, filters: member_id, status, date range, search —
+      leadership only, hard 403 naming `/my/condolences` (mirrors Transactions, not Contributions:
+      no web screen ever scoped this to "my own")
+- [x] `GET /api/v1/condolences/{id}` — detail + approval trail; ownership re-checked at the loaded
+      row (404 for a non-owned id), same discipline as `includes/death_expense_access.php`
+- [x] `POST /api/v1/condolences` — record; leadership only (`create`), member_id and deceased_name
+      required
+- [x] `POST /api/v1/condolences/{id}/review` — added: the workflow is pending→reviewed→approved,
+      same as contributions, so approve cannot be reached without it
+- [x] `POST /api/v1/condolences/{id}/approve` — reviewed→approved, gated on the group's real fund
+      balance (`getGroupFundBalance()` — money leaving, unlike contributions), plus the same
+      deceased/dependant-marking side effects as `actions/approve_death_expense.php`
+- [x] `GET /api/v1/my/condolences` — added: the member's own cases, scoped from the token. This is
+      `death_expenses.view`'s first legitimate use — no web screen ever exercised it
+- [x] `GET /api/v1/reports/death-analysis` — `death_analysis.php` report data — leadership only
+      (`vicoba_reports`), paid cases only
+
+Found and fixed along the way: `tests/bootstrap.php` had no stub for `vk_api_error()`, so every
+`expectException(Throwable::class)` test against a config-free `api_*.php` helper (Fines,
+Transactions, and now Condolences) was catching PHP's "undefined function" fatal rather than the
+intended refusal — passing regardless of whether the validation was correct. Fixed with a proper
+throwing stub; all pre-existing tests still pass, now for the right reason.
 
 ## 8. Financial Ledger & Reconciliation
 
