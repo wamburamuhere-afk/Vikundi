@@ -236,15 +236,50 @@ back to the caller's own — never leaks another member's reconciliation), and t
 
 ## 9. Expenses & Petty Cash
 
-- [ ] `GET /api/v1/expenses` — general expenses list, paginated — leadership only
-- [ ] `GET /api/v1/expenses/{id}` — detail
-- [ ] `POST /api/v1/expenses` — record
-- [ ] `PUT /api/v1/expenses/{id}` — edit
-- [ ] `POST /api/v1/expenses/{id}/mark-paid` — cash-basis approved-vs-paid distinction
-- [ ] `GET /api/v1/reports/expense-report` — expense_report.php data
-- [ ] `GET /api/v1/petty-cash` — vouchers list, paginated — leadership only
-- [ ] `GET /api/v1/petty-cash/{id}` — detail
-- [ ] `POST /api/v1/petty-cash` — record a voucher
+- [x] `GET /api/v1/expenses` — general expenses list, paginated — leadership only
+- [x] `GET /api/v1/expenses/{id}` — detail + trail
+- [x] `POST /api/v1/expenses` — record
+- [x] `PUT /api/v1/expenses/{id}` — edit — blocked once `approved` or `paid`
+- [x] `POST /api/v1/expenses/{id}/mark-paid` — cash-basis approved-vs-paid distinction
+- [x] `GET /api/v1/reports/expense-report` — expense_report.php data
+- [x] `GET /api/v1/petty-cash` — vouchers list, paginated — leadership only
+- [x] `GET /api/v1/petty-cash/{id}` — detail + trail
+- [x] `POST /api/v1/petty-cash` — record a voucher
+
+**Module 9 built, tested, verified locally.** Two workflow steps not in the original plan but required
+by it, same reasoning as Condolences: `POST /expenses/{id}/review` and `/approve` (mark-paid cannot be
+reached without them — `assertReviewable()`/`assertApprovable()` enforce `pending → reviewed →
+approved → paid` at the DB level), and the same pair for petty cash
+(`POST /petty-cash/{id}/review`, `/approve`). Also added for parity: `PUT /petty-cash/{id}` (edit,
+only while `pending` — the web already supports this via `actions/save_petty_cash.php`) and
+`POST /petty-cash/{id}/mark-paid` (the same cash-basis distinction `/expenses` gets; the web's
+`actions/mark_expense_paid.php` already handles `type=petty` identically).
+
+**Permission model.** `expenses` (list/detail/create/edit/review/approve) already existed with correct
+grants (leadership full CRUD+review+approve, Member view-only) — reused as-is. `mark-paid` on both
+modules is gated on `canMarkPaid()` (Treasurer or a full admin — "the people who release the group's
+money"), not a `role_permissions` grant, mirroring `actions/mark_expense_paid.php` exactly.
+
+**`petty_cash` permission key registered new** (`database/add_petty_cash_permission.php`, mirrored
+from `expenses`, run + confirmed idempotent). The web's own gating for petty cash was inconsistent
+across files — create checked `expenses`, review/approve/delete checked `petty_cash` (which had no
+catalog row at all, so those checks always resolved false outside the admin bypass), the list/detail
+pages used a hardcoded role-name array, and **`actions/fetch_petty_cash.php` had no permission check
+at all beyond being logged in** — any authenticated Member could pull the whole group's voucher list.
+Per todo.md's own judgment call #3, the mobile API normalizes on `petty_cash` throughout, and the web
+hole is closed in the same change (`canView('petty_cash')` added to `fetch_petty_cash.php`).
+
+**One more defect fixed on the way:** `api/update_general_expense.php` only refused to edit a
+row `=== 'approved'`, so a **`paid`** expense — money that had already left the account — could still
+be silently edited. Fixed to block both statuses; the new API endpoint (`PUT /expenses/{id}`) uses the
+corrected rule from the start.
+
+Verified live against the local WAMP instance: full lifecycle both modules (create → review → approve
+→ edit-blocked → mark-paid → re-mark-paid blocked with `409 already_paid`), the report picks up a
+newly-paid expense immediately, a Member token gets `200` on both list endpoints (view is a genuine,
+mirrored-from-`expenses` grant, not a leak — matches the already-audited `api/get_general_expenses.php`
+behavior) but `403` on every mutation and on `mark-paid` specifically (named to the Treasurer), and an
+unauthenticated request gets `401` on all of it.
 
 ## 10. Budgets
 

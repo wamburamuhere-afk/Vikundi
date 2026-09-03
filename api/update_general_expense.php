@@ -22,11 +22,14 @@ $amount = $_POST['amount'] ?? 0;
 try {
     if (empty($id)) throw new Exception("ID haijapatikana.");
 
-    // Check if approved - can't edit approved
+    // Can't edit an approved OR already-paid expense. This used to check only
+    // 'approved', so a paid expense — money that has already left the account
+    // — could still be silently edited. Found while building the mobile API's
+    // expenses module (Module 9).
     $stmt = $pdo->prepare("SELECT status FROM general_expenses WHERE id = ?");
     $stmt->execute([$id]);
-    if ($stmt->fetchColumn() === 'approved') {
-        throw new Exception("Huwezi kuhariri matumizi yaliyoshidhinishwa.");
+    if (in_array($stmt->fetchColumn(), ['approved', 'paid'], true)) {
+        throw new Exception("Huwezi kuhariri matumizi yaliyoshidhinishwa au yaliyolipwa.");
     }
 
     $stmt = $pdo->prepare("UPDATE general_expenses SET expense_date = ?, description = ?, amount = ? WHERE id = ?");
