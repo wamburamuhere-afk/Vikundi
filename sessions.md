@@ -4,6 +4,397 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-09-03 — Module 8: Financial Ledger & Reconciliation — PR pending
+
+**Branch:** `develop` (feature branch not yet cut)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** Three read-only endpoints. `GET /ledger` mirrors `app/bms/customer/financial_ledger.php`
+row for row — same `cs_is_opening()`/`cs_standing()` rules, same entrance-then-monthly allocation, same
+"no fixed monthly => no target" rule — plus `getGroupFundBalance()`, the figure that page promises in
+its own todo.md line item but never shows. `GET /mkoba-reconciliation` and
+`GET /my/mkoba-reconciliation` mirror `app/constant/accounts/mkoba_reconciliation.php` and
+`app/constant/reports/member_mkoba_reconciliation.php`. Neither web page had ever had its math
+extracted into a shared file, so `includes/api_financial_ledger.php` and
+`includes/api_mkoba_reconciliation.php` reimplement it rather than reuse it — same discipline as every
+prior module's `includes/api_*.php` file.
+
+**`bank_reconciliation` excluded, same evidence shape as member-groups (Module 3).** No nav link
+anywhere in the app, its four backing tables (`bank_reconciliations`, `accounts`, `banks`,
+`bank_transactions`) all carry zero rows on the local dev DB, and its permission key isn't even in
+`permissions` — the page still gates on the pre-RBAC `in_array($user_role, [...])` pattern flagged in
+todo.md's own judgment call #3, never migrated to `requireViewPermission()`. Building an API for a
+feature nobody can reach, with a permission key that doesn't exist, would be the same waste already
+flagged for member-groups.
+
+**Two permission-catalog gaps found and fixed, same shape as Module 4's `manage_contributions` gap:**
+
+1. `vicoba_reports` had no row in `permissions` at all on a fresh/local schema, despite three real
+   pages (`financial_ledger.php`, `vicoba_reports.php`, `death_analysis.php`) gating on it since they
+   were written. Every check resolved false for anyone outside the `isAdmin()` bypass
+   (Admin/Chairperson only), so a Secretary or Treasurer was silently refused all three reports.
+   `database/add_vicoba_reports_permission.php` registers the key and grants view-only to the four
+   leadership roles. Not mirrored from an existing key (unlike `add_contributions_permission.php`):
+   the Reports-module keys already in the table belong to the dead accounting-ledger module (see
+   todo.md's "Excluded" section) and carry leftover BMS grants — including Member view — that would be
+   wrong to copy onto a leadership-only report.
+
+   Note for `docs/API.md`: on the demo/production deployment, `vicoba_reports.view` is already granted
+   to Member (documented in §10, the Condolences death-analysis note) — so this gap is specific to
+   fresh/local schemas, exactly like the `manage_contributions` gap was. The new migration only adds
+   missing leadership rows; it never touches an existing grant, so it will not narrow anything already
+   configured on a deployment that has this key.
+
+2. `mkoba_reconciliation` had a permission row (registered by `create_mkoba_statement_rows_table.php`)
+   but zero grants for any role on the local dev DB — Secretary and Treasurer were silently refused the
+   group reconciliation page too. `database/grant_mkoba_reconciliation_to_leadership.php` backfills
+   view-only grants, mirroring `grant_meetings_to_leadership.php`'s structure exactly, view-only rather
+   than full CRUD because this page has no create/edit/delete action anywhere in the codebase.
+
+Both registered in `database/migrate.php`, run against the local dev DB, confirmed idempotent on a
+second run (0 rows added, existing rows left alone).
+
+**Tests.** `FinancialLedgerApiTest` and `MkobaReconciliationApiTest`, covering the per-member split as
+pure arithmetic (entrance-before-monthly, opening only ever reducing a deficit never creating one, the
+monthly-grid allocation and its remainder-dump rule, AGM kept separate from the standing balance), the
+per-member tie-out math (`vk_api_mkoba_member_summary()`), the M-Koba reference masking guard, the
+leadership gates (including that the `/my/mkoba-reconciliation` override check is
+`manage_contributions`, deliberately not the group-wide `mkoba_reconciliation` key), and routing.
+`composer test-unit`: 1875 tests, 4849 assertions, all green.
+
+**Verified live** against the local WAMP instance (`vikundi.localhost`), using access tokens issued
+directly through `vk_api_issue_access_token()` (the local dev DB's users don't match the demo dataset's
+usernames/passwords, so login-by-credentials wasn't available locally):
+
+- Admin token: `/ledger` returns 334 members, `fund_balance` 2,302,878, `totals.contributed` 1,801,000 —
+  matching `/dashboard`'s `contributions.total` exactly, a live cross-check between two independently
+  written endpoints.
+- Admin token: `/mkoba-reconciliation` returns the one imported batch (560 rows), `reconciled: true`,
+  `ledger_amount` equal to `imported.amount` (7,968,000).
+- Admin token overriding `/my/mkoba-reconciliation?member_id=1115`: 5 rows, all pending, `matched: true`
+  on every row, `mismatches: 0` — a real member's tie-out computed correctly from live data.
+- Member-role token: `/ledger` and `/mkoba-reconciliation` both 403 `forbidden`, each naming the correct
+  fallback endpoint. The same token's attempt to override `/my/mkoba-reconciliation?member_id=1115` was
+  silently ignored (fell back to the caller's own record) — confirmed no cross-member leak.
+- No token: 401 `unauthenticated` on all three.
+
+**Docs.** `docs/API.md` §11 and the Insomnia collection deliberately not done yet — per the established
+per-module order (build → deploy → verify live → docs → handover), those come once this is merged and
+deployed, not before.
+
+**Not yet asked for user go-ahead on:** opening the feature branch/PR, deploying, or updating
+`docs/API.md` / `docs/handover/README.md` — holding for explicit confirmation before any of those
+(commit/PR policy).
+
+---
+
+## Session — 2026-09-02 — Module 7: Condolences — PR #472 / #473, security fix #469 / #470
+
+**Branch:** `fix/death-expenses-leak`, then `feat/api-v1-condolences` (from `develop`)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** Found while starting Module 7 — the eighth instance of the same shape of bug as the
+2026-08-26 contributions leak. `death_expenses.view` is granted to the Member role, correctly, and
+four places treated it as group-wide access instead: the whole condolences list
+(`api/get_death_expenses.php`), any record by id (`death_expense_view.php`,
+`print_death_expense.php`), and the leadership console itself (`death_expenses.php`), which had
+**no permission check at all**.
+
+Verified live on demo as `hmbwana1` (member 30): both condolence cases in the group, including the
+Chairperson's TZS 900,000 case with her name attached, from the list, the detail page, and the
+printable receipt. Fixed by `includes/death_expense_access.php`, mirroring
+`includes/contribution_access.php` exactly — `edit`, never `view`, is the leadership test. Unlike
+contributions, the list is closed outright rather than scoped: no web screen here ever branched on
+a member's own `view` grant, so there was no existing "my own" behaviour to preserve. Six
+mutations against the fix, all killed. Deployed, re-verified live: all four exploits blocked for
+the member, all four still open for the Treasurer.
+
+**Module 7 itself, seven endpoints**, built on that fix:
+
+- `GET /condolences` — leadership only, hard 403 naming `/my/condolences` (matches Transactions'
+  shape, not Contributions', for the reason above)
+- `GET /my/condolences` — new; `death_expenses.view`'s first legitimate use
+- `GET /condolences/{id}` — detail + trail, ownership re-checked on the loaded row (404, not the data)
+- `POST /condolences/{id}/review` — not in the original plan but required by it: the workflow is
+  pending → reviewed → approved, same `assertReviewable()`/`assertApprovable()` as contributions
+- `POST /condolences/{id}/approve` — gated on the group's real fund balance
+  (`getGroupFundBalance()` — a condolence payout is money *leaving* the group, unlike a
+  contribution), and replicates `actions/approve_death_expense.php`'s side effects exactly:
+  marking a deceased member or dependant on the customers table, reusing `helpers.php`'s
+  `markChildDeceasedJson()` rather than a second copy. The side effects run after the workflow
+  transition commits, deliberately — a failure there must not roll back a genuine approval.
+- `POST /condolences` — record; leadership only, mirroring `create` on `death_expenses`
+- `GET /reports/death-analysis` — the sustainability report, gated separately on `vicoba_reports`
+
+**Found and fixed along the way, wider blast radius than this module.** `tests/bootstrap.php` had
+no stub for `vk_api_error()`. The config-free `api_*.php` helper files (Contributions, Fines,
+Transactions, and now Condolences) never load the real one, so every
+`expectException(Throwable::class)` test in `FinesApiTest` and `TransactionsApiTest` was catching
+PHP's own "undefined function" fatal, not the refusal it claimed to prove — passing identically
+whether the validation was correct or absent entirely. Fixed with a proper throwing stub; every
+pre-existing test still passes, now for the right reason.
+
+**A second, smaller test bug of my own**, caught immediately by the stub fix: two guard conditions
+inside `vk_api_death_transition()` (the FROM-status check, the fund-balance check) sat only inside
+a real database transaction, which a unit test cannot faithfully fake — mutating either one
+survived. Pulled both out as pure functions (`vk_api_death_can_transition()`,
+`vk_api_death_fund_sufficient()`), mirroring how `includes/finance.php` already extracts
+`fundBalanceFromTotals()` out of `getGroupFundBalance()` for the identical reason.
+
+**One live finding that is not a bug.** `GET /reports/death-analysis` returned the full report to
+an ordinary member on first live check — looked like a defect until the same check against the
+*web* report page showed identical behaviour: `vicoba_reports.view` is granted to Member there
+too, live, today. The API mirrors the web faithfully; documented as a permission-table fact for
+the group to decide on, not something to special-case client-side.
+
+**Tests.** 40 in `CondolencesApiTest`. Mutation-checked: 14 mutations, 6 initially survived (2 from
+the untestable-transaction problem above, closed by extraction; 4 from genuine gaps in a new test
+file, closed by adding tests) — all 14 killed on the second pass.
+
+**Verified live** on demo after deploying `238bb6a`:
+- Treasurer `/condolences`: 2 rows, TZS 1,700,000. Member: 403 naming `/my/condolences`.
+- Member `/my/condolences`: empty (no cases of their own) — correct, not an error.
+- Member `/condolences/2` (the Chairperson's case): 404. Treasurer: 200, with trail.
+- Admin (no member record) `/my/condolences`: 403 `no_member_record`.
+- Six refusals on the write endpoints: member recording (403), no deceased_name (422), zero
+  amount (422), unknown member (404), approving a nonexistent id (404), member reviewing (403).
+- Full lifecycle: create → review → approve, `"1,500"` stored as 1500, `sig_warning` present,
+  case appears on the group list. Confirmed the deceased-marking side effect correctly did
+  **nothing** to member 30's own account (still `active`, still able to log in) because the test
+  case's `deceased_id` matched none of the four tracked shapes.
+
+**Demo residue.** Case #3, TZS 1,500, description "API smoke test — safe to delete", left
+**approved** — there is no reject/waive equivalent for condolences, and the web's own delete
+action also refuses an approved case (`actions/delete_death_expense.php`), so this cannot be
+cleanly reversed through any sanctioned path. Clearly labelled; harmless.
+
+**Docs.** `docs/API.md` §10 — added in a separate PR (#474), including the `vicoba_reports`
+permission note above.
+
+---
+
+## Session — 2026-08-28 — Module 6: Fines — PR #464 / #465
+
+**Branch:** `feat/api-v1-fines` (from `develop`)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** Eight endpoints. The access rule is deliberately NOT the contributions rule.
+
+`app/bms/customer/my_fines.php` gives any member a `?view=all` toggle onto every fine in the
+group — the group asked for it, it mirrors the Group Financial Ledger, and an existing test
+records that rationale. So `/my/fines` mirrors it. Making the API stricter than the website would
+not protect anybody; it would only mean the app cannot show what the group agreed to show.
+
+Own fines stay the default, scoped from the token — there is no `member_id` parameter to tamper
+with. The group view is paginated here where the web page is not.
+
+Writing stays closed: recording is `create` on `manage_fines` (a role may record without being
+able to forgive); editing, paying and waiving are `edit`. The leadership test is `edit`, never
+`view` — `manage_fines` is not granted to Member today so `view` would pass, but that is a fact
+about the data, not the rule.
+
+**Added beyond the plan:** `POST /fines/{id}/pay`. Marking a fine paid is the main leadership
+action and `actions/update_fine_status.php` already does it.
+
+**Decisions worth keeping:** a reason is required; a submitted status is validated rather than
+run through `vk_normalize_fine_status()`, which turns anything unrecognised into `pending` and
+would silently reopen a settled fine on a typo; repeating a transition is 409 so the audit trail
+does not record an act that did not happen; a fine cannot be created already waived;
+`is_outstanding` is answered server-side because only `pending` is money owed.
+
+**Caught before deploy.** `vk_api_is_admin()` takes an int role id, not the auth array — every
+fines request would have been a fatal TypeError. Also exercised every SQL shape against the real
+schema, which unit tests do not cover.
+
+**Mutation testing caught a broken test of mine.** `testAZeroOrNegativeFineIsRefused` looped with
+`try { ...; $this->fail(); } catch (Throwable $e)` — `fail()` throws, the catch swallowed it, and
+the test passed no matter what the code did. A mutation removing the amount check survived.
+Rewritten as `@testWith` cases; 13 of 13 mutations now killed.
+
+**Tests.** 34 in `tests/Unit/FinesApiTest.php`. Suite: 1804 tests, 4655 assertions, green.
+
+**Verified live** on demo after deploy:
+- Treasurer `/fines`: 8 rows, outstanding 65,000 / paid 60,000. Member: 403.
+- Member `/my/fines`: own (0 rows). `?view=all`: 8 rows across 8 members, `actions` all false.
+- Eight refusals all correct: member recording (403), no reason (422), zero amount (422),
+  created waived (422), unknown member (404), unknown fine (404), member waiving (403),
+  paying an already-paid fine (409).
+- Waive -> pay round trip on fine #4, ending in its original state.
+- Create with `"1,500"` stored 1500; PUT edit; empty PUT 422; bogus status 422.
+
+**Demo residue:** fine #9, TZS 2,000 against Hamisi Mbwana, reason "API smoke test — edited",
+left **waived** so it is not money anyone owes. There is no delete endpoint; remove it from the
+web Fines page if you want the demo pristine.
+
+**Docs.** `docs/API.md` §9.
+
+---
+
+## Session — 2026-08-28 — Module 5: Transactions — PR #459 / #460, fix #461 / #462
+
+**Branch:** `feat/api-v1-transactions-module`, then `fix/my-transactions-opening-balance`
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** Two endpoints over the same `contributions` table `/contributions` reads, answering a
+different question: money by the date it ARRIVED, not the month it covers.
+
+- `GET /api/v1/transactions` — group ledger, **leadership only as a hard 403**, not a narrowing to
+  the caller's own rows. Adds the M-Koba statement columns (`mkoba.sno / trans_id / member_id_str /
+  source / destination / trans_type`) that `/contributions` does not carry, without which a
+  treasurer cannot tie the books to the statement, plus an `account` filter. Search covers receipt
+  number, M-Koba trans id and S/No.
+- `GET /api/v1/my/transactions` — the member's own receipts, month grid and year summary, every
+  figure from `includes/contribution_standing.php`.
+
+Rows are built on `vk_api_contrib_row()` rather than beside it, so `amount`, `status`,
+`is_opening` and `counts_toward_savings` cannot mean different things on the two endpoints.
+
+**I shipped a wrong claim and the live check caught it.** #459 said the transactions grand total
+was guaranteed to equal `/contributions/standing`'s `total_saved`. It was not: demo member 30 read
+420,000 against 440,000 — exactly their 20,000 of carried-in savings.
+
+`customers.initial_savings` carries no date, so `cs_transaction_grid()` cannot bucket it and
+`cs_member_transactions()` never returns it, while `cs_member_schedule()` does count it.
+`app/constant/reports/member_transactions.php` had already solved this — it prints the amount as a
+brought-forward opening line, the way a bank statement does. I mirrored the grid but not that line.
+
+Fixed in #461: `totals` now publishes `opening_brought_forward`, `receipts_total` and
+`received_total`, so the member is not left wondering why the receipts they can count do not add
+up to the total they are shown. The invariant is pinned as arithmetic in
+`vk_api_txn_received_total()` rather than as a claim in a docblock.
+
+**Why the tests missed it:** every member in the dev database has `initial_savings` of 0, so the
+invariant held locally across 15 members. Only demo has real carried-in balances. This is the
+second time a green local suite has hidden something only live data shows.
+
+**Mutation testing caught my own weak test.** The first pass on the fix left a survivor —
+hardcoding `$openingBf = 0.0` passed every assertion, because they checked `initial_savings` was
+SELECTed, not that it reached the total. Closed with an assertion on the assignment itself.
+
+**Tests.** 28 in `tests/Unit/TransactionsApiTest.php`. Suite: 1746 tests, 4560 assertions, green.
+
+**Verified live** on demo after deploying `afcddbc` then the fix:
+- Treasurer `/transactions`: 333 rows, TZS 18,461,000, mkoba block present.
+- Member `/transactions`: 403, message naming `/my/transactions`.
+- The invariant, both members: 20,000 + 420,000 = 440,000 and 20,000 + 440,000 = 460,000, each
+  matching `/contributions/standing`.
+- `account=Crypto` → 422; `date_from=last-tuesday` → 422; `member_id=30` + date window → 9 rows.
+- Admin `/my/transactions` → 422 `member_required`; with `?member_id=30` → 200.
+- Member asking `?member_id=3` → got their own record (id 30), silently, as designed.
+
+**Docs.** `docs/API.md` §8 added, with the three-figure `totals` warning and the instruction not to
+sum `receipts` client-side.
+
+---
+
+## Session — 2026-08-28 — Group logo: upload endpoint + a loadable URL — PR #456 / #457
+
+**Branch:** `feat/api-group-logo` (from `develop`)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** Two gaps reported from the Flutter side — no way to change the logo through the API,
+and `GET /group-settings` returning nothing a client could load.
+
+**What changed**
+
+- New `POST /api/v1/group-settings/logo` — multipart, field `logo`, gated on the same
+  admin/Secretary rule as `PUT /group-settings` via the same helper. Separate from PUT because PUT
+  is JSON: a client should not switch the whole settings form to multipart to save a phone number.
+- Stored in `assets/images/` under a bare filename, the convention
+  `actions/save_group_settings.php` already uses and that 18 web call sites and the TCPDF printouts
+  read. Anywhere else and a phone-uploaded logo would render in the app and nowhere else.
+- Types narrower than the general uploader: JPG/PNG/GIF/WEBP, 2 MB. PDF refused (cannot render in
+  an `<img>`); SVG refused (script-carrying on a served origin).
+- GET gains `group.logo_url` — absolute, default applied. `group.logo` is the raw stored FILENAME
+  and is unchanged for existing consumers.
+
+**Live bug fixed on the way.** The default logo was committed as `LOGO1.png` while 18 call sites
+ask for `logo1.png`. The servers are case-sensitive, so the fallback 404'd and the demo and
+production **login pages were rendering a broken image**. Renamed to match; nothing referenced the
+uppercase name. Verified before (302) and after (200 image/png) on both sites.
+
+**Also hardened.** The base-path derivation for the URL. `roots.php`'s `getUrl()` does a bare
+`str_replace` of `DOCUMENT_ROOT`, which on a server where that is not a prefix of the project path
+leaves the whole filesystem path in the URL. A test caught it before it shipped.
+
+**Tests.** 22 new in `tests/Unit/GroupLogoTest.php`, including one pinning that the upload file is
+named what the router resolves `/group-settings/logo` to — `group-settings_logo.php`, with the
+hyphen. It had been named with an underscore and would have silently 404'd. Mutation-checked, all
+killed: reverting the default's case; dropping `basename()`; losing the default; accepting
+svg/pdf; removing the gate; storing outside `assets/images`; dropping `logo_url`. Suite: 1720
+tests, 4500 assertions, green.
+
+**Verified live** on demo after deploying `64cfccb` to both servers:
+- `logo1.png` now 200 image/png on demo and production; the login page's own reference resolves.
+- `logo_url` returns an absolute URL that loads (200 image/png), with the default applied for a
+  group that has never uploaded one.
+- Refusals: no file → 422 `no_file`; PDF → 422 `invalid_logo`; PDF bytes named `.png` → 422 "file
+  contents do not match its extension"; Treasurer → 403; Member → 403.
+- Success as Secretary → 200, file served at the returned URL, GET reflects it immediately.
+
+**Demo residue.** `group_logo` was unset before this test and now holds a filename. I re-uploaded
+the original `logo1.png` artwork, so the demo renders byte-identically to before (md5 confirmed) —
+but the key is now set rather than falling back. Clear it from the web settings form if you want
+it pristine.
+
+---
+
+## Session — 2026-08-27 — Group settings GET/PUT field parity — PR #453 / #454
+
+**Branch:** `feat/api-group-settings-parity` (from `develop`)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** Reported from the Flutter side: `PUT /group-settings` accepts 18 fields, `GET` returns
+7 under different names (`contributions.monthly_target` vs `monthly_contribution`), so the mobile
+edit form could not pre-fill itself and any client that tried had to keep a private name-mapping
+table.
+
+**What changed**
+
+- New `includes/api_group_settings.php` — one definition of the writable field list, the validation
+  rules, the web form's defaults, and the admin/Secretary gate. Both endpoints derive from it, so
+  parity is structural rather than a promise.
+- `GET /api/v1/group-settings` gains a flat `settings` object keyed exactly as PUT accepts, plus
+  `can_edit`. `settings` is `null` for anyone who cannot write — the web settings page is
+  officer-only, and the API must not be more permissive than the screen it mirrors.
+- The four existing blocks (`group`, `contributions`, `fines`, `leadership_positions`) are unchanged;
+  Modules 1–3 already read them.
+- `PUT` rewired onto the shared list; its inline role check replaced by the shared helper.
+
+**Bug found and fixed on the way.** `app/bms/customer/group_settings.php` stores a Swahili day NAME
+in `deadline_day` when `cycle_type` is weekly, and a number 1–31 when monthly. The API typed it
+`'int'`, and `(int) 'Jumatatu'` is `0`. A pre-filled edit form echoing the value straight back would
+have zeroed a weekly group's payment deadline on every save without anyone touching the field — and
+`actions/auto_terminate_members.php` reads that value to decide who gets removed. `deadline_day` and
+`meeting_day` are now typed as days: 1–31 or one of the seven names, English normalised to the
+stored Swahili, anything else refused. `cycle_type` is exposed because `deadline_day` carries two
+types in one key and cannot be rendered without it.
+
+**Not fixed (pre-existing, web-side).** `actions/auto_terminate_members.php:28` does
+`intval($settings['deadline_day'] ?? 15)`, so a weekly group's deadline already collapses to day 0
+there. Changing it means deciding what a weekly termination deadline should mean — a product call.
+
+**Tests.** 27 new in `tests/Unit/GroupSettingsParityTest.php`. `GroupSettingsAuthTest` and
+`MembersApiTest` asserted on the constant literals that moved — repointed at the shared list and at
+behaviour, not deleted. Mutation-checked, all killed: coercing a day name with `(int)`; returning
+`0.0` for an unset money field; ungating the `settings` block; renaming keys on the way out;
+hardcoding `can_edit`; removing the 1–31 range check; `may_edit` returning true. Suite: 1722 tests,
+4470 assertions, green.
+
+**Verified live** on demo after deploying `287f7af` to both servers:
+- Key parity exact — 19/19, no diffs in either direction.
+- `can_edit` — Admin/Chairperson/Secretary `true` with 19 keys; Treasurer and Member `false`,
+  `settings: null`. Treasurer is leadership for money but not for group configuration.
+- Round-trip: `cycle_type=weekly` + `deadline_day="Jumatatu"` reads back as the string `"Jumatatu"`,
+  not `0`. `"Wednesday"` normalises to `"Jumatano"`. `"Someday"` and `"45"` are refused.
+- Treasurer and Member both get 403 on PUT.
+- Demo restored to its exact pre-test snapshot; all 19 settings identical.
+
+**Docs.** `docs/API.md` §6 rewritten — full key list, Dart types (money is `num?`, not `double?`),
+the Swahili day table, and the `deadline_day` dual-type rule.
+
+---
+
 ## Session — 2026-08-26 — Security: a member could read the whole group's savings — PR 5
 
 **Branch:** `fix/contribution-endpoints-leak` (from `develop`)
@@ -87,8 +478,6 @@ Suite: 1676 → **1696 tests, 4377 assertions, 15 skipped, exit 0**.
 ### Database Changes
 
 None.
-
----
 
 ---
 
@@ -191,6 +580,326 @@ permission and mirrors the `expenses` grants. Idempotent; never overwrites an ex
 grant. Registered in `migrate.php` before `seed_vicoba_roles.php`, so deploys apply it.
 
 ---
+
+## Session — 2026-08-14 — Fix: deleting an election must delete its applications — PR 12
+**Branch:** `fix/delete-vote-cleans-applications` (from `develop`, PR #421)
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Found by deleting the trial election. `actions/delete_vote.php` cleared `vote_ballots`, `vote_participation`, `vote_eligibility` and `vote_options` — the four tables that existed when it was written. `leadership_applications` was added the day before, and nobody told that cleanup about it.
+
+### What broke
+Deleting an election left its applications behind, pointing at a vote id that no longer exists — invisible to the member (their page JOINs `votes`) and unreachable from any screen. Two were orphaned by the trial deletion itself.
+
+### Fix
+The table joins the cleanup list, and the migration sweeps any orphans already created. Idempotent — after the first run there are none to find. Verified by creating an orphan deliberately and re-running the migration: "Removed 1 application(s) whose election no longer exists."
+
+### A pattern, not a one-off
+Any table added later that hangs off `votes` has to be added to this list, and nothing in the code makes that obvious. The test now names the list explicitly so the next addition fails loudly rather than silently leaking rows.
+
+### Tests
+`tests/Unit/LeadershipApplicationTest.php` extended.
+
+Suite: 1402 → **1404 tests, 3665 assertions, 15 skipped, exit 0**.
+
+### Database Changes
+None (migration sweeps existing orphans; idempotent).
+
+---
+
+## Session — 2026-08-14 — Fix: one place to record a fine, and one place fines live — PR 11
+**Branch:** `feat/record-fine-manually` (from `develop`, PR #419)
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Reported from the field: recording a fine on the Transactions form produced a contribution instead. The cause was worse than a form bug — a fine was storable in **two places that never agreed**.
+
+```
+fines table                            <- what My Fines, the register and the reports read
+contributions with contribution_type='fine'  <- what the Transactions form wrote
+```
+
+### What that meant
+The money reached the books and the fine itself was invisible everywhere a fine is meant to appear. Worse, `includes/finance.php` sums group income as *all* approved contributions with no type filter, so a fine-contribution counted as income while `cs_group_savings_total()` and the member statements excluded it — four consumers, four different answers about the same row. And the only writer of the `fines` table was the meeting-absence sweep, so an **ordinary fine could not be recorded at all**. The Transactions form was not being misused; the feature did not exist.
+
+### Three changes
+- The contribution type list no longer offers "Fine" — a fine is not a contribution.
+- Leadership can record one from the Fines page, into the `fines` table, gated on `canCreate('manage_fines')` and audited. A reason is required: a figure nobody can explain when the member asks is worse than no record.
+- A migration moves any existing fine-typed contributions into the `fines` table.
+
+### The migration is total-preserving by construction
+Income is `(approved contributions) + (fines WHERE status='paid')`, so a fine-contribution the books already counted must arrive as `paid` or the group's income silently drops. Rows the books did not count arrive as `pending`. Cancelled rows are left untouched — moving a cancelled figure into a live fines register would invent a debt.
+
+It measures income before and after and **rolls back** rather than commit a change to the books. Verified by mutation: forcing everything to `pending` aborts with *"group income would change from 2,415,000.00 to 2,408,000.00"* and nothing moves.
+
+Also tidied the member picker on the Fines page to drop empty middle names, since that list is now shown in a dropdown.
+
+### Tests
+`tests/Unit/RecordFineTest.php` — new.
+
+Suite: 1386 → **1402 tests, 3661 assertions, 15 skipped, exit 0**.
+
+### Database Changes
+`database/move_fine_contributions_to_fines.php` — one-time, idempotent, abort-on-mismatch migration moving fine-typed contribution rows into `fines`.
+
+---
+
+## Session — 2026-08-14 — Fix: a ballot name must not carry a double space — PR 10
+**Branch:** `fix/ballot-label-double-space` (from `develop`, PR #417)
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** The trial election produced ballot labels reading "Consesa  Munishi" and "Abdallah  Ally" — two spaces in the middle of each name.
+
+### Root cause
+`CONCAT_WS` skips `NULL` but keeps an empty string, and 326 of this group's 334 members have `middle_name = ''` rather than `NULL`. Joining first/middle/last the plain way yields "First  Last" for 97% of the membership. `NULLIF(TRIM(col), '')` drops the empty part as well as a null one.
+
+### Why here, specifically
+Everywhere else in the product this is merely untidy. Here it is different in kind: the value is **written into `vote_options.label`** at approval time and printed on a ballot members vote from — it persists, and it is seen at the one moment the group is being formal.
+
+### Deliberately not fixed here
+34 files build names with the same plain `CONCAT_WS`, so almost every screen in the product shows the same double space. That is a mechanical sweep with a real chance of touching something unrelated, and it should not ride along on an election fix the day before a demonstration. The two labels already stored by the trial keep their double space — they are demo data, and rewriting `vote_options` rows after a vote has been cast is not something to do casually even when it is only cosmetic.
+
+### Tests
+`tests/Unit/LeadershipReviewTest.php` extended.
+
+Suite: 1385 → **1386 tests, 3625 assertions, 15 skipped, exit 0**.
+
+### Database Changes
+None.
+
+---
+
+## Session — 2026-08-14 — Fix: the apply grant must survive the Member role being reseeded — PR 9
+**Branch:** `fix/leadership-grant-survives-reseed` (from `develop`, PR #415)
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** A member could open the application page and not submit it: the endpoint returned 403 "You do not have permission to apply."
+
+### Root cause
+`seed_vicoba_roles.php` runs earlier in the migration list and **resets the Member role to view-only on every single run** — deliberate, since Member is meant to be view-only almost everywhere, and applying for leadership is a deliberate exception to it.
+
+The grant was insert-if-missing, which made this a bug that only appeared on the **second** deploy. First deploy: the permission did not exist yet, so the seeder could not touch it, and the grant landed with `can_create=1`. Next deploy: the seeder re-seeded Member across every page including this new one, view-only; the grant saw a row already existed and did nothing. `can_view` stayed 1, so the page still opened — which is exactly why it looked like it worked.
+
+### Fix
+The grant now re-asserts rights on an existing row instead of skipping it, using `GREATEST` so rights are raised and never lowered — an administrator who widened a leadership role through the Roles screen keeps that change across deploys. Reproduced before fixing by setting Member's `can_create` to 0 locally, matching production exactly, then re-running the migration: "re-asserted on 1" and the right came back.
+
+**Worth remembering:** anything granted to Member by a migration has to be re-asserted every run, or it survives one deploy and quietly disappears on the next.
+
+### Tests
+`tests/Unit/LeadershipApplicationTest.php` extended.
+
+Suite: 1383 → **1385 tests, 3623 assertions, 15 skipped, exit 0**.
+
+### Database Changes
+None (migration logic change only).
+
+---
+
+## Session — 2026-08-14 — Fix: leadership endpoints fatalled instead of checking permission — PR 8
+**Branch:** `fix/action-permission-include` (from `develop`, PR #413)
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Submitting an application returned "Server error." Both new endpoints call a permission helper — `canCreate()` and `requirePermissionJson()` — without loading the file those helpers live in.
+
+### Root cause
+Endpoints under `actions/`, `api/` and `ajax/` are served **directly by Apache** — `.htaccess` sends them straight to the file, so they never pass through `roots.php`, which is what pulls in `core/permissions.php` for ordinary pages. Every other action in the tree requires it explicitly; mine did not, so PHP fatalled with "Call to undefined function canCreate()" and returned a 500.
+
+Worth being precise about what that means: the endpoint did **not** fail open. A fatal returns 500 and writes nothing, so no application could be submitted and no approval could be recorded. The feature was broken, not unguarded.
+
+### Why the tests missed it
+They asserted the *string* `canCreate('leadership_applications')` appeared in the source — and it did. They never executed the file, so an undefined function was invisible. Only submitting the form could surface it, which is how it was found.
+
+### Fix, and the sweep it earned
+`ActionPermissionIncludeTest` now sweeps **every** endpoint under `actions/`, `api/` and `ajax/` for a permission-helper call and fails any that does not load `core/permissions.php` (or `roots.php`, which loads it). The sweep found exactly **two** offenders in the whole tree — both of them mine — so this was a mistake in the new code rather than a pattern, but the invariant is worth keeping. It also asserts the sweep sees more than a hundred endpoints, so a broken glob fails loudly instead of passing silently forever.
+
+### Tests
+`tests/Unit/ActionPermissionIncludeTest.php` — new, whole-tree sweep.
+
+Suite: 1380 → **1383 tests, 3617 assertions, 15 skipped, exit 0**.
+
+### Database Changes
+None.
+
+---
+
+## Session — 2026-08-14 — Fix: a leadership election must be creatable with no candidates yet — PR 7
+**Branch:** `fix/draft-election-without-candidates` (from `develop`, PR #411)
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Found by trying to use the feature, not by testing it.
+
+### What broke
+The intended flow: create an election, leave it in draft, members apply, the Committee approves, and each approval adds a candidate. Creating that election through Manage Voting was **impossible** — the form refused with "Add at least two candidates." The Committee would have had to invent two names before anyone had applied.
+
+My tests never caught it because both the unit tests and the local end-to-end trial inserted the `votes` row directly with SQL, walking straight past the validation the real form runs. The screen was the only place it could surface.
+
+### Fix
+Nothing is lost by relaxing it. `actions/set_vote_status.php` already refuses to **open** a vote with fewer than two options, and that is where the rule belongs: two candidates are needed to *hold* an election, not to *draft* one. A test now pins that open-time check, since it is the only thing making this relaxation safe.
+
+Exactly **one** name is still rejected at create time — a half-filled list is a mistake, whereas an empty one is a deliberate "the applicants will fill this." Blank boxes count as none rather than as one, since the form ships with two empty rows.
+
+### Tests
+`tests/Unit/VotingTest.php` extended.
+
+Suite: 1378 → **1380 tests, 3613 assertions, 15 skipped, exit 0**.
+
+### Database Changes
+None.
+
+---
+
+## Session — 2026-08-14 — Feat: the Committee reviews leadership applications — PR 6
+**Branch:** `feat/leadership-application-review` (from `develop`, PR #409)
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** The middle step of the chain the group asked for. Approving an application writes a `vote_options` row — exactly what the existing ballot renders and what `cast_vote.php` already tallies — so the voting module itself is untouched.
+
+### The boundary the group drew
+Members apply and vote; they do not approve. That boundary is a separate permission (`manage_leadership_applications`, edit) which ordinary members do not hold, checked on the endpoint as well as the page, and the decision buttons are additionally hidden without edit rights so a read-only Committee member can review without ruling.
+
+### Nothing can change once voting opens
+Adding or removing a candidate mid-vote would change what people were choosing between after some of them had already chosen, so every decision is refused unless the election is still in draft. Rejecting or reopening deletes the ballot option too — otherwise a rejected candidate would still be standing — and re-approving reuses the existing option rather than adding the same person twice.
+
+The ballot option and the application status are written in **one transaction**. Half of that pair is a candidate nobody can vote for, or a name on the ballot with no application behind it. Both tables are InnoDB, checked, so this is a real transaction rather than the silent no-op it would be on MyISAM.
+
+A rejection requires a reason — a rejection without one is the kind of decision a group argues about for a year.
+
+### The Committee sees each applicant's contribution standing
+Pulled from the same module the statements use — not to block anyone, but so that electing a Treasurer who is themselves months behind is a decision taken knowingly. Gathered in one pass via `cs_group_schedules()` rather than a query per applicant.
+
+### One office at a time
+A ballot lets a member choose one option, so an election carrying candidates for several offices would force a choice across different offices. Rather than silently produce that ballot, the screen warns and suggests one election per position — and the option label carries the position only when the election actually spans more than one, so a normal single-office ballot reads as plain names.
+
+### Verified
+End to end against the local database inside a rolled-back transaction: election created, two applications submitted, a duplicate blocked by the UNIQUE key, approval producing a correctly labelled ballot option, a rejected applicant absent from the ballot, a vote cast and tallied, and `vote_ballots` confirmed to carry no `member_id` so the ballot stays anonymous.
+
+### Tests
+`tests/Unit/LeadershipReviewTest.php` — new, 190 lines.
+
+Suite: 1360 → **1378 tests, 3609 assertions, 15 skipped, exit 0, no warnings**.
+
+### Database Changes
+None (writes to existing `vote_options` / `leadership_applications`).
+
+---
+
+## Session — 2026-08-14 — Feat: members can apply for a leadership position — PR 5
+**Branch:** `feat/leadership-applications` (from `develop`, PR #407)
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** The stage that was missing between "the group needs new officers" and "members vote": member applies → Committee reviews → approved names become the ballot. This PR builds the schema and the member's half; the Committee's review screen follows next.
+
+### One lifecycle, not two
+An election is an existing `votes` row of type `candidate`. While it is still `draft` it accepts applications; opening it starts the voting and closes them. That reuses the voting module's own lifecycle instead of adding a second one beside it, so the two can never disagree about whether nominations are open — and it meant no change to the `votes` table.
+
+### The line the group drew
+Members apply and vote but do **not** approve. Held by two separate permission keys granted to different sets of roles: `leadership_applications` to everyone including Member, and `manage_leadership_applications` to the four leadership roles only. A test pulls the leadership array out of the migration and asserts `'member'` is absent from it, because that one array is the entire approval boundary.
+
+Applicants get view+create and nothing else. An application is withdrawn rather than deleted, so the record survives for the audit trail.
+
+### One application per member per election
+A `UNIQUE` key, not a check in PHP that two browser tabs can race past. Withdrawing sets `status='withdrawn'` and re-applying updates that same row, so the constraint holds without blocking anyone who changed their mind — and a duplicate is reported as a duplicate rather than as a server error. An application already approved or rejected cannot be reopened by the applicant; otherwise a rejected candidate would have unlimited retries against a decision the Committee already made.
+
+### Positions come from the group, not from code
+`group_settings`, one per line, editable so renaming an office never needs a release. An unconfigured list **blocks** applications rather than falling back to a built-in default: a member choosing from a list the group never agreed to is worse than being told to come back later.
+
+That list also forced a schema fix: `group_settings.setting_value` was `varchar(255)`, and six bilingual positions are already ~171 characters. A seventh would have been truncated — silently, under a non-strict `sql_mode` — and a position would simply have vanished from the form with no error anywhere. The migration widens it to `TEXT`, guarded by an `information_schema` check so the `ALTER` runs once.
+
+### Tests
+`tests/Unit/LeadershipApplicationTest.php` — new, 227 lines.
+
+Migration verified idempotent by running it twice; grants confirmed against the database (5 roles may apply, 4 may review, Member is not among the 4).
+
+Suite: 1339 → **1360 tests, 3568 assertions, 15 skipped, exit 0, no warnings**.
+
+### Database Changes
+`database/create_leadership_applications_table.php` (new) — creates `leadership_applications` (InnoDB), widens `group_settings.setting_value` to `TEXT`, seeds the default position list, registers two permission page-keys and grants them.
+
+---
+
+## Session — 2026-08-14 — Feat: a member can see the group's fines, not only their own — PR 4
+**Branch:** `feat/my-fines-group-view` (from `develop`, PR #405)
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** The group asked for My Fines to carry both: a member's own fines, and other members'. Added as a second view behind a toggle.
+
+### Own fines stay the default, deliberately
+The page is reached from a menu entry called "My Fines"; landing on a list of other people's debts instead would be a surprise, and a surprise about other people's money. `?view=all` is the only way to the group list, and anything else resolves back to the member's own. This is the same disclosure the group already makes elsewhere — the Group Financial Ledger shows any member every other member's contributions and shortfall — so it opens no boundary that was not already open.
+
+### The group list
+Adds a Member column, marks the reader's own rows with a "You" badge so they can find themselves among 327 names, widens the total row's colspan (a hard-coded 2 would shunt the figure under the wrong heading and misstate what it refers to), and relabels the total as the group's rather than the reader's. The empty state changes too — "You have no fines. Well done!" is wrong under a group heading.
+
+A printed copy states how many fines across how many members, counted `DISTINCT` — "9 fines across 9 members" would be wrong the moment one member has three. That line prints; the "confirmed by leadership" note stays screen-only.
+
+### A test that was right to fail
+`FinesPrintTest` asserts the leadership note is not printed, and the new scope line had been folded into that same paragraph, which would have dropped both from the page. Splitting them keeps the original intent and gives the printed page the scope it needs.
+
+### Tests
+`tests/Unit/MyFinesGroupViewTest.php` — new. Verified non-vacuous by two mutations: making the group list the default, and hard-coding the total row's colspan.
+
+Suite: 1327 → **1339 tests, 3516 assertions, 15 skipped, exit 0**.
+
+### Database Changes
+None.
+
+---
+
+## Session — 2026-08-14 — Fix: heading on My M-Koba Reconciliation ran together, and double-escaped — PR 3
+**Branch:** `fix/mkoba-heading` (from `develop`, PR #403)
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** Two small things caught by reading the deployed page rather than the code.
+
+### What was wrong
+`stmt_head()` joins the title and the label with a single space, so passing the member's name as the label produced "M-KOBA RECONCILIATION ABDALLAH ALLY" with no connecting word. The title now carries it: "M-Koba Reconciliation for" / "Ulinganishaji wa M-Koba kwa".
+
+The name was also being passed pre-escaped into a function that escapes what it is given, so a member called O'Brien would have had "O&#039;Brien" printed on their statement heading. Nobody in this group has an apostrophe in their name, which is exactly why it would have sat there unnoticed until someone did.
+
+### Tests
+Suite: 1325 → **1327 tests, 3495 assertions, 15 skipped, exit 0**.
+
+### Database Changes
+None.
+
+---
+
+## Session — 2026-08-14 — Feat: My M-Koba Reconciliation — PR 2
+**Branch:** `feat/my-mkoba-reconciliation` (from `develop`, PR #401)
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** The third of the three personal Finance entries, and the only genuinely new page. The group-wide reconciliation ties a whole imported statement out against the books, which is a leader's job. This asks the same question from one seat: is my money all here, and for the right amount?
+
+### A reconciliation, not a list
+Each row carries **both** figures — what the M-Koba statement says and what Vikundi recorded — because printing one amount twice would look identical and prove nothing. A row where they differ is marked and the member is told to raise it with the Treasurer; the page totals both sides and shows the difference, which is the number that should be zero.
+
+Contributions still awaiting approval are called out separately. A row can be recorded and still not count towards the member's savings yet, and showing that as simply "Recorded" would tell someone their money is in when it is not.
+
+### What is not shown, and why the page says so
+Rows are matched through `mkoba_statement_rows.contribution_id`, so only imported rows appear. Checked against the real data before building: all 36 excluded rows are 16 balance lines, 5 group transfers and 15 account openings — not one of them is a member payment. Rather than leave the reader to wonder whether something of theirs was dropped, the page states plainly what the excluded lines are and where to find them.
+
+Same access gate as the two member statements, deliberately: leadership may open any member with `?id`, everyone else is forced back to their own record. A third pattern for the same question would be a third thing to get wrong.
+
+Verified against production data before deploying: 524 linked rows across the membership, zero amount mismatches anywhere in the group today — so the page should report clean, and a mismatch appearing later means something real.
+
+### Tests
+`tests/Unit/MemberMkobaReconciliationTest.php` — new, 138 lines.
+
+Suite: 1313 → **1325 tests, 3491 assertions, 15 skipped, exit 0, no warnings**.
+
+### Database Changes
+None.
+
+---
+
+## Session — 2026-08-14 — Feat: a member finds their own money in the Finance menu — PR 1
+**Branch:** `feat/finance-my-statements` (from `develop`, PR #399)
+**Developer:** Claude Code / Jabir Mussa
+**Summary:** The group's second request: opening Finance, a member should find their own figures alongside the My Fines entry already there, while the existing entries stay as group information. First of four PRs delivering it.
+
+### Two halves, one menu
+The menu now has two halves separated by a divider: the group's money above, the member's own below under a "My Information" heading. Mixing a person's figures into a list of group totals is what makes a finance menu confusing, and the group was explicit that the existing entries remain group-wide.
+
+### Guarded for accounts with no member record
+The personal block is hidden entirely for accounts with no `customers` row. An Admin login has none, so without the guard "My Contributions" would lead an administrator to "Member not found" — a menu entry that fails is worse than no menu entry. My Fines moved inside that guard for the same reason; it was previously shown to accounts that can never have a fine.
+
+The member record is resolved once and cached in the session, the same way permissions already are. Doing it per request would add a query to every page load in the product for a value that changes at most once in a member's lifetime. Only a zero is re-checked, which costs one query per page for the few accounts that are not members — a `customers` row created mid-session needs a fresh login to appear.
+
+Both target pages already force an ordinary member back to their own record even when an id is supplied, and a test asserts that gate is still in place — these links make the pages reachable from the menu, so the gate now matters more.
+
+### Tests
+`tests/Unit/FinanceMenuMyStatementsTest.php` — new, 145 lines. Verified non-vacuous by two mutations: removing the member guard, and removing the divider that keeps group and personal money apart.
+
+Suite: 1304 → **1313 tests, 3463 assertions, 15 skipped, exit 0, no warnings**.
+
+### Database Changes
+None.
 
 ---
 

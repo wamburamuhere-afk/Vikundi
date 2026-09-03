@@ -190,10 +190,49 @@ throwing stub; all pre-existing tests still pass, now for the right reason.
 
 ## 8. Financial Ledger & Reconciliation
 
-- [ ] `GET /api/v1/ledger` — financial_ledger.php, group fund balance — leadership only
-- [ ] `GET /api/v1/mkoba-reconciliation` — group-wide, statement vs books tie-out — leadership only
-- [ ] `GET /api/v1/my/mkoba-reconciliation` — own reconciliation (statement mirror + tie-out)
-- [ ] `GET /api/v1/bank-reconciliation` — bank_reconciliation.php — leadership only
+- [x] `GET /api/v1/ledger` — financial_ledger.php, group fund balance — leadership only
+- [x] `GET /api/v1/mkoba-reconciliation` — group-wide, statement vs books tie-out — leadership only
+- [x] `GET /api/v1/my/mkoba-reconciliation` — own reconciliation (statement mirror + tie-out)
+      ~~`GET /api/v1/bank-reconciliation` — bank_reconciliation.php~~ — **excluded, see below**
+
+**Module 8 built, tested locally, pending PR.** `/ledger` mirrors `app/bms/customer/financial_ledger.php`
+exactly — same `cs_is_opening()`/`cs_standing()` rules, same entrance-then-monthly allocation — and adds
+the group fund balance (`getGroupFundBalance()`) the page itself doesn't show. `/mkoba-reconciliation` and
+`/my/mkoba-reconciliation` mirror `app/constant/accounts/mkoba_reconciliation.php` and
+`app/constant/reports/member_mkoba_reconciliation.php`. New shared files:
+`includes/api_financial_ledger.php`, `includes/api_mkoba_reconciliation.php`.
+
+**`bank_reconciliation` excluded as BMS leftover, same evidence shape as member-groups (Module 3).**
+Checked 2026-09-03: no nav link anywhere in the app (`header.php` links `financial_ledger`,
+`mkoba_reconciliation` and `my_mkoba_reconciliation` but never `bank_reconciliation`), its four backing
+tables (`bank_reconciliations`, `accounts`, `banks`, `bank_transactions`) all carry zero rows, and its
+permission key (`bank_reconciliation`) has no row in `permissions` at all — the page still gates on the
+pre-RBAC `in_array($user_role, ['Admin','Manager','Accountant'])` pattern (todo.md's own judgment call #3),
+never migrated to `requireViewPermission()` the way every live module was. Building an API for it would be
+the same waste flagged for member-groups.
+
+**Two permission-catalog gaps found and fixed along the way, same shape as Module 4's
+`manage_contributions` gap:**
+
+1. **`vicoba_reports` had no row in `permissions` at all**, despite `financial_ledger.php`,
+   `app/constant/reports/vicoba_reports.php` and `death_analysis.php` all gating on
+   `canView('vicoba_reports')` since they were written. Every check silently resolved false for anyone
+   not caught by the `isAdmin()` bypass (Admin/Chairperson only) — a Secretary or Treasurer opening any
+   of these three reports was refused. `database/add_vicoba_reports_permission.php` registers the key
+   and grants view-only to all four leadership roles; not mirrored from an existing key, because the
+   Reports-module keys already in the table belong to the dead accounting-ledger module and carry
+   leftover BMS grants (including Member view) that would be wrong to copy here.
+2. **`mkoba_reconciliation` had a permission row (added when the statement-mirror table was created) but
+   zero grants for any role** — Secretary and Treasurer were silently refused the group reconciliation
+   page too. `database/grant_mkoba_reconciliation_to_leadership.php` backfills view-only grants, mirroring
+   `grant_meetings_to_leadership.php`'s structure.
+
+Both registered in `database/migrate.php`, run locally, confirmed idempotent on a second run, and
+verified live against the local WAMP instance (`vikundi.localhost`): leadership token succeeds on all
+three endpoints, a Member-role token gets a named 403 on the two group endpoints, an attempted
+`member_id` override on `/my/mkoba-reconciliation` from a non-leadership token is silently ignored (falls
+back to the caller's own — never leaks another member's reconciliation), and the group tie-out's
+`ledger_amount`/`reconciled` figures agree with the live `mkoba_statement_rows` data.
 
 ## 9. Expenses & Petty Cash
 

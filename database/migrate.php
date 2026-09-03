@@ -48,6 +48,8 @@ $migrations = [
     'create_leadership_applications_table.php', // leadership applications + positions list + apply/review permissions
     'move_fine_contributions_to_fines.php',     // fines recorded as contributions -> the fines table (income-preserving)
     'create_api_tokens_table.php',              // mobile API Module 1: refresh-token storage (access tokens are stateless JWTs)
+    'add_vicoba_reports_permission.php', // register 'vicoba_reports' (the code has always gated on it; the row never existed)
+    'grant_mkoba_reconciliation_to_leadership.php', // backfill 'mkoba_reconciliation' grant for Secretary/Treasurer on existing DBs
 ];
 
 echo "== Vikundi database migrations ==\n";
