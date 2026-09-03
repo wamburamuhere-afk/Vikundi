@@ -26,7 +26,8 @@ Same code on both. Demo has synthetic data and is safe to hit freely.
 8. [Transactions](#8-transactions)
 9. [Fines](#9-fines)
 10. [Condolences](#10-condolences)
-11. [Demo logins](#11-demo-logins)
+11. [Financial Ledger & Reconciliation](#11-financial-ledger--reconciliation)
+12. [Demo logins](#12-demo-logins)
 
 ---
 
@@ -1797,7 +1798,190 @@ badge logic.
 
 ---
 
-## 11. Demo logins
+## 11. Financial Ledger & Reconciliation
+
+Two things kept separate: the group's per-member financial standing (`/ledger`), and the M-Koba
+statement tie-out (`/mkoba-reconciliation`, `/my/mkoba-reconciliation`). Reference implementations:
+`includes/api_financial_ledger.php`, `includes/api_mkoba_reconciliation.php`.
+
+**Gated on the same permission keys the web pages already use — `vicoba_reports` for `/ledger`,
+`mkoba_reconciliation` for the other two — not a new, mobile-only rule.**
+
+> **On demo and production today, Member already holds `view` on both keys**, verified against the
+> web pages directly (`financial_ledger.php`, `mkoba_reconciliation.php` both render fully for a
+> plain member, no "Access Denied"), the same permission-table fact already noted in §10 for
+> `vicoba_reports`/death-analysis. Unlike that report, these two pages are **row-level**, not an
+> aggregate: `/ledger` returns every member's individual contribution amounts and standing in one
+> call, and `/mkoba-reconciliation` returns every member's name, amount and receipt number from the
+> imported statement. If a member seeing this on their phone is not intended, it is a permission-table
+> change for the group to make — `role_permissions` for `vicoba_reports` / `mkoba_reconciliation` on
+> the Member role — not something to special-case client-side. The refusal shape below is what the
+> code produces for a role that lacks the grant (verified against a test role with the grant removed);
+> no live role currently gets it.
+
+```json
+{"status":"error","code":"forbidden","message":"Only leadership can view the group financial ledger."}
+```
+
+```json
+{"status":"error","code":"forbidden",
+ "message":"Only leadership can view the group M-Koba reconciliation. Your own is at /api/v1/my/mkoba-reconciliation."}
+```
+
+---
+
+### GET `/ledger`
+
+Every member's contribution standing for a period, plus the group's available fund balance. Mirrors
+`app/bms/customer/financial_ledger.php` exactly — same `cs_is_opening()`/`cs_standing()` rules as
+Contributions (§7), same entrance-then-monthly allocation, same "no fixed monthly => no target" rule.
+
+Query: `start_date`, `end_date` (`YYYY-MM-DD`, default the current calendar year, capped at 120
+months apart), `member_id` (narrow to one member), `search` (name or M-Koba name), `page`,
+`per_page` (max 100).
+
+```json
+{
+  "status": "success",
+  "data": {
+    "period": {
+      "start_date": "2026-01-01", "end_date": "2026-12-31",
+      "months": [
+        {"ym": "2026-01", "label": "Jan 2026"}, {"ym": "2026-02", "label": "Feb 2026"},
+        {"ym": "2026-03", "label": "Mar 2026"}, {"ym": "2026-04", "label": "Apr 2026"},
+        {"ym": "2026-05", "label": "May 2026"}, {"ym": "2026-06", "label": "Jun 2026"},
+        {"ym": "2026-07", "label": "Jul 2026"}, {"ym": "2026-08", "label": "Aug 2026"},
+        {"ym": "2026-09", "label": "Sep 2026"}, {"ym": "2026-10", "label": "Oct 2026"},
+        {"ym": "2026-11", "label": "Nov 2026"}, {"ym": "2026-12", "label": "Dec 2026"}
+      ]
+    },
+    "fund_balance": 17287000,
+    "approved_not_yet_paid": 1146500,
+    "totals": {
+      "members": 30, "opening": 0, "entrance": 600000, "monthly": 12850000,
+      "contributed": 13450000, "assistance": 0, "agm": 0, "balance": 13450000,
+      "target": 2620000, "surplus_deficit": 10830000
+    },
+    "members": [{
+      "member_id": 25, "member_name": "Ally Minja", "mkoba_name": null, "status": "active",
+      "opening": 0, "entrance_paid": 20000,
+      "monthly_by_month": [10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 0, 0, 290000],
+      "monthly_total": 380000, "total_contributed": 400000, "assistance": 0, "agm_paid": 0,
+      "balance": 400000, "target": 90000, "valid_months": 9, "surplus_deficit": 310000,
+      "standing": "ahead"
+    }],
+    "pagination": {"page": 1, "per_page": 1, "total": 30, "total_pages": 30, "has_more": true},
+    "__note__": "members truncated to 1 of 30 for this document"
+  }
+}
+```
+
+`fund_balance` is `getGroupFundBalance()` — the same cash-basis figure the dashboard (§4) shows.
+`approved_not_yet_paid` is money authorised (an approved expense) but not yet disbursed; it is not
+part of `fund_balance` and does not need to be subtracted from it again client-side.
+
+**`monthly_by_month` has one entry per `period.months` column, in the same order** — zip them
+together for a grid. A `0` in a column the member's `valid_months` doesn't yet reach is "not owed
+yet," not "missed"; a `0` inside the valid range with no fixed monthly rate can also just mean the
+group has no target (`totals.target` is `0` in that case, matching Contributions' `has_target` rule).
+
+`agm_paid` is kept separate from `total_contributed`'s savings component and from `balance` —
+`balance` is exactly `opening + monthly - assistance`, matching `standing`
+(`ontrack` \| `ahead` \| `behind`, same three values as `cs_standing()` everywhere else in this API).
+
+`end_date` before `start_date`, or a range over 120 months, is **422**:
+
+```json
+{"status":"error","code":"invalid_range","message":"end_date must not be before start_date."}
+```
+
+---
+
+### GET `/mkoba-reconciliation`
+
+The group-wide imported M-Koba statement, mirrored row-for-row and tied out against the ledger.
+Mirrors `app/constant/accounts/mkoba_reconciliation.php`.
+
+Query: `batch` (defaults to the most recently imported statement), `page`, `per_page` (max 200).
+
+```json
+{
+  "status": "success",
+  "data": {
+    "batches": [{"batch": "MKOBA-2026-07", "row_count": 22}],
+    "batch": "MKOBA-2026-07",
+    "summary": {
+      "all": {"count": 22, "amount": 1050000},
+      "imported": {"count": 15, "amount": 710000},
+      "excluded": {"count": 3, "amount": 130000},
+      "missing": {"count": 4, "amount": 210000},
+      "ledger_amount": 0,
+      "reconciled": false
+    },
+    "rows": [{
+      "sno": "1", "receipt": "RCP884011", "trans_date": "2026-08-05",
+      "member_name": "Rehema Mollel", "member_id": "1", "amount": 30000,
+      "trans_type": "Mchango wa mwezi", "outcome": "imported", "reason": null
+    }],
+    "pagination": {"page": 1, "per_page": 1, "total": 22, "total_pages": 22, "has_more": true},
+    "__note__": "rows truncated to 1 of 22 for this document"
+  }
+}
+```
+
+`reconciled` is `true` only when nothing is `missing` **and** `ledger_amount` equals
+`summary.imported.amount` to the cent — the demo example above is a real "attention" case: 4
+statement rows were paid but never reached the ledger. `outcome` is `imported` \| `excluded` \|
+`missing`; `reason` is only ever set on `excluded`/`missing` rows. `receipt` is `null` when Excel
+mangled the source value into scientific notation (`"3.8E+15"`) — there is nothing recoverable to
+show, not an empty string.
+
+`member_id` here is the raw string from the imported statement (a phone number, typically), **not**
+`customers.customer_id`.
+
+---
+
+### GET `/my/mkoba-reconciliation`
+
+One member's own M-Koba tie-out: did every M-Koba transaction they made land in Vikundi, for the same
+amount? Mirrors `app/constant/reports/member_mkoba_reconciliation.php`. Scoped to the token by
+default — leadership may pass `member_id` to check someone else's, the same override the web page
+allows via `?id=`, gated on **`manage_contributions`'s `create` grant**, deliberately not the
+group-wide `mkoba_reconciliation` key above (a different question: "can this account see the whole
+imported statement" vs. "can this account check on a specific member").
+
+```json
+{
+  "status": "success",
+  "data": {
+    "member": {"id": 3, "name": "Hawa Mtui"},
+    "summary": {
+      "transactions": 0, "mkoba_total": 0, "book_total": 0,
+      "difference": 0, "mismatches": 0, "pending": 0
+    },
+    "rows": []
+  }
+}
+```
+
+An empty `rows` array is correct, not an error, for a member with no M-Koba-linked contributions —
+build the empty state. `summary.mismatches` counts rows where `mkoba_amount` and `book_amount`
+disagree; `summary.pending` counts rows whose book status isn't yet `approved`/`confirmed` (still
+counted in the totals, not excluded). An account with no member record at all (the Admin) and no
+override gets **403**:
+
+```json
+{"status":"error","code":"no_member_record",
+ "message":"This account has no member record, so it has no M-Koba reconciliation of its own."}
+```
+
+A non-leader passing `member_id` is not refused — it is silently ignored, and the response is their
+own record regardless. Verified live: a Member's `?member_id=1` (the Chairperson) returned the
+caller's own empty record, not the Chairperson's.
+
+---
+
+## 12. Demo logins
 
 All on the demo site, password `Demo@2026`:
 
