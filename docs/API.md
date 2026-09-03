@@ -25,7 +25,8 @@ Same code on both. Demo has synthetic data and is safe to hit freely.
 7. [Contributions](#7-contributions)
 8. [Transactions](#8-transactions)
 9. [Fines](#9-fines)
-10. [Demo logins](#10-demo-logins)
+10. [Condolences](#10-condolences)
+11. [Demo logins](#11-demo-logins)
 
 ---
 
@@ -1624,7 +1625,179 @@ Edit `amount`, `reason` and/or `status`. `edit` on `manage_fines`. Send only wha
 
 ---
 
-## 10. Demo logins
+## 10. Condolences
+
+The condolences (Rambirambi) module — recording assistance for a bereaved member, the
+review→approve workflow, and the sustainability report. Reference implementation:
+`includes/api_death_expenses.php`.
+
+**Leadership only, differently from every other module so far.** Unlike `/contributions`, no web
+screen here ever showed a member their own cases the way `manage_contributions.php` does — so
+`/condolences` is a hard 403 for anyone but leadership, and a member's own cases live at a
+separate endpoint, `/my/condolences`.
+
+---
+
+### GET `/condolences`
+
+The group's condolence cases. **403 for anyone but leadership**, naming where to go instead:
+
+```json
+{"status":"error","code":"forbidden",
+ "message":"You do not have permission to view the group's condolence records. Your own condolence records are at /api/v1/my/condolences."}
+```
+
+Query: `page`, `per_page` (max 100), `member_id`, `status`, `date_from`, `date_to`, `search`
+(member or deceased name).
+
+```json
+{
+  "condolences": [{
+    "id": 2, "member_id": 1, "member_name": "Rehema Mollel", "is_self": false,
+    "deceased": {"type": "child", "id": null, "name": "Furaha Temba", "relationship": "Brother"},
+    "amount": 900000, "description": "Msaada wa msiba (welfare/funeral support)",
+    "status": "approved", "expense_date": "2026-07-25",
+    "created_at": "2026-07-25T00:00:00+03:00", "reviewed_at": null, "approved_at": null,
+    "actions": {"review": false, "approve": false}
+  }],
+  "totals": {"filtered_amount": 1700000, "filtered_count": 2},
+  "pagination": {"page": 1, "per_page": 25, "total": 2, "total_pages": 1, "has_more": false}
+}
+```
+
+`deceased` is nested rather than four flat fields — the four only ever mean something together.
+`status` is `pending` | `reviewed` | `approved`, plus `rejected` | `inactive` | `paid` which exist
+on the column but no code path writes: don't build UI for transitions the server cannot perform.
+
+---
+
+### GET `/my/condolences`
+
+The signed-in member's own condolence cases. **The member comes from the token — there is no
+`member_id` parameter.** An account with no member record (the Admin) gets 403
+`no_member_record`.
+
+Same shape as the group list, minus `member_id` as a query filter (there is only one member here).
+This is `death_expenses.view`'s first legitimate use — the Member role has always held that grant,
+and no web screen ever exercised it until this endpoint.
+
+---
+
+### GET `/condolences/{id}`
+
+One case, with its approval trail (same shape as `/contributions/{id}`'s `trail`). **Ownership is
+re-checked on the loaded row** — a member reading someone else's case id gets **404**, not the
+data, matching `includes/death_expense_access.php`'s web-side fix.
+
+```json
+{
+  "condolence": { ... },
+  "trail": {
+    "created":  {"by": "Admin Admin", "role": "", "at": "2026-07-25T00:00:00+03:00", "signed": false, "completed": true},
+    "reviewed": {"by": "", "role": "", "at": null, "signed": false, "completed": false},
+    "approved": {"by": "", "role": "", "at": null, "signed": false, "completed": false}
+  }
+}
+```
+
+A seeded case with no workflow signature reads exactly like this — `created` falls back to the
+row's own columns; `reviewed`/`approved` show incomplete rather than fabricating a signer.
+
+---
+
+### POST `/condolences`
+
+Record assistance for a bereaved member. Leadership only (`create`).
+
+| Field | |
+|---|---|
+| `member_id` | required — 404 `member_not_found` if unknown |
+| `deceased_name` | **required** — 422 `deceased_name_required` |
+| `deceased_type`, `deceased_id`, `deceased_relationship` | optional; see below |
+| `amount` | required, > 0. Thousands separators accepted (`"1,500"` → 1500) |
+| `description`, `expense_date` | optional; `expense_date` defaults to today |
+
+**`deceased_id` decides what approval does to the customers table** — it is not free text to the
+server, even though the value itself is a string the web's picker sends:
+
+| `deceased_id` | On approval |
+|---|---|
+| `"member"` (or `deceased_type: "mwanachama"`) | the member's own account is marked deceased **and dormant** |
+| `"spouse"` / `"father"` / `"mother"` | that one family field is cleared |
+| `"child_N"` | that child (by index) is flagged deceased in `children_data`, not removed |
+| anything else | no side effect — a dependant outside the tracked family fields |
+
+Attachments are **not accepted here**. The web files a death certificate into the shared document
+library; that integration is out of scope until a screen asks for it. Attach a certificate from
+the web if one is needed.
+
+No status field — every case is created `pending`.
+
+---
+
+### POST `/condolences/{id}/review` · `/approve`
+
+The workflow, same shape as contributions: `pending` → `reviewed` → `approved`, row-locked,
+signature-captured. `review` needs the `review` grant, `approve` needs `approve` — both also need
+`view`, matching `core/permissions.php`'s `canReview()`/`canApprove()`.
+
+**`approve` additionally checks the group's real fund balance** — a condolence payout is money
+*leaving* the group, unlike a contribution:
+
+```json
+{"status":"error","code":"insufficient_funds",
+ "message":"The group fund balance (TZS 2,302,878.00) is not enough to approve this case (TZS 999,999,999.00)."}
+```
+
+On success, `approve` also **applies the customers-table side effect described above** — this is
+not optional and cannot be skipped by the client. Like `/contributions/{id}/approve`, a missing
+e-signature is a warning, not a refusal:
+
+```json
+{"condolence": {...}, "message": "Condolence case approved.",
+ "sig_warning": "No e-signature on file — the approval was recorded without a signature image."}
+```
+
+Repeating either transition, or approving a case still `pending`, is **409**
+`invalid_status_transition`.
+
+---
+
+### GET `/reports/death-analysis`
+
+The condolences sustainability report: for every member who has received *paid* assistance
+(`status IN ('approved', 'paid')`), their lifetime contributions against what the group has paid
+them, and the net effect on the fund.
+
+**Gated on `vicoba_reports`, not `death_expenses`** — a separate permission from the rest of this
+module, matching `app/constant/reports/death_analysis.php` exactly.
+
+> **On demo, `vicoba_reports.view` is granted to Member.** This is not a bug in the API — the web
+> report is equally open to an ordinary member today, verified live. If that grant is broader than
+> intended, it is a permission-table decision, not something to special-case in a client.
+
+```json
+{
+  "summary": {
+    "total_condolences_paid": 1700000, "total_contributed": 1440000,
+    "net_fund_impact": 260000, "case_count": 2
+  },
+  "recipients": [{
+    "member_id": 1, "member_name": "Rehema Mollel", "latest_date": "2026-07-25",
+    "cases_count": 1, "total_contributed": 1020000, "benefit_paid": 900000,
+    "variance": 120000, "member_status": "active"
+  }]
+}
+```
+
+`net_fund_impact` is positive when the fund is net drained by condolence assistance across these
+members, negative when their contributions exceed what they were paid. `member_status` is
+`deceased` | `active` | `dormant` — deceased outranks the raw status column, matching the web's
+badge logic.
+
+---
+
+## 11. Demo logins
 
 All on the demo site, password `Demo@2026`:
 
