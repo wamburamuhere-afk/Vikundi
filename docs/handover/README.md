@@ -1,6 +1,6 @@
 # Vikundi mobile API — handover
 
-Everything the Flutter session needs, current as of **2026-09-03**.
+Everything the Flutter session needs, current as of **2026-09-03 (2)**.
 
 Read these in order. `docs/API.md` is the reference; the files here are the parts that
 are easy to get wrong.
@@ -14,6 +14,7 @@ are easy to get wrong.
 | `fines-module.md` | Before building Fines. Its access rules are **not** the contributions ones. |
 | `condolences-module.md` | Before building Condolences. Its access rules are **not** the fines ones either — read it even if you've read fines-module.md. |
 | `financial-ledger-module.md` | Before building the Ledger or M-Koba Reconciliation screens — read the permission note at the top before you build any access-control UI around them. |
+| `expenses-petty-cash-module.md` | Before building Expenses or Petty Cash — read the mark-paid permission note first; it is not gated like the rest of the module. |
 
 ---
 
@@ -32,41 +33,53 @@ Both `vikundi.bjptechnologies.co.tz` and `demo.vikundi.bjptechnologies.co.tz`.
 | 6. Fines | 7 | Manage Fines, My Fines, the group-fines view |
 | 7. Condolences | 7 | Manage Condolences, My Condolences, review/approve, the sustainability report |
 | 8. Financial Ledger & Reconciliation | 3 | The group ledger, M-Koba statement tie-out (group + own) |
+| 9. Expenses & Petty Cash | 15 | Record/edit/review/approve/mark-paid both, the spending report |
 
-**43 endpoints.**
+**58 endpoints.**
 
-Not yet built: Bank Reconciliation (excluded — see below), Expenses & Petty Cash, Budgets, Payouts,
-Meetings, Documents, Loans. Anything on those screens has to stub or wait.
+Not yet built: Bank Reconciliation (excluded — see below), Budgets, Payouts, Meetings, Documents,
+Voting & Leadership Applications, Reports & Statements, Communication, Settings & Roles, Profile,
+Loans. Anything on those screens has to stub or wait.
 
 ---
 
-## Changed since the 2026-09-02 handover
+## Changed since the 2026-09-03 handover
 
-**Module 8 — Financial Ledger & Reconciliation — is live.** `financial-ledger-module.md` covers it
-in full. Three read-only endpoints: `GET /ledger` (every member's contribution standing plus the
-group fund balance), `GET /mkoba-reconciliation` (the imported M-Koba statement tied out against the
-ledger), `GET /my/mkoba-reconciliation` (one member's own tie-out). `bank-reconciliation` was
-scoped in the original plan but excluded — no nav link anywhere in the web app, its backing tables
-are empty, and its permission key doesn't exist in the catalog. Not built, not stubbed for.
+**Module 9 — Expenses & Petty Cash — is live.** `expenses-petty-cash-module.md` covers it in full.
+Both sub-modules share a real **four**-stage workflow — `pending → reviewed → approved → paid` — the
+first module where "approved" and "actually disbursed" are different, tracked states. Full CRUD +
+review/approve/mark-paid on both Expenses and Petty Cash, plus `GET /reports/expense-report`.
 
-**Read `financial-ledger-module.md`'s top section before building any access-control UI for this
-module.** Verified live: an ordinary Member currently gets a full `200` — the whole group's data,
-same as leadership — from both `/ledger` and `/mkoba-reconciliation`. This mirrors the web app
-exactly (checked directly against `financial_ledger.php` and `mkoba_reconciliation.php`, both open
-to that same member with no "Access Denied"), so it is not a bug this session introduced, but it is
-a bigger disclosure than the `vicoba_reports`/death-analysis note from the previous handover — these
-two endpoints return row-level data (every member's name, amount, receipt number), not an aggregate.
-Whether Member should hold this grant is Dutch's call, not something to build a client-side
-workaround for.
+**Read `expenses-petty-cash-module.md`'s top section before wiring up the mark-paid button.**
+`mark-paid` is gated on a role (Treasurer or a full admin via `canMarkPaid()`), **not** the
+`role_permissions` grant everything else in this module uses — a Secretary or Chairperson who can
+review and approve will still get a named `403` on mark-paid. Drive the button from
+`actions.mark_paid` on the row; don't infer it from review/approve rights.
 
-**Two permission-table gaps were found and fixed on the way**, same shape as the
-`manage_contributions` gap from the Contributions handover: `vicoba_reports` had no row in the
-permissions catalog at all on a fresh schema, and `mkoba_reconciliation` had a row but zero role
-grants — both meant Secretary/Treasurer were refused reports Admin/Chairperson could already see.
-Both are fixed on demo and production now; if you were told a Secretary/Treasurer test account
-couldn't open these screens before today, retest it.
+**Member gets `200` on both `GET /expenses` and `GET /petty-cash` today** — same shape of note as
+Module 8's Financial Ledger: verified live, mirrors the web's own (already-audited) behavior for
+Expenses, and is a deliberate mirror for the brand-new `petty_cash` permission key. Not a bug, not
+something to hide client-side.
 
-**Previously (2026-08-28 → 2026-09-02): Module 7 — Condolences went live**, along with a fix for a
+**A real security hole was found and fixed**: `actions/fetch_petty_cash.php` (the web list's own data
+source) had no permission check at all before this — confirmed live, any authenticated Member could
+pull the whole voucher list. Closed alongside building this module.
+
+**A bug in the web's own edit rule was fixed**: a **paid** expense (money already gone) could
+previously still be edited from the web; both the web file and the new `PUT /expenses/{id}` now
+block editing once `approved` OR `paid`.
+
+---
+
+**Previously (2026-09-02 → 2026-09-03): Module 8 — Financial Ledger & Reconciliation went live.**
+`financial-ledger-module.md` covers it. Two permission-table gaps were found and fixed the same
+shape as the `manage_contributions` gap from the Contributions handover: `vicoba_reports` had no row
+in the permissions catalog at all, and `mkoba_reconciliation` had a row but zero role grants — both
+meant Secretary/Treasurer were refused reports Admin/Chairperson could already see. `bank-reconciliation`
+was scoped in the original plan but excluded — no nav link anywhere in the web app, its backing
+tables are empty, and its permission key doesn't exist in the catalog.
+
+**Before that (2026-08-28 → 2026-09-02): Module 7 — Condolences went live**, along with a fix for a
 group-wide condolence data leak (`death_expenses.view` being read as group-wide access). See
 `condolences-module.md` if you haven't already — in particular, approving a condolence case whose
 `deceased.id` is `"member"` marks that member's own account deceased and dormant; warn the leader
@@ -112,6 +125,8 @@ permission map.
 | `reason`, `meeting_title` (fines) | `null` when absent |
 | `totals.fined_members` (fines) | `null` in the `mine` view — it only means something for the group |
 | `deceased.type`, `deceased.id`, `deceased.relationship` (condolences) | `null` when absent; `deceased.name` is never null |
+| `expenses[].member` | `null` for a whole-organization expense — never a bare `member_id` to check against 0 |
+| `trail.paid.signed` (expenses, petty cash) | always `false` — mark-paid has never captured an e-signature, on either module |
 
 ### 4. Responses are shape-variant by role
 

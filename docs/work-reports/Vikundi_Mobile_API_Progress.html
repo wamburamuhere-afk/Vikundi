@@ -1,0 +1,217 @@
+<title>Mobile API Progress</title>
+<style>
+:root {
+  --brand:#0a4a8f; --brand2:#1a7fd4; --ink:#0f1c2c; --muted:#5c6b7a;
+  --bg:#ffffff; --panel:#eef4fa; --line:#d7e3ee; --accent:#c97a10; --danger:#b3261e; --danger-bg:#fdf3f2;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink:#e3edf7; --muted:#93a6b8; --bg:#0a121c; --panel:#101d2c; --line:#213348;
+    --accent:#e8a33d; --danger:#ff6b5e; --danger-bg:#241614;
+  }
+}
+:root[data-theme="dark"] {
+  --ink:#e3edf7; --muted:#93a6b8; --bg:#0a121c; --panel:#101d2c; --line:#213348;
+  --accent:#e8a33d; --danger:#ff6b5e; --danger-bg:#241614;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink);
+  font:15.5px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+.wrap { max-width:1000px; margin:0 auto; padding:0 22px 70px; }
+header.hero { background:linear-gradient(135deg,#052440 0%,#0a4a8f 45%,#1a7fd4 100%);
+  color:#fff; padding:46px 22px 40px; margin-bottom:8px; }
+header.hero .inner { max-width:1000px; margin:0 auto; }
+.kicker { text-transform:uppercase; letter-spacing:.16em; font-size:12px; font-weight:700; opacity:.85; }
+h1 { margin:.3em 0 .2em; font-size:2.2rem; line-height:1.14; font-weight:800; }
+.sub { font-size:1.05rem; opacity:.94; margin:0; max-width:70ch; }
+.stats { display:flex; flex-wrap:wrap; gap:14px; margin:30px 0 10px; }
+.stat { flex:1 1 155px; background:var(--panel); border:1px solid var(--line);
+  border-left:5px solid var(--brand2); border-radius:10px; padding:14px 16px; }
+.stat b { display:block; font-size:2.05rem; font-weight:800; color:var(--brand2); line-height:1.1; }
+.stat span { font-size:.8rem; color:var(--muted); text-transform:uppercase; letter-spacing:.07em; font-weight:700; }
+h2 { font-size:1.42rem; margin:42px 0 6px; font-weight:800; color:var(--brand); }
+h2 .n { display:inline-block; background:var(--brand); color:#fff; width:1.7em; height:1.7em;
+  line-height:1.7em; text-align:center; border-radius:7px; font-size:.78em; margin-right:.5em; }
+h3 { font-size:1.06rem; margin:26px 0 4px; font-weight:700; }
+p.lead { color:var(--muted); margin:.2em 0 1em; max-width:74ch; }
+p { max-width:74ch; }
+.scroll { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; margin:12px 0 6px; font-size:.93rem; }
+th { background:var(--brand); color:#fff; text-align:left; padding:10px 12px; font-weight:700;
+  font-size:.78rem; text-transform:uppercase; letter-spacing:.06em; }
+td { padding:9px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+tbody tr:nth-child(even) { background:var(--panel); }
+.tick { color:var(--brand2); font-weight:800; }
+.cross { color:var(--danger); font-weight:800; }
+.note { border-left:5px solid var(--accent); background:var(--panel);
+  padding:13px 17px; border-radius:0 9px 9px 0; margin:18px 0; }
+.sev { border-left-color:var(--danger); background:var(--danger-bg); }
+.sev strong { color:var(--danger); }
+code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.9em;
+  background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:1px 5px; }
+.bar { display:flex; height:26px; border-radius:6px; overflow:hidden; border:1px solid var(--line); margin:10px 0 4px; }
+.bar i { display:block; }
+.bar .done { background:var(--brand2); }
+.bar .todo { background:var(--panel); }
+.barlab { font-size:.84rem; color:var(--muted); }
+footer { margin-top:48px; padding-top:18px; border-top:2px solid var(--line);
+  color:var(--muted); font-size:.87rem; }
+@media print {
+  header.hero, th, .stat b, .bar i { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  h2 { page-break-after:avoid; } tr { page-break-inside:avoid; }
+}
+</style>
+
+<header class="hero"><div class="inner">
+  <div class="kicker">BJP Technologies &middot; Vikundi VICOBA System</div>
+  <h1>Mobile App Foundation &mdash; Progress</h1>
+  <p class="sub">The work behind the mobile application, updated since the last report. Two more
+  modules are finished &mdash; the group's financial ledger and reconciliation, and the treasurer's
+  expenses and petty cash &mdash; which means every screen a leader needs to run the group's money
+  day to day and month to month is now in place.</p>
+</div></header>
+
+<div class="wrap">
+
+<div class="stats">
+  <div class="stat"><b>58</b><span>API endpoints live</span></div>
+  <div class="stat"><b>9</b><span>Modules complete</span></div>
+  <div class="stat"><b>4</b><span>Defects found &amp; fixed</span></div>
+  <div class="stat"><b>1,958</b><span>Automated tests</span></div>
+  <div class="stat"><b>2</b><span>Sites deployed</span></div>
+</div>
+
+<h2><span class="n">1</span>What changed since the last report</h2>
+
+<p>The last report covered condolences &mdash; the last screen an ordinary member touches often.
+Since then, two back-office modules are finished: the <strong>financial ledger</strong> (every
+member's savings standing side by side, plus the group's real available balance) and
+<strong>reconciliation</strong> (matching the imported M-Koba statement against the books, both for
+the whole group and for one member checking their own payments); and <strong>expenses and petty
+cash</strong> &mdash; recording group spending, the same review-then-approve sign-off already used
+for savings and condolences, and a fourth step neither of those needed: marking money as actually
+paid out, kept separate from merely being authorised.</p>
+
+<div class="note">
+  <strong>The number that matters.</strong> Every screen a treasurer needs to run the books, both
+  week to week and month to month, is now finished, deployed and documented &mdash; on top of every
+  screen an ordinary member already had. <strong>58 of roughly 117 planned doorways are finished</strong>.
+  What is left is mostly things a group touches occasionally rather than routinely &mdash; budgets,
+  one-off payouts, meetings, documents, elections, messaging &mdash; plus the settings screens an
+  administrator rarely opens.
+</div>
+
+<h2><span class="n">2</span>What is finished</h2>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>Area</th><th>What the app can now do</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Sign in</strong></td><td>Log in, stay logged in securely, sign out, sign out of every device at once (a lost phone)</td><td class="tick">Live</td></tr>
+    <tr><td><strong>Home screen</strong></td><td>Group totals, savings, expenses, balance, fines, pending approvals and a six-month trend &mdash; or, for an ordinary member, only their own position</td><td class="tick">Live</td></tr>
+    <tr><td><strong>Members</strong></td><td>Search and browse the roster, open a profile, register a new member with their payment slip, edit details, approve, reject and reactivate</td><td class="tick">Live</td></tr>
+    <tr><td><strong>Group settings</strong></td><td>Read the group's full configuration and edit it from the phone &mdash; name, contacts, meeting day, all fees and fines, membership cap; upload a new logo</td><td class="tick">Live</td></tr>
+    <tr><td><strong>Contributions</strong></td><td>The savings ledger: a member's own standing, the group's collection position, submitting a payment with a photo of the slip, and the review&rarr;approve trail leadership signs off on</td><td class="tick">Live</td></tr>
+    <tr><td><strong>Transactions</strong></td><td>Money by the date it arrived rather than the month it covers &mdash; the group's full ledger for leadership, and a member's own dated receipts</td><td class="tick">Live</td></tr>
+    <tr><td><strong>Fines</strong></td><td>Record, edit, waive and mark a fine paid; a member sees their own fines, and &mdash; by the group's own choice &mdash; can also see everyone's</td><td class="tick">Live</td></tr>
+    <tr><td><strong>Condolences</strong></td><td>Record assistance for a bereaved member, the review&rarr;approve sign-off, a member's own condolence history, and a report on whether the fund is sustainable</td><td class="tick">Live</td></tr>
+    <tr><td><strong>Financial ledger &amp; reconciliation</strong></td><td>Every member's savings standing side by side, the group's real available balance, and matching the imported M-Koba statement against the books &mdash; for the whole group, and for one member checking their own payments landed correctly</td><td class="tick">Live</td></tr>
+    <tr><td><strong>Expenses &amp; petty cash</strong></td><td>Record spending, the review&rarr;approve sign-off, and a fourth step &mdash; marking money as actually paid out, separate from merely being authorised &mdash; plus a spending summary report</td><td class="tick">Live</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="bar" aria-label="58 of 117 endpoints complete">
+  <i class="done" style="width:50%"></i><i class="todo" style="width:50%"></i>
+</div>
+<p class="barlab">58 of roughly 117 planned endpoints &mdash; about half. What remains is mostly
+occasional-use screens: budgets, one-off payouts, meetings, documents, elections, messaging, and
+the administrator's settings screens.</p>
+
+<h2><span class="n">3</span>Defects found in the existing system</h2>
+
+<p class="lead">The same pattern as every report so far: building each doorway means reading exactly
+how the web system enforces its rules, and that reading keeps finding places where it does not.
+This time, four &mdash; across the two modules &mdash; the most serious of which had no protection
+at all.</p>
+
+<div class="note sev">
+  <strong>Any signed-in member could read the group's whole petty-cash list.</strong>
+  The screen that feeds the petty-cash table its data had no permission check whatsoever &mdash;
+  it only confirmed someone was logged in, not that they were allowed to see it. Every voucher's
+  payee, amount and description was exposed to anyone with an account.
+  <br><br>
+  Confirmed by actually doing it, signed in as an ordinary member: the full voucher list came back,
+  identical to what a treasurer sees.
+  <br><br>
+  Closed the same way as the same class of mistake in earlier reports: the screen now checks a real
+  permission before answering, and that permission did not previously exist in the system's own
+  rulebook at all &mdash; it was added, matching the rights the equivalent expenses screen already
+  had, rather than invented from scratch.
+</div>
+
+<div class="note">
+  <strong>Two reports a treasurer needs were silently unreachable by anyone except the two most
+  senior roles.</strong> The financial ledger, the M-Koba reconciliation and the group's spending
+  summary all check a permission that either did not exist in the system's rulebook at all, or
+  existed but had never been granted to anyone. In practice this meant a Secretary or a Treasurer
+  &mdash; not just the Chairperson or Admin &mdash; could be quietly refused a screen they are
+  supposed to run. Fixed by adding the missing rule and the missing grants; nothing already
+  configured was changed or removed.
+</div>
+
+<div class="note">
+  <strong>A paid expense could still be silently edited.</strong> The rule guarding expense edits
+  only blocked a change once an expense was &ldquo;approved&rdquo; &mdash; it did not also block one
+  already marked &ldquo;paid,&rdquo; even though that money has already left the account. Fixed to
+  block both.
+</div>
+
+<h2><span class="n">4</span>How the work is checked</h2>
+
+<p class="lead">Unchanged from every report so far, and still the standard every module is held
+to.</p>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>Check</th><th>What it means</th></tr></thead>
+  <tbody>
+    <tr><td><strong>1,958 automated tests</strong></td><td>Up from 1,858. Every change runs all of them before it can ship.</td></tr>
+    <tr><td><strong>Every endpoint tried on the live site</strong></td><td>Passing tests is not the standard. Each one is exercised against the running server, as every role, before being called finished.</td></tr>
+    <tr><td><strong>Refusals tested as hard as successes</strong></td><td>Both modules were checked from the ordinary-member side at least as hard as from leadership &mdash; it is where the petty-cash defect above was actually found.</td></tr>
+    <tr><td><strong>Checked against the group's own numbers, not just made up ones</strong></td><td>The financial ledger's balance was cross-checked against the figure the home screen already shows for the same group, on the same server, at the same moment &mdash; two independently built screens agreeing is stronger proof than either one passing alone.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2><span class="n">5</span>Demonstration site</h2>
+
+<p>Still running at <code>demo.vikundi.bjptechnologies.co.tz</code>, on its own database, and still
+the proving ground for every module before it ships: every defect above, and every new endpoint, was
+verified there under real accounts &mdash; Admin, Treasurer and an ordinary member &mdash; before
+being called finished.</p>
+
+<h2><span class="n">6</span>What happens next</h2>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>Step</th><th>Work</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td><strong>Budgets and one-off payouts</strong> &mdash; the last two pieces of the treasurer's financial back office.</td></tr>
+    <tr><td>2</td><td><strong>Meetings, documents, elections and messaging</strong> &mdash; group administration, used occasionally rather than weekly.</td></tr>
+    <tr><td>3</td><td><strong>Settings, roles and profile</strong> &mdash; the administrator's own screens, last because they are opened least often.</td></tr>
+    <tr><td>4</td><td><strong>The app itself</strong> &mdash; screen by screen, on top of the finished doorways. Sign-in, the home screen, members, group settings, contributions, transactions, fines, condolences, the financial ledger and reconciliation, and expenses and petty cash can all be built against now: they are finished, deployed, and documented.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Everything a member needs to see their own money and standing, and everything a leader needs to
+run the books week to week and month to month &mdash; savings, transactions, fines, bereavement
+support, the ledger, reconciliation, expenses and petty cash &mdash; is now live. What remains is the
+group's occasional-use business, and the app itself.</p>
+
+<footer>
+  BJP Technologies &middot; Vikundi VICOBA Management System<br>
+  Live: vikundi.bjptechnologies.co.tz &middot; Demonstration: demo.vikundi.bjptechnologies.co.tz
+</footer>
+</div>
