@@ -10,6 +10,16 @@ if (!isAuthenticated()) {
     exit;
 }
 
+// This endpoint had NO permission check at all beyond being logged in — any
+// authenticated Member could pull the whole group's voucher list (payee
+// names, amounts, descriptions). Found while building the mobile API's
+// petty-cash module. Mirrors requirePermissionJson()'s refusal shape.
+if (!canView('petty_cash')) {
+    http_response_code(403);
+    echo json_encode(['error' => 'You do not have permission to view petty cash vouchers.']);
+    exit;
+}
+
 $canReview  = canReview('petty_cash');
 $canApprove = canApprove('petty_cash');
 

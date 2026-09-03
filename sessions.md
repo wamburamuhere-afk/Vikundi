@@ -4,6 +4,81 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-09-03 (2) — Module 9: Expenses & Petty Cash — PR pending
+
+**Branch:** `develop` (feature branch not yet cut)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** Nine endpoints across two sub-modules, both on the same real 4-state workflow
+(`pending → reviewed → approved → paid`) that `core/workflow.php` and `includes/finance.php` already
+encode: `GET/POST /expenses`, `GET/PUT /expenses/{id}`, `POST /expenses/{id}/review|approve|mark-paid`,
+`GET /reports/expense-report`; `GET/POST /petty-cash`, `GET/PUT /petty-cash/{id}`,
+`POST /petty-cash/{id}/review|approve|mark-paid`. review/approve weren't in the original todo.md line
+item but are required by it — `assertReviewable()`/`assertApprovable()` enforce the sequence at the DB
+level, so mark-paid is unreachable without them, same reasoning as Module 7's condolences review step.
+New shared files: `includes/api_expenses.php`, `includes/api_petty_cash.php`.
+
+**A new permission key, `petty_cash`, had to be registered** (`database/add_petty_cash_permission.php`,
+mirrored from `expenses` exactly like `add_contributions_permission.php` mirrored `expenses` for
+Module 4). The web's own gating for petty cash was inconsistent across files before this: create
+checked `expenses`, review/approve/delete checked `petty_cash` — which had **no row in the permissions
+catalog at all**, so those checks always resolved false outside the `isAdmin()` bypass — and the
+list/detail pages used a hardcoded role-name array instead of RBAC. Normalized on `petty_cash`
+throughout the new API, per todo.md's own judgment call #3.
+
+**A real security hole found and fixed alongside it:** `actions/fetch_petty_cash.php` — the web list's
+own AJAX endpoint — had **no permission check at all** beyond being logged in. Verified live on demo:
+an ordinary Member (`hmbwana1`) pulled the full group voucher list (payee names, amounts,
+descriptions) with a plain authenticated request. Fixed by adding `canView('petty_cash')`, mirroring
+`requirePermissionJson()`'s refusal shape. Member still passes it after the fix (the mirrored grant
+from `expenses` includes Member view=1, matching that key's own already-audited, intentional design —
+see `api/get_general_expenses.php`'s SEC-003/004/005 history) — the fix's value is that this is now a
+configurable, auditable permission-table grant instead of a hardcoded, unconditional hole.
+
+**One more defect fixed on the way:** `api/update_general_expense.php` refused to edit a row only when
+`status === 'approved'`, so a **`paid`** expense — money that had already left the account — could
+still be silently edited. The new `PUT /expenses/{id}` endpoint uses the corrected rule
+(`in_array($status, ['approved', 'paid'])`) from the start; the web file was fixed to match.
+
+**Design notes, not bugs:**
+- `mark-paid` on both modules is gated on `canMarkPaid()` (Treasurer or a full admin), not a
+  `role_permissions` grant — mirrors `actions/mark_expense_paid.php` exactly. A Secretary/Chairperson
+  holding full `expenses`/`petty_cash` review+approve rights still cannot mark something paid.
+- Petty cash's `approve` has **no fund-balance gate**, unlike Expenses/Condolences — the web's own
+  `actions/approve_petty_cash.php` has never had one; the API does not add a check the web never
+  enforced.
+- Petty cash's edit rule is stricter than Expenses' — `actions/save_petty_cash.php` only allows editing
+  while `pending` (not `reviewed` too, unlike general expenses' `update_general_expense.php`). Both
+  differences are faithfully preserved, not smoothed over into one shared rule.
+- `GET /expenses` and `GET /petty-cash` are gated on `view`, and Member already holds that grant live
+  (verified: `api/get_general_expenses.php` already serves the whole list to a Member, and it has been
+  through a security audit — SEC-003/004/005 — under that exact behavior). This is not the
+  contributions/condolences leak shape (view being *misread* as group access); it is the module's own
+  audited, intentional design, faithfully mirrored rather than replaced with a stricter, invented rule.
+
+**Tests.** `ExpensesApiTest` and `PettyCashApiTest` — the per-status action gating (including that
+mark-paid ignores `role_permissions` entirely), the pure workflow/fund guards, amount/date/status
+filter validation, the paid-edit-block fix (both the API and the web file), the `fetch_petty_cash.php`
+security fix, permission-migration mirroring, and routing. `composer test-unit`: 1936 tests, 4999
+assertions, all green.
+
+**Verified live** against the local WAMP instance (`vikundi.localhost`), Admin token (role_id 1 —
+covers the `isAdmin()` bypass for both the permission-table checks and `canMarkPaid()`, since no
+Treasurer account exists on this local dev DB):
+- Full expense lifecycle: create → review → approve → `PUT` blocked (`409 not_editable`) → mark-paid →
+  re-mark-paid blocked (`409 already_paid`). Trail correctly carries all four stages, `paid` read from
+  `paid_by`/`paid_at` directly (no e-signature, matching the web).
+- Full petty-cash lifecycle: create → review → approve → mark-paid, same result shape.
+- `/reports/expense-report` picked up the newly-paid expense immediately in both `items` and `totals`.
+- Member token: `200` on both list endpoints (the mirrored view grant, not a leak), `403 forbidden` on
+  every create/mutation, `403` naming the Treasurer specifically on `mark-paid`.
+- No token: `401 unauthenticated` throughout.
+
+**Docs deliberately not done yet** — per the established order (build → deploy → verify live → docs →
+handover), those come once this is merged and deployed.
+
+---
+
 ## Session — 2026-09-03 — Module 8: Financial Ledger & Reconciliation — PR pending
 
 **Branch:** `develop` (feature branch not yet cut)
