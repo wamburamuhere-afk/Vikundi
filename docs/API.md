@@ -27,7 +27,8 @@ Same code on both. Demo has synthetic data and is safe to hit freely.
 9. [Fines](#9-fines)
 10. [Condolences](#10-condolences)
 11. [Financial Ledger & Reconciliation](#11-financial-ledger--reconciliation)
-12. [Demo logins](#12-demo-logins)
+12. [Expenses & Petty Cash](#12-expenses--petty-cash)
+13. [Demo logins](#13-demo-logins)
 
 ---
 
@@ -1981,7 +1982,210 @@ caller's own empty record, not the Chairperson's.
 
 ---
 
-## 12. Demo logins
+## 12. Expenses & Petty Cash
+
+Two sub-modules on the same four-state workflow: `pending → reviewed → approved → paid`. `paid` is
+a real fourth step neither Contributions nor Condolences has — an expense is *authorised* on
+approval, but the group's available balance (§4, §11) only drops once it is actually disbursed.
+Reference implementations: `includes/api_expenses.php`, `includes/api_petty_cash.php`.
+
+**Gated on `expenses` and `petty_cash` respectively** (view for the list, matching each module's own
+web page) — **except `mark-paid`, which is gated on a role check, not a permission-table grant**:
+Treasurer or a full admin only, "the people who release the group's money." A Secretary or
+Chairperson holding full review/approve rights on either module still cannot mark something paid.
+
+> **Member already holds `view` on `expenses` today**, verified live: the equivalent web page and its
+> own API (`api/get_general_expenses.php`) already serve the whole list to a plain member, and that
+> endpoint has been through a security audit under that exact behaviour. This mirrors it faithfully
+> rather than inventing a stricter rule the web has never had. `petty_cash` is a brand-new permission
+> key, deliberately mirrored from `expenses`' grants for the same reason — see the note below.
+
+---
+
+### GET `/expenses`
+
+The group's general expenses. Query: `page`, `per_page` (max 100), `status`, `date_from`, `date_to`,
+`member_id`, `scope` (`general` = whole-org only, `member` = charged to a member), `search`.
+
+```json
+{
+  "status": "success",
+  "data": {
+    "expenses": [{
+      "id": 9, "expense_date": "2026-09-03",
+      "description": "Vitabu vya kumbukumbu na kalamu", "amount": 45000, "status": "paid",
+      "member": null,
+      "created_at": "2026-09-03T13:56:16+03:00", "reviewed_at": "2026-09-03T13:56:34+03:00",
+      "approved_at": "2026-09-03T13:56:36+03:00", "paid_at": "2026-09-03T13:56:38+03:00",
+      "actions": {"edit": false, "review": false, "approve": false, "mark_paid": false}
+    }],
+    "totals": {"filtered_amount": 50000, "filtered_count": 2},
+    "pagination": {"page": 1, "per_page": 2, "total": 9, "total_pages": 5, "has_more": true}
+  }
+}
+```
+
+`member` is `null` for a whole-organization expense, `{"id", "name"}` when charged to one member —
+nested rather than a flat `member_id`, so a `null` reads unambiguously as "not charged to anyone"
+rather than "member unknown."
+
+---
+
+### GET `/expenses/{id}`
+
+One expense with its full four-stage trail. `paid` never carries an e-signature — the web's own
+mark-paid action has never captured one — so it is read straight from who actually marked it paid,
+not from the signature store the other three stages use:
+
+```json
+{
+  "status": "success",
+  "data": {
+    "expense": { "...": "same shape as the list row" },
+    "trail": {
+      "created":  {"by": "Hawa Mtui", "role": "",          "at": "2026-09-03T13:56:16+03:00", "signed": false, "completed": true},
+      "reviewed": {"by": "Hawa Mtui", "role": "Treasurer",  "at": "2026-09-03T13:56:34+03:00", "signed": false, "completed": true},
+      "approved": {"by": "Hawa Mtui", "role": "Treasurer",  "at": "2026-09-03T13:56:36+03:00", "signed": false, "completed": true},
+      "paid":     {"by": "Hawa Mtui", "role": "",           "at": "2026-09-03T13:56:38+03:00", "signed": false, "completed": true}
+    }
+  }
+}
+```
+
+---
+
+### POST `/expenses`
+
+Record a general expense. Leadership only (`create`). `description` and `amount` required;
+`expense_date` defaults to today; optional `member_id` charges it to one member (silently ignored,
+not refused, if that id doesn't exist — the same rule `api/add_general_expense.php` uses). No status
+field — every expense is created `pending`. No attachments, same call as Condolences: a receipt still
+has to be attached from the web for now.
+
+---
+
+### PUT `/expenses/{id}`
+
+Edit `description`, `amount` and/or `expense_date` — send only what changed. `edit` on `expenses`.
+**Refused once `approved` or `paid`**, not just `approved`:
+
+```json
+{"status":"error","code":"not_editable","message":"An expense that is approved can no longer be edited."}
+```
+
+> The web's own edit endpoint used to allow editing a **paid** expense — money already gone — and was
+> fixed alongside this endpoint to match.
+
+---
+
+### POST `/expenses/{id}/review` · `/approve` · `/mark-paid`
+
+The workflow. `review`/`approve` need `view` alongside the action itself (`canReview()`/
+`canApprove()`'s own rule), same as every other module. `approve` additionally checks the group's
+real fund balance — an expense authorises a spend, so it must not authorise more than the group
+could ever pay:
+
+```json
+{"status":"error","code":"insufficient_funds",
+ "message":"The group fund balance (TZS 17,287,000.00) is not enough to approve this expense (TZS 999,999,999.00)."}
+```
+
+**`mark-paid` is the odd one out**: gated on `canMarkPaid()` — Treasurer or a full admin — not the
+`expenses` permission at all. A Secretary who can review and approve everything else in this module
+still gets a **403** naming the Treasurer specifically:
+
+```json
+{"status":"error","code":"forbidden","message":"Only the Treasurer or an administrator can mark an expense as paid."}
+```
+
+Marking an already-paid expense paid again is **409** `already_paid`, not a silent no-op.
+
+---
+
+### GET `/reports/expense-report`
+
+Spending analysis: general expenses combined with condolence (death) expenses — **not** petty cash,
+which this report has never included, matching `app/constant/reports/expense_report.php` exactly.
+Gated on `vicoba_reports`, same as every other report. Both source tables are restricted to
+`status IN ('approved','paid')` — an authorised-but-undisbursed expense doesn't belong in a spending
+summary yet.
+
+```json
+{
+  "status": "success",
+  "data": {
+    "items": [
+      {"category": "general", "date": "2026-09-03", "amount": 5000, "description": "API smoke test"},
+      {"category": "condolences", "date": "2026-09-02", "amount": 1500, "description": "..."}
+    ],
+    "totals": {
+      "general": 50000, "death": 101622, "overall": 151622, "records": 5,
+      "pct_general": 33, "pct_death": 67
+    },
+    "trend": [{"month": "2026-08", "label": "Aug 2026", "amount": 45000}]
+  }
+}
+```
+
+No pagination — this is a full-period summary, same as the web report, not a browsable list.
+
+---
+
+### GET `/petty-cash`
+
+The group's petty-cash vouchers. Same query shape as `/expenses` minus `scope`/`member_id`, plus
+`category`.
+
+```json
+{
+  "status": "success",
+  "data": {
+    "vouchers": [{
+      "id": 6, "voucher_no": "PCV-2609-6063", "transaction_date": "2026-09-03",
+      "payee_name": "API Smoke Test", "category": "Testing",
+      "description": "Module 9 verification voucher", "amount": 3000, "status": "paid",
+      "prepared_by_name": "hmtui",
+      "created_at": "2026-09-03T13:57:02+03:00", "reviewed_at": "2026-09-03T13:57:05+03:00",
+      "approved_at": "2026-09-03T13:57:46+03:00", "paid_at": "2026-09-03T13:57:54+03:00",
+      "actions": {"edit": false, "review": false, "approve": false, "mark_paid": false}
+    }],
+    "totals": {"filtered_amount": 131000, "filtered_count": 6},
+    "pagination": {"page": 1, "per_page": 1, "total": 6, "total_pages": 6, "has_more": true}
+  }
+}
+```
+
+`approved_at` here is drawn from the table's own `approval_date` column (named differently from
+`general_expenses.approved_at`) — exposed under the same key so the two modules read alike.
+
+> **New permission key.** `petty_cash` did not exist in the permissions catalog before this module.
+> The web's own gating for petty cash was inconsistent across files — creating a voucher checked
+> `expenses` instead, the list/detail pages used a hardcoded role-name array, not RBAC at all, and
+> **the list's own AJAX endpoint had no permission check whatsoever** — any authenticated Member
+> could pull the whole voucher list. Confirmed live before the fix. The new key mirrors `expenses`'
+> grants exactly (leadership full rights, Member view-only) and the web hole is closed alongside it.
+
+---
+
+### GET `/petty-cash/{id}` · PUT `/petty-cash/{id}`
+
+Detail + four-stage trail, same shape as `/expenses/{id}`. **Edit is refused once a voucher leaves
+`pending`** — stricter than Expenses, which still allows editing a `reviewed` row. This mirrors
+`actions/save_petty_cash.php`'s own rule exactly; the two modules are deliberately not smoothed into
+one shared edit rule.
+
+---
+
+### POST `/petty-cash/{id}/review` · `/approve` · `/mark-paid`
+
+Same shape as Expenses' workflow, with one difference: **`approve` has no fund-balance check.** The
+web's own `actions/approve_petty_cash.php` has never gated on the group balance, and this does not
+add a check the web has never enforced. `mark-paid` is gated on `canMarkPaid()`, identically to
+Expenses.
+
+---
+
+## 13. Demo logins
 
 All on the demo site, password `Demo@2026`:
 
