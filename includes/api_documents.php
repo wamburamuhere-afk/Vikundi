@@ -19,20 +19,28 @@
  *   it has no third static segment before an id, so /documents/authored/{id}
  *   could never route.
  *
- * PERMISSION-KEY NOTE (investigated, not changed): app/constant/document/
- * document_library.php and five sibling files (ajax/quick_upload_document.php,
- * select_document_add_esignature.php, api/document/apply_signature.php,
- * e_signatures.php x2) gate on the strings 'library'/'documents', which do not
- * exist as page_keys in a fresh install's `permissions` table — only
- * `document_library` does, correctly granted. That reads as a hard lockout for
- * every non-admin role. Verified live on demo instead: a Treasurer session
- * loads /library successfully. The live databases (demo, and by the same
- * deploy history presumably production) carry a legacy 'library'/'documents'
- * permissions row predating this repo's migration tracking — this is inert
- * data drift on already-deployed environments, not an active lockout. Left
- * as-is: repointing those checks at `document_library` could not be verified
- * safe against production's actual (inaccessible to this session) grants for
- * that key. This module's API gates on the canonical, migration-tracked key.
+ * PERMISSION-KEY NOTE — TWO KEYS EXIST FOR THE SAME FEATURE, LIVE:
+ * app/constant/document/document_library.php and five sibling files
+ * (ajax/quick_upload_document.php, select_document_add_esignature.php,
+ * api/document/apply_signature.php, e_signatures.php x2) gate on the string
+ * 'library', which does not exist in a FRESH local install's `permissions`
+ * table — only the newer, migration-tracked `document_library` does. That
+ * first read as a hard lockout of every non-admin role on a live deploy.
+ * Verified live on demo instead of trusting the static read: a Treasurer
+ * session loaded /library successfully over its web session — so 'library'
+ * IS granted there. Shipped this module gating on `document_library` alone on
+ * that basis... and then verified THIS module live post-deploy the same way
+ * the session always does, over the mobile API's own JWT-based permission
+ * load rather than the web session: a real Treasurer token on demo carried
+ * full CRUD under `library` and NO `document_library` key at all. The two
+ * environments are not just carrying inert legacy debris side-by-side —
+ * demo's (and presumably production's) actual authoritative key for this
+ * whole feature has always been `library`; `document_library` is what a
+ * freshly-migrated local database gets instead, and demo/production never
+ * received whatever would populate it. Fixed by checking BOTH keys
+ * (vk_api_doc_library_can()) and accepting either grant, rather than betting
+ * on which environment is "correct" — this works whether a given install has
+ * `library`, `document_library`, or (a fresh one, going forward) both.
  */
 require_once __DIR__ . '/api_auth.php';                     // vk_api_is_admin(), vk_api_can()
 require_once __DIR__ . '/activity_logger.php';
@@ -41,6 +49,18 @@ require_once __DIR__ . '/authored_document_access.php';      // vk_can_view_auth
 require_once __DIR__ . '/document_signatories.php';          // vk_doc_signatories(), vk_doc_signing_progress(), vk_find_doc_signatory(), ...
 
 // ═══════════════════════════ Document Library ═══════════════════════════════
+
+if (!function_exists('vk_api_doc_library_can')) {
+    /**
+     * The Library's real permission key, live: 'library' on demo/production,
+     * 'document_library' on a freshly-migrated local install — see this file's
+     * header note. Checks both and accepts either grant.
+     */
+    function vk_api_doc_library_can(array $auth, string $action): bool
+    {
+        return vk_api_can($auth, $action, 'library') || vk_api_can($auth, $action, 'document_library');
+    }
+}
 
 if (!function_exists('vk_api_doc_row')) {
     /** One library document, as the app renders it. Never includes file_path. */
@@ -157,16 +177,17 @@ if (!function_exists('vk_api_doc_load')) {
 
 if (!function_exists('vk_api_doc_authorize_item')) {
     /**
-     * A caller must hold the catalog `document_library` view permission (checked
-     * by the endpoint before this runs) AND the item's own access_level rule
-     * (vk_user_can_access_document). Hidden items 404 rather than 403, so a
-     * private document's existence is not revealed to a caller who cannot see it.
+     * A caller must hold the catalog view permission (checked by the endpoint
+     * before this runs, via vk_api_doc_library_can()) AND the item's own
+     * access_level rule (vk_user_can_access_document). Hidden items 404 rather
+     * than 403, so a private document's existence is not revealed to a caller
+     * who cannot see it.
      */
     function vk_api_doc_authorize_item(array $auth, array $doc): void
     {
         $uid      = (int) $auth['user_id'];
         $isAdmin  = vk_api_is_admin((int) $auth['role_id']);
-        $isLeader = $isAdmin || vk_api_can($auth, 'edit', 'document_library');
+        $isLeader = $isAdmin || vk_api_doc_library_can($auth, 'edit');
         if (!vk_user_can_access_document($doc, $uid, $isAdmin, $isLeader)) {
             vk_api_error(404, 'not_found', 'No document was found with that id.');
         }

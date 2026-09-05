@@ -20,7 +20,9 @@ vk_api_cors();
 vk_api_require_method(['GET', 'DELETE']);
 
 $auth = vk_api_require_auth();
-vk_api_require_permission($auth, 'view', 'document_library');
+if (!vk_api_doc_library_can($auth, 'view')) {
+    vk_api_error(403, 'forbidden', 'You do not have permission to do that.');
+}
 
 $id  = (int) ($_GET['id'] ?? 0);
 $doc = vk_api_doc_load($pdo, $id);
