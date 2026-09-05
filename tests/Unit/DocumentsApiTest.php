@@ -337,20 +337,34 @@ final class DocumentsApiTest extends TestCase
     public function testLibraryListGateComesBeforeAnyQuery(): void
     {
         $code  = self::code('api/v1/documents.php');
-        $gate  = strpos($code, "vk_api_require_permission(\$auth, 'view', 'document_library')");
+        $gate  = strpos($code, "vk_api_doc_library_can(\$auth, 'view')");
         $query = strpos($code, 'FROM documents d');
         $this->assertNotFalse($gate);
         $this->assertNotFalse($query);
         $this->assertLessThan($query, $gate);
     }
 
-    public function testLibraryGatesOnTheCanonicalKeyNotThePhantomOne(): void
+    public function testLibraryGateChecksBothLiveKeysNotJustOne(): void
     {
+        // Found live, post-deploy: demo/production's actual grants are under
+        // the literal key 'library', not the migration-tracked
+        // 'document_library' a fresh local install gets — see
+        // includes/api_documents.php's header. vk_api_doc_library_can()
+        // checks both; no endpoint may call vk_api_can()/vk_api_require_permission()
+        // with a single hardcoded document-library key directly.
         foreach (['api/v1/documents.php', 'api/v1/documents_detail.php', 'api/v1/documents_download.php'] as $file) {
             $code = self::code($file);
-            $this->assertStringContainsString("'document_library'", $code);
-            $this->assertStringNotContainsString("'library'", $code);
+            $this->assertStringNotContainsString("'document_library'", $code);
+            $this->assertStringNotContainsString(
+                "vk_api_can(\$auth, 'view', 'library')",
+                $code,
+                "$file must gate through vk_api_doc_library_can(), not a single key directly."
+            );
         }
+
+        $helperCode = self::code('includes/api_documents.php');
+        $this->assertStringContainsString("vk_api_can(\$auth, \$action, 'library')", $helperCode);
+        $this->assertStringContainsString("vk_api_can(\$auth, \$action, 'document_library')", $helperCode);
     }
 
     public function testTemplatesGateOnManageDocuments(): void

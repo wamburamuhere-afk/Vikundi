@@ -3,8 +3,10 @@
  * GET /api/v1/documents — the group's Document Library, paginated.
  *
  * Mirrors app/constant/document/document_library.php + api/get_documents.php.
- * Gated on the catalog key `document_library` (view), then scoped per row by
- * access_level via includes/document_access.php — the same rule
+ * Gated on the catalog view permission — checked under BOTH `library` and
+ * `document_library` (see includes/api_documents.php's header: live
+ * environments carry one or the other, not consistently) — then scoped per
+ * row by access_level via includes/document_access.php, the same rule
  * api/get_documents.php applies (public -> everyone, restricted -> leadership +
  * uploader, private -> uploader + admin).
  *
@@ -22,11 +24,13 @@ vk_api_cors();
 vk_api_require_method(['GET']);
 
 $auth = vk_api_require_auth();
-vk_api_require_permission($auth, 'view', 'document_library');
+if (!vk_api_doc_library_can($auth, 'view')) {
+    vk_api_error(403, 'forbidden', 'You do not have permission to do that.');
+}
 
 $uid      = (int) $auth['user_id'];
 $isAdmin  = vk_api_is_admin((int) $auth['role_id']);
-$isLeader = $isAdmin || vk_api_can($auth, 'edit', 'document_library');
+$isLeader = $isAdmin || vk_api_doc_library_can($auth, 'edit');
 
 $page    = max(1, (int) ($_GET['page'] ?? 1));
 $perPage = max(1, min(100, (int) ($_GET['per_page'] ?? 25)));
