@@ -28,7 +28,9 @@ Same code on both. Demo has synthetic data and is safe to hit freely.
 10. [Condolences](#10-condolences)
 11. [Financial Ledger & Reconciliation](#11-financial-ledger--reconciliation)
 12. [Expenses & Petty Cash](#12-expenses--petty-cash)
-13. [Demo logins](#13-demo-logins)
+13. [Budgets](#13-budgets)
+14. [Payouts](#14-payouts)
+15. [Demo logins](#15-demo-logins)
 
 ---
 
@@ -2185,7 +2187,192 @@ Expenses.
 
 ---
 
-## 13. Demo logins
+## 13. Budgets
+
+Three-stage workflow — `pending → reviewed → approved`, or `pending|reviewed → rejected` — one
+shorter than Expenses/Petty Cash (§12): a budget is a plan, not a disbursement, so there is no
+`paid` state and no fund-balance gate on approve. Reference implementation:
+`includes/api_budgets.php`.
+
+**Gated on `budget` — leadership only (view/create/edit/delete/review/approve), no Member grant at
+all.** Unlike every other module in this API, there is no live evidence anywhere — web or mobile —
+that a member was ever meant to see a budget, so this key was registered leadership-only from
+scratch rather than mirrored from an existing key.
+
+> **`category_id` is never exposed.** Every budget row has it hardcoded `NULL` at creation, and the
+> only code that ever read it joined tables (`expenses`, `accounts`, `expense_categories`) this
+> project's own analysis already documents as dead BMS scaffolding that has never recorded a real
+> transaction. A field that can never hold a value, and a variance computed from tables with zero
+> real rows, would mislead a client into building UI around numbers that can never mean anything on
+> this system.
+
+```json
+{"status":"error","code":"forbidden","message":"You do not have permission to do that."}
+```
+
+---
+
+### GET `/budgets`
+
+The group's budgets. Query: `page`, `per_page` (max 100), `status`, `year`, `month`, `search`.
+**No `items` on the list** — fetching every budget's line items on one page would be N+1 queries;
+call the detail endpoint for the breakdown.
+
+```json
+{
+  "status": "success",
+  "data": {
+    "budgets": [{
+      "id": 1, "budget_name": "API smoke test — Module 10 verification, safe to delete",
+      "budget_year": 2026, "budget_month": 9,
+      "allocated_amount": 10000, "actual_amount": 0, "variance": 10000, "variance_percentage": 100,
+      "status": "approved", "notes": "live verification",
+      "created_at": "2026-09-05T15:08:54+03:00",
+      "reviewed_at": "2026-09-05T15:09:05+03:00", "approved_at": "2026-09-05T15:09:06+03:00",
+      "actions": {"edit": false, "delete": true, "review": false, "approve": false, "reject": false}
+    }],
+    "totals": {"filtered_allocated": 10000, "filtered_count": 1},
+    "pagination": {"page": 1, "per_page": 25, "total": 1, "total_pages": 1, "has_more": false}
+  }
+}
+```
+
+`actual_amount`/`variance`/`variance_percentage` are stored values, not live-computed — see the
+`category_id` note above. In practice `variance` always equals `allocated_amount` and
+`variance_percentage` is always `100`, on every budget that has ever existed on this system.
+
+---
+
+### GET `/budgets/{id}`
+
+One budget with its line items and a **three-stage** trail — created, reviewed, approved. A
+`rejected` budget has no dedicated trail entry: the column that records who rejected it and when
+has never existed (the web's own reject action only ever wrote `status` and `updated_at`).
+
+```json
+{
+  "status": "success",
+  "data": {
+    "budget": {
+      "id": 1, "budget_name": "...", "budget_year": 2026, "budget_month": 9,
+      "allocated_amount": 10000, "actual_amount": 0, "variance": 10000, "variance_percentage": 100,
+      "status": "approved", "notes": "live verification",
+      "created_at": "2026-09-05T15:08:54+03:00",
+      "reviewed_at": "2026-09-05T15:09:05+03:00", "approved_at": "2026-09-05T15:09:06+03:00",
+      "items": [{
+        "id": 1, "description": "Test line item", "units": "pcs",
+        "qty": 5, "price_per_item": 2000, "total_amount": 10000
+      }],
+      "actions": {"edit": false, "delete": true, "review": false, "approve": false, "reject": false}
+    },
+    "trail": {
+      "created":  {"by": "Hawa Mtui", "role": "",          "at": "2026-09-05T15:08:54+03:00", "signed": false, "completed": true},
+      "reviewed": {"by": "Hawa Mtui", "role": "Treasurer",  "at": "2026-09-05T15:09:05+03:00", "signed": false, "completed": true},
+      "approved": {"by": "Hawa Mtui", "role": "Treasurer",  "at": "2026-09-05T15:09:06+03:00", "signed": false, "completed": true}
+    }
+  }
+}
+```
+
+---
+
+### POST `/budgets`
+
+Record a budget with its line items. `create` on `budget`. `budget_name`, `budget_year` (2000–2100),
+`budget_month` (1–12) required. `items` is a nested JSON array — `[{description, units, qty,
+price_per_item}]` — not the web form's parallel POST arrays. A blank-description item is silently
+skipped, same as the web; zero items is allowed. Every budget is created `pending`.
+
+---
+
+### PUT `/budgets/{id}`
+
+Edit any of `budget_name`, `budget_year`, `budget_month`, `notes`, `items` — send only what changed.
+Sending `items` replaces the whole set (delete-then-reinsert, matching the web exactly — this table
+has no per-item update path anywhere in the system) and recomputes `allocated_amount`.
+
+**Refused once `approved` — except for a full admin**, who may still edit (`core/workflow.php`'s
+`canEditDocument()` rule, used here for the first time in this API):
+
+```json
+{"status":"error","code":"not_editable","message":"A budget that is approved can no longer be edited."}
+```
+
+---
+
+### POST `/budgets/{id}/review` · `/approve` · `/reject`
+
+`review`/`approve` need `view` alongside the action itself, same rule as every other module.
+**Neither has a fund-balance check** — a budget authorises nothing that leaves the account by
+itself. `reject` (pending or reviewed → rejected) is gated on **either** `review` or `approve` —
+whoever can move the workflow forward may also stop it — and, like the web's own reject action,
+captures no e-signature:
+
+```json
+{"status":"error","code":"invalid_status_transition","message":"A budget that is rejected cannot be marked as reviewed. Expected: pending."}
+```
+
+---
+
+## 14. Payouts
+
+The simplest module in this API. Reference implementation: `includes/api_payouts.php`.
+
+**No workflow at all.** A payout is written straight to `'paid'` on creation — the
+`pending`/`approved` values in the status enum exist on the column but no code path, web or mobile,
+has ever written them. **No fund-balance gate either** — the web has never checked the group's
+balance before recording one.
+
+**Gated on `member_payouts` — Admin/Chairperson/Secretary only.** Deliberately narrower than every
+other financial module in this API (`expenses`, `petty_cash`, `budget` all include Treasurer):
+mirrors `record_payout.php`'s own role list exactly. A payout is member assistance leadership
+decides on, not a treasury operation.
+
+```json
+{"status":"error","code":"forbidden","message":"You do not have permission to do that."}
+```
+
+---
+
+### GET `/payouts`
+
+The group's payouts. Query: `page`, `per_page` (max 100), `member_id`. **New** — the web page shows
+its own fixed "10 most recent" table inline; this is that list as real pagination.
+
+```json
+{
+  "status": "success",
+  "data": {
+    "payouts": [{
+      "id": 1, "member": {"id": 2, "name": "Athumani Mhando"},
+      "amount": 5000, "description": "API smoke test — Module 11 verification, safe to delete",
+      "payout_date": "2026-09-05", "status": "paid",
+      "created_at": "2026-09-05T15:27:13+03:00"
+    }],
+    "totals": {"filtered_amount": 5000, "filtered_count": 1},
+    "pagination": {"page": 1, "per_page": 25, "total": 1, "total_pages": 1, "has_more": false}
+  }
+}
+```
+
+---
+
+### POST `/payouts`
+
+Record a payout. `create` on `member_payouts`. `member_id`, `amount`, `description` required;
+`payout_date` defaults to today. `member_id` is checked against the live roster **before** the
+insert — an unknown id is **404**, not a foreign-key error:
+
+```json
+{"status":"error","code":"member_not_found","message":"No member was found with that id."}
+```
+
+Every write is audited (`logCreate`) even though the web action itself has never called the
+activity logger for this table.
+
+---
+
+## 15. Demo logins
 
 All on the demo site, password `Demo@2026`:
 
