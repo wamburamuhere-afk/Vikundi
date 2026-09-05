@@ -368,11 +368,46 @@ decision, not this module's to fix, and is left as-is.
 
 ## 12. Meetings
 
-- [ ] `GET /api/v1/meetings` — list, paginated
-- [ ] `GET /api/v1/meetings/{id}` — detail + attendance (`meeting_view.php`)
-- [ ] `POST /api/v1/meetings` — create
-- [ ] `PUT /api/v1/meetings/{id}` — edit
-- [ ] `POST /api/v1/meetings/{id}/attendance` — record attendance
+- [x] `GET /api/v1/meetings` — list, paginated
+- [x] `GET /api/v1/meetings/{id}` — detail + attendance (`meeting_view.php`)
+- [x] `POST /api/v1/meetings` — create
+- [x] `PUT /api/v1/meetings/{id}` — edit
+- [x] `POST /api/v1/meetings/{id}/attendance` — record attendance
+- [x] `DELETE /api/v1/meetings/{id}` — added: `actions/delete_meeting.php` is real and properly gated; the API
+      exposes it as a genuine `DELETE`, the first in this whole API (`Access-Control-Allow-Methods`
+      already listed it, unused until now)
+- [x] `POST /api/v1/meetings/{id}/fine-absentees` — added: the meeting screen's own "Fine Absentees"
+      button (`actions/generate_absence_fines.php`), a real, used, leadership-only action
+
+**Module 12 built, tested, verified locally.** No workflow at all — same shape as Payouts — `status`
+(scheduled/held/cancelled) is a plain field with no reviewer/approver, and `role_permissions` for
+`meetings` has `can_review`/`can_approve` at `0` for every role. **The `meetings` permission key
+already had correct grants before this module** (full leadership CRUD, Member view-only, via
+`create_meetings_tables.php` + `grant_meetings_to_leadership.php`) — the first module since
+Contributions that needed no new permission migration.
+
+**Attendance is a deliberate design change from the web, not a mirror.** `actions/save_meeting_attendance.php`
+resubmits the WHOLE active roster every time and treats "in the roster but not checked present" as
+an explicit absence. `POST /api/v1/meetings/{id}/attendance` instead accepts an explicit
+`[{member_id, status}]` array and upserts exactly those rows — a member left out keeps whatever
+status they already had. Documented clearly in `includes/api_meetings.php` and the handover, since
+it is a real behavioral difference a client could get wrong by assuming web semantics.
+
+**`POST .../fine-absentees` only fines members with a real `'absent'` row**, not every member the
+detail view *displays* as absent by default (unmarked members show as absent visually via
+`COALESCE(a.status, 'absent')`, but have no row at all). This matches the web exactly — confirmed
+live: a meeting with only 2 of 334 members marked (1 present, 1 absent) fined exactly the 1 real
+absentee, not the other 332 who were simply never marked.
+
+**Two web-side gaps fixed, milder than prior modules':** `api/get_meetings.php` and
+`api/get_meeting_details.php` (the list DataTable and edit-modal-prefill sources) checked only
+`isAuthenticated()`, not `canView('meetings')`. Lower severity than Budgets' equivalent gaps since
+Member already holds `view` on this key — but now a configurable, auditable check instead of none.
+
+Verified live against the local WAMP instance: full lifecycle (create → attendance recorded for 2 of
+334 members → fine-absentees created exactly 1 fine, re-running it skipped the duplicate → edit →
+delete, confirmed gone with `404`), an unknown `member_id` in an attendance submission refused with
+`404` before any write, and the fixed web endpoints now require authentication.
 
 ## 13. Documents
 

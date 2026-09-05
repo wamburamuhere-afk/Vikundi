@@ -2,9 +2,18 @@
 // api/get_meetings.php — server-side list for the Meetings DataTable + stats.
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/require_auth.php'; // audit B3: must be logged in
+require_once __DIR__ . '/../core/permissions.php';
 global $pdo;
 
 header('Content-Type: application/json');
+
+// Had no permission check beyond being logged in. Found while building the
+// mobile API's meetings module (Module 12).
+if (!canView('meetings')) {
+    http_response_code(403);
+    echo json_encode(['error' => 'You do not have permission to view meetings.']);
+    exit;
+}
 
 $draw   = (int) ($_GET['draw'] ?? 1);
 $start  = max(0, (int) ($_GET['start'] ?? 0));
