@@ -341,7 +341,30 @@ separately, a second budget created and rejected, then a review attempt on it co
 
 ## 11. Payouts
 
-- [ ] `POST /api/v1/payouts` — record_payout.php — Admin/Secretary/Katibu only
+- [x] `POST /api/v1/payouts` — record_payout.php — Admin/Secretary/Katibu only
+- [x] `GET /api/v1/payouts` — added: `record_payout.php` shows its own "10 most recent" list inline;
+      this is that list as real pagination, gated the same as the create action
+
+**Module 11 built, tested, verified locally.** The smallest module so far — no workflow at all
+(every payout is written straight to `'paid'`, matching `record_payout.php`'s own hardcoded INSERT),
+no fund-balance gate (the web has never had one). New permission key `member_payouts`
+(`database/add_member_payouts_permission.php`), normalizing `record_payout.php`'s hardcoded
+`$viongozi_roles = ['Admin','Chairperson','Mwenyekiti','Secretary','Katibu']` array into RBAC — the
+exact old-style gate todo.md's own judgment call #3 names as an example.
+
+**Deliberately narrower than every other financial module: Treasurer is NOT granted.**
+`manage_contributions`/`manage_fines`/`expenses`/`petty_cash`/`budget` all grant full leadership
+including Treasurer; `record_payout.php`'s own role list never has, and this migration mirrors that
+fact rather than "correcting" it to match the shape of every other module — a payout is member
+assistance leadership decides on, not a treasury operation.
+
+**Found, not fixed: `record_payout.php` itself has no route in `roots.php` and no nav link**, and —
+unlike every route-based `api/`/`actions/`/`ajax/` file — the front controller's generic fallback
+only resolves PHP files inside those three folders, so this page is reachable by no URL at all
+today. `member_payouts` is still real, live infrastructure (already summed into
+`getGroupFundBalance()`'s cash-basis "money out" figure, unlike the dead tables Budgets found), so
+the API was built as planned rather than excluded — but the reachability gap is a web-side/nav
+decision, not this module's to fix, and is left as-is.
 
 ## 12. Meetings
 

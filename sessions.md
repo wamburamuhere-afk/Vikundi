@@ -4,6 +4,47 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-09-05 (2) — Module 11: Payouts — PR pending
+
+**Branch:** `develop` (feature branch not yet cut)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** The smallest module built so far — `GET/POST /api/v1/payouts`, one file. Mirrors
+`app/bms/customer/record_payout.php` exactly: no workflow at all (every payout is written straight
+to `'paid'`), no fund-balance gate. `GET` is new — not in the original plan, but the web page already
+shows its own "10 most recent" list inline; this is that list as real pagination.
+
+**New permission key `member_payouts`**, normalizing `record_payout.php`'s hardcoded role-name array
+(`$viongozi_roles = ['Admin','Chairperson','Mwenyekiti','Secretary','Katibu']`) into the same
+`role_permissions` check every other module uses — the exact pattern todo.md's judgment call #3
+names as an example of what the API layer should fix rather than copy forward.
+
+**Deliberately excludes Treasurer** — every other financial permission built this week
+(`expenses`, `petty_cash`, `budget`) grants full leadership including Treasurer; this one mirrors
+`record_payout.php`'s own list, which never has. A payout is member assistance leadership decides on,
+not a treasury operation, and the migration preserves that distinction rather than smoothing it away.
+
+**A reachability gap found, not fixed:** `record_payout.php` has no route in `roots.php` and no nav
+link, and — unlike files under `api/`/`actions/`/`ajax/` — the router's generic fallback only
+resolves PHP files inside those three folders, so the page is reachable by no URL today. Built anyway
+rather than excluded (unlike the two BMS-dead-leftover modules found earlier): `member_payouts` is
+real, live infrastructure already summed into `getGroupFundBalance()`'s cash-basis balance, not a
+disconnected table. The routing/nav gap is a web-side product decision, left as-is.
+
+**Tests.** `PayoutsApiTest` — amount validation, the member-existence check firing before the insert,
+confirmation that no workflow/fund-gate code was accidentally copied in from a sibling module, the
+migration's exact role list (and Treasurer's absence from it), and structural gate-ordering checks.
+`composer test`: 2007 tests, 5123 assertions, all green (15 pre-existing skips, unrelated).
+
+**Verified live** against the local WAMP instance: create (with a real member, amount with thousands
+separators), unknown `member_id` refused with `404` before any insert, the new record appearing
+immediately in `GET /payouts`'s list and totals.
+
+**Docs deliberately not done yet** — per the established order (build → deploy → verify live → docs
+→ handover), those come once this is merged and deployed.
+
+---
+
 ## Session — 2026-09-05 — Module 10: Budgets — PR pending
 
 **Branch:** `develop` (feature branch not yet cut)
