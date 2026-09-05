@@ -52,6 +52,7 @@ $migrations = [
     'grant_mkoba_reconciliation_to_leadership.php', // backfill 'mkoba_reconciliation' grant for Secretary/Treasurer on existing DBs
     'add_petty_cash_permission.php', // register 'petty_cash' (mirrored from 'expenses'); the code has gated on it since it was written, the row never existed
     'add_budget_permission.php', // register 'budget' (leadership-only); the code has gated on it since it was written, the row never existed
+    'add_member_payouts_permission.php', // register 'member_payouts' (Admin/Chairperson/Secretary — no Treasurer); normalizes record_payout.php's role-name array into RBAC
 ];
 
 echo "== Vikundi database migrations ==\n";
