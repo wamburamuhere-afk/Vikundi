@@ -62,6 +62,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_delete_doc_id'])) {
     $did = (int)$_POST['_delete_doc_id'];
+    // deleteDocumentLocal() below only checks ownership (uploader or Admin) — it
+    // never checked the delete permission itself. Every role that can currently
+    // reach this form already holds can_delete on document_library, so this only
+    // closes the gap for any future create-only role.
+    if (!canDelete('document_library')) {
+        header('Location: ' . getUrl('library') . '?delerr=' . urlencode('You do not have permission to delete documents.')); exit;
+    }
     $response = deleteDocumentLocal($pdo, $did);
     if ($response['success']) {
         header('Location: ' . getUrl('library') . '?msg=deleted'); exit;

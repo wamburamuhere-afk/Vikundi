@@ -411,14 +411,112 @@ delete, confirmed gone with `404`), an unknown `member_id` in an attendance subm
 
 ## 13. Documents
 
-- [ ] `GET /api/v1/documents` — library, paginated (`document_library.php`)
-- [ ] `GET /api/v1/documents/{id}` — view (`view_document.php`)
-- [ ] `GET /api/v1/documents/authored` — documents_authored.php, own drafts
-- [ ] `POST /api/v1/documents` — author a new document
-- [ ] `PUT /api/v1/documents/{id}` — edit
-- [ ] `GET /api/v1/document-templates` — list
-- [ ] `POST /api/v1/documents/{id}/sign` — e-signature (`e_signatures.php`, `select_document_add_esignature.php`)
-- [ ] `GET /api/v1/documents/{id}/workflow` — approval workflow state
+- [x] `GET /api/v1/documents` — Document Library, paginated (`document_library.php` + `api/get_documents.php`)
+- [x] `GET /api/v1/documents/{id}` — Library item metadata
+- [x] `GET /api/v1/documents/{id}/download` — added: stream the file (`downloadDocumentLocal()`) — a
+      metadata endpoint with no way to fetch the file itself would be useless to a mobile client
+- [x] `DELETE /api/v1/documents/{id}` — added: `deleteDocumentLocal()`'s own ownership-or-admin rule
+- [x] `GET /api/v1/authored-documents` — own/shared Document Writer drafts, visibility-scoped
+- [x] `POST /api/v1/authored-documents` — author a new document
+- [x] `GET /api/v1/authored-documents/{id}` — detail incl. `body_html` + signatories
+- [x] `PUT /api/v1/authored-documents/{id}` — edit
+- [x] `DELETE /api/v1/authored-documents/{id}` — added: `actions/delete_document.php`, now with its
+      ownership gap fixed (see below)
+- [x] `GET /api/v1/document-templates` — list (`authored_document_templates`, read-only)
+- [x] `POST /api/v1/authored-documents/{id}/sign` — e-signature, both modes (`actions/sign_document.php`)
+- [x] `GET /api/v1/authored-documents/{id}/workflow` — signing progress, kept separate from detail
+
+**Split into TWO top-level resources, not one — a deliberate deviation from this file's original
+plan.** The web keeps two unrelated tables under the "Documents" umbrella: the plain file **Library**
+(`documents`, access_level public/restricted/private, `includes/document_access.php`) and the
+in-app **Document Writer** / authored documents (`authored_documents`, visibility shared/private,
+multi-party signing, `includes/authored_document_access.php`). The original plan's
+`GET /api/v1/documents/authored` could never actually route: `roots.php`'s two API regexes resolve
+only `/api/v1/{resource}/{id}(/{action})?` and `/api/v1/{resource}/{subresource}` — there is no third
+static segment before an id, so `/documents/authored/{id}` has no matching rule. Authored documents
+are exposed as their own resource, `authored-documents`, instead.
+
+**Library gates on `document_library`, the canonical, migration-tracked permission key** (Admin/
+Chairperson/Secretary/Treasurer full CRUD, Member view-only — no new migration needed, same as
+Meetings). Item-level access still follows `access_level` via `vk_user_can_access_document()`
+(public → everyone, restricted → leadership + uploader, private → uploader + admin), reusing the
+web's own pure helper. A document outside the caller's access 404s, not 403s — its existence isn't
+revealed to someone who can't see it.
+
+**Investigated, not fixed: `document_library.php` and five siblings check phantom permission keys.**
+`app/constant/document/document_library.php` (`requireViewPermission('library')`),
+`ajax/quick_upload_document.php`, `select_document_add_esignature.php`,
+`api/document/apply_signature.php`, and `e_signatures.php` (two call sites) all gate on the strings
+`'library'`/`'documents'`, neither of which exists as a `page_key` in a fresh install's `permissions`
+table — only `document_library` does. Read in isolation this looks like a hard lockout of every
+non-admin role. **Verified live on demo instead of trusting the static read**: a Treasurer session
+loaded `/library` successfully — HTTP 200, real content, no redirect. The only way `canView('library')`
+resolves `true` for a non-admin session is a real `permissions` row named `library` existing in that
+database; grepping this repo's entire migration history turns up no script that ever created one.
+Conclusion: demo (and, by the same multi-year deploy history, presumably production) carries a
+legacy `library`/`documents` permissions row predating this repo's migration tracking — inert data
+drift on already-deployed environments, not an active bug. Left unfixed: repointing those checks at
+`document_library` could not be verified safe against production's actual (inaccessible to this
+session) grants for that key, and demo's current, working access is real, live behavior this session
+has no way to reproduce in order to prove a fix doesn't regress it. This module's own API gates on
+the canonical key throughout.
+
+**Two real defects found and fixed, both about a private authored document's ownership:**
+1. `actions/delete_document.php` checked `manage_documents` delete-rights only — no ownership or
+   visibility check at all, unlike its sibling `actions/save_document.php`'s edit path, which already
+   refuses to touch someone else's `private` document. Any leader with delete-rights could delete
+   another leader's private letter they could not even open. Fixed to match `save_document.php`'s
+   exact rule; `api/v1/authored-documents_detail.php`'s own `DELETE` carries the same rule from the
+   start.
+2. `document_library.php`'s delete trigger (`$_POST['_delete_doc_id']`) called `deleteDocumentLocal()`
+   with no permission check at all — that function only ever checked ownership (uploader or Admin),
+   never `can_delete`. Currently latent (every role that can create a library upload already holds
+   `can_delete` on `document_library` too) but fragile — a future create-only role would inherit
+   delete rights it was never granted. Added the missing `canDelete('document_library')` gate; this
+   can only make the web *more* restrictive, never less, for every role that can reach it today.
+
+**Also found and fixed: an authored-document delete leaves an orphaned signatory row.** There is no
+FK between `document_signatories` and `authored_documents`, and the web's delete action never clears
+these — harmless (nothing joins to a deleted document) but needless. `api/v1/authored-documents_detail.php`'s
+`DELETE` clears them first.
+
+**Multi-party signing is scoped, not permission-gated.** `POST .../sign` checks
+`vk_find_doc_signatory()` first: an assigned signatory signs their own slot without ever needing
+`manage_documents` — a plain Member can be asked to witness a document they otherwise have no leadership
+access to. Only when a document has *no* signatory list at all does the endpoint fall back to the
+legacy single-authoritative-signature path, gated on `edit` on `manage_documents` exactly like
+`actions/sign_document.php`. `GET .../workflow` reports whichever mode applies and is kept separate
+from `GET .../{id}` on purpose — polling "has everyone signed?" has no reason to re-transfer the
+full `body_html` on every check.
+
+**List visibility for authored documents is query-scoped, not permission-gated.** There is no
+`vk_api_require_permission(..., 'view', 'manage_documents')` on `GET /api/v1/authored-documents` —
+`vk_signer_documents_join()` + `vk_authored_visibility_where()` (both pre-existing, reused as-is)
+already narrow a non-leadership caller's results to exactly the document(s) they were assigned to
+sign, whatever the visibility, while leadership sees every `shared` document plus their own and
+anything they must sign. An ordinary Member holds no `manage_documents` grant at all under current
+role_permissions, so their only way into this list is as an assigned signatory — consistent with the
+web, where only leadership can author a document in the first place.
+
+**`POST /api/v1/authored-documents` accepts an optional `template_id`**, pre-filling
+`doc_type`/`body_html`/`use_letterhead` from `authored_document_templates` — the same "start from a
+template" the New Document editor offers via `?tpl=ID`. Fields sent alongside `template_id` still
+win, so a client can start from a template and override anything.
+
+**`GET /api/v1/document-templates` is read-only** — create/edit/delete of templates was never in this
+module's plan and stays out of scope. Maps to `authored_document_templates`
+(`writer_templates.php`'s own table), explicitly not the legacy, unrelated `document_templates` /
+`template_categories` system.
+
+Verified live against the local WAMP instance as both Admin and an ordinary Member: library list/detail
+correctly scoped by `access_level` (a Member saw zero of four all-private seeded documents; a private
+item 404s instead of 403s for a non-owner); file download streamed correctly with the right
+`Content-Type`; authored-document create → edit → the full multi-party sign flow (assigned a Member
+as a signatory, the Member's list/detail/workflow endpoints showed exactly that one document, signing
+completed the progress and fired the creator's "all signatures collected" notification, a second sign
+attempt correctly refused with `409`) → delete (confirmed gone with `404`, signatory row confirmed
+cleared); a Member's `POST` was correctly refused `403` for lacking `manage_documents` create rights;
+templates list returned the real seeded set.
 
 ## 14. Voting & Leadership Applications
 

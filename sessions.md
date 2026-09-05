@@ -4,6 +4,85 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-09-06 — Module 13: Documents — PR pending
+
+**Branch:** `develop` (feature branch not yet cut)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** Two independent subsystems, kept apart exactly as the web keeps them, split into
+**two top-level API resources** — a deliberate deviation from `todo.md`'s original single-resource
+plan. New shared file: `includes/api_documents.php`.
+
+**Document LIBRARY** (`documents` table, gated on `document_library`): `GET /documents` (paginated,
+filters: category/file_type/access_level/search), `GET /documents/{id}` (metadata), `GET
+/documents/{id}/download` (added — streams the file; metadata with no way to fetch it would be
+useless), `DELETE /documents/{id}`.
+
+**Document WRITER / authored documents** (`authored_documents` table, gated on `manage_documents`),
+exposed as `authored-documents` — NOT nested under `/documents/authored/...` as originally planned,
+because `roots.php`'s router only resolves `/api/v1/{resource}/{id}(/{action})?` and
+`/api/v1/{resource}/{subresource}`; a third static segment before an id could never route:
+`GET /authored-documents` (visibility-scoped list), `POST /authored-documents` (create, optional
+`template_id` pre-fills from `authored_document_templates`), `GET/PUT/DELETE /authored-documents/{id}`,
+`POST /authored-documents/{id}/sign`, `GET /authored-documents/{id}/workflow` (kept separate from
+detail so polling signing progress never re-transfers `body_html`). Plus `GET /document-templates`
+(read-only list).
+
+**A live/static-analysis contradiction investigated and resolved before writing any code.** A
+research pass claimed `document_library.php` and five siblings gate on phantom permission keys
+(`'library'`/`'documents'`) that don't exist in a fresh install's `permissions` table, implying a
+hard lockout of every non-admin role. Reading the code confirmed the phantom-key calls are real.
+**Verified live on demo instead of trusting the static read:** a Treasurer session loaded `/library`
+successfully — no lockout. Traced this to data drift: `canView('library')` can only be `true` if a
+real `library` permissions row exists in that database, and this repo's entire migration history has
+never created one — so demo's (and presumably production's) live database carries a legacy row
+predating migration tracking. Left unfixed, since repointing those checks could not be verified safe
+against production's actual, inaccessible-to-this-session grants for `document_library`, and this
+module's own API gates on that canonical key throughout instead.
+
+**Two real defects found and fixed, both about a private authored document's ownership:**
+`actions/delete_document.php` had no ownership/visibility check at all (any leader with
+`manage_documents` delete-rights could delete another leader's private document they couldn't even
+open) — fixed to match `actions/save_document.php`'s existing edit-path rule exactly.
+`document_library.php`'s delete trigger called `deleteDocumentLocal()` (ownership-only) with no
+permission gate before it — added the missing `canDelete('document_library')` check; currently
+latent since every create-capable role already holds delete too, but closes the gap for any future
+create-only role. Also found and fixed during local verification: authored-document delete left an
+orphaned `document_signatories` row (no FK, and the web's own delete never clears it) — this
+endpoint's `DELETE` clears them first.
+
+**Signing and list visibility are scope-driven, not permission-gated**, reusing the web's own
+pre-existing pure helpers as-is: `vk_can_view_authored_document()`, `vk_authored_visibility_where()`,
+`vk_signer_documents_join()`, `vk_doc_signing_progress()`. An assigned Member signs their own slot
+without ever needing `manage_documents`; the legacy single-signature fallback (no signatory list)
+stays leadership-gated exactly like `actions/sign_document.php`.
+
+**Tests.** `DocumentsApiTest` — 41 tests: library row shaping (never leaks `file_path`), the
+ownership-or-admin delete rule (not the catalog permission, matching `deleteDocumentLocal()` exactly),
+filter validation (named placeholders for the library query since it shares a statement with
+`vk_document_visibility_where()`'s own named binds; positional for authored documents, matching
+`vk_authored_visibility_where()`), item-level visibility (`vk_api_doc_authorize_item()` tested pure,
+public/private/restricted matrix), authored-document action rules (private-document ownership gate,
+Member-with-no-grant-at-all), structural gate-ordering, the phantom-key regression guard (asserts the
+new endpoints reference `'document_library'` and never the bare `'library'` string), the two web-fix
+regression tests, the signatory-cleanup-on-delete regression test, and routing. `composer test`: 2071
+tests, 5256 assertions, all green (15 pre-existing skips, unrelated) — including the pre-existing
+`DocumentSignatoriesTest`, unaffected.
+
+**Verified live** against the local WAMP instance as Admin and an ordinary Member: library list/detail
+correctly scoped by `access_level` (Member saw 0 of 4 all-private seeded documents; a private item
+404s, not 403s, for a non-owner); file download streamed with the correct `Content-Type`; full
+authored-document lifecycle — create → assign a Member as signatory → the Member's list/detail/workflow
+endpoints showed exactly that one document → sign (progress completed, creator's "all signatures
+collected" notification fired, a second sign attempt correctly refused `409`) → edit → delete
+(confirmed gone with `404`, signatory row confirmed cleared); a Member's `POST` correctly refused
+`403` for lacking `manage_documents` create rights; templates list returned the real seeded set.
+
+**Docs deliberately not done yet** — per the established order (build → deploy → verify live → docs
+→ handover), those come once this is merged and deployed.
+
+---
+
 ## Session — 2026-09-06 — Module 12: Meetings — PR pending
 
 **Branch:** `develop` (feature branch not yet cut)
