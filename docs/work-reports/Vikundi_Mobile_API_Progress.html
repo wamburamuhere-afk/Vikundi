@@ -66,38 +66,35 @@ footer { margin-top:48px; padding-top:18px; border-top:2px solid var(--line);
   <div class="kicker">BJP Technologies &middot; Vikundi VICOBA System</div>
   <h1>Mobile App Foundation &mdash; Progress</h1>
   <p class="sub">The work behind the mobile application, updated since the last report. Two more
-  modules are finished &mdash; the group's financial ledger and reconciliation, and the treasurer's
-  expenses and petty cash &mdash; which means every screen a leader needs to run the group's money
-  day to day and month to month is now in place.</p>
+  modules are finished &mdash; budgets and one-off member payouts &mdash; which closes out the
+  treasurer's entire financial back office. Everything to do with the group's money is now built,
+  deployed and documented.</p>
 </div></header>
 
 <div class="wrap">
 
 <div class="stats">
-  <div class="stat"><b>58</b><span>API endpoints live</span></div>
-  <div class="stat"><b>9</b><span>Modules complete</span></div>
+  <div class="stat"><b>66</b><span>API endpoints live</span></div>
+  <div class="stat"><b>11</b><span>Modules complete</span></div>
   <div class="stat"><b>4</b><span>Defects found &amp; fixed</span></div>
-  <div class="stat"><b>1,958</b><span>Automated tests</span></div>
+  <div class="stat"><b>2,007</b><span>Automated tests</span></div>
   <div class="stat"><b>2</b><span>Sites deployed</span></div>
 </div>
 
 <h2><span class="n">1</span>What changed since the last report</h2>
 
-<p>The last report covered condolences &mdash; the last screen an ordinary member touches often.
-Since then, two back-office modules are finished: the <strong>financial ledger</strong> (every
-member's savings standing side by side, plus the group's real available balance) and
-<strong>reconciliation</strong> (matching the imported M-Koba statement against the books, both for
-the whole group and for one member checking their own payments); and <strong>expenses and petty
-cash</strong> &mdash; recording group spending, the same review-then-approve sign-off already used
-for savings and condolences, and a fourth step neither of those needed: marking money as actually
-paid out, kept separate from merely being authorised.</p>
+<p>The last report covered the financial ledger and expenses/petty cash. Since then, two more
+modules are finished: <strong>budgets</strong> (planning a spend before it happens, with a
+line-by-line breakdown, and its own review&rarr;approve&rarr;reject sign-off), and <strong>member
+payouts</strong> &mdash; recording one-off assistance paid directly to a member, the simplest screen
+in the app: no sign-off chain at all, just a record the moment it happens.</p>
 
 <div class="note">
-  <strong>The number that matters.</strong> Every screen a treasurer needs to run the books, both
-  week to week and month to month, is now finished, deployed and documented &mdash; on top of every
-  screen an ordinary member already had. <strong>58 of roughly 117 planned doorways are finished</strong>.
-  What is left is mostly things a group touches occasionally rather than routinely &mdash; budgets,
-  one-off payouts, meetings, documents, elections, messaging &mdash; plus the settings screens an
+  <strong>The number that matters.</strong> Every financial screen the group runs on &mdash; savings,
+  fines, bereavement support, the ledger, reconciliation, expenses, petty cash, budgets and payouts
+  &mdash; is now finished, deployed and documented. <strong>66 of roughly 117 planned doorways are
+  finished</strong>. What is left is entirely group administration used occasionally rather than
+  routinely &mdash; meetings, documents, elections, messaging &mdash; plus the settings screens an
   administrator rarely opens.
 </div>
 
@@ -117,54 +114,60 @@ paid out, kept separate from merely being authorised.</p>
     <tr><td><strong>Condolences</strong></td><td>Record assistance for a bereaved member, the review&rarr;approve sign-off, a member's own condolence history, and a report on whether the fund is sustainable</td><td class="tick">Live</td></tr>
     <tr><td><strong>Financial ledger &amp; reconciliation</strong></td><td>Every member's savings standing side by side, the group's real available balance, and matching the imported M-Koba statement against the books &mdash; for the whole group, and for one member checking their own payments landed correctly</td><td class="tick">Live</td></tr>
     <tr><td><strong>Expenses &amp; petty cash</strong></td><td>Record spending, the review&rarr;approve sign-off, and a fourth step &mdash; marking money as actually paid out, separate from merely being authorised &mdash; plus a spending summary report</td><td class="tick">Live</td></tr>
+    <tr><td><strong>Budgets</strong></td><td>Plan a spend before it happens, with a line-by-line breakdown, and its own review&rarr;approve&rarr;reject sign-off</td><td class="tick">Live</td></tr>
+    <tr><td><strong>Member payouts</strong></td><td>Record one-off assistance paid directly to a member &mdash; no sign-off chain, a record the moment it happens &mdash; and the payout history</td><td class="tick">Live</td></tr>
   </tbody>
 </table>
 </div>
 
-<div class="bar" aria-label="58 of 117 endpoints complete">
-  <i class="done" style="width:50%"></i><i class="todo" style="width:50%"></i>
+<div class="bar" aria-label="66 of 117 endpoints complete">
+  <i class="done" style="width:56%"></i><i class="todo" style="width:44%"></i>
 </div>
-<p class="barlab">58 of roughly 117 planned endpoints &mdash; about half. What remains is mostly
-occasional-use screens: budgets, one-off payouts, meetings, documents, elections, messaging, and
-the administrator's settings screens.</p>
+<p class="barlab">66 of roughly 117 planned endpoints &mdash; a little over half. Everything to do
+with the group's money is now finished. What remains is entirely group administration used
+occasionally rather than routinely: meetings, documents, elections, messaging, and the
+administrator's settings screens.</p>
 
 <h2><span class="n">3</span>Defects found in the existing system</h2>
 
 <p class="lead">The same pattern as every report so far: building each doorway means reading exactly
 how the web system enforces its rules, and that reading keeps finding places where it does not.
-This time, four &mdash; across the two modules &mdash; the most serious of which had no protection
-at all.</p>
+Budgets was the worst yet &mdash; of seven files behind that one screen, only two checked any
+permission at all.</p>
 
 <div class="note sev">
-  <strong>Any signed-in member could read the group's whole petty-cash list.</strong>
-  The screen that feeds the petty-cash table its data had no permission check whatsoever &mdash;
-  it only confirmed someone was logged in, not that they were allowed to see it. Every voucher's
-  payee, amount and description was exposed to anyone with an account.
+  <strong>Any signed-in user could approve any budget directly &mdash; skipping review entirely.</strong>
+  The action behind the budget screen's own &ldquo;Reject&rdquo; button had no permission check
+  whatsoever, and separately let the caller set a budget's status straight to
+  &ldquo;approved&rdquo; without going anywhere near the actual approve step or the person who is
+  supposed to sign off on it.
   <br><br>
-  Confirmed by actually doing it, signed in as an ordinary member: the full voucher list came back,
-  identical to what a treasurer sees.
-  <br><br>
-  Closed the same way as the same class of mistake in earlier reports: the screen now checks a real
-  permission before answering, and that permission did not previously exist in the system's own
-  rulebook at all &mdash; it was added, matching the rights the equivalent expenses screen already
-  had, rather than invented from scratch.
+  Closed by restricting that action to exactly what its own button ever sends (a rejection), and
+  requiring the same real permission every other sign-off in the system already checks. Approving a
+  budget now only ever happens through the one screen built to do it properly.
+</div>
+
+<div class="note sev">
+  <strong>A page could be read by someone who was not even signed in.</strong> One data-fetch built
+  into the budget screen ran before the page checked whether anyone was logged in at all &mdash; not
+  a wrong permission, no permission check whatsoever, for anyone with the address. Confirmed by
+  actually doing it, signed out: the query still ran. No budgets exist yet on the live system, so
+  nothing was actually exposed by this, but the door was open. Now closed.
 </div>
 
 <div class="note">
-  <strong>Two reports a treasurer needs were silently unreachable by anyone except the two most
-  senior roles.</strong> The financial ledger, the M-Koba reconciliation and the group's spending
-  summary all check a permission that either did not exist in the system's rulebook at all, or
-  existed but had never been granted to anyone. In practice this meant a Secretary or a Treasurer
-  &mdash; not just the Chairperson or Admin &mdash; could be quietly refused a screen they are
-  supposed to run. Fixed by adding the missing rule and the missing grants; nothing already
-  configured was changed or removed.
+  <strong>Four more actions behind the same screen checked only &ldquo;is someone logged in,&rdquo;
+  not &ldquo;is this person allowed.&rdquo;</strong> Creating, editing, deleting and reading a budget
+  were all open to any signed-in account, leadership or not. All four now check the real permission
+  &mdash; which, like the reports found in the last round, did not previously exist in the system's
+  own rulebook at all and had to be added.
 </div>
 
 <div class="note">
-  <strong>A paid expense could still be silently edited.</strong> The rule guarding expense edits
-  only blocked a change once an expense was &ldquo;approved&rdquo; &mdash; it did not also block one
-  already marked &ldquo;paid,&rdquo; even though that money has already left the account. Fixed to
-  block both.
+  <strong>An approved budget could still be silently rewritten.</strong> The edit screen had no rule
+  at all about what status a budget could be in to allow a change &mdash; a safeguard for exactly
+  this already existed elsewhere in the system, written, correct, and simply never connected to this
+  screen. It is now.
 </div>
 
 <h2><span class="n">4</span>How the work is checked</h2>
@@ -176,10 +179,10 @@ to.</p>
 <table>
   <thead><tr><th>Check</th><th>What it means</th></tr></thead>
   <tbody>
-    <tr><td><strong>1,958 automated tests</strong></td><td>Up from 1,858. Every change runs all of them before it can ship.</td></tr>
+    <tr><td><strong>2,007 automated tests</strong></td><td>Up from 1,958. Every change runs all of them before it can ship.</td></tr>
     <tr><td><strong>Every endpoint tried on the live site</strong></td><td>Passing tests is not the standard. Each one is exercised against the running server, as every role, before being called finished.</td></tr>
-    <tr><td><strong>Refusals tested as hard as successes</strong></td><td>Both modules were checked from the ordinary-member side at least as hard as from leadership &mdash; it is where the petty-cash defect above was actually found.</td></tr>
-    <tr><td><strong>Checked against the group's own numbers, not just made up ones</strong></td><td>The financial ledger's balance was cross-checked against the figure the home screen already shows for the same group, on the same server, at the same moment &mdash; two independently built screens agreeing is stronger proof than either one passing alone.</td></tr>
+    <tr><td><strong>Refusals tested as hard as successes</strong></td><td>Both modules were checked from the ordinary-member side at least as hard as from leadership &mdash; it is where the workflow-bypass defect above was actually found.</td></tr>
+    <tr><td><strong>A role deliberately left out was checked too, not just assumed</strong></td><td>Member payouts is the one financial screen the treasurer cannot use, by design. That refusal was confirmed against the live server with the treasurer's own account, the same as every permission this round.</td></tr>
   </tbody>
 </table>
 </div>
@@ -188,8 +191,10 @@ to.</p>
 
 <p>Still running at <code>demo.vikundi.bjptechnologies.co.tz</code>, on its own database, and still
 the proving ground for every module before it ships: every defect above, and every new endpoint, was
-verified there under real accounts &mdash; Admin, Treasurer and an ordinary member &mdash; before
-being called finished.</p>
+verified there under real accounts &mdash; Admin, Secretary, Treasurer and an ordinary member
+&mdash; before being called finished. Member payouts specifically needed the treasurer's own account
+signed in, to confirm they are correctly refused a screen every other financial module in the app
+lets them use.</p>
 
 <h2><span class="n">6</span>What happens next</h2>
 
@@ -197,18 +202,18 @@ being called finished.</p>
 <table>
   <thead><tr><th>Step</th><th>Work</th></tr></thead>
   <tbody>
-    <tr><td>1</td><td><strong>Budgets and one-off payouts</strong> &mdash; the last two pieces of the treasurer's financial back office.</td></tr>
-    <tr><td>2</td><td><strong>Meetings, documents, elections and messaging</strong> &mdash; group administration, used occasionally rather than weekly.</td></tr>
-    <tr><td>3</td><td><strong>Settings, roles and profile</strong> &mdash; the administrator's own screens, last because they are opened least often.</td></tr>
-    <tr><td>4</td><td><strong>The app itself</strong> &mdash; screen by screen, on top of the finished doorways. Sign-in, the home screen, members, group settings, contributions, transactions, fines, condolences, the financial ledger and reconciliation, and expenses and petty cash can all be built against now: they are finished, deployed, and documented.</td></tr>
+    <tr><td>1</td><td><strong>Meetings, documents, elections and messaging</strong> &mdash; group administration, used occasionally rather than weekly.</td></tr>
+    <tr><td>2</td><td><strong>Settings, roles and profile</strong> &mdash; the administrator's own screens, last because they are opened least often.</td></tr>
+    <tr><td>3</td><td><strong>The app itself</strong> &mdash; screen by screen, on top of the finished doorways. Every financial screen &mdash; sign-in, the home screen, members, group settings, contributions, transactions, fines, condolences, the ledger and reconciliation, expenses, petty cash, budgets and payouts &mdash; can all be built against now: they are finished, deployed, and documented.</td></tr>
   </tbody>
 </table>
 </div>
 
 <p>Everything a member needs to see their own money and standing, and everything a leader needs to
 run the books week to week and month to month &mdash; savings, transactions, fines, bereavement
-support, the ledger, reconciliation, expenses and petty cash &mdash; is now live. What remains is the
-group's occasional-use business, and the app itself.</p>
+support, the ledger, reconciliation, expenses, petty cash, budgets and payouts &mdash; is now live.
+The treasurer's entire financial back office is finished. What remains is the group's occasional-use
+business, and the app itself.</p>
 
 <footer>
   BJP Technologies &middot; Vikundi VICOBA Management System<br>
