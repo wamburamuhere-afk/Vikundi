@@ -443,23 +443,30 @@ Meetings). Item-level access still follows `access_level` via `vk_user_can_acces
 web's own pure helper. A document outside the caller's access 404s, not 403s — its existence isn't
 revealed to someone who can't see it.
 
-**Investigated, not fixed: `document_library.php` and five siblings check phantom permission keys.**
-`app/constant/document/document_library.php` (`requireViewPermission('library')`),
-`ajax/quick_upload_document.php`, `select_document_add_esignature.php`,
-`api/document/apply_signature.php`, and `e_signatures.php` (two call sites) all gate on the strings
-`'library'`/`'documents'`, neither of which exists as a `page_key` in a fresh install's `permissions`
-table — only `document_library` does. Read in isolation this looks like a hard lockout of every
-non-admin role. **Verified live on demo instead of trusting the static read**: a Treasurer session
-loaded `/library` successfully — HTTP 200, real content, no redirect. The only way `canView('library')`
-resolves `true` for a non-admin session is a real `permissions` row named `library` existing in that
-database; grepping this repo's entire migration history turns up no script that ever created one.
-Conclusion: demo (and, by the same multi-year deploy history, presumably production) carries a
-legacy `library`/`documents` permissions row predating this repo's migration tracking — inert data
-drift on already-deployed environments, not an active bug. Left unfixed: repointing those checks at
-`document_library` could not be verified safe against production's actual (inaccessible to this
-session) grants for that key, and demo's current, working access is real, live behavior this session
-has no way to reproduce in order to prove a fix doesn't regress it. This module's own API gates on
-the canonical key throughout.
+**Correction to an earlier conclusion in this same section — caught by this session's own
+post-deploy live check, not by the user.** `document_library.php` and five siblings
+(`ajax/quick_upload_document.php`, `select_document_add_esignature.php`,
+`api/document/apply_signature.php`, `e_signatures.php` x2) all gate on the string `'library'`, which
+does not exist in a *fresh local* install's `permissions` table — only the newer, migration-tracked
+`document_library` does. Before shipping, this was checked live on demo over a **web session**
+(cookie-authenticated): a Treasurer loaded `/library` successfully, so `'library'` clearly resolves
+`true` there. The conclusion drawn at the time was that this was inert legacy debris coexisting
+alongside a correctly-provisioned `document_library`, so the module's own API was shipped gating on
+`document_library` alone, believing it the "canonical" key.
+
+**That was wrong, caught immediately by re-verifying this module's own new endpoints live** (this
+session's standing practice, applied here to its own work, not just found web bugs) **over the
+mobile API's JWT-based permission load** rather than a web session: a real Treasurer token on demo
+carried full CRUD under `library` and **no `document_library` key at all**, so `GET /api/v1/documents`
+had been returning `403` to every non-admin role since the moment it deployed. `library` is not
+coexisting legacy debris — it is demo's (and, by the same deploy history, presumably production's)
+one and only real key for this feature; `document_library` is what a *freshly-migrated local*
+database gets instead, and these long-running environments never received whatever would populate
+it. **Fixed in a follow-up PR** (shipped same session, ~15 minutes after the original): `document_library.php`
+and its siblings are left as they are (still gate on `'library'`, still correct for their
+environment), and this module's own API now checks BOTH keys (`vk_api_doc_library_can()`) and
+accepts either grant, rather than betting on which environment's naming is authoritative. Re-verified
+live on demo post-fix: the same Treasurer token that got `403` now gets `200`.
 
 **Two real defects found and fixed, both about a private authored document's ownership:**
 1. `actions/delete_document.php` checked `manage_documents` delete-rights only — no ownership or

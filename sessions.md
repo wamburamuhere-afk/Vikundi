@@ -4,6 +4,42 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-09-06 — Hotfix: Documents Library used the wrong live permission key
+
+**Branch:** `develop` (merged via PR #497, deployed via PR #498)
+**Developer:** Claude Code / Jabir Mussa
+
+**Found ~15 minutes after Module 13 (below) deployed, by this session's own standing practice of
+re-verifying live rather than trusting a prior conclusion.** Module 13 shipped the Document Library
+API (`GET /api/v1/documents` and friends) gated on `document_library`, believing it the canonical key
+after checking demo's `/library` page worked over a **web session**. Re-checking this module's own
+new endpoints over the mobile API's **JWT-based** permission load (not a web session) found a real
+Treasurer token on demo carried full CRUD under the literal key `library` and **no `document_library`
+key at all** — every non-admin role had been getting `403` on the new endpoints since the moment they
+deployed.
+
+**Root cause:** `library` is not harmless legacy debris sitting alongside a correct
+`document_library` — it is demo's (and presumably production's) only real permission key for this
+feature. `document_library` is what a *freshly-migrated local* database gets; these long-running
+environments never received whatever would populate it. The original conclusion (see Module 13's
+own writeup below and in `todo.md`) had this backwards.
+
+**Fix:** `vk_api_doc_library_can()` checks both `library` and `document_library`, accepting either
+grant, in `includes/api_documents.php`, `api/v1/documents.php`, `documents_detail.php`,
+`documents_download.php`. `document_library.php` and its siblings are untouched — they already gate
+on the key that's actually correct for their environment.
+
+**Tests:** updated `DocumentsApiTest`'s permission-key regression guard to assert both keys are
+checked rather than asserting `document_library` alone. `composer test`: 2071 tests, 5258 assertions,
+all green.
+
+**Verified live on demo**, before and after: Treasurer JWT on `GET /api/v1/documents` — `403` before
+the fix, `200` after. Confirmed the resulting empty list is correct, not a masked bug, by cross-checking
+with an Admin token (which bypasses all visibility scoping) returning the same empty result — demo
+genuinely has zero Library documents seeded right now.
+
+---
+
 ## Session — 2026-09-06 — Module 13: Documents — PR pending
 
 **Branch:** `develop` (feature branch not yet cut)
@@ -13,7 +49,8 @@ This file tracks every development session, modification, and significant change
 **two top-level API resources** — a deliberate deviation from `todo.md`'s original single-resource
 plan. New shared file: `includes/api_documents.php`.
 
-**Document LIBRARY** (`documents` table, gated on `document_library`): `GET /documents` (paginated,
+**Document LIBRARY** (`documents` table, gated on the catalog view permission — see the hotfix entry
+above, this ended up needing both `library` and `document_library` checked): `GET /documents` (paginated,
 filters: category/file_type/access_level/search), `GET /documents/{id}` (metadata), `GET
 /documents/{id}/download` (added — streams the file; metadata with no way to fetch it would be
 useless), `DELETE /documents/{id}`.
@@ -28,17 +65,17 @@ because `roots.php`'s router only resolves `/api/v1/{resource}/{id}(/{action})?`
 detail so polling signing progress never re-transfers `body_html`). Plus `GET /document-templates`
 (read-only list).
 
-**A live/static-analysis contradiction investigated and resolved before writing any code.** A
-research pass claimed `document_library.php` and five siblings gate on phantom permission keys
-(`'library'`/`'documents'`) that don't exist in a fresh install's `permissions` table, implying a
-hard lockout of every non-admin role. Reading the code confirmed the phantom-key calls are real.
-**Verified live on demo instead of trusting the static read:** a Treasurer session loaded `/library`
-successfully — no lockout. Traced this to data drift: `canView('library')` can only be `true` if a
-real `library` permissions row exists in that database, and this repo's entire migration history has
-never created one — so demo's (and presumably production's) live database carries a legacy row
-predating migration tracking. Left unfixed, since repointing those checks could not be verified safe
-against production's actual, inaccessible-to-this-session grants for `document_library`, and this
-module's own API gates on that canonical key throughout instead.
+**A live/static-analysis contradiction investigated before writing any code — conclusion corrected
+~15 minutes after deploy, see the hotfix session above.** A research pass claimed
+`document_library.php` and five siblings gate on a phantom permission key (`'library'`) absent from a
+*fresh local* install's `permissions` table, implying a hard lockout of every non-admin role. Checked
+live on demo over a **web session**: a Treasurer loaded `/library` successfully — no lockout. Read at
+the time as inert legacy data drift coexisting with a correctly-provisioned `document_library`, so
+this module's own API was gated on `document_library` alone. **That was backwards**: re-verified
+minutes after deploy over the mobile API's own JWT-based permission load (not a web session), a real
+Treasurer token carried full CRUD under `library` and no `document_library` key at all — `library` is
+demo's (and presumably production's) actual, only key for this feature, not debris. See the hotfix
+entry above for the hour-of-discovery fix.
 
 **Two real defects found and fixed, both about a private authored document's ownership:**
 `actions/delete_document.php` had no ownership/visibility check at all (any leader with
@@ -63,8 +100,8 @@ filter validation (named placeholders for the library query since it shares a st
 `vk_document_visibility_where()`'s own named binds; positional for authored documents, matching
 `vk_authored_visibility_where()`), item-level visibility (`vk_api_doc_authorize_item()` tested pure,
 public/private/restricted matrix), authored-document action rules (private-document ownership gate,
-Member-with-no-grant-at-all), structural gate-ordering, the phantom-key regression guard (asserts the
-new endpoints reference `'document_library'` and never the bare `'library'` string), the two web-fix
+Member-with-no-grant-at-all), structural gate-ordering, the permission-key regression guard (updated
+in the hotfix above to require both `library` and `document_library` be checked), the two web-fix
 regression tests, the signatory-cleanup-on-delete regression test, and routing. `composer test`: 2071
 tests, 5256 assertions, all green (15 pre-existing skips, unrelated) — including the pre-existing
 `DocumentSignatoriesTest`, unaffected.
