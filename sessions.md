@@ -4,6 +4,60 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-09-06 — Module 12: Meetings — PR pending
+
+**Branch:** `develop` (feature branch not yet cut)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** Seven endpoints, no workflow at all — same shape as Payouts. `GET/POST /meetings`,
+`GET/PUT/DELETE /meetings/{id}`, `POST /meetings/{id}/attendance`, and (added for parity)
+`POST /meetings/{id}/fine-absentees`. New shared file: `includes/api_meetings.php`. **First module
+since Contributions that needed no new permission migration** — `meetings` already had correct
+grants (full leadership CRUD, Member view-only) from `create_meetings_tables.php` +
+`grant_meetings_to_leadership.php`, both already run in production.
+
+**`DELETE /meetings/{id}` is the first real HTTP `DELETE` anywhere in this API.**
+`actions/delete_meeting.php` is a genuine, properly-gated, actively-used feature (cascades to
+`meeting_attendance`), so it was built as a real `DELETE` rather than skipped — `Access-Control-Allow-Methods`
+in `includes/api_bootstrap.php` has listed `DELETE` since Module 1 but nothing had used it until now.
+
+**Attendance recording is a deliberate design change from the web, documented as such, not a
+silent mirror.** The web's `actions/save_meeting_attendance.php` resubmits the whole active roster
+every time and treats "in the roster but unchecked" as an explicit absence. The API instead accepts
+an explicit `[{member_id, status}]` array and only touches those rows — a member left out of the
+request keeps their existing status rather than being reset to absent. This is safer for a mobile
+client that wants to update one person without resubmitting the whole group, and is called out
+clearly in both the code and the handover so nobody assumes web semantics.
+
+**A subtlety in `fine-absentees` confirmed, not introduced:** it only fines members with a real
+`'absent'` row in `meeting_attendance`, not every member the detail view *displays* as absent by
+default (`COALESCE(a.status, 'absent')` is a display fallback, not a stored fact). Verified live: a
+meeting with only 2 of 334 members ever marked fined exactly the one real absentee, not the other
+332 who were simply never marked.
+
+**Two web-side gaps found and fixed, milder than Budgets':** `api/get_meetings.php` and
+`api/get_meeting_details.php` checked only `isAuthenticated()`, not `canView('meetings')`. Lower
+severity than prior modules' equivalent holes since Member already holds `view` on this key — the
+value here is making it a configurable, auditable permission check instead of an unconditional one.
+
+**Tests.** `MeetingsApiTest` — row shaping (time truncated to `HH:MM`, blank fields null), the
+attendance parser's validation (unknown status/member refused before any DB write via a
+never-queried PDO stand-in), filter validation, structural gate-ordering, the fine-absentees
+real-absent-row assertion, routing (including the new `DELETE` case), and confirmation no new
+permission migration file exists for this module. `composer test`: 2030 tests, 5167 assertions, all
+green (15 pre-existing skips, unrelated) — including the three pre-existing Meetings UI-regression
+test files, unaffected by this session's edits.
+
+**Verified live** against the local WAMP instance: full lifecycle (create → attendance for 2 of 334
+members → fine-absentees created exactly 1 fine, re-run correctly skipped as a duplicate → edit →
+delete, confirmed gone with `404`), an unknown `member_id` in an attendance submission refused with
+`404` before any write, and both fixed web endpoints now require authentication.
+
+**Docs deliberately not done yet** — per the established order (build → deploy → verify live → docs
+→ handover), those come once this is merged and deployed.
+
+---
+
 ## Session — 2026-09-05 (2) — Module 11: Payouts — PR pending
 
 **Branch:** `develop` (feature branch not yet cut)
