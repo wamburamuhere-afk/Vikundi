@@ -33,6 +33,15 @@ $user_role = $u_data['role_name'] ?? 'Staff';
 // AJAX DATA FETCH FOR EDIT
 if (isset($_GET['action']) && $_GET['action'] === 'get_budget_details' && isset($_GET['id'])) {
     header('Content-Type: application/json');
+    // This branch runs BEFORE includeHeader()/autoEnforcePermission() below, so
+    // it had no permission check at all — not even that the caller was signed
+    // in. Confirmed live: an unauthenticated request reached this query.
+    // Found while building the mobile API's budgets module (Module 10).
+    if (!isAuthenticated() || !canView('budget')) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'You do not have permission to view budgets.']);
+        exit;
+    }
     $bid = (int)$_GET['id'];
     $st = $pdo->prepare("SELECT * FROM budgets WHERE budget_id = ?");
     $st->execute([$bid]);

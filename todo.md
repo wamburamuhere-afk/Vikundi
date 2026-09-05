@@ -283,10 +283,61 @@ unauthenticated request gets `401` on all of it.
 
 ## 10. Budgets
 
-- [ ] `GET /api/v1/budgets` — list — leadership only
-- [ ] `GET /api/v1/budgets/{id}` — detail + line items (`budget_details.php`)
-- [ ] `POST /api/v1/budgets` — create
-- [ ] `PUT /api/v1/budgets/{id}` — edit
+- [x] `GET /api/v1/budgets` — list — leadership only
+- [x] `GET /api/v1/budgets/{id}` — detail + line items (`budget_details.php`)
+- [x] `POST /api/v1/budgets` — create
+- [x] `PUT /api/v1/budgets/{id}` — edit — blocked once `approved` (Admin exempt)
+
+**Module 10 built, tested, verified locally.** Three-stage workflow — `pending → reviewed →
+approved`, or `pending|reviewed → rejected` — one shorter than Expenses/Petty Cash: a budget is a
+plan, not a disbursement, so there's no `paid` state and no fund-balance gate on approve. Two
+endpoints added beyond the plan, same reasoning as every prior module: `POST /budgets/{id}/review`
+(required — `assertApprovable()` can't be reached without it) and `POST /budgets/{id}/reject`
+(the web already has this action; its own endpoint was a workflow bypass — see below — so the API
+gets a properly-gated version rather than mirroring the hole forward).
+
+**Permission model: a brand-new, leadership-only `budget` key** (`database/add_budget_permission.php`),
+registered from scratch — not mirrored from `expenses` the way `petty_cash` was, because nothing
+here has ever shown a member a budget; todo.md's own plan already said "leadership only." Full
+rights (view/create/edit/delete/review/approve) to Admin/Chairperson/Secretary/Treasurer.
+
+**The worst permission inconsistency found in any module so far, discovered and fixed before
+building on top of it.** Of the web's seven `api/account/*budget*.php` action files, only two
+(`review_budget.php`, `approve_budget.php`) checked any permission beyond being logged in:
+
+1. **A complete workflow bypass.** `api/account/update_budget_status.php` had no permission check
+   at all and let any authenticated user set a budget's status directly to `'approved'` — sidestepping
+   `canApprove()`, `assertApprovable()`, and the signature it should have captured, entirely. Its own
+   real caller (`budget.php`'s "Reject" button) never sent anything but `'rejected'`, so the endpoint
+   is now restricted to exactly that value and gated on `canReview()`/`canApprove()`. `POST
+   /api/v1/budgets/{id}/reject` is the API's own properly-gated version of the same action.
+2. **An unauthenticated data leak.** `app/constant/accounts/budget.php`'s inline
+   `?action=get_budget_details` branch runs *before* `includeHeader()`/`autoEnforcePermission('budget')`
+   — it had no auth check at all. Confirmed live: an unauthenticated request reached the query.
+3. **Four more action files** (`add_budget.php`, `edit_budget.php` — the file the UI's edit button
+   actually calls — `delete_budget.php`, `get_budget.php`) checked only `isAuthenticated()`, so any
+   signed-in member could create, edit, delete, or read any budget. All four now check the matching
+   `can*('budget')` grant.
+4. **`edit_budget.php` had no status guard at all** — an approved budget could be silently rewritten.
+   `core/workflow.php`'s `canEditDocument()` already existed for exactly this, unused anywhere in the
+   codebase; now wired into both the web file and the API's own `PUT /budgets/{id}`.
+5. **`api/account/update_budget.php`** — a second, dead edit endpoint the UI has never called (it
+   posts to `edit_budget.php` instead), reachable only via its own `roots.php` route, joins the dead
+   `expenses`/`accounts`/`expense_categories` BMS-leftover tables for a variance figure that can
+   never compute, and calls `logActivity()` with the wrong argument shape. Left otherwise as-is
+   (out of scope — not reachable from any live screen), but given the same permission check for
+   defense in depth since the route still exists.
+
+**`category_id` is deliberately not exposed anywhere in the API.** Every budget row has it hardcoded
+`NULL` at creation, and the only code that ever reads it joins those same dead BMS tables — exposing
+a field that can never hold a real value, or a variance computed from tables with zero real rows,
+would mislead a client into building UI around numbers that can never mean anything on this system.
+
+Verified live against the local WAMP instance: full lifecycle (create with line items, including a
+blank-description line silently skipped same as the web → edit while pending → review → approve →
+`PUT` blocked for a non-admin once approved, Admin exempt per `canEditDocument()`'s own rule →
+separately, a second budget created and rejected, then a review attempt on it correctly refused with
+`409`), and the previously-unauthenticated AJAX branch now refuses with `403`.
 
 ## 11. Payouts
 

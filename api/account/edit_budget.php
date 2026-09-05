@@ -10,6 +10,15 @@ try {
         exit;
     }
 
+    // Had no permission check at all beyond being logged in — any authenticated
+    // user could edit any budget. Found while building the mobile API's
+    // budgets module (Module 10).
+    if (!canEdit('budget')) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'You do not have permission to edit a budget.']);
+        exit;
+    }
+
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         http_response_code(405);
         echo json_encode(['success' => false, 'message' => 'Method not allowed']);
@@ -21,6 +30,20 @@ try {
 
     if (!$budget_id) {
         throw new Exception('Invalid Budget ID');
+    }
+
+    // Also had no status guard at all — an approved budget could be silently
+    // rewritten after leadership signed off on it. core/workflow.php's
+    // canEditDocument() already encodes the right rule; it was simply never
+    // wired in here.
+    $status_stmt = $pdo->prepare('SELECT status FROM budgets WHERE budget_id = ?');
+    $status_stmt->execute([$budget_id]);
+    $current_status = $status_stmt->fetchColumn();
+    if ($current_status === false) {
+        throw new Exception('Budget not found');
+    }
+    if (!canEditDocument($current_status, isAdmin())) {
+        throw new Exception('An approved budget can no longer be edited.');
     }
 
     // Get POST data

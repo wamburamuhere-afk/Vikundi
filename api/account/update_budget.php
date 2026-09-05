@@ -10,6 +10,16 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+// Had no permission check at all beyond being logged in. Not reachable from
+// the web UI (budget.php's edit button posts to edit_budget.php instead), but
+// this file keeps a live route in roots.php with a real mutation behind it.
+// Found while building the mobile API's budgets module (Module 10).
+if (!canEdit('budget')) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'You do not have permission to edit a budget.']);
+    exit();
+}
+
 try {
     $budget_id = $_POST['budget_id'] ?? 0;
     $budget_year = $_POST['budget_year'] ?? '';
