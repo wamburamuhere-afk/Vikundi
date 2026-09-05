@@ -1,6 +1,6 @@
 # Vikundi mobile API — handover
 
-Everything the Flutter session needs, current as of **2026-09-03 (2)**.
+Everything the Flutter session needs, current as of **2026-09-05 (2)**.
 
 Read these in order. `docs/API.md` is the reference; the files here are the parts that
 are easy to get wrong.
@@ -15,6 +15,8 @@ are easy to get wrong.
 | `condolences-module.md` | Before building Condolences. Its access rules are **not** the fines ones either — read it even if you've read fines-module.md. |
 | `financial-ledger-module.md` | Before building the Ledger or M-Koba Reconciliation screens — read the permission note at the top before you build any access-control UI around them. |
 | `expenses-petty-cash-module.md` | Before building Expenses or Petty Cash — read the mark-paid permission note first; it is not gated like the rest of the module. |
+| `budgets-module.md` | Before building Budgets — the one module with no Member grant at all, and where Admin can edit an approved record but leadership cannot. |
+| `payouts-module.md` | Before building Payouts — the Treasurer cannot use this screen. Don't route it through a generic "leadership" check. |
 
 ---
 
@@ -34,44 +36,56 @@ Both `vikundi.bjptechnologies.co.tz` and `demo.vikundi.bjptechnologies.co.tz`.
 | 7. Condolences | 7 | Manage Condolences, My Condolences, review/approve, the sustainability report |
 | 8. Financial Ledger & Reconciliation | 3 | The group ledger, M-Koba statement tie-out (group + own) |
 | 9. Expenses & Petty Cash | 15 | Record/edit/review/approve/mark-paid both, the spending report |
+| 10. Budgets | 6 | Record/edit/review/approve/reject, with line items |
+| 11. Payouts | 2 | Record member assistance, the payout history |
 
-**58 endpoints.**
+**66 endpoints.**
 
-Not yet built: Bank Reconciliation (excluded — see below), Budgets, Payouts, Meetings, Documents,
-Voting & Leadership Applications, Reports & Statements, Communication, Settings & Roles, Profile,
-Loans. Anything on those screens has to stub or wait.
-
----
-
-## Changed since the 2026-09-03 handover
-
-**Module 9 — Expenses & Petty Cash — is live.** `expenses-petty-cash-module.md` covers it in full.
-Both sub-modules share a real **four**-stage workflow — `pending → reviewed → approved → paid` — the
-first module where "approved" and "actually disbursed" are different, tracked states. Full CRUD +
-review/approve/mark-paid on both Expenses and Petty Cash, plus `GET /reports/expense-report`.
-
-**Read `expenses-petty-cash-module.md`'s top section before wiring up the mark-paid button.**
-`mark-paid` is gated on a role (Treasurer or a full admin via `canMarkPaid()`), **not** the
-`role_permissions` grant everything else in this module uses — a Secretary or Chairperson who can
-review and approve will still get a named `403` on mark-paid. Drive the button from
-`actions.mark_paid` on the row; don't infer it from review/approve rights.
-
-**Member gets `200` on both `GET /expenses` and `GET /petty-cash` today** — same shape of note as
-Module 8's Financial Ledger: verified live, mirrors the web's own (already-audited) behavior for
-Expenses, and is a deliberate mirror for the brand-new `petty_cash` permission key. Not a bug, not
-something to hide client-side.
-
-**A real security hole was found and fixed**: `actions/fetch_petty_cash.php` (the web list's own data
-source) had no permission check at all before this — confirmed live, any authenticated Member could
-pull the whole voucher list. Closed alongside building this module.
-
-**A bug in the web's own edit rule was fixed**: a **paid** expense (money already gone) could
-previously still be edited from the web; both the web file and the new `PUT /expenses/{id}` now
-block editing once `approved` OR `paid`.
+Not yet built: Bank Reconciliation (excluded — see below), Meetings, Documents, Voting & Leadership
+Applications, Reports & Statements, Communication, Settings & Roles, Profile, Loans. Anything on
+those screens has to stub or wait.
 
 ---
 
-**Previously (2026-09-02 → 2026-09-03): Module 8 — Financial Ledger & Reconciliation went live.**
+## Changed since the 2026-09-03 (2) handover
+
+**Module 10 — Budgets — is live.** `budgets-module.md` covers it in full. Three-stage workflow —
+`pending → reviewed → approved`, or `pending|reviewed → rejected` — one shorter than Expenses/Petty
+Cash: no `paid` state, no fund-balance gate. Full CRUD + review/approve/reject, with line items.
+
+**Read `budgets-module.md`'s top section before building the access-control UI.** Two things are
+unique to this module: **Member holds nothing here, not even `view`** — the opposite of Expenses/
+Petty Cash/the Financial Ledger, where Member has a live grant. And `PUT /budgets/{id}`'s
+approved-edit block **exempts Admin but not Secretary/Treasurer** — drive it from `actions.edit`,
+don't hardcode the rule either way.
+
+**The worst permission inconsistency found in any module so far was fixed before this shipped.**
+Of the web's seven budget action files, only two checked any permission at all.
+`api/account/update_budget_status.php` was a **complete workflow bypass** — any authenticated user
+could set a budget straight to `approved`, confirmed live before the fix. `budget.php`'s own inline
+AJAX data endpoint had **no auth check whatsoever** — also confirmed live (an unauthenticated
+`curl` reached the query). Both closed; four more files that checked only "logged in" now check the
+real permission.
+
+**Module 11 — Payouts — is also live.** `payouts-module.md` covers it. The simplest module in the
+API: no workflow, no fund-balance gate, a record is `'paid'` from the instant it's created.
+
+**Read `payouts-module.md` before wiring this into a shared "leadership" check.** Every other
+financial module this week grants full leadership including Treasurer; this one deliberately
+doesn't — Admin/Chairperson/Secretary only, mirroring the web's own role list exactly. Verified
+live: Treasurer gets `403` here.
+
+---
+
+**Previously (2026-09-03): Module 9 — Expenses & Petty Cash went live.**
+`expenses-petty-cash-module.md` covers it. Four-stage workflow — `pending → reviewed → approved →
+paid` — the first module where "approved" and "actually disbursed" are different, tracked states.
+`mark-paid` is gated on a role (`canMarkPaid()`), not the `role_permissions` grant everything else
+in the module uses. `actions/fetch_petty_cash.php` had no permission check at all before this,
+confirmed live; closed alongside the build. Member gets `200` on both list endpoints — a deliberate
+mirror of an already-audited web behavior, not a leak.
+
+**Before that (2026-09-02 → 2026-09-03): Module 8 — Financial Ledger & Reconciliation went live.**
 `financial-ledger-module.md` covers it. Two permission-table gaps were found and fixed the same
 shape as the `manage_contributions` gap from the Contributions handover: `vicoba_reports` had no row
 in the permissions catalog at all, and `mkoba_reconciliation` had a row but zero role grants — both
@@ -127,6 +141,9 @@ permission map.
 | `deceased.type`, `deceased.id`, `deceased.relationship` (condolences) | `null` when absent; `deceased.name` is never null |
 | `expenses[].member` | `null` for a whole-organization expense — never a bare `member_id` to check against 0 |
 | `trail.paid.signed` (expenses, petty cash) | always `false` — mark-paid has never captured an e-signature, on either module |
+| `budgets[].items`, `budget.items` (budgets) | omitted on the list (not `null` — the key is absent), present on the detail endpoint |
+| `trail` (budgets) | only `created`/`reviewed`/`approved` keys exist — never a `rejected` key, even when `status` is `rejected` |
+| `payouts[].description` (payouts) | `null` when blank, never an empty string |
 
 ### 4. Responses are shape-variant by role
 
