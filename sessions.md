@@ -4,6 +4,69 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-09-05 — Module 10: Budgets — PR pending
+
+**Branch:** `develop` (feature branch not yet cut)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** Six endpoints on a three-stage workflow (`pending → reviewed → approved`, or
+`pending|reviewed → rejected`) — one shorter than Module 9's, since a budget is a plan, not a
+disbursement: no `paid` state, no fund-balance gate on approve. `GET/POST /budgets`,
+`GET/PUT /budgets/{id}`, `POST /budgets/{id}/review|approve|reject`. New shared file:
+`includes/api_budgets.php`. New permission key `budget`, registered leadership-only from scratch
+(`database/add_budget_permission.php`) — unlike Modules 9's `petty_cash`, not mirrored from an
+existing Member-inclusive key, because nothing has ever shown a budget to a member.
+
+**The worst permission inconsistency found in any module so far.** Of the web's seven
+`api/account/*budget*.php` action files, only two checked any permission beyond being logged in.
+Fixed all of it before building the API on top:
+
+1. `api/account/update_budget_status.php` was a **complete workflow bypass** — no permission check,
+   and it let any authenticated user set a budget straight to `'approved'`, skipping
+   `canApprove()`/`assertApprovable()`/the signature capture entirely. Its only real caller
+   (budget.php's "Reject" button) never sent anything else, so it's now restricted to exactly
+   `'rejected'` and gated on `canReview()`/`canApprove()`. The API's `POST /budgets/{id}/reject` is
+   the properly-gated equivalent.
+2. `app/constant/accounts/budget.php`'s inline `?action=get_budget_details` branch runs *before*
+   `includeHeader()`/`autoEnforcePermission()` — **no auth check at all**. Confirmed live:
+   unauthenticated `curl` reached the query and got a real (if empty, since no budgets exist yet)
+   response.
+3. `add_budget.php`, `edit_budget.php` (the file the UI's edit button actually posts to —
+   `update_budget.php`, which has its own `roots.php` route, is dead: the UI never calls it),
+   `delete_budget.php`, `get_budget.php` all checked only `isAuthenticated()` — any signed-in member
+   could create/edit/delete/read any budget. All four now check the matching `can*('budget')` grant.
+4. `edit_budget.php` had **no status guard at all** — an approved budget could be silently rewritten.
+   `core/workflow.php`'s `canEditDocument()` already existed for exactly this and was never wired in
+   anywhere in the codebase; it's now used by both the web file and the API's `PUT /budgets/{id}`.
+5. `update_budget.php` additionally joins the dead `expenses`/`accounts`/`expense_categories`
+   BMS-leftover tables for a variance figure that can never compute (its `category_id` join target
+   is always `NULL`), and calls `logActivity()` with the wrong argument shape. Left otherwise alone
+   — unreachable from any live screen — but given the same permission check for defense in depth.
+
+**`category_id` is deliberately not exposed anywhere in the API** for the same reason: every budget
+row has it hardcoded `NULL` at creation, and the only code that ever read it joined those same dead
+tables.
+
+**Tests.** `BudgetsApiTest` — the per-status action gating (including that Admin bypasses the
+approved-edit block, matching `canEditDocument()`'s own rule, while leadership does not), the
+zero-fund-gate assertion, item-array parsing (blank descriptions silently skipped, zero-amount items
+allowed, negative amounts refused), the reject endpoint's dual-permission gate, and structural checks
+on all seven web-side fixes. `composer test`: 1989 tests, 5089 assertions, all green (15 pre-existing
+skips, unrelated) — including the two pre-existing UI-regression tests for `budget.php` that this
+session's edits to that file did not break.
+
+**Verified live** against the local WAMP instance: full lifecycle (create with line items including a
+blank-description line silently skipped, same as the web → edit while pending → review → approve →
+`PUT` blocked with `409` for the edit-block rule, verified separately that Admin is exempt per
+`canEditDocument()` → a second budget created with zero items, rejected, then a review attempt on it
+correctly refused with `409 invalid_status_transition`), and the previously-unauthenticated AJAX
+branch now refuses with `403`.
+
+**Docs deliberately not done yet** — per the established order (build → deploy → verify live → docs
+→ handover), those come once this is merged and deployed.
+
+---
+
 ## Session — 2026-09-03 (2) — Module 9: Expenses & Petty Cash — PR pending
 
 **Branch:** `develop` (feature branch not yet cut)

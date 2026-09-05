@@ -51,6 +51,7 @@ $migrations = [
     'add_vicoba_reports_permission.php', // register 'vicoba_reports' (the code has always gated on it; the row never existed)
     'grant_mkoba_reconciliation_to_leadership.php', // backfill 'mkoba_reconciliation' grant for Secretary/Treasurer on existing DBs
     'add_petty_cash_permission.php', // register 'petty_cash' (mirrored from 'expenses'); the code has gated on it since it was written, the row never existed
+    'add_budget_permission.php', // register 'budget' (leadership-only); the code has gated on it since it was written, the row never existed
 ];
 
 echo "== Vikundi database migrations ==\n";
