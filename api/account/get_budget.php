@@ -11,6 +11,15 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+// Had no permission check at all beyond being logged in — any authenticated
+// user could read any budget. Found while building the mobile API's budgets
+// module (Module 10).
+if (!canView('budget')) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'You do not have permission to view budgets.']);
+    exit();
+}
+
 // Get parameters
 $budget_id = $_GET['id'] ?? $_GET['budget_id'] ?? null;
 $category_id = $_GET['category_id'] ?? null;

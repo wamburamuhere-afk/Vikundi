@@ -11,6 +11,15 @@ try {
         exit;
     }
 
+    // Had no permission check at all beyond being logged in — any authenticated
+    // user could create a budget. Found while building the mobile API's
+    // budgets module (Module 10).
+    if (!canCreate('budget')) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'You do not have permission to create a budget.']);
+        exit;
+    }
+
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         http_response_code(405);
         echo json_encode(['success' => false, 'message' => 'Method not allowed']);

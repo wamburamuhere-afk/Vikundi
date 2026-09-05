@@ -11,6 +11,15 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+// Had no permission check at all beyond being logged in — any authenticated
+// user could delete any budget. Found while building the mobile API's
+// budgets module (Module 10).
+if (!canDelete('budget')) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'You do not have permission to delete a budget.']);
+    exit();
+}
+
 // Get POST data
 $budget_id = $_POST['budget_id'] ?? 0;
 

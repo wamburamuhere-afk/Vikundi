@@ -10,6 +10,20 @@ try {
         exit;
     }
 
+    // This endpoint had NO permission check at all, and let the caller set
+    // status to 'approved' directly — a complete workflow bypass around
+    // review_budget.php/approve_budget.php's canReview()/canApprove() checks
+    // and assertReviewable()/assertApprovable() guards. Found while building
+    // the mobile API's budgets module (Module 10). The only status this
+    // endpoint's own caller (budget.php's "Reject" action) ever actually
+    // sends is 'rejected', so it is now restricted to exactly that — approving
+    // must go through approve_budget.php, which enforces the real workflow.
+    if (!canReview('budget') && !canApprove('budget')) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'You do not have permission to change a budget\'s status.']);
+        exit;
+    }
+
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         http_response_code(405);
         echo json_encode(['success' => false, 'message' => 'Method not allowed']);
@@ -24,7 +38,7 @@ try {
         throw new Exception('Budget ID and Status are required');
     }
 
-    $allowed_statuses = ['pending', 'approved', 'rejected'];
+    $allowed_statuses = ['rejected'];
     if (!in_array($status, $allowed_statuses)) {
         throw new Exception('Invalid status value');
     }
