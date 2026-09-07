@@ -4,6 +4,103 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-09-07 — Module 15: Reports & Statements — PR pending
+
+**Branch:** `develop` (feature branch not yet cut)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** 6 endpoints across member statements and group-wide reports, all delegating their money/
+grid arithmetic to `includes/contribution_standing.php` and `includes/finance.php` — none of it redone
+here. New shared file: `includes/api_reports.php`.
+
+**Paths flattened from the original plan, a router constraint** (same class of issue as Module 13's
+`authored-documents`): `roots.php` cannot express a third static segment before an id, so
+`GET /api/v1/reports/member-statement/{id}` could never route. Shipped as `/api/v1/member-statement/{id}`
+and `/api/v1/member-transactions/{id}` (their own top-level resources), and
+`/api/v1/group-statement/{contributions,transactions}` (flattened from a 4-segment, no-id path);
+`reports` stays a shared resource only for the two no-id endpoints, `/reports/vicoba` and
+`/reports/customer-analysis`.
+
+**Two permission shapes, each checked file-by-file, not assumed:** `member-statement`/
+`member-transactions` have no permission-key gate at all on the web — only session-login plus an
+inline ownership check (`isAdmin() || canCreate('manage_contributions')` decides whether `?id` is
+honoured; everyone else is forced to their own `customer_id`). This module's endpoints mirror that
+exactly — `vk_api_require_auth()` only, no `vk_api_require_permission()`. The other four gate on
+`canView('vicoba_reports')`, which — confirmed against local data — already reaches Member today. The
+web's own comment frames this as deliberate policy, not an oversight (unlike Voting's
+`manage_leadership_applications` gap), so it's mirrored as-is rather than hardened to true
+leadership-only, despite todo.md's plan calling group-statement "leadership only."
+
+**`GET /api/v1/reports/vicoba`'s `available_fund` deliberately diverges from the web page's own
+arithmetic** — uses `getGroupFundBalance()` (the Dashboard/Ledger's canonical cash-basis figure)
+instead of the page's inline `total_savings - total_expenses`. Confirmed live the two numbers genuinely
+differ on real data (TSh 1,688,378 vs TSh 2,232,878 for the same instant) — reusing the canonical
+helper avoids introducing a third "available fund" number into the mobile app.
+
+**Found and fixed a real member-counting bug in `customer_analysis.php`**, in both the web file and the
+new endpoint: its filter (`users.user_role != 'Admin'`) is a legacy string that drifts from the real
+`role_id` — a genuine `role_id=1` Admin whose stale `user_role` reads `'Member'` was miscounted as an
+ordinary member in every stat on that page. Both now filter on `role_id NOT IN (1,2,12)`.
+
+**`GET /api/v1/group-statement/{contributions,transactions}` always returns combined AND per-member
+data together** — the web's `view=combined`/`view=members` query toggle doesn't carry over to JSON,
+since computing one already produces both at no extra cost.
+
+**Tests.** `ReportsApiTest` — 24 tests: as_of parsing (valid, missing, malformed all handled), the
+exact leader test replicated from the web pages, ownership resolution (a leader+id never touches the
+DB — refactored `vk_api_reports_resolve_member_id()` to defer the lookup, both a minor perf win and
+what makes this branch unit-testable), member-details/condolence row shaping, structural gate checks
+per endpoint (the no-gate pair vs. the `vicoba_reports`-gated four), the `available_fund`/
+`customer_analysis` fixes (both the API and the web-file regression), and routing. `composer test`:
+2141 tests, 5424 assertions, all green (15 pre-existing unrelated skips) — including the extensive
+pre-existing statement test suite (`ContributionStandingTest`, `GroupStatementTest`,
+`TransactionStatementTest`, `StatementUsesStandingModuleTest`, etc.), unaffected.
+
+**Verified live** against the local WAMP instance with real seeded data (334 members): a Member's own
+statement returned correctly with no `?id`; the same Member's attempt to view another member via `?id`
+was silently forced back to their own record; a leader's `?id` override returned the requested member's
+statement; the transactions ledger/calendar matched; the group statement returned all 334 members
+correctly; a Member successfully loaded the group statement (confirming the mirror-the-web decision);
+`reports/vicoba` and `reports/customer-analysis` returned correct aggregates, with `available_fund`
+confirmed to genuinely differ from the naive figure as designed.
+
+**Docs deliberately not done yet** — per the established order (build → deploy → verify live → docs
+→ handover), those come once this is merged and deployed.
+
+---
+
+## Session — 2026-09-07 — Hotfix: Member could view the leadership-applications review queue
+
+**Branch:** `develop` (merged via PR #502, deployed via PR #503)
+**Developer:** Claude Code / Jabir Mussa
+
+**Found minutes after Module 14 (below) deployed**, while re-verifying its live permission grants on
+demo (the same standing practice that caught the Documents module's `library`/`document_library`
+mismatch): a real Member JWT successfully called `GET /api/v1/leadership-applications` — the Committee
+review queue — and got back every applicant's full statement, experience, proposer, review notes, and
+reviewer identity, across every election.
+
+**Root cause:** `includes/role_grants.php`'s `vk_member_hidden_keys()` correctly hides `manage_voting`
+from Member's default view-everything policy, but never added its sibling
+`manage_leadership_applications`. Since Member's permissions are reset to defaults on every deploy
+(`seed_vicoba_roles.php`, `enforce_defaults=true`), this wasn't a one-off manual grant — every deploy
+re-asserted it. Pre-existing on the web (the page gates on the identical key), surfaced by this
+session's own new API endpoint sharing that gate.
+
+**Fix:** added `manage_leadership_applications` to the hide-list. No separate grant/revoke migration
+needed — unlike Secretary/Treasurer's `voting` gap (Module 14, seeded once, not reset), Member's
+permissions are reset on every migrate.php run, so shipping the policy fix was enough for the very next
+deploy to revoke the live grant automatically.
+
+**Tests:** added a regression test to `RoleGrantsTest` covering both `manage_voting` and
+`manage_leadership_applications`. `composer test`: 2117 tests, 5380 assertions, all green.
+
+**Verified live on demo, before and after**: Member's `GET /api/v1/leadership-applications` — `200`
+with the full queue before the fix, `403 forbidden` after. Treasurer/leadership confirmed still working
+(`200`, full queue) after the fix, so the deploy fixed exactly the intended gap and nothing else.
+
+---
+
 ## Session — 2026-09-07 — Module 14: Voting & Leadership Applications — PR pending
 
 **Branch:** `develop` (feature branch not yet cut)
