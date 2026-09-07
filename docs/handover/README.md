@@ -1,6 +1,6 @@
 # Vikundi mobile API — handover
 
-Everything the Flutter session needs, current as of **2026-09-05 (2)**.
+Everything the Flutter session needs, current as of **2026-09-07**.
 
 Read these in order. `docs/API.md` is the reference; the files here are the parts that
 are easy to get wrong.
@@ -17,6 +17,10 @@ are easy to get wrong.
 | `expenses-petty-cash-module.md` | Before building Expenses or Petty Cash — read the mark-paid permission note first; it is not gated like the rest of the module. |
 | `budgets-module.md` | Before building Budgets — the one module with no Member grant at all, and where Admin can edit an approved record but leadership cannot. |
 | `payouts-module.md` | Before building Payouts — the Treasurer cannot use this screen. Don't route it through a generic "leadership" check. |
+| `meetings-module.md` | Before building Meetings — attendance is upsert-only, not "resubmit the roster." |
+| `documents-module.md` | Before building Documents — it's two unrelated features (Library, Document Writer) sharing a nav menu, not one screen. |
+| `voting-module.md` | Before building Voting or Leadership Applications — tally visibility depends on `can_see_tally`, never your own logic. |
+| `reports-module.md` | Before building any statement screen — `member-statement`/`member-transactions` have no permission gate at all, ownership is silent. |
 
 ---
 
@@ -38,18 +42,65 @@ Both `vikundi.bjptechnologies.co.tz` and `demo.vikundi.bjptechnologies.co.tz`.
 | 9. Expenses & Petty Cash | 15 | Record/edit/review/approve/mark-paid both, the spending report |
 | 10. Budgets | 6 | Record/edit/review/approve/reject, with line items |
 | 11. Payouts | 2 | Record member assistance, the payout history |
+| 12. Meetings | 7 | Schedule/edit/delete, attendance, fine absentees |
+| 13. Documents | 12 | The file Library, and the Document Writer with multi-party e-signing |
+| 14. Voting & Leadership Applications | 18 | Elections end to end, applying/reviewing to stand for office |
+| 15. Reports & Statements | 6 | Both NSSF-style statements, the group statement, the two summary reports |
 
-**66 endpoints.**
+**109 endpoints.**
 
-Not yet built: Bank Reconciliation (excluded — see below), Meetings, Documents, Voting & Leadership
-Applications, Reports & Statements, Communication, Settings & Roles, Profile, Loans. Anything on
-those screens has to stub or wait.
+Not yet built: Bank Reconciliation (excluded — see below), Communication, Settings & Roles, Profile,
+Loans. Anything on those screens has to stub or wait.
 
 ---
 
-## Changed since the 2026-09-03 (2) handover
+## Changed since the 2026-09-05 (2) handover
 
-**Module 10 — Budgets — is live.** `budgets-module.md` covers it in full. Three-stage workflow —
+Four modules, 43 endpoints. Everything to do with the group's money was already finished as of the
+last handover; this round is the group's occasional-use administration: meetings, documents,
+elections, and the reporting screens.
+
+**Module 12 — Meetings — is live.** `meetings-module.md` covers it. No workflow at all. The one
+thing worth re-reading before you start: `POST /meetings/{id}/attendance` upserts only the rows you
+send — it is **not** a "resubmit the whole roster" endpoint like the web page behind it. `DELETE` is
+a genuine HTTP `DELETE`, the first one in this API.
+
+**Module 13 — Documents — is live.** `documents-module.md` covers it. Two unrelated features under
+one API: the file **Library** (`/documents...`) and the in-app **Document Writer**
+(`/authored-documents...`) with multi-party e-signing. A hidden document 404s, never 403s — the
+server won't confirm something exists that you're not allowed to see. Signing your own slot on a
+multi-party document needs no leadership permission at all; check `signatories`, not a role flag.
+
+**A permission-key bug shipped, then was caught and fixed live the same day.** The Library was
+initially gated on only the migration-tracked key (`document_library`); demo/production's actual
+grants turned out to be under the plain key `library` instead, which 403'd every non-admin role for
+about fifteen minutes. Both keys are checked now (`vk_api_doc_library_can()`). You were never
+exposed to the broken window — this shipped and was fixed before this handover was written — but if
+you ever see both strings in the source and wonder why, that's why.
+
+**Module 14 — Voting & Leadership Applications — is live.** `voting-module.md` covers it — read it
+before building anything here, it has the most non-obvious rules in this handover. Genuinely
+secret-ballot: no endpoint anywhere returns who voted for what. Tally visibility is driven entirely
+by the response's own `can_see_tally` flag — don't try to predict it from status/role yourself.
+Applying for a position is forgiving (a second "Apply" just updates); reviewing it is not (a
+rejection needs a reason, and a ruled-on application is final).
+
+**A real privacy gap was found and fixed the same day this module deployed**: any ordinary Member
+could view the Committee's entire leadership-application review queue — every applicant's
+statement, proposer, and review notes, across every election. A permission-role default was missing
+an exclusion its sibling already had. Fixed and re-verified live within the hour; Member correctly
+gets `403` on `GET /leadership-applications` now.
+
+**Module 15 — Reports & Statements — is live.** `reports-module.md` covers it. The URLs don't nest
+the way the plan implied — `member-statement`/`member-transactions` are their own top-level
+resources, not paths under `/reports/`. Those two also have **no permission gate at all** — only a
+silent ownership override on `{id}`. The group-statement and summary reports are visible to ordinary
+Members by existing product policy — not a leak, not something to route around with an extra
+client-side check.
+
+---
+
+**Previously (2026-09-05): Module 10 — Budgets — went live.** `budgets-module.md` covers it in full. Three-stage workflow —
 `pending → reviewed → approved`, or `pending|reviewed → rejected` — one shorter than Expenses/Petty
 Cash: no `paid` state, no fund-balance gate. Full CRUD + review/approve/reject, with line items.
 
