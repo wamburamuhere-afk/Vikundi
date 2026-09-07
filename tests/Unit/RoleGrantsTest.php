@@ -38,6 +38,18 @@ class RoleGrantsTest extends TestCase
         }
     }
 
+    public function test_member_is_hidden_from_voting_and_leadership_application_management(): void
+    {
+        // Members vote via 'voting' and apply via 'leadership_applications' — they
+        // manage neither. 'manage_leadership_applications' was missing from the
+        // hide-list until Module 14's API build found it live: an ordinary Member
+        // could view every applicant's full statement, experience, proposer, and
+        // review notes across every election, on both the web page and the new API
+        // endpoint that gates on the same key.
+        $this->assertNull(vk_role_grants('view', 'manage_voting'));
+        $this->assertNull(vk_role_grants('view', 'manage_leadership_applications'));
+    }
+
     public function test_leadership_gets_document_writer_but_member_does_not(): void
     {
         // Secretary/Treasurer (operational) author documents; Member is excluded.
