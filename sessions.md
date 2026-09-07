@@ -4,6 +4,117 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-09-07 — Module 14: Voting & Leadership Applications — PR pending
+
+**Branch:** `develop` (feature branch not yet cut)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** 18 endpoints across two features sharing one `votes` table, kept apart exactly as the web
+keeps them. New shared file: `includes/api_voting.php`.
+
+**Elections** (gated `manage_voting` for leadership, `voting` for a member's own ballot): `GET/POST
+/elections`, `GET/DELETE /elections/{id}` (DELETE added — real, used, refuses while open, cascades to
+`leadership_applications`), `POST /elections/{id}/open` (refuses under 2 options), `POST
+/elections/{id}/close`, `GET /elections/{id}/results` (no leadership gate at the door, matching
+`api/get_vote_results.php` exactly — turnout always visible, tally gated inside the helper), `GET
+/voting/open` (member view, scoped by the eligibility snapshot), `POST /votes` (cast a ballot).
+
+**Leadership Applications** (gated `leadership_applications` to apply, `manage_leadership_applications`
+to review): `GET/POST /leadership-applications`, `PUT /leadership-applications/{id}`, `GET
+/leadership-applications/mine`, `POST .../withdraw`, `POST .../approve` (writes the ballot option),
+`POST .../reject` (reason required), `POST .../reset` (added — reverts an approval, deletes the ballot
+option it created; a real, used Committee action, without which a mistaken approval could never be
+corrected via the API). Plus `GET /leadership-positions` (overlaps with `group-settings`'s own field,
+kept as its own endpoint per todo.md's plan).
+
+**Permission-key audit, given the Documents module's `library`/`document_library` incident:** every
+gate across every web page, action, `api/*.php` file, `roots.php`, `header.php`, and migration was
+checked individually — genuinely consistent this time, always exactly one of the four keys, no
+sibling-file drift. **Found and fixed instead:** `voting` (a member's own ballot page) was never
+explicitly granted to Secretary/Treasurer by any migration — only `manage_voting` was — so they could
+manage elections but not vote in one themselves. Fixed with
+`database/grant_voting_permission.php`, mirroring the exact raise-don't-skip pattern
+`create_leadership_applications_table.php` already used. Because this whole module is brand new
+(tables/permissions may not exist on demo/production before this deploys), this claim is re-verified
+live after deploy exactly like every permission claim this session makes now.
+
+**Elections have no edit endpoint, deliberately** — the web's own edit path deletes and rebuilds every
+option, which would orphan a `leadership_applications.vote_option_id` link an approval had already
+created. Not in the original plan either; not worth inventing given the risk.
+
+**Secret-ballot design preserved exactly, down to its no-logging choice**: `POST /api/v1/votes` calls
+no `logCreate()`/`logUpdate()` at all, matching `actions/cast_vote.php`'s own deliberate choice — an
+audit row naming who voted when would undermine the anonymity the separate
+`vote_participation`/`vote_ballots` tables exist to guarantee.
+
+**Approve/reject/reset mirror `actions/review_leadership_application.php` exactly**: multi-office
+ballot labeling (`"Name — Position"` only when needed), in-place `vote_options` updates on
+re-approval (ordering never shifts), and reject/reset both delete the ballot option they remove — a
+reversed decision actually removes the candidate.
+
+**Tests.** `VotingApiTest` — 45 tests: election row/action shaping (lifecycle actions depend on
+status, not just permission — e.g. delete blocked while open), option-building parity with
+`actions/save_vote.php` (motion always Yes/No/Abstain, candidate skips blanks, zero options valid),
+application row/action shaping (ownership-gated edit/withdraw, review-gated approve/reject/reset, both
+independently checked), input validation, the `grant_voting_permission.php` regression tests, and
+structural checks: results has no leadership gate, vote-casting never logs, election delete cascades to
+`leadership_applications`, reject requires a reason, approve/reject/reset all check
+`election_status==='draft'` and refuse a withdrawn application, routing for all 18 endpoints, and
+auditing. `composer test`: 2116 tests, 5378 assertions, all green (15 pre-existing skips, unrelated).
+
+**Verified live** against the local WAMP instance: full lifecycle — created an empty candidate election
+→ two members applied → Committee approved both (confirmed against `vote_options` directly) → opening
+with only one candidate refused `too_few_options` → opened with two → a member's `/voting/open` view
+showed both with `has_voted: false` → voted → a second vote from the same member refused `409
+already_voted` → results hid the tally for both roles while open → closed → Admin saw the tally,
+Member (unpublished) still did not → deleted, confirmed the cascade removed `leadership_applications`
+and `vote_options` too. Separately verified withdraw → re-apply (same row), approve → reset (ballot
+option actually deleted, status back to pending), a subsequent owner `PUT` edit, reject without a
+reason refused `422`, a motion election's fixed options, and applying to a non-candidate election
+refused `404`. `grant_voting_permission.php` confirmed to bring every role to `voting` view-only
+locally.
+
+**Docs deliberately not done yet** — per the established order (build → deploy → verify live → docs
+→ handover), those come once this is merged and deployed.
+
+---
+
+## Session — 2026-09-06 — Hotfix: Documents Library used the wrong live permission key
+
+**Branch:** `develop` (merged via PR #497, deployed via PR #498)
+**Developer:** Claude Code / Jabir Mussa
+
+**Found ~15 minutes after Module 13 (below) deployed, by this session's own standing practice of
+re-verifying live rather than trusting a prior conclusion.** Module 13 shipped the Document Library
+API (`GET /api/v1/documents` and friends) gated on `document_library`, believing it the canonical key
+after checking demo's `/library` page worked over a **web session**. Re-checking this module's own
+new endpoints over the mobile API's **JWT-based** permission load (not a web session) found a real
+Treasurer token on demo carried full CRUD under the literal key `library` and **no `document_library`
+key at all** — every non-admin role had been getting `403` on the new endpoints since the moment they
+deployed.
+
+**Root cause:** `library` is not harmless legacy debris sitting alongside a correct
+`document_library` — it is demo's (and presumably production's) only real permission key for this
+feature. `document_library` is what a *freshly-migrated local* database gets; these long-running
+environments never received whatever would populate it. The original conclusion (see Module 13's
+own writeup below and in `todo.md`) had this backwards.
+
+**Fix:** `vk_api_doc_library_can()` checks both `library` and `document_library`, accepting either
+grant, in `includes/api_documents.php`, `api/v1/documents.php`, `documents_detail.php`,
+`documents_download.php`. `document_library.php` and its siblings are untouched — they already gate
+on the key that's actually correct for their environment.
+
+**Tests:** updated `DocumentsApiTest`'s permission-key regression guard to assert both keys are
+checked rather than asserting `document_library` alone. `composer test`: 2071 tests, 5258 assertions,
+all green.
+
+**Verified live on demo**, before and after: Treasurer JWT on `GET /api/v1/documents` — `403` before
+the fix, `200` after. Confirmed the resulting empty list is correct, not a masked bug, by cross-checking
+with an Admin token (which bypasses all visibility scoping) returning the same empty result — demo
+genuinely has zero Library documents seeded right now.
+
+---
+
 ## Session — 2026-09-06 — Module 13: Documents — PR pending
 
 **Branch:** `develop` (feature branch not yet cut)
@@ -13,7 +124,8 @@ This file tracks every development session, modification, and significant change
 **two top-level API resources** — a deliberate deviation from `todo.md`'s original single-resource
 plan. New shared file: `includes/api_documents.php`.
 
-**Document LIBRARY** (`documents` table, gated on `document_library`): `GET /documents` (paginated,
+**Document LIBRARY** (`documents` table, gated on the catalog view permission — see the hotfix entry
+above, this ended up needing both `library` and `document_library` checked): `GET /documents` (paginated,
 filters: category/file_type/access_level/search), `GET /documents/{id}` (metadata), `GET
 /documents/{id}/download` (added — streams the file; metadata with no way to fetch it would be
 useless), `DELETE /documents/{id}`.
@@ -28,17 +140,17 @@ because `roots.php`'s router only resolves `/api/v1/{resource}/{id}(/{action})?`
 detail so polling signing progress never re-transfers `body_html`). Plus `GET /document-templates`
 (read-only list).
 
-**A live/static-analysis contradiction investigated and resolved before writing any code.** A
-research pass claimed `document_library.php` and five siblings gate on phantom permission keys
-(`'library'`/`'documents'`) that don't exist in a fresh install's `permissions` table, implying a
-hard lockout of every non-admin role. Reading the code confirmed the phantom-key calls are real.
-**Verified live on demo instead of trusting the static read:** a Treasurer session loaded `/library`
-successfully — no lockout. Traced this to data drift: `canView('library')` can only be `true` if a
-real `library` permissions row exists in that database, and this repo's entire migration history has
-never created one — so demo's (and presumably production's) live database carries a legacy row
-predating migration tracking. Left unfixed, since repointing those checks could not be verified safe
-against production's actual, inaccessible-to-this-session grants for `document_library`, and this
-module's own API gates on that canonical key throughout instead.
+**A live/static-analysis contradiction investigated before writing any code — conclusion corrected
+~15 minutes after deploy, see the hotfix session above.** A research pass claimed
+`document_library.php` and five siblings gate on a phantom permission key (`'library'`) absent from a
+*fresh local* install's `permissions` table, implying a hard lockout of every non-admin role. Checked
+live on demo over a **web session**: a Treasurer loaded `/library` successfully — no lockout. Read at
+the time as inert legacy data drift coexisting with a correctly-provisioned `document_library`, so
+this module's own API was gated on `document_library` alone. **That was backwards**: re-verified
+minutes after deploy over the mobile API's own JWT-based permission load (not a web session), a real
+Treasurer token carried full CRUD under `library` and no `document_library` key at all — `library` is
+demo's (and presumably production's) actual, only key for this feature, not debris. See the hotfix
+entry above for the hour-of-discovery fix.
 
 **Two real defects found and fixed, both about a private authored document's ownership:**
 `actions/delete_document.php` had no ownership/visibility check at all (any leader with
@@ -63,8 +175,8 @@ filter validation (named placeholders for the library query since it shares a st
 `vk_document_visibility_where()`'s own named binds; positional for authored documents, matching
 `vk_authored_visibility_where()`), item-level visibility (`vk_api_doc_authorize_item()` tested pure,
 public/private/restricted matrix), authored-document action rules (private-document ownership gate,
-Member-with-no-grant-at-all), structural gate-ordering, the phantom-key regression guard (asserts the
-new endpoints reference `'document_library'` and never the bare `'library'` string), the two web-fix
+Member-with-no-grant-at-all), structural gate-ordering, the permission-key regression guard (updated
+in the hotfix above to require both `library` and `document_library` be checked), the two web-fix
 regression tests, the signatory-cleanup-on-delete regression test, and routing. `composer test`: 2071
 tests, 5256 assertions, all green (15 pre-existing skips, unrelated) — including the pre-existing
 `DocumentSignatoriesTest`, unaffected.

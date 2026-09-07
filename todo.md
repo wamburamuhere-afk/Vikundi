@@ -443,23 +443,30 @@ Meetings). Item-level access still follows `access_level` via `vk_user_can_acces
 web's own pure helper. A document outside the caller's access 404s, not 403s — its existence isn't
 revealed to someone who can't see it.
 
-**Investigated, not fixed: `document_library.php` and five siblings check phantom permission keys.**
-`app/constant/document/document_library.php` (`requireViewPermission('library')`),
-`ajax/quick_upload_document.php`, `select_document_add_esignature.php`,
-`api/document/apply_signature.php`, and `e_signatures.php` (two call sites) all gate on the strings
-`'library'`/`'documents'`, neither of which exists as a `page_key` in a fresh install's `permissions`
-table — only `document_library` does. Read in isolation this looks like a hard lockout of every
-non-admin role. **Verified live on demo instead of trusting the static read**: a Treasurer session
-loaded `/library` successfully — HTTP 200, real content, no redirect. The only way `canView('library')`
-resolves `true` for a non-admin session is a real `permissions` row named `library` existing in that
-database; grepping this repo's entire migration history turns up no script that ever created one.
-Conclusion: demo (and, by the same multi-year deploy history, presumably production) carries a
-legacy `library`/`documents` permissions row predating this repo's migration tracking — inert data
-drift on already-deployed environments, not an active bug. Left unfixed: repointing those checks at
-`document_library` could not be verified safe against production's actual (inaccessible to this
-session) grants for that key, and demo's current, working access is real, live behavior this session
-has no way to reproduce in order to prove a fix doesn't regress it. This module's own API gates on
-the canonical key throughout.
+**Correction to an earlier conclusion in this same section — caught by this session's own
+post-deploy live check, not by the user.** `document_library.php` and five siblings
+(`ajax/quick_upload_document.php`, `select_document_add_esignature.php`,
+`api/document/apply_signature.php`, `e_signatures.php` x2) all gate on the string `'library'`, which
+does not exist in a *fresh local* install's `permissions` table — only the newer, migration-tracked
+`document_library` does. Before shipping, this was checked live on demo over a **web session**
+(cookie-authenticated): a Treasurer loaded `/library` successfully, so `'library'` clearly resolves
+`true` there. The conclusion drawn at the time was that this was inert legacy debris coexisting
+alongside a correctly-provisioned `document_library`, so the module's own API was shipped gating on
+`document_library` alone, believing it the "canonical" key.
+
+**That was wrong, caught immediately by re-verifying this module's own new endpoints live** (this
+session's standing practice, applied here to its own work, not just found web bugs) **over the
+mobile API's JWT-based permission load** rather than a web session: a real Treasurer token on demo
+carried full CRUD under `library` and **no `document_library` key at all**, so `GET /api/v1/documents`
+had been returning `403` to every non-admin role since the moment it deployed. `library` is not
+coexisting legacy debris — it is demo's (and, by the same deploy history, presumably production's)
+one and only real key for this feature; `document_library` is what a *freshly-migrated local*
+database gets instead, and these long-running environments never received whatever would populate
+it. **Fixed in a follow-up PR** (shipped same session, ~15 minutes after the original): `document_library.php`
+and its siblings are left as they are (still gate on `'library'`, still correct for their
+environment), and this module's own API now checks BOTH keys (`vk_api_doc_library_can()`) and
+accepts either grant, rather than betting on which environment's naming is authoritative. Re-verified
+live on demo post-fix: the same Treasurer token that got `403` now gets `200`.
 
 **Two real defects found and fixed, both about a private authored document's ownership:**
 1. `actions/delete_document.php` checked `manage_documents` delete-rights only — no ownership or
@@ -520,22 +527,115 @@ templates list returned the real seeded set.
 
 ## 14. Voting & Leadership Applications
 
-- [ ] `GET /api/v1/elections` — manage_voting.php list, all statuses — leadership only
-- [ ] `GET /api/v1/elections/{id}` — detail incl. options/candidates
-- [ ] `POST /api/v1/elections` — create (draft, 0 candidates allowed)
-- [ ] `POST /api/v1/elections/{id}/open` — refuses under 2 options
-- [ ] `POST /api/v1/elections/{id}/close`
-- [ ] `GET /api/v1/elections/{id}/results`
-- [ ] `GET /api/v1/voting/open` — member view: elections currently open to vote in
-- [ ] `POST /api/v1/votes` — cast a ballot (`vote_id`, `option_id`) — server refuses a second vote
-- [ ] `GET /api/v1/leadership-positions` — the group's configured positions list
-- [ ] `POST /api/v1/leadership-applications` — a member applies
-- [ ] `PUT /api/v1/leadership-applications/{id}` — edit own (draft election only)
-- [ ] `POST /api/v1/leadership-applications/{id}/withdraw`
-- [ ] `GET /api/v1/leadership-applications/mine` — own application(s)
-- [ ] `GET /api/v1/leadership-applications` — Committee review queue — leadership only, includes contribution-standing badge
-- [ ] `POST /api/v1/leadership-applications/{id}/approve` — writes the ballot option
-- [ ] `POST /api/v1/leadership-applications/{id}/reject` — reason required
+- [x] `GET /api/v1/elections` — manage_voting.php list, all statuses — leadership only
+- [x] `GET /api/v1/elections/{id}` — detail incl. options/candidates
+- [x] `POST /api/v1/elections` — create (draft, 0 candidates allowed)
+- [x] `POST /api/v1/elections/{id}/open` — refuses under 2 options
+- [x] `POST /api/v1/elections/{id}/close`
+- [x] `GET /api/v1/elections/{id}/results`
+- [x] `DELETE /api/v1/elections/{id}` — added: `actions/delete_vote.php` is real, used, and refuses while
+      `status='open'`; cascades to every table hanging off a vote id, including
+      `leadership_applications`
+- [x] `GET /api/v1/voting/open` — member view: elections currently open to vote in
+- [x] `POST /api/v1/votes` — cast a ballot (`election_id`/`vote_id`, `option_id`) — server refuses a second vote
+- [x] `GET /api/v1/leadership-positions` — the group's configured positions list
+- [x] `POST /api/v1/leadership-applications` — a member applies
+- [x] `PUT /api/v1/leadership-applications/{id}` — edit own (draft election only)
+- [x] `POST /api/v1/leadership-applications/{id}/withdraw`
+- [x] `GET /api/v1/leadership-applications/mine` — own application(s)
+- [x] `GET /api/v1/leadership-applications` — Committee review queue — leadership only, includes contribution-standing badge
+- [x] `POST /api/v1/leadership-applications/{id}/approve` — writes the ballot option
+- [x] `POST /api/v1/leadership-applications/{id}/reject` — reason required
+- [x] `POST /api/v1/leadership-applications/{id}/reset` — added: a real, used Committee action
+      (revert an approval, deleting the ballot option it created) — without it, a mistaken approval
+      could never be corrected via the API
+
+**Module 14 built, tested, verified locally.** New shared file: `includes/api_voting.php`. Two
+features sharing one `votes` table, kept apart exactly as the web keeps them: **Elections** (gated
+`manage_voting` for the leadership CRUD/lifecycle surface, `voting` for a member's own ballot) and
+**Leadership Applications** (gated `leadership_applications` to apply, `manage_leadership_applications`
+to review).
+
+**Permission keys checked file-by-file before writing any code, given the Documents module's `library`
+vs `document_library` incident (see §13) — and found genuinely consistent this time**, no sibling-file
+drift anywhere across the web pages, actions, `api/*.php` files, `roots.php`, `header.php`, or
+migrations: always exactly one of `voting`, `manage_voting`, `leadership_applications`,
+`manage_leadership_applications`. **What WAS found and fixed instead:** `create_voting_tables.php`
+explicitly grants `manage_voting` to leadership (Admin/Chairperson/Secretary/Treasurer) — the standard
+"new permission key never reaches Secretary/Treasurer via the seeder on an existing deployment" fix
+this codebase applies every time — but never did the same for the plain `voting` key (the page a
+member uses to cast their own ballot), which only reached the `Member` role via the seeder's blanket
+reseed. Since Secretary and Treasurer are explicitly NOT `isAdmin()` bypassed
+(`core/permissions.php`'s own comment: "Secretary and Treasurer are NOT full admins"), a Secretary or
+Treasurer — group members like anyone else — could manage elections via `manage_voting` but not cast
+their own personal vote. Fixed with `database/grant_voting_permission.php`, mirroring
+`create_leadership_applications_table.php`'s `$grantTo()` raise-don't-skip pattern; grants view-only
+(matching Member's own scope for this key — `voting` is never a create/edit/delete workflow anywhere
+in the codebase). **Because this whole module is brand new** (its tables/permissions may not exist on
+demo/production until this deploys and `database/migrate.php` runs there for the first time), this
+permission claim — like every one this session makes — is re-verified live after deploy, not just
+locally, precisely because a very similar claim (Documents' `document_library`) turned out to be wrong
+in the opposite direction once already this session.
+
+**Elections have no PUT/edit endpoint, deliberately.** `actions/save_vote.php`'s own edit path DELETEs
+every `vote_options` row and re-inserts fresh ones from the submitted labels — doing this through the
+API would silently orphan any `leadership_applications.vote_option_id` link an approval had already
+created, breaking the very mechanism that puts a candidate on the ballot. todo.md never asked for
+election editing, and the risk isn't worth inventing it: delete an unopened draft with no applications
+yet and recreate it instead.
+
+**Secret ballot design preserved exactly, including its NO-LOGGING choice.** `vote_participation`
+(that a member voted, unique) and `vote_ballots` (the anonymous choice, no `member_id`) are separate
+tables the code never joins, and `actions/cast_vote.php` calls no activity-log function at all — an
+audit row timestamping "member X voted in election Y" would undermine the whole point. `POST
+/api/v1/votes` does not call `logCreate()`/`logUpdate()` either, matching that choice exactly rather
+than defaulting to this codebase's usual "every action logged" pattern.
+
+**Results secrecy mirrors `api/get_vote_results.php` precisely, gate and all**: no leadership-only gate
+at the endpoint's own door (any authenticated user may call `GET /api/v1/elections/{id}/results` for
+any election id) — turnout is always visible; the *tally* is what's actually gated, inside
+`vk_api_election_results()`: hidden entirely while open, visible to leadership any time after close,
+visible to a plain member only if the election's own `publish_results` flag is set. Verified live: the
+same closed, unpublished election returned `can_see_tally: true` (with a full tally) to an Admin token
+and `can_see_tally: false` (options only, no counts) to a Member token.
+
+**`GET /api/v1/leadership-positions` overlaps with `GET /api/v1/group-settings`**, which already
+returns this exact array via the same `vk_leadership_positions()` parsing. Kept as its own endpoint
+anyway — a client building an "apply for a position" dropdown shouldn't need the whole group-settings
+object for one field, and todo.md's plan asks for it by name.
+
+**`POST /api/v1/leadership-applications` keeps the web's forgiving apply/re-apply semantics**: a
+second POST for the same election updates the existing `pending` or `withdrawn` row in place (matching
+`actions/save_leadership_application.php` exactly — re-clicking "Apply" after withdrawing just works)
+rather than refusing a duplicate. `PUT .../{id}` exists separately for editing a *known* application by
+id (e.g. from the `/mine` list) without resubmitting through the generic apply endpoint. Both funnel
+through the same validation and the same `one_application_per_member_per_election` UNIQUE-key
+race-safety net `actions/save_leadership_application.php` relies on (caught via `PDOException` code
+`23000`, not a racy pre-check `SELECT COUNT(*)`).
+
+**Approve/reject/reset all mirror `actions/review_leadership_application.php` exactly**, including the
+parts that are easy to get subtly wrong: approving an election with candidates for more than one
+distinct office labels the ballot option `"Name — Position"` instead of just the name; re-approving an
+application that already has a `vote_option_id` (after a reset) UPDATEs that same row rather than
+inserting a duplicate, so ballot ordering never shifts; rejecting OR resetting an approved application
+DELETEs the `vote_options` row it created — a reversed decision genuinely removes the candidate, not
+merely flips a status flag. All three refuse once the election is no longer `draft` or the application
+has been withdrawn.
+
+Verified live against the local WAMP instance: full lifecycle — created an empty candidate election →
+two members applied → Committee approved both (each write confirmed against `vote_options` directly)
+→ opening with only one approved candidate correctly refused (`too_few_options`) → opened once two
+existed → a member's `/voting/open` view showed both candidates with `has_voted: false` → cast a
+ballot → a second vote from the same member correctly refused `409 already_voted` → results while open
+correctly hid the tally for both an Admin and a Member token → closed → Admin now saw the full tally,
+Member still did not (unpublished) → deleted the closed election and confirmed the cascade removed its
+`leadership_applications` and `vote_options` rows too. Separately verified: withdraw → re-apply updates
+the same application row; approve → reset correctly deleted the `vote_options` row and returned the
+application to `pending`; a subsequent `PUT` edit by the actual owner succeeded; reject without a
+`note` was refused `422`, with one succeeded; a motion election was created with the fixed Yes/No/Abstain
+options automatically; applying to a non-candidate (motion) election id was correctly refused with a
+`404`. A fresh `database/grant_voting_permission.php` run confirmed Admin/Chairperson/Secretary/
+Treasurer/Member all hold `voting` view afterward.
 
 ## 15. Reports & Statements
 
