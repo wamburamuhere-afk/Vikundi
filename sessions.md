@@ -4,6 +4,81 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-09-07 — Module 14: Voting & Leadership Applications — PR pending
+
+**Branch:** `develop` (feature branch not yet cut)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** 18 endpoints across two features sharing one `votes` table, kept apart exactly as the web
+keeps them. New shared file: `includes/api_voting.php`.
+
+**Elections** (gated `manage_voting` for leadership, `voting` for a member's own ballot): `GET/POST
+/elections`, `GET/DELETE /elections/{id}` (DELETE added — real, used, refuses while open, cascades to
+`leadership_applications`), `POST /elections/{id}/open` (refuses under 2 options), `POST
+/elections/{id}/close`, `GET /elections/{id}/results` (no leadership gate at the door, matching
+`api/get_vote_results.php` exactly — turnout always visible, tally gated inside the helper), `GET
+/voting/open` (member view, scoped by the eligibility snapshot), `POST /votes` (cast a ballot).
+
+**Leadership Applications** (gated `leadership_applications` to apply, `manage_leadership_applications`
+to review): `GET/POST /leadership-applications`, `PUT /leadership-applications/{id}`, `GET
+/leadership-applications/mine`, `POST .../withdraw`, `POST .../approve` (writes the ballot option),
+`POST .../reject` (reason required), `POST .../reset` (added — reverts an approval, deletes the ballot
+option it created; a real, used Committee action, without which a mistaken approval could never be
+corrected via the API). Plus `GET /leadership-positions` (overlaps with `group-settings`'s own field,
+kept as its own endpoint per todo.md's plan).
+
+**Permission-key audit, given the Documents module's `library`/`document_library` incident:** every
+gate across every web page, action, `api/*.php` file, `roots.php`, `header.php`, and migration was
+checked individually — genuinely consistent this time, always exactly one of the four keys, no
+sibling-file drift. **Found and fixed instead:** `voting` (a member's own ballot page) was never
+explicitly granted to Secretary/Treasurer by any migration — only `manage_voting` was — so they could
+manage elections but not vote in one themselves. Fixed with
+`database/grant_voting_permission.php`, mirroring the exact raise-don't-skip pattern
+`create_leadership_applications_table.php` already used. Because this whole module is brand new
+(tables/permissions may not exist on demo/production before this deploys), this claim is re-verified
+live after deploy exactly like every permission claim this session makes now.
+
+**Elections have no edit endpoint, deliberately** — the web's own edit path deletes and rebuilds every
+option, which would orphan a `leadership_applications.vote_option_id` link an approval had already
+created. Not in the original plan either; not worth inventing given the risk.
+
+**Secret-ballot design preserved exactly, down to its no-logging choice**: `POST /api/v1/votes` calls
+no `logCreate()`/`logUpdate()` at all, matching `actions/cast_vote.php`'s own deliberate choice — an
+audit row naming who voted when would undermine the anonymity the separate
+`vote_participation`/`vote_ballots` tables exist to guarantee.
+
+**Approve/reject/reset mirror `actions/review_leadership_application.php` exactly**: multi-office
+ballot labeling (`"Name — Position"` only when needed), in-place `vote_options` updates on
+re-approval (ordering never shifts), and reject/reset both delete the ballot option they remove — a
+reversed decision actually removes the candidate.
+
+**Tests.** `VotingApiTest` — 45 tests: election row/action shaping (lifecycle actions depend on
+status, not just permission — e.g. delete blocked while open), option-building parity with
+`actions/save_vote.php` (motion always Yes/No/Abstain, candidate skips blanks, zero options valid),
+application row/action shaping (ownership-gated edit/withdraw, review-gated approve/reject/reset, both
+independently checked), input validation, the `grant_voting_permission.php` regression tests, and
+structural checks: results has no leadership gate, vote-casting never logs, election delete cascades to
+`leadership_applications`, reject requires a reason, approve/reject/reset all check
+`election_status==='draft'` and refuse a withdrawn application, routing for all 18 endpoints, and
+auditing. `composer test`: 2116 tests, 5378 assertions, all green (15 pre-existing skips, unrelated).
+
+**Verified live** against the local WAMP instance: full lifecycle — created an empty candidate election
+→ two members applied → Committee approved both (confirmed against `vote_options` directly) → opening
+with only one candidate refused `too_few_options` → opened with two → a member's `/voting/open` view
+showed both with `has_voted: false` → voted → a second vote from the same member refused `409
+already_voted` → results hid the tally for both roles while open → closed → Admin saw the tally,
+Member (unpublished) still did not → deleted, confirmed the cascade removed `leadership_applications`
+and `vote_options` too. Separately verified withdraw → re-apply (same row), approve → reset (ballot
+option actually deleted, status back to pending), a subsequent owner `PUT` edit, reject without a
+reason refused `422`, a motion election's fixed options, and applying to a non-candidate election
+refused `404`. `grant_voting_permission.php` confirmed to bring every role to `voting` view-only
+locally.
+
+**Docs deliberately not done yet** — per the established order (build → deploy → verify live → docs
+→ handover), those come once this is merged and deployed.
+
+---
+
 ## Session — 2026-09-06 — Hotfix: Documents Library used the wrong live permission key
 
 **Branch:** `develop` (merged via PR #497, deployed via PR #498)
