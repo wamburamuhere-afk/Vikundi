@@ -4,6 +4,38 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-09-07 — Hotfix: Member could view the leadership-applications review queue
+
+**Branch:** `develop` (merged via PR #502, deployed via PR #503)
+**Developer:** Claude Code / Jabir Mussa
+
+**Found minutes after Module 14 (below) deployed**, while re-verifying its live permission grants on
+demo (the same standing practice that caught the Documents module's `library`/`document_library`
+mismatch): a real Member JWT successfully called `GET /api/v1/leadership-applications` — the Committee
+review queue — and got back every applicant's full statement, experience, proposer, review notes, and
+reviewer identity, across every election.
+
+**Root cause:** `includes/role_grants.php`'s `vk_member_hidden_keys()` correctly hides `manage_voting`
+from Member's default view-everything policy, but never added its sibling
+`manage_leadership_applications`. Since Member's permissions are reset to defaults on every deploy
+(`seed_vicoba_roles.php`, `enforce_defaults=true`), this wasn't a one-off manual grant — every deploy
+re-asserted it. Pre-existing on the web (the page gates on the identical key), surfaced by this
+session's own new API endpoint sharing that gate.
+
+**Fix:** added `manage_leadership_applications` to the hide-list. No separate grant/revoke migration
+needed — unlike Secretary/Treasurer's `voting` gap (Module 14, seeded once, not reset), Member's
+permissions are reset on every migrate.php run, so shipping the policy fix was enough for the very next
+deploy to revoke the live grant automatically.
+
+**Tests:** added a regression test to `RoleGrantsTest` covering both `manage_voting` and
+`manage_leadership_applications`. `composer test`: 2117 tests, 5380 assertions, all green.
+
+**Verified live on demo, before and after**: Member's `GET /api/v1/leadership-applications` — `200`
+with the full queue before the fix, `403 forbidden` after. Treasurer/leadership confirmed still working
+(`200`, full queue) after the fix, so the deploy fixed exactly the intended gap and nothing else.
+
+---
+
 ## Session — 2026-09-07 — Module 14: Voting & Leadership Applications — PR pending
 
 **Branch:** `develop` (feature branch not yet cut)

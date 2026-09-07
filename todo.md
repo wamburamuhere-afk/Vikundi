@@ -637,6 +637,14 @@ options automatically; applying to a non-candidate (motion) election id was corr
 `404`. A fresh `database/grant_voting_permission.php` run confirmed Admin/Chairperson/Secretary/
 Treasurer/Member all hold `voting` view afterward.
 
+**Found live minutes after deploy, fixed same-day: Member could view the Committee's entire review
+queue.** `includes/role_grants.php`'s Member hide-list correctly hides `manage_voting` but never hid
+its sibling `manage_leadership_applications` — pre-existing on the web (same gate), surfaced by this
+module's own `GET /api/v1/leadership-applications` sharing it. Since Member's grants are reset on
+every deploy, fixing the hide-list alone was enough — no separate revoke migration needed, unlike the
+`voting` gap above (Secretary/Treasurer's grants are seeded once, not reset). Verified live on demo:
+Member's `403` after the fix, Treasurer's `200` unaffected.
+
 ## 15. Reports & Statements
 
 - [ ] `GET /api/v1/reports/member-statement/{id}?as_of=YYYY-MM` — contributions statement, NSSF layout — self or leadership-with-id
