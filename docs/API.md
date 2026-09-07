@@ -30,7 +30,11 @@ Same code on both. Demo has synthetic data and is safe to hit freely.
 12. [Expenses & Petty Cash](#12-expenses--petty-cash)
 13. [Budgets](#13-budgets)
 14. [Payouts](#14-payouts)
-15. [Demo logins](#15-demo-logins)
+15. [Meetings](#15-meetings)
+16. [Documents](#16-documents)
+17. [Voting & Leadership Applications](#17-voting--leadership-applications)
+18. [Reports & Statements](#18-reports--statements)
+19. [Demo logins](#19-demo-logins)
 
 ---
 
@@ -2372,7 +2376,726 @@ activity logger for this table.
 
 ---
 
-## 15. Demo logins
+## 15. Meetings
+
+No workflow at all — same shape as Payouts (§14). `status` (`scheduled`/`held`/`cancelled`) is a
+plain field set directly by whoever creates or edits the meeting; there is no reviewer/approver.
+Reference implementation: `includes/api_meetings.php`.
+
+**Gated on `meetings` — full leadership CRUD, Member view-only.** The first module in this API
+whose key already had correct grants before it was built (`create_meetings_tables.php` +
+`grant_meetings_to_leadership.php`) — no new permission migration was needed.
+
+**`POST /meetings/{id}/attendance` upserts only the rows you send — a deliberate deviation from the
+web.** `actions/save_meeting_attendance.php` resubmits the whole active roster every time and
+treats "in the roster but not checked present" as an implicit absence. This endpoint does not: a
+member left out of the request simply keeps whatever attendance status they already had. Safer for
+a mobile client updating one person without resubmitting the whole group — but do not assume
+"submitted 3 rows" means "everyone else is now absent."
+
+```json
+{"status":"error","code":"forbidden","message":"You do not have permission to do that."}
+```
+
+---
+
+### GET `/meetings`
+
+The group's meetings, paginated, ordered open-first then by date. Query: `page`, `per_page` (max
+100), `status`, `type`, `date_from`, `date_to`, `search` (title).
+
+```json
+{
+  "status": "success",
+  "data": {
+    "meetings": [{
+      "id": 9, "title": "Mkutano wa Kawaida — August 2026",
+      "meeting_date": "2026-08-29", "meeting_time": "09:00",
+      "location": "Ukumbi wa Kata, Kinondoni", "meeting_type": "regular",
+      "agenda": "1. Kufungua mkutano na sala\n2. Kusoma muhtasari...",
+      "minutes": null, "status": "scheduled",
+      "created_at": "2026-08-19T00:00:00+03:00",
+      "present_count": 0
+    }],
+    "totals": {"filtered_count": 10, "held": 8, "scheduled": 2},
+    "pagination": {"page": 1, "per_page": 25, "total": 10, "total_pages": 1, "has_more": false}
+  }
+}
+```
+
+---
+
+### GET `/meetings/{id}`
+
+One meeting plus the **full active roster** with current attendance — mirrors
+`meeting_view.php`'s own query exactly. A member with no attendance row yet shows as `absent` by
+**display default**, not because a row exists — see the attendance/fine-absentees notes below.
+
+```json
+{
+  "status": "success",
+  "data": {
+    "meeting": {
+      "id": 1, "title": "Mkutano Mkuu wa Mwaka (AGM)",
+      "meeting_date": "2025-12-28", "meeting_time": "09:00",
+      "location": "Ukumbi wa Kata, Kinondoni", "meeting_type": "agm",
+      "agenda": "1. Ufunguzi\n2. Mapitio ya katiba...",
+      "minutes": "Wajumbe walijadili suala la marejesho yaliyochelewa...",
+      "status": "held", "created_at": "2025-12-28T00:00:00+03:00",
+      "creator_name": "Athumani Mhando",
+      "actions": {"edit": true, "delete": true}
+    },
+    "attendance": [
+      {"member_id": 25, "name": "Ally Minja", "status": "absent"},
+      {"member_id": 28, "name": "Amina Shirima", "status": "present"}
+    ],
+    "summary": {"present": 21, "absent": 9, "total": 30}
+  }
+}
+```
+
+---
+
+### POST `/meetings`
+
+Record a meeting. `create` on `meetings`. `title`, `meeting_date` required; `meeting_type` one of
+`regular`/`agm`/`emergency`/`committee` (invalid values fall back to `regular`); `status` defaults
+to `scheduled`.
+
+---
+
+### PUT `/meetings/{id}` · DELETE `/meetings/{id}`
+
+Edit any field; no status-based edit lock (unlike Budgets, the web has never had one for meetings).
+`DELETE` cascades `meeting_attendance` and is the **first real HTTP `DELETE`** anywhere in this
+API — `Access-Control-Allow-Methods` had listed it since Module 1, unused until this module.
+
+---
+
+### POST `/meetings/{id}/attendance`
+
+Body: `attendance: [{member_id, status}]`, `status` one of `present`/`absent`. Every `member_id` is
+checked against the live roster **before any write** — an unknown id refuses the whole batch with
+`404`, never a partial write:
+
+```json
+{"status":"error","code":"member_not_found","message":"No member was found with id(s): 484."}
+```
+
+Success returns the full updated roster plus a fresh summary:
+
+```json
+{
+  "status": "success",
+  "data": {
+    "attendance": [
+      {"member_id": 25, "name": "Ally Minja", "status": "present"},
+      {"member_id": 28, "name": "Amina Shirima", "status": "absent"}
+    ],
+    "summary": {"present": 2, "absent": 28, "total": 30},
+    "message": "Attendance saved."
+  }
+}
+```
+
+---
+
+### POST `/meetings/{id}/fine-absentees`
+
+Not in the original plan — added because the meeting screen's own "Fine Absentees" button
+(`actions/generate_absence_fines.php`) is a real, used, leadership-only action. `edit` on `meetings`.
+Body: `{"amount": number}`.
+
+**Only fines members with a REAL `absent` row in `meeting_attendance`** — never every roster member
+the detail view merely *displays* as absent by default. A member nobody has marked yet (no row at
+all) is not fined. Deduplicates against `fines.meeting_id`: running this twice never double-fines
+anyone.
+
+```json
+{"status":"success","data":{"created":1,"skipped":0,"message":"Created fines for 1 member(s)."}}
+```
+
+---
+
+## 16. Documents
+
+Two independent subsystems, kept apart exactly as the web keeps them, exposed as **two separate
+top-level resources** rather than one nested under the other — `roots.php`'s router cannot express
+a third static segment before an id, so `/documents/authored/{id}` (the original shape) could never
+route. Reference implementation: `includes/api_documents.php`.
+
+**Document LIBRARY** (`documents` table — plain file uploads, `access_level`
+public/restricted/private) is gated on the catalog view permission — checked under **both**
+`library` and `document_library`. This is not redundancy for its own sake: demo/production's actual
+grants are under the literal key `library` (despite reading like a typo against this repo's newer,
+migration-tracked naming), while a freshly-migrated local install gets `document_library` instead.
+Shipping against only one of them 403'd every non-admin role in production for about fifteen
+minutes before this was caught and fixed live — see the note on `vk_api_doc_library_can()` if
+you're wondering why both strings appear in the source. No upload endpoint exists yet — the web has
+no metadata-only "create a library entry" action either, only upload-with-a-file, which is out of
+this module's scope; this API is read + download + delete for the Library only.
+
+**Document WRITER / authored documents** (`authored_documents` table — in-app letters/contracts/
+notices, `visibility` shared/private, multi-party signing) is gated on `manage_documents`, but
+**list visibility is query-scoped, not permission-gated**: an ordinary Member holds no
+`manage_documents` grant at all, yet must still be able to see a document they were personally
+assigned to sign. `GET /authored-documents` has no `vk_api_require_permission()` call for this
+reason — the query itself (visibility `shared` + own + assigned-as-signatory) does the scoping.
+
+```json
+{"status":"error","code":"forbidden","message":"You do not have permission to do that."}
+```
+
+---
+
+### GET `/documents`
+
+The Library, paginated. Query: `page`, `per_page` (max 100), `category_id`, `file_type`,
+`access_level`, `search`. Scoped per row by `access_level`: `public` → everyone, `restricted` →
+leadership + uploader, `private` → uploader + admin only. A document outside the caller's access
+never appears in the list, and its detail 404s rather than 403s (existence isn't revealed).
+
+```json
+{"status":"success","data":{"documents":[],"pagination":{"page":1,"per_page":25,"total":0,"total_pages":0,"has_more":false}}}
+```
+
+---
+
+### GET `/documents/{id}` · GET `/documents/{id}/download`
+
+Metadata, then the raw file bytes (`Content-Type` sniffed from the file itself, never trusted from
+what was uploaded). `DELETE /documents/{id}` mirrors `deleteDocumentLocal()`'s own rule — ownership
+(uploader) or admin, **not** the catalog delete flag, which that web action never checked either
+(this module added the missing gate to the web action itself, so a future create-only role can't
+inherit delete rights it was never granted).
+
+---
+
+### GET `/authored-documents`
+
+Visibility-scoped list — see the header note above. Leadership sees every `shared` document plus
+their own and anything they must sign; a Member sees only what they're assigned to sign.
+
+```json
+{
+  "status": "success",
+  "data": {
+    "documents": [{
+      "id": 4, "title": "Notice of Overdue Loan Repayment", "doc_type": "letter",
+      "use_letterhead": true, "status": "final", "visibility": "shared",
+      "created_by": {"id": 484, "name": "Athumani Mhando"},
+      "created_at": "2026-08-12T00:00:00+03:00", "updated_at": "2026-08-19T17:39:06+03:00",
+      "actions": {"edit": true, "delete": true}
+    }],
+    "pagination": {"page": 1, "per_page": 25, "total": 5, "total_pages": 1, "has_more": false}
+  }
+}
+```
+
+`body_html` is deliberately **not** in the list row — only the detail response carries it, so
+listing a page of documents never pulls every one's full rich-text body over the wire.
+
+---
+
+### POST `/authored-documents`
+
+`create` on `manage_documents`. `title`, `doc_type` (`letter`/`contract`/`notice`/`other`),
+`statement` required-equivalent is `body_html`; `visibility` defaults to `shared`. Optional
+`template_id` pre-fills `doc_type`/`body_html`/`use_letterhead` from `authored_document_templates`
+— the same "start from a template" the New Document editor offers, and fields sent alongside
+`template_id` still win.
+
+---
+
+### GET `/authored-documents/{id}` · PUT `/authored-documents/{id}` · DELETE `/authored-documents/{id}`
+
+Detail includes `body_html` and the full `signatories` array. Edit/delete are refused on **someone
+else's `private` document**, even for a caller who holds `manage_documents` edit/delete — the exact
+rule `actions/save_document.php` already enforced for edit; this module's own build found
+`actions/delete_document.php` had never enforced the equivalent for delete, and fixed it there too.
+`DELETE` also clears any `document_signatories` rows first (no FK enforces this; the web's own
+delete action never cleared them either).
+
+```json
+{
+  "status": "success",
+  "data": {
+    "document": {
+      "id": 4, "title": "Notice of Overdue Loan Repayment", "doc_type": "letter",
+      "use_letterhead": true, "status": "final", "visibility": "shared",
+      "created_by": {"id": 484, "name": "Athumani Mhando"},
+      "created_at": "2026-08-12T00:00:00+03:00", "updated_at": "2026-08-19T17:39:06+03:00",
+      "body_html": "<p>Dear Member,</p><p>Our records show that your loan repayment is overdue...</p>",
+      "actions": {"edit": true, "delete": true},
+      "signatories": [{
+        "id": 5, "user": {"id": 485, "name": "Hawa Mtui"}, "role_label": "Treasurer",
+        "sign_order": 1, "status": "signed", "signed_at": "2026-08-15T00:00:00+03:00", "note": null
+      }]
+    }
+  }
+}
+```
+
+---
+
+### GET `/document-templates`
+
+Read-only. `view` on `manage_documents`. Maps to `authored_document_templates` — **not** the
+legacy, unrelated `document_templates`/`template_categories` system.
+
+```json
+{"status":"success","data":{"templates":[{"id":20,"name":"Barua ya Kumkaribisha Mwanachama Mpya (Kiswahili)","doc_type":"letter","use_letterhead":true,"updated_at":"2026-08-19T16:22:55+03:00"}]}}
+```
+
+---
+
+### POST `/authored-documents/{id}/sign`
+
+Two modes, exactly mirroring `actions/sign_document.php`:
+
+- **Multi-party** (a signatory list exists): the caller signs **their own slot** — scoped entirely
+  to `vk_find_doc_signatory()`, so an assigned Member never needs `manage_documents` to do this.
+  Signing twice is `409 already_signed`. When every slot is signed, the document's creator gets an
+  in-app notification.
+- **Legacy single-sign** (no signatory list at all): falls back to one authoritative signature,
+  gated on `edit` on `manage_documents`.
+
+```json
+{
+  "status": "success",
+  "data": {
+    "mode": "multi_party",
+    "signatories": [{"id": 5, "user": {"id": 485, "name": "Hawa Mtui"}, "role_label": "Treasurer", "sign_order": 1, "status": "signed", "signed_at": "2026-08-15T00:00:00+03:00", "note": null}],
+    "progress": {"total": 1, "signed": 1, "pending": 0, "declined": 0, "complete": true}
+  }
+}
+```
+
+---
+
+### GET `/authored-documents/{id}/workflow`
+
+Signing progress only — kept **separate** from the detail endpoint on purpose, so polling "has
+everyone signed?" never re-transfers the full `body_html`. Same shape as the `sign` response's
+`mode`/`signatories`/`progress` (or, in legacy mode, `{"mode":"legacy_single_sign","signed":bool,"signed_by":{...}|null}`).
+
+---
+
+## 17. Voting & Leadership Applications
+
+Two features sharing one `votes` table, kept apart exactly as the web keeps them. Reference
+implementation: `includes/api_voting.php`.
+
+**Elections** — a secret-ballot design: `vote_participation` records THAT a member voted (unique,
+blocks a second vote); `vote_ballots` records the anonymous CHOICE (no `member_id` — unlinkable).
+Gated on `manage_voting` for the leadership CRUD/lifecycle surface, `voting` for a member casting
+their own ballot. **`voting` was never explicitly granted to Secretary/Treasurer by any
+migration** — only `manage_voting` was — so on an unpatched deployment they could manage elections
+but not vote in one themselves; fixed with `database/grant_voting_permission.php` before this
+shipped.
+
+**Leadership Applications** — a member applies to stand for a leadership position in a still-`draft`
+election; the Committee approves (which **writes a `vote_options` row** — literally puts the name
+on the ballot) or rejects (reason required). Gated on `leadership_applications` to apply,
+`manage_leadership_applications` to review.
+
+> **Found and fixed the same day this module deployed:** `manage_leadership_applications` was
+> missing from the Member role's hide-list (`includes/role_grants.php`), so any ordinary Member
+> could view the Committee's entire review queue — every applicant's statement, experience,
+> proposer, and review notes, across every election — on both the web page and this module's own
+> `GET /leadership-applications`. Confirmed live, fixed the same day; a Member now correctly gets
+> `403` here.
+
+**No PUT/edit endpoint for elections, deliberately.** `actions/save_vote.php`'s own edit path
+deletes every `vote_options` row and re-inserts fresh ones — doing that through the API would
+silently orphan any `leadership_applications.vote_option_id` link an approval already created.
+Delete an unopened draft with no applications yet and recreate it instead.
+
+```json
+{"status":"error","code":"forbidden","message":"You do not have permission to do that."}
+```
+
+---
+
+### GET `/elections` · POST `/elections`
+
+The group's elections, `open` first then `draft` then `closed`. `manage_voting` view/create.
+`vote_type` is `candidate` or `motion`; a candidate election may be created with **zero options** —
+deliberate, so a leadership election can start empty and be filled entirely by approved
+applications. A motion election always gets the fixed `Yes`/`No`/`Abstain` set.
+
+```json
+{
+  "id": 5, "title": "Marekebisho ya Katiba — Kiwango cha Mchango",
+  "description": "Pendekezo la kupandisha mchango wa mwezi...",
+  "vote_type": "motion", "status": "draft",
+  "opens_at": "2026-08-29T00:00:00+03:00", "closes_at": "2026-09-05T00:00:00+03:00",
+  "publish_results": false, "created_at": "2026-08-19T00:00:00+03:00",
+  "option_count": 2, "eligible_count": 30, "voted_count": 0,
+  "actions": {"edit": true, "open": true, "close": false, "delete": true}
+}
+```
+
+---
+
+### GET `/elections/{id}` · DELETE `/elections/{id}`
+
+Detail includes `options`. `DELETE` refuses while `status='open'`
+(`{"status":"error","code":"election_open","message":"Close the election before deleting it."}`) and
+cascades every table hanging off the vote id, **including `leadership_applications`** — added on
+the web specifically because leaving it out orphaned applications pointing at a deleted election.
+
+---
+
+### POST `/elections/{id}/open` · POST `/elections/{id}/close`
+
+`edit` on `manage_voting`. Opening refuses under two options and snapshots eligibility (active,
+non-deceased members, **right now** — frozen for the life of the election, never re-synced):
+
+```json
+{"status":"error","code":"too_few_options","message":"An election needs at least two options."}
+```
+
+Closing deletes nothing; ballots and participation simply persist.
+
+---
+
+### GET `/elections/{id}/results`
+
+**No leadership gate at the door** — any authenticated user may call this for any election id,
+mirroring the web exactly. Turnout is always visible; the *tally* is what's actually secret:
+
+```json
+{
+  "status": "success",
+  "data": {
+    "status": "closed", "title": "Uchaguzi wa Mjumbe wa Kamati Kuu",
+    "turnout": {"voted": 14, "eligible": 30, "percent": 47},
+    "can_see_tally": false,
+    "options": [{"id": 8, "label": "Said Mwinyi"}, {"id": 9, "label": "Asha Mbwana"}]
+  }
+}
+```
+
+Leadership sees the tally any time after close; a Member only if the election's own
+`publish_results` flag is set. While `status='open'`, **nobody** sees the tally, leadership
+included — the same closed+unpublished election above returns a `tally` array instead of `options`
+once opened up to a leadership token.
+
+---
+
+### GET `/voting/open`
+
+A member's own view: elections currently open that **they** are eligible to vote in (the
+eligibility snapshot from open-time, not "every open election"), with options and whether they've
+already voted. Gated on `voting`, not `manage_voting`.
+
+```json
+{"status":"success","data":{"elections":[]}}
+```
+
+When something is open: `{"id":1,"title":"...","description":"...","vote_type":"candidate","closes_at":"...","has_voted":false,"options":[{"id":1,"label":"..."}]}`.
+
+---
+
+### POST `/votes`
+
+Cast a ballot. `voting`. Body: `{"election_id": int, "option_id": int}` (`vote_id` also accepted, the
+web form's own field name). Refused `409 not_open` off an open election, `403 not_eligible` off the
+frozen snapshot, `409 already_voted` on a second attempt — caught via `vote_participation`'s
+UNIQUE constraint, not a racy pre-check. **No activity-log entry is written for this action at
+all** — matching `actions/cast_vote.php`'s own deliberate choice: an audit row naming who voted when
+would undermine the whole point of the secret-ballot design.
+
+---
+
+### GET `/leadership-positions`
+
+The group's configured positions, from `group_settings`. Overlaps with the array `GET
+/group-settings` already returns (same underlying parser) — kept as its own endpoint so a client
+building the "apply" dropdown doesn't need the whole group-settings object for one field.
+
+```json
+{"status":"success","data":{"positions":["Chairperson / Mwenyekiti","Vice Chairperson / Makamu Mwenyekiti","Secretary / Katibu","Assistant Secretary / Katibu Msaidizi","Treasurer / Mweka Hazina","Committee Member / Mjumbe"]}}
+```
+
+---
+
+### POST `/leadership-applications`
+
+Apply (or re-apply). `create` on `leadership_applications`. `election_id`, `position` (must be one
+of the group's configured positions), `statement`, `declaration: true` required; `experience`,
+`proposer_member_id` optional. **Forgiving semantics, matching the web**: a second POST for the
+same election updates an existing `pending`/`withdrawn` application in place rather than refusing a
+duplicate — a ruled-on (`approved`/`rejected`) application is final.
+
+---
+
+### PUT `/leadership-applications/{id}`
+
+Edit a known application by id. Own only, and only while `election.status='draft'` **and**
+`application.status='pending'` — a ruled-on application can never be edited even if the election is
+still draft.
+
+---
+
+### POST `/leadership-applications/{id}/withdraw`
+
+Own only, only while `pending`. Cannot withdraw an approved or already-rejected application.
+
+---
+
+### GET `/leadership-applications/mine`
+
+The caller's own application(s) across every election (one per election, so more than one row is
+normal for someone who has stood more than once).
+
+---
+
+### GET `/leadership-applications`
+
+The Committee's review queue. `view` on `manage_leadership_applications`. Query: `election_id`,
+`status`. Unlike the web (which shows one election at a time via a picker), this returns every
+application across every election by default — a mobile client has no picker step, and "what needs
+my attention" is more natural than "pick an election first." Includes the same contribution-standing
+badge the web computes, batched in one pass:
+
+```json
+{
+  "id": 8,
+  "election": {"id": 4, "title": "Uchaguzi wa Mjumbe wa Kamati Kuu", "status": "closed"},
+  "member": {"id": 8, "name": "Said Mwinyi"},
+  "position": "Committee Member / Mjumbe",
+  "statement": "Nina uzoefu wa kusimamia biashara ndogo...",
+  "experience": "Mwalimu mstaafu; nilikuwa mweka hazina wa chama cha wazazi.",
+  "proposer": {"id": 9, "name": "Asha Mbwana"},
+  "status": "approved", "review_note": "Ameidhinishwa; ana sifa zote zinazotakiwa.",
+  "reviewed_by": {"id": 483, "name": "Rehema Mollel"}, "reviewed_at": "2026-05-16T00:00:00+03:00",
+  "created_at": "2026-05-11T00:00:00+03:00", "updated_at": "2026-08-19T17:39:06+03:00",
+  "actions": {"edit": false, "withdraw": false, "approve": false, "reject": false, "reset": false},
+  "contribution_standing": {"behind": false, "amount": 0, "months": 0, "oldest": null}
+}
+```
+
+---
+
+### POST `/leadership-applications/{id}/approve`
+
+`edit` on `manage_leadership_applications`, refused once the election is no longer `draft` or the
+application has been withdrawn. Writes (or, on re-approval after a reset, updates in place) a
+`vote_options` row — the ballot label is just the member's name, unless the election spans more
+than one distinct office among approved/pending applicants, in which case it becomes
+`"Name — Position"` so the ballot stays readable.
+
+---
+
+### POST `/leadership-applications/{id}/reject`
+
+Same guards as approve. **A reason is required** — enforced server-side, not just left to the
+client:
+
+```json
+{"status":"error","code":"reason_required","message":"Please give a reason for rejecting."}
+```
+
+If the application had already been approved, its `vote_options` row is deleted — a rejected
+candidate is removed from the ballot, not merely flagged.
+
+---
+
+### POST `/leadership-applications/{id}/reset`
+
+Not in the original plan — a real, used Committee action (`actions/review_leadership_application.php`'s
+`reset` decision) added because without it, a mistaken approval could never be corrected via the
+API. Reverts an `approved` application to `pending` and **deletes the `vote_options` row it
+created** — a reversed decision genuinely removes the candidate from the ballot.
+
+---
+
+## 18. Reports & Statements
+
+Every figure here delegates to `includes/contribution_standing.php` and `includes/finance.php` —
+none of the money/grid arithmetic is redone in this module. Reference implementation:
+`includes/api_reports.php`.
+
+**Endpoint paths differ from anywhere else "reports" might imply** — a router constraint, same
+class of issue as Documents' `authored-documents` split. `roots.php` cannot express a third static
+segment before an id, so the id-bearing statements are their own top-level resources
+(`/member-statement/{id}`, `/member-transactions/{id}`), while `reports` stays a shared resource
+only for the two endpoints that carry no id (`/reports/vicoba`, `/reports/customer-analysis`).
+
+**`member-statement`/`member-transactions` have NO permission-key gate at all** — only
+authentication, plus an ownership rule mirrored exactly from the web:
+
+```
+is_leader = isAdmin() || canCreate('manage_contributions')
+```
+
+`{id}` is honoured **only** for a caller who passes that test; everyone else — leader or not — is
+silently resolved to their **own** `customer_id` (from `customers.user_id`, never trusted from the
+request) whenever no id, or a non-leader's id, is given.
+
+**`group-statement`, `reports/vicoba`, `reports/customer-analysis` all gate on `vicoba_reports`**,
+which today also reaches the `Member` role — deliberately mirrored, not hardened to
+leadership-only, despite that reading like the obvious call. The web's own code comment states this
+group-wide visibility is existing product policy, not an oversight.
+
+---
+
+### GET `/member-statement/{id}?as_of=YYYY-MM`
+
+The NSSF-style contributions statement. `as_of` freezes the document as of the end of that month;
+omit for "as of today."
+
+```json
+{
+  "status": "success",
+  "data": {
+    "as_of": "2026-09",
+    "member": {
+      "id": 30, "name": "Hamisi Mbwana", "registration_number": null,
+      "nida_number": "19740720963731452801", "phone": "+255763274345",
+      "dob": "1974-07-20", "joined_at": "2025-12-29 00:00:00",
+      "residence": "Ubungo, Dar es Salaam",
+      "dependants": {"total": 1, "children": 0, "spouse": 1}
+    },
+    "contribution": {
+      "monthly_target": 10000, "entrance_fee": 20000, "entrance_paid": 20000,
+      "entrance_status": "paid", "opening_mkoba": 0, "new_contributions": 440000,
+      "total_contributed": 440000, "expected_to_date": 90000, "surplus_deficit": 350000,
+      "months_covered": 42, "status": "ahead"
+    },
+    "condolences": {
+      "total": 1500,
+      "items": [{"date": "2026-09-02", "deceased": "...", "relationship": "Mtegemezi", "amount": 1500}]
+    },
+    "calendar": {
+      "years": {"2026": {"1": {"target": 10000, "allocated": 10000, "status": "paid", "due": true}}},
+      "first_year": 2025, "last_year": 2029, "anchor_ym": "2025-12-01",
+      "as_of_ym": "2026-09-01", "unallocated": 0
+    },
+    "summary": {
+      "years": {"2026": {"target": 90000, "actual": 120000, "variance": 30000}},
+      "total": {"target": 90000, "actual": 420000, "variance": 330000, "unallocated": 0, "paid": 420000}
+    }
+  }
+}
+```
+
+`calendar.years` and its month keys are numeric-string object keys (`"2026"`, `"1"`–`"12"`), not an
+array — a year with no data simply has no key. `total.paid` is **not** the sum of the yearly
+`actual`s: when the group has no monthly rule, every month reads `0` and the grand total is still
+what the member actually brought in.
+
+---
+
+### GET `/member-transactions/{id}?as_of=YYYY-MM`
+
+Same ownership rule and gate (none) as member-statement. Buckets money by the month it **arrived**,
+not the month it covers, and merges contributions + fines + condolences into one chronological
+ledger:
+
+```json
+{
+  "status": "success",
+  "data": {
+    "as_of": "2026-09",
+    "member": {"id": 30, "name": "Hamisi Mbwana", "...": "same shape as member-statement"},
+    "opening_brought_forward": 20000,
+    "totals": {"received": 420000, "fines": 0, "condolences": 1500},
+    "calendar": {"...": "same grid shape, states: received/none/before_join/future"},
+    "summary": {"...": "same shape as member-statement"},
+    "ledger": [
+      {"date": "2025-12-29", "type": "contribution", "detail": "Ada ya kujiunga (entrance fee)", "ref": null, "in": 20000, "out": 0},
+      {"date": "2026-01-04", "type": "contribution", "detail": "Mchango wa mwezi (monthly savings)", "ref": null, "in": 50000, "out": 0}
+    ]
+  }
+}
+```
+
+Grand totals reconcile with member-statement's by design; per-month figures legitimately differ (a
+January lump payment can cover five later months on the contributions statement, but is one January
+event here).
+
+---
+
+### GET `/group-statement/contributions?as_of=YYYY-MM` · GET `/group-statement/transactions?as_of=YYYY-MM`
+
+`vicoba_reports` view. **Always returns BOTH the combined group figures and the full per-member
+table in one response** — the web's own `view=combined`/`view=members` toggle doesn't carry over to
+a JSON client, since computing one already produces both.
+
+```json
+{
+  "status": "success",
+  "data": {
+    "as_of": "2026-09", "monthly_target": 10000, "member_count": 30, "behind_count": 0,
+    "group": {
+      "grid": {"years": {"2026": {"1": {"target": 260000, "allocated": 260000, "status": "paid", "due": true}}}, "...": "..."},
+      "summary": {"total": {"target": 2620000, "actual": 18460000, "variance": 15840000, "unallocated": 0, "paid": 18460000}}
+    },
+    "members": [
+      {"id": 25, "name": "Ally Minja", "joined_at": "2025-08-25 00:00:00", "target": 90000, "actual": 620000, "variance": 530000, "paid": 620000, "status": "up_to_date"}
+    ]
+  }
+}
+```
+
+`members[].status` is `no_target` / `behind` / `up_to_date` — pre-computed so the client never has
+to re-derive it from `variance`.
+
+---
+
+### GET `/reports/vicoba`
+
+`vicoba_reports` view. Group summary, mirrors `vicoba_reports.php`.
+
+```json
+{
+  "status": "success",
+  "data": {
+    "summary": {"total_savings": 18460000, "total_expenses": 2316500, "available_fund": 17274000, "members_total": 30, "active_members": 30},
+    "top_savers": [{"id": 26, "name": "Happiness Mbwana", "phone": "+255756381459", "total_savings": 1620000}],
+    "expenses": [{"type": "general", "id": 12, "date": "2026-08-01", "amount": 50000, "description": "..."}]
+  }
+}
+```
+
+`available_fund` deliberately does **not** match `total_savings - total_expenses` on this same
+payload (`18,460,000 - 2,316,500 = 16,143,500`, not `17,274,000`). It comes from
+`getGroupFundBalance()` instead — the same cash-basis figure the Dashboard and Financial Ledger
+already report (fines-in and petty-cash/payouts-out folded in too) — so this endpoint never
+introduces a third, different "available fund" number into the app.
+
+---
+
+### GET `/reports/customer-analysis`
+
+`vicoba_reports` view. Member demographics and growth.
+
+```json
+{
+  "status": "success",
+  "data": {
+    "stats": {"total_members": 29, "active_members": 29, "deceased_count": 0, "new_last_30": 0},
+    "regions": [{"region": null, "count": 30, "percent": 100.0}],
+    "growth_last_6_months": [{"month": "2025-08", "count": 1}],
+    "latest_members": [{"name": "Joyce Mtui", "joined_at": "2026-03-06 00:00:00", "status": "active", "is_deceased": false}]
+  }
+}
+```
+
+`region: null` means unspecified (`state` blank on that member's record), not a bug.
+
+**Fixed while building this endpoint**: the web page's own member-counting query filtered on the
+legacy string `users.user_role != 'Admin'`, which drifts from the real `role_id` — a genuine
+`role_id=1` Admin account whose stale `user_role` field reads `'Member'` was miscounted as an
+ordinary member in every stat on that page. Both this endpoint and `customer_analysis.php` itself
+now filter on `role_id NOT IN (1,2,12)` — the same set `isAdmin()` bypasses.
+
+---
+
+## 19. Demo logins
 
 All on the demo site, password `Demo@2026`:
 
@@ -2398,13 +3121,25 @@ member side, because that is the only role where fields are removed rather than 
 | 1. Auth | 4 | ✅ live |
 | 2. Dashboard | 1 | ✅ live |
 | 3. Members | 8 | ✅ live |
-| — Group settings | 2 | ✅ live |
+| — Group settings | 3 | ✅ live |
 | 4. Contributions | 8 | ✅ live |
-| 5. Transactions | — | in progress |
-| 6. Fines | — | queued |
+| 5. Transactions | 2 | ✅ live |
+| 6. Fines | 7 | ✅ live |
+| 7. Condolences | 7 | ✅ live |
+| 8. Financial Ledger & Reconciliation | 3 | ✅ live |
+| 9. Expenses & Petty Cash | 15 | ✅ live |
+| 10. Budgets | 6 | ✅ live |
+| 11. Payouts | 2 | ✅ live |
+| 12. Meetings | 7 | ✅ live |
+| 13. Documents | 12 | ✅ live |
+| 14. Voting & Leadership Applications | 18 | ✅ live |
+| 15. Reports & Statements | 6 | ✅ live |
+| 16. Communication | — | queued |
+| 17. Settings & Roles | — | queued |
+| 18. Profile | — | queued |
 
-**23 endpoints live** on both `vikundi.bjptechnologies.co.tz` and
-`demo.vikundi.bjptechnologies.co.tz`.
+**109 endpoints live** on both `vikundi.bjptechnologies.co.tz` and
+`demo.vikundi.bjptechnologies.co.tz` — every module in this document (§3 through §18).
 
 Shipped shapes are treated as a contract: if a field has to change, you will be told before it
 deploys. This file is updated with every module.

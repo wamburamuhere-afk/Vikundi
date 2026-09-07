@@ -1,0 +1,278 @@
+<title>Mobile API Milestone</title>
+<style>
+:root {
+  --brand:#0a4a8f; --brand2:#1a7fd4; --ink:#0f1c2c; --muted:#5c6b7a;
+  --bg:#ffffff; --panel:#eef4fa; --line:#d7e3ee; --accent:#c97a10; --danger:#b3261e; --danger-bg:#fdf3f2;
+  --good:#1a7a4c; --good-bg:#eaf7f0;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink:#e3edf7; --muted:#93a6b8; --bg:#0a121c; --panel:#101d2c; --line:#213348;
+    --accent:#e8a33d; --danger:#ff6b5e; --danger-bg:#241614; --good:#3ecf8e; --good-bg:#0f231a;
+  }
+}
+:root[data-theme="dark"] {
+  --ink:#e3edf7; --muted:#93a6b8; --bg:#0a121c; --panel:#101d2c; --line:#213348;
+  --accent:#e8a33d; --danger:#ff6b5e; --danger-bg:#241614; --good:#3ecf8e; --good-bg:#0f231a;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink);
+  font:15.5px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+.wrap { max-width:1000px; margin:0 auto; padding:0 22px 70px; }
+header.hero { background:linear-gradient(135deg,#052440 0%,#0a4a8f 45%,#1a7fd4 100%);
+  color:#fff; padding:46px 22px 40px; margin-bottom:8px; }
+header.hero .inner { max-width:1000px; margin:0 auto; }
+.kicker { text-transform:uppercase; letter-spacing:.16em; font-size:12px; font-weight:700; opacity:.85; }
+h1 { margin:.3em 0 .2em; font-size:2.2rem; line-height:1.14; font-weight:800; }
+.sub { font-size:1.05rem; opacity:.94; margin:0; max-width:70ch; }
+.stats { display:flex; flex-wrap:wrap; gap:14px; margin:30px 0 10px; }
+.stat { flex:1 1 155px; background:var(--panel); border:1px solid var(--line);
+  border-left:5px solid var(--brand2); border-radius:10px; padding:14px 16px; }
+.stat b { display:block; font-size:2.05rem; font-weight:800; color:var(--brand2); line-height:1.1; }
+.stat span { font-size:.8rem; color:var(--muted); text-transform:uppercase; letter-spacing:.07em; font-weight:700; }
+h2 { font-size:1.42rem; margin:42px 0 6px; font-weight:800; color:var(--brand); }
+h2 .n { display:inline-block; background:var(--brand); color:#fff; width:1.7em; height:1.7em;
+  line-height:1.7em; text-align:center; border-radius:7px; font-size:.78em; margin-right:.5em; }
+h3 { font-size:1.06rem; margin:26px 0 4px; font-weight:700; }
+p.lead { color:var(--muted); margin:.2em 0 1em; max-width:74ch; }
+p { max-width:74ch; }
+.scroll { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; margin:12px 0 6px; font-size:.93rem; }
+th { background:var(--brand); color:#fff; text-align:left; padding:10px 12px; font-weight:700;
+  font-size:.78rem; text-transform:uppercase; letter-spacing:.06em; }
+td { padding:9px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+tbody tr:nth-child(even) { background:var(--panel); }
+.tick { color:var(--brand2); font-weight:800; }
+.cross { color:var(--muted); font-weight:800; }
+.note { border-left:5px solid var(--accent); background:var(--panel);
+  padding:13px 17px; border-radius:0 9px 9px 0; margin:18px 0; }
+.sev { border-left-color:var(--danger); background:var(--danger-bg); }
+.sev strong { color:var(--danger); }
+.win { border-left-color:var(--good); background:var(--good-bg); }
+.win strong { color:var(--good); }
+code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.9em;
+  background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:1px 5px; }
+.bar { display:flex; height:26px; border-radius:6px; overflow:hidden; border:1px solid var(--line); margin:10px 0 4px; }
+.bar i { display:block; }
+.bar .done { background:var(--brand2); }
+.bar .todo { background:var(--panel); }
+.barlab { font-size:.84rem; color:var(--muted); }
+.pillrow { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0; }
+.pill { background:var(--panel); border:1px solid var(--line); border-radius:999px;
+  padding:5px 14px; font-size:.83rem; font-weight:600; }
+.pill.done { color:var(--brand2); border-color:var(--brand2); }
+.pill.todo { color:var(--muted); }
+footer { margin-top:48px; padding-top:18px; border-top:2px solid var(--line);
+  color:var(--muted); font-size:.87rem; }
+@media print {
+  header.hero, th, .stat b, .bar i { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  h2 { page-break-after:avoid; } tr { page-break-inside:avoid; }
+}
+</style>
+
+<header class="hero"><div class="inner">
+  <div class="kicker">BJP Technologies &middot; Vikundi VICOBA System</div>
+  <h1>Mobile App Foundation &mdash; Milestone Report</h1>
+  <p class="sub">Fifteen of the eighteen planned modules are now finished, deployed and documented.
+  Four went live since the last report &mdash; meetings, documents, elections and leadership
+  applications, and the reporting screens &mdash; which closes out every doorway a member or a
+  leader needs for the group's day-to-day and occasional-use business alike. What remains is purely
+  administrative: messaging, the settings screens, and a member's own profile.</p>
+</div></header>
+
+<div class="wrap">
+
+<div class="stats">
+  <div class="stat"><b>109</b><span>API endpoints live</span></div>
+  <div class="stat"><b>15 / 18</b><span>Modules complete</span></div>
+  <div class="stat"><b>6</b><span>Defects found &amp; fixed this round</span></div>
+  <div class="stat"><b>2,141</b><span>Automated tests</span></div>
+  <div class="stat"><b>2</b><span>Sites deployed</span></div>
+</div>
+
+<h2><span class="n">1</span>Where the project stands</h2>
+
+<p>This is a milestone snapshot, not an incremental update: it covers everything built so far, not
+just what changed since the last report. <strong>Fifteen of eighteen planned modules are live</strong> &mdash;
+every financial screen the group runs on, plus meetings, the document library and in-app letter
+writer, elections and leadership applications, and the full set of statements and reports. What's
+left is three modules of administrative scaffolding: messaging/notifications, the settings and
+roles screens an administrator opens rarely, and a member's own profile page.</p>
+
+<div class="bar" aria-label="109 of roughly 135 planned endpoints complete">
+  <i class="done" style="width:81%"></i><i class="todo" style="width:19%"></i>
+</div>
+<p class="barlab">109 of roughly 135 planned endpoints &mdash; about four-fifths of the whole app's
+doorways. Every module still to come is used occasionally by an administrator, never by an ordinary
+member day to day.</p>
+
+<h2><span class="n">2</span>What's finished</h2>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>#</th><th>Module</th><th>What it unlocks</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td><strong>Sign in</strong></td><td>Log in, stay logged in securely, sign out, sign out of every device at once</td><td class="tick">Live</td></tr>
+    <tr><td>2</td><td><strong>Home screen</strong></td><td>Group totals for leadership; an ordinary member sees only their own position</td><td class="tick">Live</td></tr>
+    <tr><td>3</td><td><strong>Members</strong></td><td>Roster, profile, registration, edit, approve/reject/reactivate</td><td class="tick">Live</td></tr>
+    <tr><td>&mdash;</td><td><strong>Group settings</strong></td><td>Read and edit the group's full configuration; logo upload</td><td class="tick">Live</td></tr>
+    <tr><td>4</td><td><strong>Contributions</strong></td><td>A member's own standing, the group's ledger, the review&rarr;approve trail</td><td class="tick">Live</td></tr>
+    <tr><td>5</td><td><strong>Transactions</strong></td><td>Money by the date it arrived &mdash; group ledger and a member's own receipts</td><td class="tick">Live</td></tr>
+    <tr><td>6</td><td><strong>Fines</strong></td><td>Record, edit, waive, mark paid; a member sees their own and everyone's</td><td class="tick">Live</td></tr>
+    <tr><td>7</td><td><strong>Condolences</strong></td><td>Bereavement assistance, review&rarr;approve, a member's own history, a sustainability report</td><td class="tick">Live</td></tr>
+    <tr><td>8</td><td><strong>Financial ledger &amp; reconciliation</strong></td><td>Every member's standing side by side, the group's real balance, M-Koba tie-out</td><td class="tick">Live</td></tr>
+    <tr><td>9</td><td><strong>Expenses &amp; petty cash</strong></td><td>Record, review&rarr;approve, mark-paid, a spending summary</td><td class="tick">Live</td></tr>
+    <tr><td>10</td><td><strong>Budgets</strong></td><td>Plan a spend with a line-by-line breakdown, review&rarr;approve&rarr;reject</td><td class="tick">Live</td></tr>
+    <tr><td>11</td><td><strong>Member payouts</strong></td><td>One-off member assistance, recorded the moment it happens</td><td class="tick">Live</td></tr>
+    <tr><td>12</td><td><strong>Meetings</strong></td><td>Schedule, record attendance, fine absentees</td><td class="tick">Live &mdash; new</td></tr>
+    <tr><td>13</td><td><strong>Documents</strong></td><td>The shared file library, and an in-app letter/contract writer with multi-party e-signing</td><td class="tick">Live &mdash; new</td></tr>
+    <tr><td>14</td><td><strong>Voting &amp; leadership applications</strong></td><td>Run a secret-ballot election end to end; apply and be reviewed for office</td><td class="tick">Live &mdash; new</td></tr>
+    <tr><td>15</td><td><strong>Reports &amp; statements</strong></td><td>Personal and group NSSF-style statements, group summary and member-analytics reports</td><td class="tick">Live &mdash; new</td></tr>
+    <tr><td>16</td><td><strong>Communication</strong></td><td>Messaging, SMS, notifications, the AI assistant</td><td class="cross">Not started</td></tr>
+    <tr><td>17</td><td><strong>Settings &amp; roles</strong></td><td>User management, role permissions, system settings, backups</td><td class="cross">Not started</td></tr>
+    <tr><td>18</td><td><strong>Profile</strong></td><td>A member's own account and notification preferences</td><td class="cross">Not started</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2><span class="n">3</span>What's new this round</h2>
+
+<p class="lead">Four modules, forty-three endpoints, all group-administration screens rather than
+financial ones &mdash; the treasurer's back office was already finished as of the last report.</p>
+
+<h3>Meetings</h3>
+<p>Schedule a meeting, take attendance, fine whoever missed it. Deliberately not a straight mirror
+of the web: attendance updates only the people you actually record, never silently marking everyone
+else absent the way resubmitting a full paper roster would.</p>
+
+<h3>Documents</h3>
+<p>Two features under one roof &mdash; a shared file library, and an in-app tool for writing
+letters, contracts and notices that get routed for signature. Signing supports several people
+signing one document in turn, each notified when it's their turn, with the group notified the
+moment everyone has signed.</p>
+
+<h3>Voting &amp; Leadership Applications</h3>
+<p>A genuine secret ballot &mdash; the system can prove how many people voted and for whom in
+total, but there is no record anywhere, for any role including the Administrator, of which member
+cast which vote. Members apply to stand for a leadership position; a review committee approves or
+rejects each application, and an approval is what puts a name on the ballot.</p>
+
+<h3>Reports &amp; Statements</h3>
+<p>The personal and group financial statements members are used to seeing on paper, in the familiar
+pension-book layout, now available on the phone &mdash; plus two summary reports for leadership
+covering the group's overall financial position and its membership makeup.</p>
+
+<h2><span class="n">4</span>Defects found in the existing system this round</h2>
+
+<p class="lead">The same pattern as every round so far: building each doorway means reading exactly
+how the web system enforces its rules, and that reading keeps finding places where it doesn't.</p>
+
+<div class="note sev">
+  <strong>Any ordinary member could view the leadership-election review committee's entire
+  workload.</strong> Every applicant's personal statement, their reasons for standing, who proposed
+  them, and the committee's own private notes on each decision &mdash; visible to any signed-in
+  member, for every election the group has ever run. Confirmed live, fixed the same day it was
+  found, and re-verified live afterward.
+</div>
+
+<div class="note sev">
+  <strong>Any group leader could delete another leader's confidential letter.</strong> The document
+  writer's delete action checked only whether the caller could delete documents in general, never
+  whether the specific document was marked private and belonged to someone else. A leader with
+  ordinary delete rights could remove a private letter they were never permitted to even open.
+  Closed to match the rule the edit screen already enforced correctly.
+</div>
+
+<div class="note">
+  <strong>Two group leadership roles &mdash; secretary and treasurer &mdash; could run an election
+  but not vote in it.</strong> The permission to manage elections had been granted correctly; the
+  separate, narrower permission to cast one's own personal vote had not. Both roles can now vote
+  like any other member.
+</div>
+
+<div class="note">
+  <strong>A file-library delete button had no permission check behind it at all</strong> &mdash;
+  only an ownership check (yours, or an administrator's). Currently harmless because every role that
+  can currently upload a file also happens to hold delete rights, but a future, more limited role
+  would have inherited a delete permission it was never granted. Closed regardless.
+</div>
+
+<div class="note">
+  <strong>Two meeting endpoints could be read by any signed-in account</strong>, not just those with
+  the meetings permission &mdash; a milder version of the same "logged in" vs. "actually allowed"
+  gap found in earlier rounds. Both now check the real permission.
+</div>
+
+<div class="note">
+  <strong>A membership-analytics report has been miscounting at least one real administrator
+  account as an ordinary member</strong> since it was built &mdash; it checks an old free-text label
+  on the account instead of the account's actual assigned role, and the two had drifted apart on at
+  least one real account. Fixed to check the real role.
+</div>
+
+<div class="note win">
+  <strong>One new defect was introduced by this round's own work &mdash; and caught within fifteen
+  minutes.</strong> The new document-library endpoints were built against the permission naming this
+  project's own records call correct, which turned out not to match what the live systems have
+  actually been running on for years. Every non-admin role was briefly locked out of the shared
+  document library. Standard practice on this project is to check every new endpoint against the
+  live server, under a real account, before calling it finished &mdash; that check is exactly what
+  caught this, and it was corrected the same day, before this report was written.
+</div>
+
+<h2><span class="n">5</span>How the work is checked</h2>
+
+<p class="lead">Unchanged from every report so far, and still the standard every module is held to.</p>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>Check</th><th>What it means</th></tr></thead>
+  <tbody>
+    <tr><td><strong>2,141 automated tests</strong></td><td>Up from 2,007. Every change runs all of them before it can ship.</td></tr>
+    <tr><td><strong>Every endpoint tried on the live site</strong></td><td>Passing tests is not the standard. Each one is exercised against the running server, as every role, before being called finished.</td></tr>
+    <tr><td><strong>Refusals tested as hard as successes</strong></td><td>The leadership-application privacy gap and the document-permission mix-up were both found this way &mdash; by deliberately testing what a member or a wrong role should <em>not</em> be able to do, not just what they should.</td></tr>
+    <tr><td><strong>New work is re-checked live after it ships, not just before</strong></td><td>The document-library permission mix-up was caught by re-testing the round's own new endpoints against the live server immediately after deployment &mdash; the same discipline applied to the existing system was turned on this round's own code too.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2><span class="n">6</span>Demonstration site</h2>
+
+<p>Still running at <code>demo.vikundi.bjptechnologies.co.tz</code>, on its own database, and still
+the proving ground for every module before it ships: every defect above, and every one of this
+round's forty-three new endpoints, was verified there under real accounts &mdash; Administrator,
+Chairperson, Secretary, Treasurer and an ordinary member &mdash; before being called finished,
+including a full live run of an election from application through voting to results.</p>
+
+<h2><span class="n">7</span>What's left</h2>
+
+<div class="pillrow">
+  <span class="pill done">1&ndash;15 &middot; Live</span>
+  <span class="pill todo">16 &middot; Communication</span>
+  <span class="pill todo">17 &middot; Settings &amp; Roles</span>
+  <span class="pill todo">18 &middot; Profile</span>
+</div>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>Step</th><th>Work</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td><strong>Communication</strong> &mdash; the message center, SMS, notifications, and the AI assistant. Roughly 11 doorways.</td></tr>
+    <tr><td>2</td><td><strong>Settings &amp; Roles</strong> &mdash; user management, role permissions, system settings, backups. Administrator-only, opened rarely. Roughly 11 doorways.</td></tr>
+    <tr><td>3</td><td><strong>Profile</strong> &mdash; a member's own account and notification preferences. The smallest module left, roughly 4 doorways.</td></tr>
+    <tr><td>4</td><td><strong>The app itself</strong> &mdash; screen by screen, on top of the 109 doorways already finished, deployed and documented.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Everything a member needs to see their own money and standing, run for office, attend and be held
+to a meeting, sign a document, and read their own statements &mdash; and everything a leader needs
+to run the group's finances, elections and paperwork week to week &mdash; is now live. What remains
+is administrative scaffolding an administrator opens occasionally, not a screen a member uses
+regularly.</p>
+
+<footer>
+  BJP Technologies &middot; Vikundi VICOBA Management System<br>
+  Live: vikundi.bjptechnologies.co.tz &middot; Demonstration: demo.vikundi.bjptechnologies.co.tz
+</footer>
+</div>
