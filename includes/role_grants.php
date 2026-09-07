@@ -56,6 +56,13 @@ if (!function_exists('vk_member_hidden_keys')) {
             'manage_fines',
             // voting management (members vote via the 'voting' page, not this one)
             'manage_voting',
+            // Committee review queue for leadership applications — members apply via
+            // 'leadership_applications', they do not review. Missing from this list let
+            // an ordinary Member view every applicant's full statement, experience,
+            // proposer, review notes and reviewer identity across every election —
+            // found live (both the web page and this session's own new API endpoint
+            // gate on the same key) while building Module 14's API.
+            'manage_leadership_applications',
         ];
     }
 }
