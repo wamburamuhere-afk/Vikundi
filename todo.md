@@ -647,12 +647,79 @@ Member's `403` after the fix, Treasurer's `200` unaffected.
 
 ## 15. Reports & Statements
 
-- [ ] `GET /api/v1/reports/member-statement/{id}?as_of=YYYY-MM` — contributions statement, NSSF layout — self or leadership-with-id
-- [ ] `GET /api/v1/reports/member-transactions/{id}?as_of=YYYY-MM` — transactions statement
-- [ ] `GET /api/v1/reports/group-statement/contributions?as_of=YYYY-MM` — combined + per-member views — leadership only
-- [ ] `GET /api/v1/reports/group-statement/transactions?as_of=YYYY-MM`
-- [ ] `GET /api/v1/reports/vicoba` — vicoba_reports.php group summary
-- [ ] `GET /api/v1/reports/customer-analysis` — customer_analysis.php
+- [x] `GET /api/v1/member-statement/{id}?as_of=YYYY-MM` — contributions statement, NSSF layout — self or leadership-with-id
+- [x] `GET /api/v1/member-transactions/{id}?as_of=YYYY-MM` — transactions statement
+- [x] `GET /api/v1/group-statement/contributions?as_of=YYYY-MM` — combined + per-member views, always both in one response
+- [x] `GET /api/v1/group-statement/transactions?as_of=YYYY-MM`
+- [x] `GET /api/v1/reports/vicoba` — vicoba_reports.php group summary
+- [x] `GET /api/v1/reports/customer-analysis` — customer_analysis.php
+
+**Endpoint paths flattened from this file's original plan — a router constraint, same reasoning as
+Module 13's `authored-documents`.** `roots.php`'s two API regexes resolve only
+`/api/v1/{resource}/{id}(/{action})?` and `/api/v1/{resource}/{subresource}` — never a THIRD static
+segment before an id. `GET /api/v1/reports/member-statement/{id}` (as originally written here) could
+never route: `reports/member-statement` is two segments before the id, not one. Fixed by giving the
+id-bearing statements their own top-level resource names — `/api/v1/member-statement/{id}` and
+`/api/v1/member-transactions/{id}` — and keeping `reports` as a shared resource only for the two
+subresources that carry no id (`/api/v1/reports/vicoba`, `/api/v1/reports/customer-analysis`); the
+originally-planned `/api/v1/reports/group-statement/contributions` (four segments, no id) is flattened
+the same way to `/api/v1/group-statement/contributions`. New shared file: `includes/api_reports.php`.
+Every figure is delegated to `includes/contribution_standing.php` and `includes/finance.php` — none of
+the money/grid arithmetic is redone here, matching `api/v1/contributions_standing.php`'s own precedent.
+
+**Two permission shapes, each verified file-by-file before writing any code — the Documents/Voting
+incidents made "assume the plan's phrasing" the wrong move here.** `member-statement`/
+`member-transactions` have **no permission-key gate at all** on the web
+(`app/constant/reports/member_statement.php`, `member_transactions.php`) — only session-login plus an
+inline ownership check: `?id` is honoured only for `isAdmin() || canCreate('manage_contributions')`;
+everyone else is silently forced to their OWN `customer_id` (resolved from `customers.user_id`, never
+trusted from the request). This module's two endpoints call `vk_api_require_auth()` only — no
+`vk_api_require_permission()` — mirroring the web precisely rather than inventing a gate it has never
+had.
+
+**The group-statement/vicoba/customer-analysis endpoints contradict this file's own "leadership only"
+annotation — mirrored as-is, not hardened.** All three actually gate on `canView('vicoba_reports')`
+on the web (`includes/group_statement.php`, `vicoba_reports.php`, `customer_analysis.php`), and
+`vicoba_reports` reaches the `Member` role today (confirmed against the local DB). The web's own code
+comment states this is deliberate existing policy, not an oversight: *"Group-wide figures are visible
+to members in this product... this page does not widen that, and must not narrow it either."* Unlike
+the Voting module's `manage_leadership_applications` gap (a sibling-comparison miss with no justifying
+comment), this is an explicit, already-shipped product decision — so it is mirrored exactly rather than
+hardened to true leadership-only, which would create a real behavioral split between the web and the
+API for the same report. If demo/production's actual `vicoba_reports` grants differ from local dev's,
+that is re-verified live after deploy like every permission claim this session makes.
+
+**`GET /api/v1/group-statement/{contributions,transactions}` always returns BOTH the combined group
+figures and the full per-member table in one response** — the web's own `view=combined`/`view=members`
+query-param toggle doesn't carry over to a JSON client: `cs_group_schedules()` already computes every
+member's grid in one pass regardless of which view renders, so there is no cost difference and no
+reason to force two round trips.
+
+**`GET /api/v1/reports/vicoba`'s `available_fund` deliberately does NOT match the web page's own
+inline arithmetic.** `vicoba_reports.php` computes `total_savings - total_expenses` independently of
+`includes/finance.php`; this endpoint uses `getGroupFundBalance()` instead — the same cash-basis figure
+the Dashboard and Financial Ledger already report (fines-in, petty-cash/payouts-out folded in too).
+Porting the page's own narrower formula would have put a THIRD, different "available fund" number into
+the mobile app. Confirmed live: the two figures genuinely differ on real data (TSh 1,688,378 vs.
+TSh 2,232,878 for the same instant).
+
+**Found and fixed, in both the new endpoint and the existing web page: a real member-counting bug in
+`customer_analysis.php`.** Its "is this row a member, not an admin" filter is the legacy, hand-typed
+string `users.user_role != 'Admin'`, which drifts from the real `role_id` — confirmed live: a genuine
+`role_id=1` Admin account whose stale `user_role` field reads `'Member'` was miscounted as an ordinary
+member in every stat on that page. Both the new `GET /api/v1/reports/customer-analysis` and
+`customer_analysis.php` itself now filter on `role_id NOT IN (1,2,12)` — the same set `isAdmin()` itself
+bypasses.
+
+Verified live against the local WAMP instance with real seeded data (334 members): a Member's own
+statement (no `?id`) returned correctly; the same Member's attempt to view another member via `?id`
+was silently forced back to their own record; a leader's `?id` override returned the requested member's
+statement; the transactions statement's ledger and calendar matched; the group statement returned all
+334 members with a `no_target` status (group has no fixed monthly rule on this dataset) and correct
+`member_count`/`behind_count`; a Member successfully loaded the group statement (confirming the
+mirror-the-web permission decision); `reports/vicoba` and `reports/customer-analysis` returned correct
+aggregates, with `available_fund` confirmed to genuinely differ from the naive savings-minus-expenses
+figure as designed.
 
 ## 16. Communication
 
