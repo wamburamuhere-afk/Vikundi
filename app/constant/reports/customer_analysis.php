@@ -49,9 +49,13 @@ $is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
 // 1) General Stats
 // A member is a non-admin user that is neither deleted nor rejected — a rejected
 // applicant never became a member, so it must not inflate the totals.
-$member_where   = "user_role != 'Admin' AND status NOT IN ('deleted', 'rejected')";
+// role_id NOT IN (1,2,12) — the same set isAdmin() itself bypasses — not the
+// legacy, hand-typed user_role string: that column drifts from the real
+// role_id (a genuine role_id=1 Admin whose stale user_role reads 'Member' was
+// found live, miscounted as an ordinary member by the old filter).
+$member_where   = "(role_id IS NULL OR role_id NOT IN (1,2,12)) AND status NOT IN ('deleted', 'rejected')";
 $total_members  = $pdo->query("SELECT COUNT(*) FROM users WHERE $member_where")->fetchColumn();
-$active_members = $pdo->query("SELECT COUNT(*) FROM users WHERE user_role != 'Admin' AND status = 'active'")->fetchColumn();
+$active_members = $pdo->query("SELECT COUNT(*) FROM users WHERE (role_id IS NULL OR role_id NOT IN (1,2,12)) AND status = 'active'")->fetchColumn();
 $deceased_count = $pdo->query("SELECT COUNT(*) FROM customers WHERE is_deceased = 1")->fetchColumn() ?: 0;
 $new_last_30    = $pdo->query("SELECT COUNT(*) FROM users WHERE $member_where AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)")->fetchColumn();
 
@@ -91,11 +95,11 @@ $months_fmt    = array_map(fn($m) => date('M y', strtotime($m . '-01')), $months
 
 // 4) Latest Members (Joined with customers to track deceased/dormant state)
 $latest_members = $pdo->query("
-    SELECT u.first_name, u.last_name, u.created_at, u.status, c.is_deceased 
-    FROM users u 
+    SELECT u.first_name, u.last_name, u.created_at, u.status, c.is_deceased
+    FROM users u
     LEFT JOIN customers c ON u.user_id = c.user_id
-    WHERE u.user_role != 'Admin' AND u.status != 'deleted' 
-    ORDER BY u.created_at DESC 
+    WHERE (u.role_id IS NULL OR u.role_id NOT IN (1,2,12)) AND u.status != 'deleted'
+    ORDER BY u.created_at DESC
     LIMIT 10
 ")->fetchAll(PDO::FETCH_ASSOC);
 
