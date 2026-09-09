@@ -4,6 +4,50 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-09-09 — Module 18: Profile — PR pending
+
+**Branch:** `develop` (feature branch not yet cut)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** 7 endpoints — own account, own settings, password change, avatar upload/serve. New shared
+file: `includes/api_profile.php`. The whole module is self-only, every authenticated user, no admin gate
+anywhere — a deliberate contrast with Module 17.
+
+**A real scope correction, not just an annotation fix.** Two pages both call themselves "profile" —
+`profile.php` (named in the plan) is leadership-gated and duplicates Module 3's member-editing surface
+(spouse/parents/guarantor/NIDA); its own comment says Members "cannot edit any profile — including their
+own." `my_settings.php` is the genuine self-service page. Module 3's own `api/v1/members_update.php`
+already said Profile should have "its own narrower field set" — this module mirrors `my_settings.php`,
+not the page the plan named, confirmed by that cross-module comment rather than assumed.
+
+**Two real gaps found and fixed before the API was built on top of them:** `my_settings.php` had no CSRF
+protection on any of its three POST handlers (profile save, password change, preferences) — a forged
+cross-site form could change a logged-in user's password unnoticed; fixed with the same inline
+`csrf_verify()` pattern `profile.php` already uses. And `helpers.php`'s `vk_avatar_url()` — the obvious
+existing helper — points at a session-gated endpoint a token-authenticated mobile client can never reach;
+confirmed live (`401` fetching its own avatar). Fixed with a new `GET /api/v1/avatar` and a matching
+`vk_api_avatar_url()`, this module's own token-authed equivalent.
+
+**Password policy hardened over the web's own rule** — `my_settings.php` only required 6 characters;
+`POST /api/v1/profile/password` uses the same policy `add_user.php`/Module 17 already enforce (8+ chars,
+a letter, a number). The web file itself left as-is — a stricter rule there is a real behavior change to
+an existing flow, not a hole to close.
+
+**Tests.** `ProfileApiTest` (written by the `test-writer` agent). `composer test-unit`: full suite green,
+no regressions (exact count in the PR).
+
+**Verified live against the local WAMP instance:** full self-service lifecycle for a plain Member (not
+Admin) — profile edit with email-uniqueness check, partial settings update, password change (wrong
+password refused, weak password refused, correct change worked and the new password logged in), avatar
+upload (byte-sniffed a disguised `.php` file, refused it) and retrieval through the new token-authed
+endpoint with real image bytes returned, refused without a token, refused a path-traversal filename
+before any filesystem call.
+
+**Docs deliberately not done yet** — per the established order (build → deploy → verify live → docs →
+handover).
+
+---
+
 ## Session — 2026-09-09 — Module 17: Settings & Roles — PR pending
 
 **Branch:** `develop` (feature branch not yet cut)

@@ -915,10 +915,65 @@ identical request still succeeded.
 
 ## 18. Profile
 
-- [ ] `GET /api/v1/profile` — own profile (`profile.php`)
-- [ ] `PUT /api/v1/profile`
-- [ ] `GET /api/v1/profile/settings` — my_settings.php (language, notification prefs)
-- [ ] `PUT /api/v1/profile/settings`
+- [x] `GET /api/v1/profile` — own account — mirrors `my_settings.php`, NOT `profile.php` (see below)
+- [x] `PUT /api/v1/profile` — name/email/phone, keeps the linked `customers` row in sync
+- [x] `GET /api/v1/profile/settings` — my_settings.php (theme, language, timezone, date format,
+      notification prefs — this file's plan text said "language, notification prefs" but the actual
+      page carries all five)
+- [x] `PUT /api/v1/profile/settings` — partial update, only fields present are changed
+- [x] `POST /api/v1/profile/password` — added: my_settings.php's Security tab needs it; current/new
+      password is a different request shape than a settings object, so it isn't folded into PUT settings
+- [x] `POST /api/v1/profile/avatar` — added: a profile screen with no way to set a photo is missing the
+      obvious thing such a screen does
+- [x] `GET /api/v1/avatar` — added, not self-only: serves any avatar by filename (token-authed), see below
+
+**A real scope correction, not just an annotation fix: this module mirrors `my_settings.php`, not
+`profile.php`, even though the plan named `profile.php` directly.** Two different pages both call
+themselves "profile" — `profile.php` lets leadership (Admin/Chairperson/Secretary) view, and if they
+also hold `canEdit('customers')`, edit ANY user's full member record (spouse, parents, guarantor, NIDA);
+its own comment says "Ordinary view-only Members cannot edit any profile — including their own." It is
+not self-service, and Module 3's own `api/v1/members_update.php` says directly: "Self profile editing is
+a separate module (18, Profile) with its own narrower field set, and folding it in here would hand a
+member write access to the whole customers row." `my_settings.php` is the genuine self-service page — no
+leadership gate at all, every query scoped to the caller. Building `/api/v1/profile` on `profile.php`'s
+field set would have duplicated Module 3 and, worse, been leadership-gated for a "your own profile"
+endpoint — a Member couldn't have used it on themselves. Every endpoint in this module is self-only, no
+`?id` override anywhere.
+
+**Two real gaps found and fixed while tracing this module, before the API was built on top of it:**
+1. **`my_settings.php` had no CSRF protection on any of its three POST handlers** (profile save, password
+   change, preferences) — unlike `profile.php`'s own save, one directory over, which does check a token.
+   A forged cross-site form could change a logged-in user's password without their knowledge. Fixed with
+   the same inline `csrf_verify()` pattern `profile.php` already uses (not `includes/require_csrf.php`'s
+   JSON-403 gate, which would break this file's normal HTML-form-plus-redirect flow).
+2. **`avatar_url` was unusable by a mobile client.** `helpers.php`'s `vk_avatar_url()` — the obvious,
+   already-existing helper — points at `api/get_upload.php`, gated by `includes/require_auth.php`, a
+   SESSION check. Confirmed live: a token-authenticated caller got a `401` fetching its own just-uploaded
+   avatar. No prior module had ever surfaced an avatar/upload URL through this API, so this was the first
+   time the gap could show up. Fixed with a new `GET /api/v1/avatar?name=` (this module's own
+   token-authed equivalent of `get_upload.php`'s `type=avatar` branch — same filename whitelist, same
+   `realpath()` containment backstop, same extension + `getimagesize()` byte check) and a matching
+   `vk_api_avatar_url()` that builds an absolute URL against it, mirroring
+   `includes/api_group_settings.php`'s `vk_group_settings_logo_url()` for the subdirectory-vs-document-root
+   URL construction. Verified live: the returned URL is fetchable with just the Bearer token and returns
+   real image bytes.
+
+**Password policy hardened over the web's own rule.** `my_settings.php`'s own password change only
+required 6 characters, no letter/number rule — weaker than `reg_password_errors()`, the policy
+`add_user.php`/`edit_user.php`/`api/v1/users.php` already enforce. No reason a self-service password
+change should be held to a lower bar than an admin-created account; `POST /api/v1/profile/password` uses
+the same, stricter policy. `my_settings.php` itself was left as-is (out of scope — a stricter password
+rule is a real behavior change to an existing, working web flow, not a security hole to close).
+
+Verified live against the local WAMP instance: `GET`/`PUT /profile` succeeded for a plain Member (not
+just Admin), confirming this is genuinely self-service; email uniqueness correctly refused a collision;
+`PUT /profile/settings` round-tripped a partial update without resetting untouched fields, and refused
+an invalid enum value on each of the four validated fields; `POST /profile/password` refused a wrong
+current password, refused a mismatch, refused a weak new password with the harder policy's own error
+text, then succeeded and the new password logged in correctly; `POST /profile/avatar` stored a real
+upload and refused a `.php`-in-disguise file via byte-sniffing; `GET /api/v1/avatar` served the uploaded
+image back with just the Bearer token, refused without one, and refused a path-traversal filename before
+any filesystem call.
 
 ---
 
