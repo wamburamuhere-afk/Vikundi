@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../core/permissions.php';
 require_once __DIR__ . '/../includes/require_csrf.php'; // audit H6: valid CSRF token required
 
 // Check if user is logged in
@@ -16,15 +17,19 @@ if (!$user_id) {
     exit();
 }
 
-// Check privileges
-$stmt = $pdo->prepare("SELECT u.user_role, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.role_id WHERE u.user_id = ?");
-$stmt->execute([$user_id]);
-$user_data = $stmt->fetch(PDO::FETCH_ASSOC);
-$current_user_role = $user_data['role_name'] ?? $user_data['user_role'] ?? 'Member';
-
-$viongozi_roles = ['Admin', 'Chairperson', 'Mwenyekiti', 'Secretary', 'Katibu', 'Treasurer', 'Mhasibu'];
-if (!in_array($current_user_role, $viongozi_roles)) {
-    echo json_encode(['success' => false, 'message' => 'Huna mamlaka ya kubadilisha nafasi ya mwanachama.']);
+// FIX: this let Admin, Chairperson, Secretary AND Treasurer change ANY user's
+// role — including granting Admin — via the old $viongozi_roles array, wider
+// than edit_user.php's own canEdit('users') gate for the exact same action.
+// Since 'users' is admin-only (includes/role_grants.php's vk_admin_only_keys()),
+// canEdit('users') already structurally resolves to Admin/Chairperson alone —
+// granting admin access is a full-admin decision, not an operational one, and
+// the mobile API's equivalent (api/v1/users_detail.php) was never built the
+// wider way. Confirmed with the group before this change.
+if (!canEdit('users')) {
+    $is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
+    echo json_encode(['success' => false, 'message' => $is_sw
+        ? 'Huna mamlaka ya kubadilisha nafasi ya mwanachama.'
+        : 'You do not have permission to change a member\'s role.']);
     exit();
 }
 

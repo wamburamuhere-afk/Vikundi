@@ -254,4 +254,83 @@ class SecurityFindingsClosedTest extends TestCase
             'the permission check must run before header.php emits any HTML'
         );
     }
+
+    // -------------------------------------------------------------------------
+    // actions/update_user_role.php — found and fixed 2026-09-09, the same
+    // session as the two findings directly above, while building Module 17
+    // (Settings & Roles). Previously any of Admin, Chairperson, Secretary, or
+    // Treasurer (a hardcoded $viongozi_roles array) could change ANY user's
+    // role, including granting Admin — wider than edit_user.php's own
+    // canEdit('users') gate for the identical action. Since 'users' is in
+    // includes/role_grants.php's vk_admin_only_keys(), canEdit('users')
+    // already structurally resolves to Admin/Chairperson alone — granting
+    // admin access is a full-admin decision, not an operational one. Verified
+    // LIVE: a freshly-created Secretary account is now refused with "You do
+    // not have permission to change a member's role." (English) / the
+    // Swahili equivalent, and an Admin account's identical request still
+    // succeeds. The mobile API's equivalent (api/v1/users_detail.php) was
+    // never built the wider way — see tests/Unit/SettingsApiTest.php.
+    // -------------------------------------------------------------------------
+
+    public function testUpdateUserRoleNowChecksCanEditUsersBeforeReadingTheSubmission(): void
+    {
+        $src = $this->read('actions/update_user_role.php');
+
+        $permissionsRequire = strpos($src, "require_once __DIR__ . '/../core/permissions.php'");
+        $check               = strpos($src, "if (!canEdit('users'))");
+        $readTarget          = strpos($src, "\$target_user_id = \$_POST['user_id']");
+
+        $this->assertNotFalse($permissionsRequire, 'update_user_role.php must require core/permissions.php');
+        $this->assertNotFalse($check, 'the canEdit(\'users\') fix is missing');
+        $this->assertNotFalse($readTarget);
+        $this->assertLessThan(
+            $check,
+            $permissionsRequire,
+            'core/permissions.php must be loaded before canEdit() is called'
+        );
+        $this->assertLessThan(
+            $readTarget,
+            $check,
+            'the permission check must run before the submitted role change is read'
+        );
+    }
+
+    public function testUpdateUserRoleNoLongerHasTheOldHardcodedLeadershipArray(): void
+    {
+        // The old $viongozi_roles array let Secretary/Treasurer through too —
+        // it must be fully replaced, not left dead beside the new check. The
+        // name still appears once in this file's own explanatory comment (the
+        // FIX note above the canEdit() check), so the raw source alone would
+        // false-negative on a plain substring search — comments are stripped
+        // before asserting, matching how CommunicationApiTest/MeetingsApiTest
+        // already strip comments for their own structural code assertions.
+        $code = $this->codeOnly('actions/update_user_role.php');
+        $this->assertStringNotContainsString('$viongozi_roles', $code);
+    }
+
+    public function testUpdateUserRoleRefusalMessageIsBilingual(): void
+    {
+        $src = $this->read('actions/update_user_role.php');
+        $this->assertStringContainsString('Huna mamlaka ya kubadilisha nafasi ya mwanachama.', $src);
+        // The source is a single-quoted PHP string, so the apostrophe in
+        // "member's" is escaped in the raw bytes as \' — match that literally.
+        $this->assertStringContainsString("You do not have permission to change a member\\'s role.", $src);
+    }
+
+    /** Same technique as CommunicationApiTest/MeetingsApiTest's own code() helper. */
+    private function codeOnly(string $relPath): string
+    {
+        $out = '';
+        foreach (token_get_all($this->read($relPath)) as $t) {
+            if (is_array($t)) {
+                if ($t[0] === T_COMMENT || $t[0] === T_DOC_COMMENT) {
+                    continue;
+                }
+                $out .= $t[1];
+            } else {
+                $out .= $t;
+            }
+        }
+        return $out;
+    }
 }
