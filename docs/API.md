@@ -34,7 +34,10 @@ Same code on both. Demo has synthetic data and is safe to hit freely.
 16. [Documents](#16-documents)
 17. [Voting & Leadership Applications](#17-voting--leadership-applications)
 18. [Reports & Statements](#18-reports--statements)
-19. [Demo logins](#19-demo-logins)
+19. [Communication](#19-communication)
+20. [Settings & Roles](#20-settings--roles)
+21. [Profile](#21-profile)
+22. [Demo logins](#22-demo-logins)
 
 ---
 
@@ -3095,7 +3098,518 @@ now filter on `role_id NOT IN (1,2,12)` — the same set `isAdmin()` bypasses.
 
 ---
 
-## 19. Demo logins
+## 19. Communication
+
+Messages, SMS, Email (send-only), Email Templates, Notifications, AI Ask/Chat. Reference
+implementation: `includes/api_communication.php`.
+
+**`sms_alerts` and `sms_templates` are not here — confirmed dead before building anything.**
+Neither has a nav link anywhere in the web app. `sms_alerts` joins `loans`/`collection_strategies`,
+both already-dead BMS tables (§ Excluded, `todo.md`). `sms_templates`' own backing endpoint is a
+permanent stub that returns an empty list unconditionally, with no `sms_templates` table anywhere
+in the schema.
+
+**`GET /messages` is your own inbox/sent/archived — not leadership-only**, correcting an early plan
+assumption. `message_center` is view-granted to every Member by default; the queries are scoped by
+sender/recipient, same shape as an inbox everywhere else.
+
+**Sending anything — a message, an SMS, an email — needs `create` on `message_center`, i.e.
+leadership only.** A real gap was closed here: the web's own `message_center.php` send handler had
+**no permission check at all** before this shipped — any signed-in Member could POST directly and
+message anyone. Fixed in both transports from one rule.
+
+**`GET /sms` is leadership-only, tighter than the web.** The web's own SMS log action hands the
+whole group's phone numbers and message text to anyone holding `view` on `message_center` — every
+Member, by default. This endpoint requires `create` instead. There is no `GET /email` for the same
+reason — it was never built, rather than built and then locked down.
+
+```json
+{"status":"error","code":"forbidden","message":"Sending messages is available to leadership only. You can still read messages sent to you."}
+```
+
+---
+
+### GET `/messages`
+
+Own inbox/sent/archived, paginated. Query: `folder` (`inbox` default / `sent` / `archived`), `page`,
+`per_page`.
+
+```json
+{
+  "status": "success",
+  "data": {
+    "folder": "sent",
+    "messages": [{
+      "message_id": 1, "subject": "Module 16 Demo Verification",
+      "message": "This is a live post-deploy verification message.",
+      "priority": "normal", "parent_id": null, "has_replies": false,
+      "sender_id": 483, "sender_name": "Rehema Mollel",
+      "is_mine": true, "is_read": true, "is_archived": false,
+      "created_at": "2026-09-09T11:01:15+03:00"
+    }],
+    "stats": {"unread_count": 0, "inbox_count": 0, "sent_count": 1},
+    "can_send": true,
+    "pagination": {"page": 1, "per_page": 25, "total": 1, "total_pages": 1, "has_more": false}
+  }
+}
+```
+
+`can_send` tells you whether to show the compose button at all — it is `false` for every ordinary
+Member. `is_read` on your own sent messages is always `true`; it only means something on `inbox`.
+
+---
+
+### GET `/messages/{id}`
+
+One message, from your own side of it — sender or recipient, or this **404s, not 403s**: a message
+you have no part in does not confirm it exists. Opening a message you received marks it read.
+Sender-only, the full recipient list with per-person read receipts:
+
+```json
+{
+  "status": "success",
+  "data": {
+    "message": {"message_id": 1, "subject": "Module 16 Demo Verification", "...": "same shape as the list"},
+    "recipients": [
+      {"recipient_id": 512, "recipient_name": "Hamisi Mbwana", "is_read": true, "read_at": "2026-09-09T11:01:17+03:00"}
+    ]
+  }
+}
+```
+
+`recipients` is `[]` unless you are the sender.
+
+---
+
+### POST `/messages`
+
+`create` on `message_center` (leadership only). Body: `recipient_ids` (array of user ids, at least
+one, none of them yourself), `subject`, `message`, `priority` (`low`/`normal`/`high`, default
+`normal`), optional `parent_id` for a reply — must be a thread you can already see.
+
+---
+
+### GET `/sms`
+
+The group's outbound SMS log, paginated — leadership only (see the note above). Query: `page`,
+`per_page`, `status` (`sent`/`failed`/`queued`), `date_from`, `date_to`, `search` (phone/name/message).
+
+```json
+{
+  "status": "success",
+  "data": {
+    "sms": [{
+      "sms_id": 1, "recipient_phone": "255712345678", "recipient_name": null,
+      "message": "Test message for API docs", "status": "failed", "provider": "",
+      "error_message": "No SMS gateway is set up yet. Ask an administrator to configure SMS Settings.",
+      "segments": 1, "sender_name": "Rehema Mollel", "sent_at": null,
+      "created_at": "2026-09-09T12:52:34+03:00"
+    }],
+    "stats": {"total": 1, "sent": 0, "failed": 1, "queued": 0},
+    "pagination": {"page": 1, "per_page": 1, "total": 1, "total_pages": 1, "has_more": false}
+  }
+}
+```
+
+`status: "failed"` with that exact `error_message` is what you get on demo/production until an
+Admin configures an SMS gateway in Settings — not a bug in the endpoint. `sent_at` stays `null`
+until a send genuinely succeeds.
+
+---
+
+### POST `/sms`
+
+`create` on `message_center`. Body: `recipients` (array of phone numbers — any local/international
+format, normalised server-side) or a delimited string; `message`. Always returns `201` — a log row
+is written for every recipient regardless of gateway outcome, so delivery result is
+`sent_count`/`failed_count` in the body, never the HTTP status:
+
+```json
+{"status":"success","data":{"sent_count":0,"failed_count":1,"message":"Sent to 0 recipient(s), 1 failed."}}
+```
+
+---
+
+### POST `/email`
+
+Not in the original plan — added for parity with `POST /sms`; without it, email would have had no
+mobile path at all. `create` on `message_center`. Body: `recipients` (array of email addresses),
+`subject`, `body`. Same always-`201`, `sent_count`/`failed_count` shape as SMS. Send-only,
+deliberately — there is no `GET /email` (see the module note above).
+
+---
+
+### GET `/email-templates`
+
+Read-only. `view` on `message_center` — **not** its own key; the web page it mirrors documents this
+key-sharing as deliberate.
+
+```json
+{"status":"success","data":{"templates":[],"stats":{"total_templates":0,"active_templates":0}}}
+```
+
+Query: `active_only=1` filters to templates currently in use (the compose "Use template" picker's
+own filter).
+
+---
+
+### GET `/notifications`
+
+Your own notifications, paginated — every authenticated user, scoped to `user_id`; there is no
+group-wide variant. Query: `page`, `per_page`, `type`
+(`loan`/`payment`/`system`/`report`/`alert`), `is_read`.
+
+```json
+{
+  "status": "success",
+  "data": {
+    "notifications": [],
+    "stats": {"total": 0, "unread": 0, "high_unread": 0, "today": 0},
+    "pagination": {"page": 1, "per_page": 25, "total": 0, "total_pages": 0, "has_more": false}
+  }
+}
+```
+
+---
+
+### POST `/notifications/{id}/read`
+
+Marks one of your own notifications read. **404s, not a silent no-op**, for an id that is not
+yours — you get told the id was bad rather than an ambiguous success.
+
+---
+
+### POST `/ai/ask`
+
+"Ask Vikundi" — a natural-language question answered from the group's own data, using only curated
+read-only insight functions; the model never sees raw rows and can never write anything. `view` on
+`ai_ask_data` — leadership only, hidden from Member by default. Body: `{"question": "..."}`.
+
+```json
+{"status":"error","code":"ai_not_configured","message":"AI is not set up yet. Ask an admin to configure it in AI Settings."}
+```
+
+That is the real response on demo and production today — no AI provider key is configured on
+either. Build the "not configured" state; do not assume this endpoint always answers.
+
+---
+
+### POST `/ai/chat`
+
+Free-form conversation with the AI Assistant — general writing/translation/advice, no access to
+group data, cannot perform any action. `view` on `ai_assistant` — leadership only. Body:
+`{"message": "...", "history": [{"role": "user"|"assistant", "content": "..."}]}` (send the last
+few turns; the server keeps only the last 10 either way). Same `ai_not_configured` response as
+`/ai/ask` until a provider key is set.
+
+---
+
+## 20. Settings & Roles
+
+Users, Roles & Permissions, System Settings, Backups — every endpoint **Admin/Chairperson only**,
+checked directly against `role_id`, never a `role_permissions` grant. Reference implementation:
+`includes/api_settings.php`.
+
+**Why role_id directly, not a permission key:** every page this module mirrors is hard admin-only on
+the web too — `isAdmin()`, or a `canEdit`/`canView` key that (per `includes/role_grants.php`'s
+`vk_admin_only_keys()`) already resolves to Admin/Chairperson alone. Going through a permission-table
+grant here would add nothing and, per the finding below, is one more thing that can silently drift.
+
+**A live, actively-exploitable vulnerability was found and fixed as a standalone hotfix before this
+module was built.** `system_settings.php`'s permission check called a function that does not exist
+anywhere in the codebase — commented out rather than fixed, leaving the page wide open. Any
+authenticated user, including a plain Member, could read the SMTP password and SMS gateway secret in
+plaintext and POST directly to rewrite mail/SMS credentials, security policy, and disable audit
+logging/2FA. `users.php` (the full user list) had the same shape of gap. Both fixed and deployed
+ahead of this module.
+
+**Role changes are Admin/Chairperson only, on the web too.** The web's own quick-action endpoint
+used to let Secretary/Treasurer change any user's role, including granting Admin — wider and
+inconsistent with the main edit form. Fixed in the same change as this module.
+
+**No user deletion, anywhere in this API.** The web's own status-change endpoint's `'deleted'`
+value doesn't soft-delete — it runs an actual `DELETE FROM users` — and isn't even a real value in
+`users.status`'s live enum. `PUT /users/{id}` only ever accepts the real one.
+
+```json
+{"status":"error","code":"forbidden","message":"This is available to Admin\/Chairperson only."}
+```
+
+---
+
+### GET `/users`
+
+Paginated, admin-only. Query: `page`, `per_page`, `role_id`, `status`
+(`pending`/`active`/`rejected`/`dormant`), `search` (username/email/name).
+
+```json
+{
+  "status": "success",
+  "data": {
+    "users": [{
+      "user_id": 514, "username": "apidemo1test", "email": "apidemo1@example.com",
+      "first_name": "API", "last_name": "DemoTest", "role_id": 15, "role_name": "Member",
+      "status": "dormant", "created_at": "2026-09-09T12:03:16+03:00", "last_login": null
+    }],
+    "pagination": {"page": 1, "per_page": 2, "total": 32, "total_pages": 16, "has_more": true}
+  }
+}
+```
+
+Never a `password` field, in any shape. `status` is the real 4-value enum — `deleted` is never one
+of them (see the module note above).
+
+---
+
+### GET `/users/{id}` · POST `/users` · PUT `/users/{id}`
+
+`POST` creates a login account only — no matching `customers` row, same as the web's `add_user.php`.
+`PUT` edits any of username/email/first_name/last_name/role_id/status/password; anything omitted is
+left as-is. Password policy (both): 8+ characters, a letter, a number. No `DELETE` — deliberately
+excluded, see the module note.
+
+---
+
+### GET `/roles`
+
+Read-only, admin-only. Role create/rename/delete was never in scope — building an API for the web's
+second, less-refined permission editor (`user_roles.php`'s own inline checkboxes, distinct from
+`manage_permissions.php`) would have duplicated `PUT /roles/{id}/permissions` below.
+
+```json
+{
+  "status": "success",
+  "data": {
+    "roles": [
+      {"role_id": 1, "role_name": "Admin", "description": "Full system access", "user_count": 1},
+      {"role_id": 15, "role_name": "Member", "description": "", "user_count": 28}
+    ]
+  }
+}
+```
+
+---
+
+### GET `/roles/{id}/permissions` · PUT `/roles/{id}/permissions`
+
+The full `view`/`create`/`edit`/`delete` grid for one role, one row per `page_key` in the
+permissions catalog.
+
+```json
+{
+  "status": "success",
+  "data": {
+    "role": {"role_id": 15, "role_name": "Member", "description": null, "user_count": null},
+    "is_protected": false,
+    "permissions": [
+      {"permission_id": 39, "page_key": "backup_restore", "page_name": "Backup & Restore",
+       "module_name": "Administration", "description": "Manage system database backups",
+       "can_view": true, "can_create": false, "can_edit": false, "can_delete": false}
+    ]
+  }
+}
+```
+
+**`role_id` 1 (Admin) is protected — `PUT` refuses it outright, `GET` still works:**
+
+```json
+{"status":"error","code":"protected_role","message":"The Admin role is protected and its permissions cannot be modified."}
+```
+
+`PUT` body: `{"permissions": {"<permission_id>": {"view": bool, "create": bool, "edit": bool, "delete": bool}}}`.
+Stricter than the web's own editor: `create`/`edit`/`delete` set `true` without `view` is refused
+(`422 view_required`) rather than silently accepted — the web only stops this client-side, via
+disabled checkboxes. A row with every flag `false` is dropped, not stored.
+
+---
+
+### GET `/settings/system` · PUT `/settings/system`
+
+Company/general settings, email (SMTP), SMS gateway, security policy — grouped into sections
+matching the web's own tabs. `PUT` accepts any subset of `{general, email, sms, security, group}`;
+only the sections you send are validated and changed.
+
+```json
+{
+  "status": "success",
+  "data": {
+    "settings": {
+      "general": {"company_name": "Vikundi API Test Co", "company_address": "...", "...": "..."},
+      "email": {"smtp_host": null, "smtp_port": null, "smtp_username": null, "smtp_password": null, "...": "..."},
+      "sms": {"sms_gateway_type": null, "sms_api_key": null, "sms_api_secret": null, "...": "..."},
+      "security": {"session_timeout": null, "max_login_attempts": null, "...": "..."},
+      "group": {}
+    }
+  }
+}
+```
+
+Every field is `null` until an Admin sets it — including SMTP/SMS secrets, returned in the clear to
+an Admin caller exactly as the web shows them to an Admin. `group` is the `system_settings` table's
+own `'group_settings'` JSON blob (contribution rates/schedules) — a different thing from the
+`group_settings` **table** §6 already covers.
+
+---
+
+### GET `/settings/backup` · POST `/settings/backup`
+
+`POST` creates a real database dump via the same pure-PHP engine (`vikundi_write_dump()`) the live
+web UI uses — not the older `exec()`/`mysqldump` path. `GET` lists existing backups.
+
+```json
+{"status":"success","data":{"filename":"backup_v_2026-09-09_12-52-59.sql","size":"602.88 KB"}}
+```
+
+```json
+{
+  "status": "success",
+  "data": {
+    "backups": [
+      {"filename": "backup_v_2026-09-09_12-52-59.sql", "size": "602.88 KB", "size_bytes": 617348,
+       "created_at": "2026-09-09T12:52:59+03:00"}
+    ]
+  }
+}
+```
+
+No restore endpoint, anywhere. The web's own restore action overwrites the live database — far too
+destructive to add without being explicitly asked, and it never was.
+
+---
+
+### GET `/backup-download?file=<filename>`
+
+Streams one backup file — binary, not the JSON envelope. **Flattened from the plan's
+`/settings/backup/{id}/download`**, which could never route: backups are files, not rows with a
+numeric id, so there is no id for the standard id-based route pattern to bind. Reuses
+`api/download_backup.php`'s already-audited traversal-safe path handling verbatim (`realpath()` +
+prefix containment + `.sql`-extension requirement).
+
+---
+
+## 21. Profile
+
+Your own account, your own settings, your own password, your own avatar. Reference
+implementation: `includes/api_profile.php`. Every endpoint here is self-only, any authenticated
+user — no admin gate anywhere, the opposite of §20.
+
+**This mirrors `my_settings.php`, not `profile.php`, even though early planning named the latter.**
+Two web pages both call themselves "profile." `profile.php` is leadership-gated — its own comment
+says an ordinary Member "cannot edit any profile, including their own" — and its field set (spouse,
+parents, guarantor, NIDA) already belongs to §5 Members; that module's own build note says so
+directly. `my_settings.php` is the genuine self-service page: no leadership gate at all, every query
+scoped to the caller. Building `/profile` on `profile.php`'s form would have duplicated §5 and, worse,
+locked an ordinary Member out of editing their own name.
+
+**Two real gaps were found and fixed while tracing this module, before the API was built on top of
+them.** `my_settings.php` had **no CSRF protection** on any of its three POST handlers (profile
+save, password change, preferences) — a forged cross-site form could change a logged-in user's
+password unnoticed. And the obvious avatar-URL helper (`vk_avatar_url()`) points at a
+**session-gated** web endpoint — confirmed live that a token-authenticated mobile client gets a
+`401` fetching its own avatar. `avatar_url` in this module's responses always points at
+`GET /avatar` (below) instead, which never has that problem.
+
+**Password policy is the same 8-characters/letter/number rule §20 enforces** — stricter than
+`my_settings.php`'s own 6-character web rule. No reason a self-service change should be held to a
+lower bar than an admin-created account.
+
+---
+
+### GET `/profile` · PUT `/profile`
+
+```json
+{
+  "status": "success",
+  "data": {
+    "profile": {
+      "user_id": 512, "username": "hmbwana1", "first_name": "Hamisi", "middle_name": "",
+      "last_name": "Mbwana", "email": "hamisi.mbwana30@example.co.tz", "phone": "+255763274345",
+      "avatar_url": "https://demo.vikundi.bjptechnologies.co.tz/api/v1/avatar?name=avatar_1788947678_d3c21f1ba58c856d.png",
+      "role_id": 15, "role_name": "Member", "member_id": 30, "status": "active",
+      "created_at": "2025-12-29T00:00:00+03:00", "last_login": "2026-09-09T12:51:56+03:00"
+    }
+  }
+}
+```
+
+`member_id` is `null` for a login with no linked member/customer record (e.g. the Admin account) —
+same meaning as `user.member_id` elsewhere in this API. `avatar_url` is `null` until an avatar is
+uploaded.
+
+`PUT` body: any of `first_name`, `middle_name`, `last_name`, `email`, `phone` — omitted fields are
+left as-is. Email must be unique across the whole `users` table (checked, unlike the web). On
+success, the linked `customers` row (matched by your **old** email) is updated too, keeping your
+member record from drifting out of sync with your account — exactly what `my_settings.php` already
+does.
+
+---
+
+### GET `/profile/settings` · PUT `/profile/settings`
+
+```json
+{
+  "status": "success",
+  "data": {
+    "settings": {
+      "language": "sw", "theme": "dark", "timezone": "Africa/Dar_es_Salaam",
+      "date_format": "DD/MM/YYYY", "email_notifications": true, "sms_notifications": true
+    }
+  }
+}
+```
+
+`language` ∈ `en`/`sw`. `theme` ∈ `light`/`dark`. `timezone` ∈ `Africa/Dar_es_Salaam`/
+`Africa/Nairobi`/`Africa/Kampala`/`UTC`. `date_format` ∈ `DD/MM/YYYY`/`MM/DD/YYYY`/`YYYY/MM/DD`/
+`YYYY-MM-DD`/`DD Mon YYYY` — the exact 5 the web's own dropdown offers. `PUT` is a **partial**
+update: send only the field you changed.
+
+```json
+{"status":"error","code":"invalid_theme","message":"theme must be one of: light, dark."}
+```
+
+---
+
+### POST `/profile/password`
+
+Not in the original plan — `my_settings.php`'s Security tab needs it, and `current_password`/
+`new_password` is a different request shape than a settings object, so it isn't folded into
+`PUT /profile/settings`. Body: `current_password`, `new_password`, `confirm_password`.
+
+```json
+{"status":"error","code":"wrong_password","message":"Neno la siri la sasa si sahihi."}
+```
+
+Checked in order: all three fields present → current password verified → new/confirm match →
+password policy (8+ chars, a letter, a number). Only then is it changed.
+
+---
+
+### POST `/profile/avatar`
+
+Not in the original plan — a profile screen with no way to set a photo is missing the obvious thing
+such a screen does. Multipart, field name `avatar`, 2 MB max. Built on the same byte-sniffing
+upload validator every other upload endpoint in this API uses (extension whitelist + the actual
+bytes checked, not just the filename) — stricter than `my_settings.php`'s own extension-only check.
+
+```json
+{"status":"success","data":{"avatar":"avatar_1788947678_d3c21f1ba58c856d.png","avatar_url":"https:\/\/demo.vikundi.bjptechnologies.co.tz\/api\/v1\/avatar?name=avatar_1788947678_d3c21f1ba58c856d.png"}}
+```
+
+---
+
+### GET `/avatar?name=<filename>`
+
+Not in the original plan — see the module note above. Streams one avatar image, binary, not the
+JSON envelope. Not self-scoped: any authenticated user may fetch **any** avatar by its stored
+filename (mirrors the web's own "any authenticated user may see them" rule for avatars — no
+per-owner check, unlike the same reader's handling of e-signature images). Same traversal-safe
+pattern as `/backup-download`: filename charset whitelist, `realpath()` containment, and — because
+this endpoint serves files named entirely by a client-supplied string — an extension whitelist
+**and** a real image-bytes check via `getimagesize()`, both required.
+
+---
+
+## 22. Demo logins
 
 All on the demo site, password `Demo@2026`:
 
@@ -3134,12 +3648,13 @@ member side, because that is the only role where fields are removed rather than 
 | 13. Documents | 12 | ✅ live |
 | 14. Voting & Leadership Applications | 18 | ✅ live |
 | 15. Reports & Statements | 6 | ✅ live |
-| 16. Communication | — | queued |
-| 17. Settings & Roles | — | queued |
-| 18. Profile | — | queued |
+| 16. Communication | 11 | ✅ live |
+| 17. Settings & Roles | 12 | ✅ live |
+| 18. Profile | 7 | ✅ live |
 
-**109 endpoints live** on both `vikundi.bjptechnologies.co.tz` and
-`demo.vikundi.bjptechnologies.co.tz` — every module in this document (§3 through §18).
+**139 endpoints live** on both `vikundi.bjptechnologies.co.tz` and
+`demo.vikundi.bjptechnologies.co.tz` — every module in this document (§3 through §21). All 18
+modules in `todo.md`'s build list are shipped.
 
 Shipped shapes are treated as a contract: if a field has to change, you will be told before it
 deploys. This file is updated with every module.
