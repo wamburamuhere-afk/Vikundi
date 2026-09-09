@@ -1,6 +1,13 @@
 <?php
 require_once __DIR__ . '/../../../roots.php';
 require_once __DIR__ . '/../../../includes/require_login.php'; // audit M5: authenticate before any $_SESSION['user_id'] use
+// FIX: none of this file's three POST handlers (profile, password, preferences)
+// checked a CSRF token — unlike profile.php's own save (csrf_verify() inline)
+// just one directory over. A forged cross-site form could change a logged-in
+// user's password without their knowledge. Same inline pattern as profile.php,
+// not includes/require_csrf.php's JSON-403 gate, since this file's forms
+// render a normal HTML error banner on failure, not JSON.
+require_once __DIR__ . '/../../../includes/csrf.php';
 
 // Fetch current user data
 $stmt = $pdo->prepare("SELECT u.*, c.customer_id FROM users u LEFT JOIN customers c ON LOWER(u.email) = LOWER(c.email) WHERE u.user_id = ?");
@@ -18,6 +25,10 @@ $profile_image = $user_data['avatar'] ?? '';
 // Handle Profile Update
 if (isset($_POST['save_profile'])) {
     try {
+        if (!csrf_verify($_POST['csrf_token'] ?? null)) {
+            throw new Exception("Invalid or missing security token. Please refresh the page and try again.");
+        }
+
         $new_first_name = $_POST['first_name'];
         $new_middle_name = $_POST['middle_name'];
         $new_last_name = $_POST['last_name'];
@@ -70,6 +81,10 @@ if (isset($_POST['save_profile'])) {
 // Handle Password Change
 if (isset($_POST['change_password'])) {
     try {
+        if (!csrf_verify($_POST['csrf_token'] ?? null)) {
+            throw new Exception("Invalid or missing security token. Please refresh the page and try again.");
+        }
+
         $curr_pass = $_POST['current_password'] ?? '';
         $new_pass = $_POST['new_password'] ?? '';
         $conf_pass = $_POST['confirm_password'] ?? '';
@@ -106,6 +121,10 @@ if (isset($_POST['change_password'])) {
 // Handle Preferences Update
 if (isset($_POST['save_preferences'])) {
     try {
+        if (!csrf_verify($_POST['csrf_token'] ?? null)) {
+            throw new Exception("Invalid or missing security token. Please refresh the page and try again.");
+        }
+
         $theme = $_POST['theme'] ?? 'light';
         $language = $_POST['language'] ?? 'en';
         $timezone = $_POST['timezone'] ?? 'Africa/Dar_es_Salaam';
@@ -214,6 +233,7 @@ require_once HEADER_FILE;
                     <h5 class="fw-bold mb-4 pb-2 border-bottom"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Taarifa Binafsi' : 'Personal Information' ?></h5>
                     
                     <form method="POST" enctype="multipart/form-data">
+                    <?= csrf_field() ?>
                         <div class="row g-4 align-items-center mb-5 text-start">
                             <div class="col-auto">
                                 <div class="position-relative">
@@ -293,6 +313,7 @@ require_once HEADER_FILE;
                             <h5 class="fw-bold mb-4 pb-2 border-bottom"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Badili Neno la Siri' : 'Change Password' ?></h5>
                             
                             <form method="POST">
+                            <?= csrf_field() ?>
                                 <div class="mb-4">
                                     <label class="form-label small fw-bold text-muted"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Neno la Siri la Sasa' : 'Current Password' ?> *</label>
                                     <div class="input-group">
@@ -358,6 +379,7 @@ require_once HEADER_FILE;
                     <h5 class="fw-bold mb-4 pb-2 border-bottom"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Muonekano na Arifa' : 'Display & Notifications' ?></h5>
                     
                     <form method="POST">
+                    <?= csrf_field() ?>
                         <div class="row g-4">
                             <!-- Theme Selection -->
                             <div class="col-md-6 text-start">
