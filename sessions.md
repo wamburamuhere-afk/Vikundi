@@ -4,6 +4,77 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-09-09 — Module 16: Communication — PR pending
+
+**Branch:** `develop` (feature branch not yet cut)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** 9 endpoints — Messages, SMS, Email (send-only), Email Templates, Notifications, AI Ask/Chat
+— plus a real security fix to `message_center.php` and two more pre-existing bugs it surfaced during
+live verification. New shared file: `includes/api_communication.php`.
+
+**Checked and confirmed with the group before writing any code** — this module's own todo.md judgment
+call #1 asked for exactly that. Traced every backing file, found SMS/email genuinely wired to real
+providers (not scaffolding), found `sms_alerts`/`sms_templates` dead (excluded, same shape as
+member-groups/bank_reconciliation), and surfaced three real gaps between the plan and the code before
+building: `message_center.php`'s send handler had no `create` check at all, `/api/v1/messages`'
+"leadership only" plan text didn't match `message_center`'s actual default Member grant, and the SMS
+log exposes the whole group's phone numbers/message text to every Member by default. All three
+confirmed via `AskUserQuestion` before implementation. Full detail in `todo.md` §16.
+
+**The real fix, in both transports from one rule.** `includes/api_communication.php`'s
+`vk_api_comm_is_leader()` — `create` on `message_center` — now gates message-sending, SMS/email-sending,
+and the SMS log read everywhere. `message_center.php`'s own `send_message` handler gets the same check
+for the first time; previously only `requireViewPermission()` gated the whole page, so any signed-in
+Member (view-only by default) could POST `send_message` directly and message anyone, including replying
+to leadership. `$can_create` now also hides the Compose/Reply UI (5 conditionals) so the button isn't
+shown just to fail.
+
+**Two more pre-existing bugs found and fixed, both caught by actually POSTing to the live page as a
+Member, not by reading the code:**
+1. `$success_messages`/`$error_messages` were declared AFTER the `$_POST` block that reads and writes
+   them, so every `catch{}`'s error (and the delete/archive success messages) was silently wiped before
+   the page ever rendered — the new permission block correctly refused the write, but gave no reason why.
+2. The `catch` block called `$pdo->rollBack()` unconditionally, but `beginTransaction()` only runs deep
+   inside the `try`. Any early exception — the three ORIGINAL validation throws, and now the new
+   permission check — threw its own uncaught `PDOException` ("There is no active transaction"), crashing
+   the page. Guarded with `if ($pdo->inTransaction())`.
+
+**A bug in the mobile layer's own new code, also caught by live verification:** `POST /api/v1/sms` and
+`POST /api/v1/email` originally paired `vk_api_ok()` (which always writes `{"status":"success"}`) with
+a 502 HTTP status on total delivery failure — self-contradictory for a client checking either field.
+Both now always return `201`; delivery outcome is `sent_count`/`failed_count` in the body, matching
+`api/sms_center.php`'s own convention.
+
+**Tests.** `CommunicationApiTest` (written by the `test-writer` agent, then extended) — 79 tests: every
+pure function in `includes/api_communication.php`, structural gate-order checks for all 9 new
+`api/v1/*.php` files, routing (including the `api/v1/ai/` real-subdirectory case vs. the flat-file
+convention), and regression coverage for all three `message_center.php` fixes above. `composer
+test-unit`: 2198 tests, 5615 assertions, all green, no regressions.
+
+**Verified live** against the local WAMP instance (`vikundi.localhost`): full message lifecycle
+(Admin → Member send, unread badge, detail-view auto-read, count drop to 0); a third unrelated Member
+holding `message_center` view got `404` (not `403`) opening someone else's message; `POST /messages`
+from a Member refused `403` naming the leadership rule; `GET /sms` `403` for Member, real data for
+Admin; `POST /sms`/`POST /email` against no local gateway/SMTP returned `201` with `sent_count: 0`
+gracefully; `POST /ai/ask`/`POST /ai/chat` `403` for Member, `ai_not_configured` for Admin (no provider
+key set locally — proves the auth/permission path without a live LLM key). Separately, on an actual web
+session: a Member's direct POST to `message_center.php` was refused with the correct on-page message and
+no crash; the same POST as Admin still redirected and inserted correctly.
+
+**Local-only side effect, disclosed here rather than left silent:** verifying this live required a
+known password on two local WAMP accounts with no test credentials on record. `admin` and `kmohr`
+(Member) both had their local `vikundi` DB password set to `TestPass123!` for this session — their
+original hashes were not recorded first, so they cannot be restored. Production/demo credentials
+untouched (this was the local WAMP DB only). One test message (`message_id 1`, "Test Subject") and one
+test notification were left in the local DB as a byproduct of the lifecycle test; harmless, not cleaned
+up, consistent with how prior sessions' live CRUD verification was left in place.
+
+**Docs deliberately not done yet** — per the established order (build → deploy → verify live → docs →
+handover), those come once this is merged and deployed.
+
+---
+
 ## Session — 2026-09-07 — Module 15: Reports & Statements — PR pending
 
 **Branch:** `develop` (feature branch not yet cut)
