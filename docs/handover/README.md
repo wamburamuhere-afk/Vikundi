@@ -1,6 +1,6 @@
 # Vikundi mobile API — handover
 
-Everything the Flutter session needs, current as of **2026-09-07**.
+Everything the Flutter session needs, current as of **2026-09-09**.
 
 Read these in order. `docs/API.md` is the reference; the files here are the parts that
 are easy to get wrong.
@@ -21,6 +21,9 @@ are easy to get wrong.
 | `documents-module.md` | Before building Documents — it's two unrelated features (Library, Document Writer) sharing a nav menu, not one screen. |
 | `voting-module.md` | Before building Voting or Leadership Applications — tally visibility depends on `can_see_tally`, never your own logic. |
 | `reports-module.md` | Before building any statement screen — `member-statement`/`member-transactions` have no permission gate at all, ownership is silent. |
+| `communication-module.md` | Before building Messages/SMS/Email/AI — `GET /messages` is a real Member inbox, not leadership-only; SMS/Email/AI are leadership-only with no exceptions; AI is not configured on either server today. |
+| `settings-roles-module.md` | Before building any Settings screen — the whole module is Admin/Chairperson only, no Member view anywhere, and there is no user-delete endpoint. |
+| `profile-module.md` | Before building "My Account" — it's deliberately narrower than the Members module, and `avatar_url` needs the same Bearer token as every other request. |
 
 ---
 
@@ -46,11 +49,74 @@ Both `vikundi.bjptechnologies.co.tz` and `demo.vikundi.bjptechnologies.co.tz`.
 | 13. Documents | 12 | The file Library, and the Document Writer with multi-party e-signing |
 | 14. Voting & Leadership Applications | 18 | Elections end to end, applying/reviewing to stand for office |
 | 15. Reports & Statements | 6 | Both NSSF-style statements, the group statement, the two summary reports |
+| 16. Communication | 11 | Messages (real inbox), SMS/Email send, Email Templates, Notifications, AI Ask/Chat |
+| 17. Settings & Roles | 12 | User management, role/permission editing, system settings, database backups |
+| 18. Profile | 7 | My Account, my settings, change password, avatar upload |
 
-**109 endpoints.**
+**139 endpoints. Every module in `todo.md`'s build list is now shipped.**
 
-Not yet built: Bank Reconciliation (excluded — see below), Communication, Settings & Roles, Profile,
-Loans. Anything on those screens has to stub or wait.
+Not yet built, and not going to be: Bank Reconciliation, Loans (both excluded — see `docs/API.md`'s
+own notes on why: no nav link, no real data, no live permission key). Nothing left in this API is
+"queued."
+
+---
+
+## Changed since the 2026-09-07 handover
+
+Three modules, 30 endpoints — Communication, Settings & Roles, Profile. This is the last batch:
+every module in `todo.md`'s original plan is now live. One correction to an earlier diagnosis is
+also recorded below; read it if you're touching anything backup-related.
+
+**Module 16 — Communication — is live.** `communication-module.md` covers it. `GET /messages` is a
+genuine Member-facing inbox, not a leadership screen — don't gate it behind `is_leadership`. Sending
+anything (a message, SMS, or email) is leadership-only, checked via `can_send` in the messages
+response rather than a role guess. There is no `GET /email` at all, by design. AI Ask/Chat both need
+a real provider key that isn't configured on either server yet — build the `ai_not_configured` state,
+it's the only one you can currently test.
+
+**A real permission gap was found and fixed the same day this module deployed.** The web's own
+`message_center.php` send handler had no permission check at all beyond being logged in — any
+Member could POST directly and message anyone. Fixed in both transports from one rule before this
+shipped; verified live that a Member's direct POST is now refused with the correct message and the
+page no longer crashes on the refusal (a separate, pre-existing bug in the same handler, found and
+fixed in the same pass).
+
+**Module 17 — Settings & Roles — is live.** `settings-roles-module.md` covers it — the one module
+with **no Member access anywhere**, not even read-only. Gated on `role_id` directly, not a
+permission-table grant. There is no user-delete endpoint in this API and there will not be one — the
+web's own equivalent runs an actual `DELETE FROM users` behind a status value that isn't even real.
+
+**A live, actively-exploitable vulnerability was found and fixed as a standalone hotfix, deployed
+BEFORE this module was built on top of it.** `system_settings.php`'s permission check called a
+function that doesn't exist anywhere in the codebase — commented out rather than fixed, so the page
+had no gate at all. Any authenticated user, including a plain Member, could read the SMTP password
+and SMS gateway secret in plaintext and rewrite mail/SMS credentials, security policy, and disable
+audit logging. Closed before Module 17's own endpoints were written, let alone deployed — the mobile
+API was never exposed to this.
+
+**A correction, not a new finding: an earlier diagnosis about `isAdmin()` was wrong.** While
+verifying that hotfix, a Member account was observed bypassing an admin-only backup endpoint on
+demo. The first diagnosis blamed `core/permissions.php`'s `isAdmin()` name-matching fallback. On
+closer inspection (via Module 17's own `GET /roles/{id}/permissions`), the actual cause is much more
+mundane: **the `backup_restore` permission key had a stray `can_view` grant for the Member role** in
+demo's database — a straightforward bad-grant issue, the same shape fixed by a migration in several
+earlier modules, unrelated to `isAdmin()`. This does not affect anything in this API — every
+endpoint here is gated on `role_id` directly or `vk_api_can()`, never a raw `role_permissions` row
+without a bypass check — but if you ever see a stray reference to this in code comments or session
+notes, the corrected explanation is the one that's accurate.
+
+**Module 18 — Profile — is live.** `profile-module.md` covers it. Deliberately narrower than the
+Members module (§5) — only name/email/phone/avatar, no family or guarantor data — and every endpoint
+is self-only, available to any authenticated user, the opposite of Module 17's admin-only shape.
+
+**Two real gaps were found and fixed before this module was built on top of them.** The web's own
+"My Settings" page had **no CSRF protection** on any of its three forms (profile save, password
+change, preferences) — a forged cross-site request could change a logged-in user's password without
+their knowledge. And the obvious avatar-URL helper points at a session-gated web endpoint that a
+token-authenticated mobile client can never reach — confirmed live as a `401` fetching your own
+avatar. `avatar_url` in every response from this module now points at this API's own
+`GET /avatar` instead, which has no such problem — **always send the same Bearer token when
+fetching it**, it is not a public image URL.
 
 ---
 
@@ -195,6 +261,10 @@ permission map.
 | `budgets[].items`, `budget.items` (budgets) | omitted on the list (not `null` — the key is absent), present on the detail endpoint |
 | `trail` (budgets) | only `created`/`reviewed`/`approved` keys exist — never a `rejected` key, even when `status` is `rejected` |
 | `payouts[].description` (payouts) | `null` when blank, never an empty string |
+| `profile.avatar_url` | `null` until an avatar is uploaded; once set, always absolute (`https://...`) |
+| `profile.middle_name` | empty string `""` when unset — the one exception to the "blank means null" rule above, matching the web form it mirrors |
+| `role.user_count` (settings & roles) | `null` on the permissions-grid response, populated on the plain roles list |
+| `sms[].sent_at` | `null` until a send genuinely succeeds — stays `null` on `"status": "failed"` |
 
 ### 4. Responses are shape-variant by role
 
