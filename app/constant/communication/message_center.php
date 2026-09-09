@@ -4,11 +4,30 @@ requireViewPermission('message_center');
 
 $is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
 $user_id = $_SESSION['user_id'];
+$can_create = canCreate('message_center'); // gates every Compose button below; see the send_message fix above
+
+// FIX: these were declared AFTER the $_POST block below, which both reads and
+// writes them — every catch{}'s $error_messages[] (and the delete/archive
+// success messages) was silently wiped by this re-initialisation before the
+// page ever rendered it. Found while verifying the send_message permission
+// fix above: the write was correctly blocked, but the refusal reason never
+// reached the user. Declared here instead, once, before anything can append.
+$success_messages = [];
+$error_messages = [];
 
 // Handle form submissions (must be before header.php for redirects to work)
 if ($_POST) {
     if (isset($_POST['send_message'])) {
         try {
+            // FIX: only requireViewPermission() gated this page at all — any signed-in
+            // Member (view-only on message_center by default) could POST send_message
+            // directly and message anyone, bypassing the compose button's own hidden
+            // state. Sending needs `create`, same rule the mobile API now enforces from
+            // the start (includes/api_communication.php).
+            if (!canCreate('message_center')) {
+                throw new Exception($is_sw ? 'Huna ruhusa ya kutuma ujumbe.' : 'You do not have permission to send messages.');
+            }
+
             $recipient_ids = $_POST['recipient_ids'] ?? [];
             $subject = trim($_POST['subject']);
             $message = trim($_POST['message']);
@@ -60,11 +79,19 @@ if ($_POST) {
             exit;
             
         } catch (Exception $e) {
-            $pdo->rollBack();
+            // FIX: rollBack() unconditionally, with no active transaction, throws its
+            // own uncaught PDOException ("There is no active transaction") — found
+            // live while verifying the canCreate() check above, which (like the three
+            // pre-existing validation throws just above it) fires before
+            // beginTransaction() ever runs. Every one of those paths was already
+            // crashing the whole page instead of showing its message.
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             $error_messages[] = "Error sending message: " . $e->getMessage();
         }
     }
-    
+
     // Delete message
     if (isset($_POST['delete_message'])) {
         try {
@@ -138,8 +165,6 @@ if ($_POST) {
 }
 
 // Handle success/error message display
-$success_messages = [];
-$error_messages = [];
 if (isset($_GET['success'])) {
     $success_messages[] = $is_sw ? "Ujumbe umetumwa kikamilifu!" : "Message sent successfully!";
 }
@@ -335,9 +360,11 @@ if ($message_id) {
             <!-- Compose Button -->
             <div class="card shadow mb-4">
                 <div class="card-body text-center">
+                    <?php if ($can_create): ?>
                     <button class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#composeModal">
                         <i class="bi bi-pencil-square"></i> <?= $is_sw ? 'Andika Ujumbe' : 'Compose Message' ?>
                     </button>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -373,9 +400,11 @@ if ($message_id) {
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
+                        <?php if ($can_create): ?>
                         <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#composeModal">
                             <i class="bi bi-plus-circle"></i> New Message
                         </button>
+                        <?php endif; ?>
                         <button class="btn btn-outline-secondary btn-sm" id="refreshMessages">
                             <i class="bi bi-arrow-clockwise"></i> Refresh
                         </button>
@@ -447,7 +476,7 @@ if ($message_id) {
                         <!-- Message Actions -->
                         <div class="message-actions border-top pt-3">
                             <div class="d-flex gap-2">
-                                <?php if ($folder == 'inbox'): ?>
+                                <?php if ($folder == 'inbox' && $can_create): ?>
                                     <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#replyModal">
                                         <i class="bi bi-reply"></i> <?= $is_sw ? 'Jibu' : 'Reply' ?>
                                     </button>
@@ -512,9 +541,11 @@ if ($message_id) {
                             <?php endif; ?>
                         </h5>
                         <div class="btn-group">
+                            <?php if ($can_create): ?>
                             <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#composeModal">
                                 <i class="bi bi-pencil-square"></i> Compose
                             </button>
+                            <?php endif; ?>
                         </div>
                     </div>
                     <div class="card-body p-0">
@@ -596,9 +627,11 @@ if ($message_id) {
                                         No archived messages.
                                     <?php endif; ?>
                                 </p>
+                                <?php if ($can_create): ?>
                                 <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#composeModal">
                                     <i class="bi bi-pencil-square"></i> Compose First Message
                                 </button>
+                                <?php endif; ?>
                             </div>
                         <?php endif; ?>
                     </div>
