@@ -4,6 +4,60 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-09-09 — Hotfix: system_settings.php and users.php had no permission gate at all
+
+**Branch:** `hotfix/settings-gate` (from `develop`)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** Found while tracing Module 17 (Settings & Roles) before building any API on top of it — before
+writing a single line of the new module, not after a deploy. Four real gaps, same SEC-002 class (session
+check standing in for a real permission check, or no check at all), fixed as an immediate standalone
+hotfix given the severity, ahead of the module build itself.
+
+**`app/constant/settings/system_settings.php` had NO permission gate at all — live on production.** Its
+check called a `has_permission()` helper that does not exist anywhere in the codebase; it would have
+fataled instantly, so it was commented out rather than fixed, and stayed that way. Any authenticated
+user, including a plain Member, could: load the page and read the **SMTP password and SMS gateway API
+key/secret in plaintext** (rendered directly into `value="..."` on password-type fields — the browser
+masks it visually, the plaintext is in the HTML source), and **POST directly to rewrite** mail/SMS
+credentials, session timeout, max login attempts, password policy, and **disable audit logging and 2FA**.
+Fixed with `requireViewPermission('system_settings')` — checked BEFORE `header.php`, not after (header.php
+emits HTML starting partway through itself; a redirect after that point fails silently, a mistake the
+original commented-out check would have made too even if the function had existed) — plus `canEdit(
+'system_settings')` gating every `save_*` handler, since view-only must not be enough to write
+system-wide config.
+
+**`app/constant/settings/users.php` (the full User Management list) had the same shape of gap.** Its own
+comment claimed "Permissions are automatically enforced by header.php" — `autoEnforcePermission()` exists
+in `core/permissions.php` but is never called from `header.php`. Any Member could view every user's name,
+email, role and status. Fixed with `requireViewPermission('users')`, same before-header.php ordering.
+
+**Two more backup endpoints found with the exact session-only gate SEC-002 already fixed on their
+siblings** (`api/create_backup.php`, `api/download_backup.php`) — `api/delete_backup.php` and
+`api/get_backup_list.php` only checked `isset($_SESSION['user_id'])`, not `backup_restore`. Neither is
+called by the live UI (`backup_restore.php` uses `api/backup_actions.php` for both), but both remain
+independently routed in `roots.php`, so both are real, reachable gaps: any Member could delete a backup
+file outright, or at minimum enumerate backup filenames/dates/sizes. Fixed with
+`requirePermissionJson('delete'|'view', 'backup_restore')`, matching `api/backup_actions.php`'s and the
+SEC-002 fix's own pattern exactly.
+
+**Tests.** Extended `SecurityFindingsClosedTest` (the existing home for this class of regression) —
+6 new tests: the two backup endpoints' permission strings, `system_settings.php`'s gate-exists +
+gate-before-header.php + edit-check-inside-post-block ordering, `users.php`'s gate-exists +
+gate-before-header.php ordering. `composer test-unit`: 2202 tests, 5631 assertions, all green.
+
+**Verified live against the local WAMP instance:** a Member's `GET /system_settings` and `GET /users`
+both `302`'d to `/unauthorized` with zero page content leaked (confirmed via response length, not just
+status code); Admin's access to both was unaffected (`200`, full content); Admin's `POST save_general`
+still wrote a real setting change; the same POST from a Member was refused and the setting was
+confirmed unchanged in the DB; `api/get_backup_list.php` and `api/delete_backup.php` both `403`'d for
+a Member with the standard `requirePermissionJson` refusal shape.
+
+**Shipped ahead of Module 17's own build and deploy**, given severity — the module's API work continues
+in its own session/PR once this is live.
+
+---
+
 ## Session — 2026-09-09 — Module 16: Communication — PR pending
 
 **Branch:** `develop` (feature branch not yet cut)

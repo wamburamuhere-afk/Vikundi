@@ -1,14 +1,17 @@
 <?php
 ob_start();
 require_once __DIR__ . '/../../../roots.php';
+
+// FIX: the comment claimed "permissions are automatically enforced by
+// header.php" — header.php has no such mechanism (autoEnforcePermission()
+// exists in core/permissions.php but is never called from header.php). This
+// page had no gate at all: any authenticated user, including a plain Member,
+// could view the complete user list (names, emails, roles, status). 'users'
+// is the real, existing, admin-only permission key (vk_admin_only_keys()).
+// Checked before header.php for the same reason as system_settings.php.
+requireViewPermission('users');
+
 require_once 'header.php';
-
-// Check admin permissions
-// Permissions are automatically enforced by header.php
-
-
-
-
 // Fetch available roles from database (VICoBA specific)
 $stmt = $pdo->query("SELECT * FROM roles ORDER BY role_name");
 $roles = $stmt->fetchAll(PDO::FETCH_ASSOC);
