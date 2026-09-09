@@ -723,17 +723,99 @@ figure as designed.
 
 ## 16. Communication
 
-- [ ] `GET /api/v1/messages` — message_center.php, paginated — leadership only
-- [ ] `POST /api/v1/messages` — send
-- [ ] `GET /api/v1/sms` — sms_center.php list
-- [ ] `POST /api/v1/sms` — send
-- [ ] `GET /api/v1/sms-templates` — list
-- [ ] `GET /api/v1/sms-alerts` — sms_alerts.php list, filters: status, alert_type
-- [ ] `GET /api/v1/email-templates` — list
-- [ ] `GET /api/v1/notifications` — notification_center.php, paginated
-- [ ] `POST /api/v1/notifications/{id}/read`
-- [ ] `POST /api/v1/ai/ask` — ai_ask.php, natural-language data query — leadership only (`ai_ask_data`)
-- [ ] `POST /api/v1/ai/chat` — ai_chat.php assistant turn (`ai_assistant`)
+- [x] `GET /api/v1/messages` — the caller's own inbox/sent/archived, paginated — scoped to caller, NOT
+      leadership-only (see below)
+- [x] `GET /api/v1/messages/{id}` — added: a mobile inbox cannot open a thread without it; auto-marks
+      read exactly like message_center.php's own detail view
+- [x] `POST /api/v1/messages` — send; now genuinely gated (see the fix below)
+- [x] `GET /api/v1/sms` — sms_center.php's log, paginated — LEADERSHIP ONLY, tighter than the web (see below)
+- [x] `POST /api/v1/sms` — send
+- [x] `GET /api/v1/email-templates` — list
+- [x] `POST /api/v1/email` — added: email_center.php is real, functional (SMTP), nav-reachable, and
+      wasn't in this plan at all — SMS parity would otherwise have no email equivalent. Send-only,
+      deliberately (see below on the log-exposure question this sidesteps)
+- [x] `GET /api/v1/notifications` — notification_center.php, paginated
+- [x] `POST /api/v1/notifications/{id}/read`
+- [x] `POST /api/v1/ai/ask` — ai_ask.php, natural-language data query — leadership only (`ai_ask_data`)
+- [x] `POST /api/v1/ai/chat` — ai_chat.php assistant turn (`ai_assistant`)
+      ~~`GET /api/v1/sms-templates` — list~~ — **excluded, see below**
+      ~~`GET /api/v1/sms-alerts` — sms_alerts.php list, filters: status, alert_type~~ — **excluded, see below**
+
+**Checked and confirmed with the group before building anything** (this module's own judgment call #1
+asked for exactly this). New shared file: `includes/api_communication.php`.
+
+**`sms_alerts` and `sms_templates` excluded, same evidence shape as member-groups (Module 3) and
+`bank_reconciliation` (Module 8).** Neither has a nav link anywhere in the app. `sms_alerts` joins
+`loans`/`collection_strategies` — both already-dead BMS tables per this file's own Excluded section.
+`sms_templates`' own backing endpoint, `api/get_sms_templates.php`, is a permanent stub that returns an
+empty DataTables response unconditionally with no auth check at all — already catalogued as a known
+dead endpoint in `tests/Unit/EndpointAuthSweepTest.php` ("MAP §2.5: unauthenticated read of SMS
+templates"), and no `sms_templates` table exists in the schema at all.
+
+**`message_center` is the one permission key shared by `message_center.php`, `sms_center.php`,
+`email_center.php` and `email_templates.php` on the web.** Confirmed deliberate for `email_templates`
+(its own code comment says so); treated as the same design choice for the other three, since none of
+them literally check a `sms_center`/`email_templates` key that has its own catalog row. The mobile API
+mirrors this: every Module 16 endpoint gates on `message_center`, not on keys that exist only as route
+names or in `vk_member_hidden_keys()` with nothing behind them.
+
+**`GET /api/v1/messages` is scoped to the caller, correcting this file's own "leadership only" plan
+text.** `message_center` is not in `vk_member_hidden_keys()` — every Member holds `view` by default —
+and the web's own queries are already scoped by `sender_id`/`recipient_id`, i.e. an inbox, not a
+group-wide list. Building it leadership-only would have invented a restriction the product has never had.
+
+**Real gap found and fixed: `message_center.php`'s `send_message` handler had no `canCreate` check at
+all.** Only `requireViewPermission()` gated the page; any signed-in Member (view-only by default) could
+POST `send_message` directly and message any recipient, including replying to leadership. Fixed in both
+transports from one rule — `includes/api_communication.php`'s `vk_api_comm_is_leader()` is `create` on
+`message_center`, and the web file now checks the same thing before its INSERT, with `$can_create`
+hiding all five Compose/Reply triggers in the UI. **Two more defects surfaced while verifying this fix
+live, both pre-existing and unrelated to the fix's own logic:**
+1. `$success_messages`/`$error_messages` were declared AFTER the `if ($_POST)` block that reads and
+   writes them, so every catch{}'s error (and the delete/archive success messages) was silently wiped
+   before the page ever rendered — the block already correctly refused the write, but gave the user no
+   reason why. Moved the declarations before the block.
+2. The `catch` block called `$pdo->rollBack()` unconditionally, but `beginTransaction()` only runs deep
+   inside the `try` — any early exception (the three original validation throws, and now the new
+   permission check) threw its OWN uncaught `PDOException` ("There is no active transaction"), crashing
+   the whole page instead of showing the message. Guarded with `if ($pdo->inTransaction())`.
+   Both found and fixed by actually POSTing to the live page as a Member, not just reading the code —
+   confirmed the crash, confirmed the fix, confirmed Admin's legitimate send still works.
+
+**`GET /api/v1/sms` is leadership-only, tighter than the web.** `api/sms_center.php?action=list` returns
+the WHOLE group's outbound SMS log — every recipient's phone number and message text — to anyone
+holding `view` on `message_center`, i.e. every Member by default. Nothing in the code marks this as a
+deliberate disclosure (contrast `includes/api_reports.php`'s `vicoba_reports`, which has an explicit
+comment for its wider audience) — narrowed to `vk_api_comm_is_leader()` in the API rather than mirrored,
+per the group's own confirmed call. The web page itself was left as-is (out of scope: narrowing it would
+be a behavioral change to an existing screen, not an API decision) but is now a known, documented gap
+rather than an assumed-safe one.
+
+**`POST /api/v1/email` sidesteps the same exposure question by not existing as a list endpoint at all** —
+`api/email_center.php`'s own `?action=list` has the identical whole-group-log shape as SMS's, and there
+was no reason to build a second copy of that hole when nothing in this file ever asked for an email log
+endpoint in the first place. Send-only.
+
+**A real bug fixed in the mobile layer itself, caught by live verification, not code review:**
+`POST /api/v1/sms` and `POST /api/v1/email` originally paired `vk_api_ok()` (which always writes
+`{"status":"success"}`) with a 502 HTTP status on total delivery failure — a client checking the body's
+`status` field would see success while the transport code said otherwise. Both now always return 201:
+the log row is written regardless of gateway outcome, so the request itself succeeded; delivery result
+is `sent_count`/`failed_count` in the body, matching `api/sms_center.php`'s own convention of always
+200 with `success` as a body field, not an HTTP code.
+
+Verified live against the local WAMP instance: a Member's `GET /messages` returns their own empty
+inbox with `can_send: false`; Admin sent a message to that Member, the Member's inbox showed it unread,
+opening `GET /messages/{id}` marked it read, the count dropped to 0; a third, unrelated Member holding
+`message_center` view got a `404` (not `403`) opening someone else's message id; `POST /messages` from
+the Member was refused `403` naming the leadership-only rule; `GET /sms` was `403` for the Member and
+returned real logged data for Admin; `POST /sms`/`POST /email` against no configured local gateway/SMTP
+returned `201` with `sent_count: 0` gracefully, matching the web; `POST /ai/ask` and `POST /ai/chat`
+were `403` for the Member (`ai_ask_data`/`ai_assistant` correctly hidden) and, for Admin, the expected
+`ai_not_configured` (no provider key set locally, same as the web would show) — proving the auth/
+permission path without needing a live LLM key. Separately, on the actual web session: a Member's
+direct POST to `message_center.php` was refused with the correct on-page message and no crash; the same
+POST as Admin still redirected and inserted the message correctly.
 
 ## 17. Settings & Roles
 
@@ -771,6 +853,11 @@ figure as designed.
 
 ## Judgment calls to flag
 
-1. **Communication module scope** — `campaign_management.php`/`lead_generation.php` are excluded as Marketing-BMS leftovers, but the rest of Communication (message center, SMS, email templates, notifications, AI assistant) all have real `requireViewPermission()` gates matching real `permissions` table entries, so they're included as live. Worth a quick human sanity check on whether SMS/email are actually wired to a real provider in production or still scaffolded — I didn't trace that far (would need to check for a Twilio/Africa's Talking-style API key in config).
+1. **RESOLVED, checked before Module 16 was built.** SMS and email ARE wired to real providers
+   (Beem/Africa's Talking/Twilio/custom via `includes/sms_helper.php`; SMTP via `includes/email_helper.php`)
+   — not scaffolding. `sms_alerts` and `sms_templates`, however, ARE dead (no nav link; `sms_templates`'
+   own API is a permanent empty stub) and were excluded from Module 16 — see §16 above for the full
+   trace and the three other judgment calls (message scope, the send-permission gap, the SMS log
+   exposure) confirmed with the group before building.
 2. **Members import and bulk operations** (`customer_import.php`) — flagged as "scope separately" rather than folded into the standard Members CRUD list, since a CSV/XLSX upload flow is a different shape of endpoint (multipart upload + a preview/commit step, per how the M-Koba import works elsewhere in this codebase) and probably isn't a mobile-first feature anyway.
 3. **Two different gating patterns exist side by side** — `requireViewPermission('key')` (most admin/leadership pages) and a looser `require_once 'header.php'` + in-page role array check (member-facing and several accounts/communication pages, e.g. `record_payout.php`'s `$viongozi_roles` check). Both are real, live gates — the API layer should normalize these into one consistent permission-check pattern rather than copying the web app's inconsistency forward.
