@@ -1,18 +1,42 @@
 <?php
 require_once __DIR__ . '/../../../roots.php';
-require_once ROOT_DIR . '/header.php';
 
-// Check permissions
-/*if (!has_permission('manage_settings')) {
-    header('Location: unauthorized.php');
-    exit;
-}*/
+// FIX: this called a "has_permission" helper for 'manage_settings' that does
+// not exist anywhere in the codebase — it would have fataled the moment it
+// ran, so it was commented out instead of fixed, leaving the page with NO
+// gate at all.
+// Any authenticated user, including a plain Member, could load this page (the
+// SMTP password and SMS gateway API key/secret are rendered in plaintext into
+// form field values — type="password" only masks it visually) and POST any of
+// the save_* actions below to rewrite mail/SMS credentials, security policy,
+// or disable audit logging and 2FA. 'system_settings' is the real, existing,
+// admin-only permission key (includes/role_grants.php's vk_admin_only_keys())
+// that roots.php's own route already resolves this page under.
+//
+// Checked BEFORE header.php, not after: header.php emits HTML starting at its
+// own line ~125, and requireViewPermission()'s redirect is a plain header()
+// call — running it after header.php has already sent output would fail
+// silently (a PHP warning, not a redirect), leaving the page fully rendered
+// underneath. Every correctly-gated page in this codebase (e.g.
+// app/constant/communication/email_templates.php) checks first for exactly
+// this reason.
+requireViewPermission('system_settings');
+
+require_once ROOT_DIR . '/header.php';
 
 // Handle form submissions
 if ($_POST) {
+    // Every save_* branch below changes system-wide configuration; view alone
+    // must not be enough to write it (the "view checked, not edit" mistake
+    // found and fixed repeatedly elsewhere in this codebase).
+    if (!canEdit('system_settings')) {
+        header("Location: unauthorized.php");
+        exit();
+    }
+
     $success_messages = [];
     $error_messages = [];
-    
+
     // General Settings
     if (isset($_POST['save_general'])) {
         try {

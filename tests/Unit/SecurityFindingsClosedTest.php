@@ -168,4 +168,90 @@ class SecurityFindingsClosedTest extends TestCase
         $this->assertStringContainsString('VK_SESSION_ABSOLUTE_SECONDS', $src);
         $this->assertStringContainsString('function vk_session_expired', $src);
     }
+
+    // -------------------------------------------------------------------------
+    // SEC-002-class, found and fixed 2026-09-09 while tracing Module 17
+    // (Settings & Roles) before building any API on top of it. Two more
+    // backup endpoints had the exact same session-only gate SEC-002 already
+    // fixed on their siblings, and two admin pages had NO gate at all.
+    // -------------------------------------------------------------------------
+
+    #[DataProvider('backupPermissionEndpoints')]
+    public function testMoreBackupEndpointsRequireThePermission(string $relPath, string $action): void
+    {
+        $src = $this->read($relPath);
+        $this->assertStringContainsString(
+            "requirePermissionJson('$action', 'backup_restore')",
+            $src,
+            "$relPath must gate on the backup_restore permission"
+        );
+    }
+
+    public static function backupPermissionEndpoints(): array
+    {
+        return [
+            ['api/delete_backup.php', 'delete'],
+            ['api/get_backup_list.php', 'view'],
+        ];
+    }
+
+    public function testSystemSettingsPageGatesOnAPermissionThatActuallyExists(): void
+    {
+        // Previously called has_permission('manage_settings') — a function
+        // that exists nowhere in the codebase — commented out rather than
+        // fixed, leaving the page with NO gate. Any authenticated user,
+        // including a plain Member, could read the SMTP password and SMS
+        // gateway secret in plaintext (rendered into form field values) and
+        // POST any save_* action to rewrite mail/SMS credentials, security
+        // policy, or disable audit logging and 2FA.
+        $src = $this->read('app/constant/settings/system_settings.php');
+
+        $this->assertStringNotContainsString(
+            'has_permission(',
+            $src,
+            'has_permission() does not exist anywhere in this codebase; nothing should call it'
+        );
+
+        $viewCheck = strpos($src, "requireViewPermission('system_settings')");
+        $headerRequire = strpos($src, "require_once ROOT_DIR . '/header.php'");
+        $postBlock = strpos($src, 'if ($_POST)');
+        $editCheck = strpos($src, "canEdit('system_settings')");
+
+        $this->assertNotFalse($viewCheck, 'system_settings.php must call requireViewPermission(\'system_settings\')');
+        $this->assertNotFalse($headerRequire);
+        $this->assertNotFalse($postBlock);
+        $this->assertNotFalse($editCheck, 'the save_* handlers must check canEdit(\'system_settings\'), not view alone');
+
+        $this->assertLessThan(
+            $headerRequire,
+            $viewCheck,
+            'the permission check must run BEFORE header.php, which emits HTML — a redirect after that point fails silently'
+        );
+        $this->assertLessThan(
+            $editCheck,
+            $postBlock,
+            'the edit check must sit inside the $_POST block, gating every save_* action'
+        );
+    }
+
+    public function testUsersListPageHasARealGateNotAJustifyingComment(): void
+    {
+        // Previously the only text near a permission check was a comment
+        // claiming "Permissions are automatically enforced by header.php" —
+        // header.php has no such mechanism. Any authenticated user, including
+        // a plain Member, could view the full user list (names, emails,
+        // roles, status).
+        $src = $this->read('app/constant/settings/users.php');
+
+        $viewCheck = strpos($src, "requireViewPermission('users')");
+        $headerRequire = strpos($src, "require_once 'header.php'");
+
+        $this->assertNotFalse($viewCheck, 'users.php must call requireViewPermission(\'users\')');
+        $this->assertNotFalse($headerRequire);
+        $this->assertLessThan(
+            $headerRequire,
+            $viewCheck,
+            'the permission check must run before header.php emits any HTML'
+        );
+    }
 }

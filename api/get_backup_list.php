@@ -1,12 +1,16 @@
 <?php
 header('Content-Type: application/json');
 
-session_start();
-if (!isset($_SESSION['user_id'])) {
-    http_response_code(401); // audit: refusal must not return HTTP 200
-    echo json_encode(['success' => false, 'message' => 'Unauthorized']);
-    exit();
-}
+require_once __DIR__ . '/../includes/config.php';
+
+// Same SEC-002-class gap as api/delete_backup.php: session-only, not gated on
+// backup_restore. Lower severity (filenames/dates/sizes, not DB content), but
+// still an unnecessary disclosure to any authenticated Member, and this file
+// remains independently routed even though backup_restore.php's own UI lists
+// backups server-side inline rather than calling this endpoint.
+require_once __DIR__ . '/../includes/require_auth.php';
+require_once __DIR__ . '/../core/permissions.php';
+requirePermissionJson('view', 'backup_restore');
 
 try {
     $backup_dir = __DIR__ . '/../backups/';
