@@ -4,6 +4,69 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-09-09 — Module 17: Settings & Roles — PR pending
+
+**Branch:** `develop` (feature branch not yet cut)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** 9 endpoints across Users, Roles & Permissions, System Settings, and Backups. New shared file:
+`includes/api_settings.php`. Every endpoint gates on `vk_api_is_admin((int) $auth['role_id'])` directly —
+not `vk_api_can()`/a page_key — deliberate, given what this module found (below).
+
+**A live, actively-exploitable vulnerability found while tracing this module, shipped as a standalone
+hotfix before any of the rest of it was built** — see this file's own entry immediately below this one.
+`system_settings.php` had no permission gate at all (a `has_permission()` call to a function that
+doesn't exist anywhere, commented out rather than fixed); `users.php` had the same shape of gap; two
+backup endpoints had the same session-only gate SEC-002 already fixed on their siblings.
+
+**A second, bigger finding surfaced while verifying that hotfix live on demo — deliberately left open,
+the user's own call.** `core/permissions.php`'s `isAdmin()` also matches session role-NAME strings
+(which can drift from the real `role_id`) against a hardcoded admin list — demonstrated live: a Member
+account bypassed an admin-only backup endpoint through this path, not a bad permission grant. Already
+flagged in-code as "SEC-015"; the mobile API's own `vk_api_is_admin()` never carried this behavior
+forward, which is exactly why this module (and every prior one) is unaffected. Recorded in project
+memory (`sec-015-isadmin-name-bypass`) rather than fixed — a hasty rewrite of `isAdmin()` risks locking
+out a real Chairperson/Secretary whose account might depend on the fallback, and the user asked to be
+told, not have it touched, this session.
+
+**Two product-policy judgment calls, confirmed with the group before writing any code:**
+1. Role changes tightened to Admin/Chairperson only, in the API and on the web
+   (`actions/update_user_role.php`'s old `$viongozi_roles` array let Secretary/Treasurer grant Admin
+   too — now `canEdit('users')`, matching `edit_user.php`'s own stricter gate for the same action).
+2. User deletion excluded from the API entirely — `actions/update_user_status.php`'s `'deleted'` status
+   never soft-deletes, it runs an actual `DELETE FROM users`, and isn't even a real value in the live
+   `users.status` enum (`pending`/`active`/`rejected`/`dormant`, confirmed against the database directly
+   — `database/schema_sync.sql`'s dump is stale here).
+
+**Router-constraint flattening, same class as Modules 13/15:** `GET /api/v1/settings/backup/{id}/download`
+couldn't route at all — backups are files, not rows with a numeric id. Flattened to
+`GET /api/v1/backup-download?file=<filename>`, reusing `api/download_backup.php`'s already-audited
+traversal-safe path handling verbatim.
+
+**Two small hardenings beyond the web's own behavior:** `PUT /roles/{id}/permissions` refuses
+`create/edit/delete` granted without `view` (`422 view_required`) — the web only enforces that via
+disabled checkboxes client-side, not exploitable today but no reason to persist an inconsistent row when
+validating is free. `PUT /settings/system` accepts any subset of `{general, email, sms, security, group}`
+— only sections present are validated/saved, matching the web's independent per-section Save buttons.
+
+**Tests.** `SettingsApiTest` (written by the `test-writer` agent) plus new regression coverage in
+`SecurityFindingsClosedTest` for the `update_user_role.php` fix. `composer test-unit`: full suite green,
+no regressions (exact count in the PR).
+
+**Verified live against the local WAMP instance:** full user lifecycle (create → promote role → change
+status → `status: "deleted"` correctly refused `422`, never reaching a delete path); role_id 1's
+permissions PUT refused while GET still works; `settings/system` GET/PUT round-tripped a real value;
+`settings/backup` POST created a real dump via `vikundi_write_dump()` (the same engine the live UI uses),
+GET listed it, `backup-download` streamed it and refused a `../` traversal attempt cleanly; every
+endpoint `403`'d for a Member, succeeded for Admin. Separately on the actual web: a freshly-created
+Secretary account was refused by the fixed `update_user_role.php`, Admin's identical request still
+succeeded.
+
+**Docs deliberately not done yet** — per the established order (build → deploy → verify live → docs →
+handover).
+
+---
+
 ## Session — 2026-09-09 — Hotfix: system_settings.php and users.php had no permission gate at all
 
 **Branch:** `hotfix/settings-gate` (from `develop`)
