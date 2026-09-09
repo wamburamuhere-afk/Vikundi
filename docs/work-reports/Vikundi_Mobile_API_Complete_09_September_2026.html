@@ -1,0 +1,254 @@
+<title>Mobile API — Complete</title>
+<style>
+:root {
+  --brand:#0a4a8f; --brand2:#1a7fd4; --ink:#0f1c2c; --muted:#5c6b7a;
+  --bg:#ffffff; --panel:#eef4fa; --line:#d7e3ee; --accent:#c97a10; --danger:#b3261e; --danger-bg:#fdf3f2;
+  --good:#1a7a4c; --good-bg:#eaf7f0;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink:#e3edf7; --muted:#93a6b8; --bg:#0a121c; --panel:#101d2c; --line:#213348;
+    --accent:#e8a33d; --danger:#ff6b5e; --danger-bg:#241614; --good:#3ecf8e; --good-bg:#0f231a;
+  }
+}
+:root[data-theme="dark"] {
+  --ink:#e3edf7; --muted:#93a6b8; --bg:#0a121c; --panel:#101d2c; --line:#213348;
+  --accent:#e8a33d; --danger:#ff6b5e; --danger-bg:#241614; --good:#3ecf8e; --good-bg:#0f231a;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink);
+  font:15.5px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+.wrap { max-width:1000px; margin:0 auto; padding:0 22px 70px; }
+header.hero { background:linear-gradient(135deg,#052440 0%,#0a4a8f 45%,#1a7fd4 100%);
+  color:#fff; padding:46px 22px 40px; margin-bottom:8px; }
+header.hero .inner { max-width:1000px; margin:0 auto; }
+.kicker { text-transform:uppercase; letter-spacing:.16em; font-size:12px; font-weight:700; opacity:.85; }
+h1 { margin:.3em 0 .2em; font-size:2.2rem; line-height:1.14; font-weight:800; }
+.sub { font-size:1.05rem; opacity:.94; margin:0; max-width:70ch; }
+.stats { display:flex; flex-wrap:wrap; gap:14px; margin:30px 0 10px; }
+.stat { flex:1 1 155px; background:var(--panel); border:1px solid var(--line);
+  border-left:5px solid var(--brand2); border-radius:10px; padding:14px 16px; }
+.stat b { display:block; font-size:2.05rem; font-weight:800; color:var(--brand2); line-height:1.1; }
+.stat span { font-size:.8rem; color:var(--muted); text-transform:uppercase; letter-spacing:.07em; font-weight:700; }
+h2 { font-size:1.42rem; margin:42px 0 6px; font-weight:800; color:var(--brand); }
+h2 .n { display:inline-block; background:var(--brand); color:#fff; width:1.7em; height:1.7em;
+  line-height:1.7em; text-align:center; border-radius:7px; font-size:.78em; margin-right:.5em; }
+h3 { font-size:1.06rem; margin:26px 0 4px; font-weight:700; }
+p.lead { color:var(--muted); margin:.2em 0 1em; max-width:74ch; }
+p { max-width:74ch; }
+.scroll { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; margin:12px 0 6px; font-size:.93rem; }
+th { background:var(--brand); color:#fff; text-align:left; padding:10px 12px; font-weight:700;
+  font-size:.78rem; text-transform:uppercase; letter-spacing:.06em; }
+td { padding:9px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+tbody tr:nth-child(even) { background:var(--panel); }
+.tick { color:var(--brand2); font-weight:800; }
+.cross { color:var(--muted); font-weight:800; }
+.note { border-left:5px solid var(--accent); background:var(--panel);
+  padding:13px 17px; border-radius:0 9px 9px 0; margin:18px 0; }
+.sev { border-left-color:var(--danger); background:var(--danger-bg); }
+.sev strong { color:var(--danger); }
+.win { border-left-color:var(--good); background:var(--good-bg); }
+.win strong { color:var(--good); }
+code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.9em;
+  background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:1px 5px; }
+.bar { display:flex; height:26px; border-radius:6px; overflow:hidden; border:1px solid var(--line); margin:10px 0 4px; }
+.bar i { display:block; }
+.bar .done { background:var(--brand2); }
+.bar .todo { background:var(--panel); }
+.barlab { font-size:.84rem; color:var(--muted); }
+.pillrow { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0; }
+.pill { background:var(--panel); border:1px solid var(--line); border-radius:999px;
+  padding:5px 14px; font-size:.83rem; font-weight:600; }
+.pill.done { color:var(--brand2); border-color:var(--brand2); }
+.pill.todo { color:var(--muted); }
+footer { margin-top:48px; padding-top:18px; border-top:2px solid var(--line);
+  color:var(--muted); font-size:.87rem; }
+@media print {
+  header.hero, th, .stat b, .bar i { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  h2 { page-break-after:avoid; } tr { page-break-inside:avoid; }
+}
+</style>
+
+<header class="hero"><div class="inner">
+  <div class="kicker">BJP Technologies &middot; Vikundi VICOBA System</div>
+  <h1>Mobile App Foundation &mdash; Complete</h1>
+  <p class="sub">All eighteen planned modules are now finished, deployed and documented. The last
+  three &mdash; messaging, the administrator's settings screens, and a member's own account page
+  &mdash; went live this round, closing out every doorway the phone app will ever need from the
+  server. The mobile API itself is done; what's next is building the app on top of it.</p>
+</div></header>
+
+<div class="wrap">
+
+<div class="stats">
+  <div class="stat"><b>139</b><span>API endpoints live</span></div>
+  <div class="stat"><b>18 / 18</b><span>Modules complete</span></div>
+  <div class="stat"><b>7</b><span>Defects found &amp; fixed this round</span></div>
+  <div class="stat"><b>2,389</b><span>Automated tests</span></div>
+  <div class="stat"><b>2</b><span>Sites deployed</span></div>
+</div>
+
+<h2><span class="n">1</span>Where the project stands</h2>
+
+<p>This is a completion snapshot, not an incremental update: it covers everything built from the
+start of the mobile API project, not just this round. <strong>All eighteen planned modules are
+live</strong> &mdash; every financial screen the group runs on, meetings, the document library and
+in-app letter writer, elections and leadership applications, the full set of statements and reports,
+and now messaging, administration, and a member's own account. There is no module left to build.</p>
+
+<div class="bar" aria-label="139 of 139 planned endpoints complete">
+  <i class="done" style="width:100%"></i>
+</div>
+<p class="barlab">139 of 139 planned endpoints. Everything the phone app needs from the server, for
+every role from an ordinary member to the Administrator, is now live on both sites.</p>
+
+<h2><span class="n">2</span>What's finished</h2>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>#</th><th>Module</th><th>What it unlocks</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td><strong>Sign in</strong></td><td>Log in, stay logged in securely, sign out, sign out of every device at once</td><td class="tick">Live</td></tr>
+    <tr><td>2</td><td><strong>Home screen</strong></td><td>Group totals for leadership; an ordinary member sees only their own position</td><td class="tick">Live</td></tr>
+    <tr><td>3</td><td><strong>Members</strong></td><td>Roster, profile, registration, edit, approve/reject/reactivate</td><td class="tick">Live</td></tr>
+    <tr><td>&mdash;</td><td><strong>Group settings</strong></td><td>Read and edit the group's full configuration; logo upload</td><td class="tick">Live</td></tr>
+    <tr><td>4</td><td><strong>Contributions</strong></td><td>A member's own standing, the group's ledger, the review&rarr;approve trail</td><td class="tick">Live</td></tr>
+    <tr><td>5</td><td><strong>Transactions</strong></td><td>Money by the date it arrived &mdash; group ledger and a member's own receipts</td><td class="tick">Live</td></tr>
+    <tr><td>6</td><td><strong>Fines</strong></td><td>Record, edit, waive, mark paid; a member sees their own and everyone's</td><td class="tick">Live</td></tr>
+    <tr><td>7</td><td><strong>Condolences</strong></td><td>Bereavement assistance, review&rarr;approve, a member's own history, a sustainability report</td><td class="tick">Live</td></tr>
+    <tr><td>8</td><td><strong>Financial ledger &amp; reconciliation</strong></td><td>Every member's standing side by side, the group's real balance, M-Koba tie-out</td><td class="tick">Live</td></tr>
+    <tr><td>9</td><td><strong>Expenses &amp; petty cash</strong></td><td>Record, review&rarr;approve, mark-paid, a spending summary</td><td class="tick">Live</td></tr>
+    <tr><td>10</td><td><strong>Budgets</strong></td><td>Plan a spend with a line-by-line breakdown, review&rarr;approve&rarr;reject</td><td class="tick">Live</td></tr>
+    <tr><td>11</td><td><strong>Member payouts</strong></td><td>One-off member assistance, recorded the moment it happens</td><td class="tick">Live</td></tr>
+    <tr><td>12</td><td><strong>Meetings</strong></td><td>Schedule, record attendance, fine absentees</td><td class="tick">Live</td></tr>
+    <tr><td>13</td><td><strong>Documents</strong></td><td>The shared file library, and an in-app letter/contract writer with multi-party e-signing</td><td class="tick">Live</td></tr>
+    <tr><td>14</td><td><strong>Voting &amp; leadership applications</strong></td><td>Run a secret-ballot election end to end; apply and be reviewed for office</td><td class="tick">Live</td></tr>
+    <tr><td>15</td><td><strong>Reports &amp; statements</strong></td><td>Personal and group NSSF-style statements, group summary and member-analytics reports</td><td class="tick">Live</td></tr>
+    <tr><td>16</td><td><strong>Communication</strong></td><td>Messaging, SMS, email, notifications, the AI assistant</td><td class="tick">Live &mdash; new</td></tr>
+    <tr><td>17</td><td><strong>Settings &amp; roles</strong></td><td>User management, role permissions, system settings, backups</td><td class="tick">Live &mdash; new</td></tr>
+    <tr><td>18</td><td><strong>Profile</strong></td><td>A member's own account, password, and preferences</td><td class="tick">Live &mdash; new</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2><span class="n">3</span>What's new this round</h2>
+
+<p class="lead">Three modules, thirty endpoints &mdash; the last of the app's administrative
+scaffolding, closing out the plan.</p>
+
+<h3>Communication</h3>
+<p>An in-app inbox every member already has &mdash; open to everyone, not just leadership. Sending a
+message, an SMS, or an email stays a leadership action, same as it is today. The AI assistant is
+built and wired in, ready for the moment a provider is configured in Settings; until then it tells
+the user honestly that it isn't set up yet, rather than pretending to work.</p>
+
+<h3>Settings &amp; Roles</h3>
+<p>Everything an Administrator needs to manage user accounts, hand out permissions role by role, and
+configure the system &mdash; opened rarely, by one or two people, never by an ordinary member.
+Creating a full database backup, and downloading one, now both work from the phone as well as the
+browser. There is deliberately no way to delete a user account from the app at all.</p>
+
+<h3>Profile</h3>
+<p>A member's own "My Account" page &mdash; name, phone, email, a profile photo, a password change,
+and display/notification preferences. The smallest of the three, and the only one open to every
+member rather than leadership.</p>
+
+<h2><span class="n">4</span>Defects found in the existing system this round</h2>
+
+<p class="lead">The same pattern as every round so far: building each doorway means reading exactly
+how the web system enforces its rules, and that reading keeps finding places where it doesn't. Two
+findings this round were more serious than usual, and were fixed and put live as their own emergency
+release, ahead of and separate from this round's new features.</p>
+
+<div class="note sev">
+  <strong>Any signed-in user could read the group's email and SMS passwords in plain text, and
+  rewrite them.</strong> The System Settings page's permission check had been broken since it was
+  written &mdash; it called on a piece of the system that no longer exists, so the check silently
+  never ran at all. Any ordinary member, not just an administrator, could open the page and see the
+  live email and SMS sending passwords, and could submit changes to them, to the group's security
+  settings, and could switch off the system's own audit trail. Found before it could be exploited
+  and fixed as an emergency release, ahead of this round's other work, and confirmed closed on both
+  the live site and the demonstration site the same day.
+</div>
+
+<div class="note sev">
+  <strong>A forged link could change a signed-in member's password without their knowledge.</strong>
+  The "My Account" page's password-change form had no protection against a well-known trick where a
+  malicious website submits a hidden form on a visitor's behalf, using whatever session happens to
+  be open in their browser at the time. Closed the same way the rest of the system already protects
+  every other form.
+</div>
+
+<div class="note">
+  <strong>Any signed-in member could send a message to anyone in the group.</strong> The message
+  center's send button was hidden from ordinary members in the browser, but the page behind it never
+  actually checked who was allowed to press it &mdash; a member could still trigger a send directly.
+  Fixed on both the phone app and the website at the same time, and the button itself is now hidden
+  correctly for anyone without permission to use it.
+</div>
+
+<div class="note">
+  <strong>Two more system-backup doorways had the same weak check already fixed elsewhere in the
+  system.</strong> They only confirmed someone was logged in, not that they were actually allowed to
+  touch backups &mdash; meaning any member could have deleted a backup file outright. Brought in
+  line with the rest of the backup system, which already checks properly.
+</div>
+
+<div class="note">
+  <strong>Two group leadership roles &mdash; secretary and treasurer &mdash; could change any
+  member's role, including promoting someone to full Administrator.</strong> That level of change is
+  now restricted to the Administrator and Chairperson only, matching the rule the main "edit member"
+  screen already enforced &mdash; the looser rule lived only in a secondary quick-action button.
+</div>
+
+<div class="note win">
+  <strong>A permission mix-up was found and corrected the same day, before it reached the app.</strong>
+  While double-checking the settings fix above, one ordinary member account was found to have been
+  quietly granted the ability to trigger a full database backup &mdash; not because of any weakness
+  in the phone app, which was never affected, but because of a single incorrect setting left over on
+  the account itself. Traced to its exact cause and corrected. Standard practice on this project is
+  to verify every finding against the live server under a real account before calling it closed;
+  that is exactly what caught this one.
+</div>
+
+<h2><span class="n">5</span>How the work is checked</h2>
+
+<p class="lead">Unchanged from every report so far, and still the standard every module is held to.</p>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>Check</th><th>What it means</th></tr></thead>
+  <tbody>
+    <tr><td><strong>2,389 automated tests</strong></td><td>Up from 2,141. Every change runs all of them before it can ship.</td></tr>
+    <tr><td><strong>Every endpoint tried on the live site</strong></td><td>Passing tests is not the standard. Each one is exercised against the running server, as every role, before being called finished.</td></tr>
+    <tr><td><strong>Refusals tested as hard as successes</strong></td><td>Both serious findings this round were found exactly this way &mdash; by deliberately testing what a member should <em>not</em> be able to do, not just what they should.</td></tr>
+    <tr><td><strong>Serious findings ship as their own release, immediately</strong></td><td>The email/SMS password exposure was fixed and deployed as a standalone emergency release, ahead of and separate from this round's new features, rather than waiting for the whole round to be ready.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2><span class="n">6</span>Demonstration site</h2>
+
+<p>Still running at <code>demo.vikundi.bjptechnologies.co.tz</code>, on its own database, and still
+the proving ground for every module before it ships: every defect above, and every one of this
+round's thirty new endpoints, was verified there under real accounts &mdash; Administrator,
+Chairperson and an ordinary member &mdash; before being called finished, including a full
+account-photo upload and a real database backup created and downloaded end to end.</p>
+
+<h2><span class="n">7</span>What's next</h2>
+
+<div class="pillrow">
+  <span class="pill done">1&ndash;18 &middot; All modules live</span>
+</div>
+
+<p>There is no module left on the server side of this project &mdash; every doorway the phone app
+will ever need to open is built, deployed, tested, and documented. What's next is the app itself:
+building the actual screens a member and a leader will hold in their hand, on top of the 139
+doorways this project has spent the last several weeks opening one at a time.</p>
+
+<footer>
+  BJP Technologies &middot; Vikundi VICOBA Management System<br>
+  Live: vikundi.bjptechnologies.co.tz &middot; Demonstration: demo.vikundi.bjptechnologies.co.tz
+</footer>
+</div>
