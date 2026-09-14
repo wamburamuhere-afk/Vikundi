@@ -148,6 +148,10 @@ $routes = [
     // ========================================================================
     'login' => ROOT_DIR . '/login.php',
     'logout' => ROOT_DIR . '/logout.php',
+    // Public, no session/auth of any kind — the Play Store's own crawler and a
+    // logged-out visitor must both reach this with zero redirects. Referenced
+    // from the Vikundi Android app's Play Console listing.
+    'privacy' => ROOT_DIR . '/privacy.php',
     'dashboard' => ROOT_DIR . '/app/dashboard.php',
     // 'loan-dashboard' => ROOT_DIR . '/app/loan-dashboard.php',
     'register' => ROOT_DIR . '/register.php',
