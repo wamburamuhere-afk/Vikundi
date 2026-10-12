@@ -112,6 +112,10 @@ if (!function_exists('vk_group_settings_writable')) {
             'cycle_type'                => 'enum:monthly,weekly',
             'monthly_contribution'      => 'money',
             'entrance_fee'              => 'money',
+            'share_price'               => 'money',
+            'shares_from_monthly'       => 'enum:on,off',
+            'social_fund_amount'        => 'money',
+            'membership_deposit_amount' => 'money',
             'meeting_absence_fine'      => 'money',
             'fine_late_meeting'         => 'money',
             'fine_late_contribution'    => 'money',
@@ -142,6 +146,7 @@ if (!function_exists('vk_group_settings_defaults')) {
             'max_members'      => '30',
             'deadline_day'     => '15',
             'auto_termination' => 'off',
+            'shares_from_monthly' => 'off',
         ];
     }
 }

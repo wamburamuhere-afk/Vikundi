@@ -133,6 +133,7 @@ if (!function_exists('vk_mkoba_statement_row')) {
         $labels = [
             'entrance' => 'Entrance Fee', 'monthly' => 'Member Contribution',
             'agm' => 'AGM Contribution', 'fine' => 'Fine', 'other' => 'Other',
+            'share' => 'Shares', 'social_fund' => 'Social Fund', 'deposit' => 'Membership Deposit',
         ];
         $transType = $val('mkoba_trans_type') !== ''
             ? $val('mkoba_trans_type')
