@@ -48,6 +48,12 @@ try {
 } catch (Throwable $e) {
     $loan_summary = ['loans' => 0, 'owed' => 0.0, 'next_due' => null, 'next_amount' => 0.0];
 }
+try {
+    require_once __DIR__ . '/../../../includes/dividends.php';
+    $my_dividend = dv_member_latest($pdo, $customer_id);
+} catch (Throwable $e) {
+    $my_dividend = null;
+}
 $show_buckets = $fb_rules['share_price'] > 0
     || ($buckets['shares'] + $buckets['social_fund'] + $buckets['deposit']) > 0;
 $monthly      = vk_member_monthly_savings($pdo, $customer_id, 12);   // ['YYYY-MM' => total]
@@ -91,6 +97,21 @@ includeHeader();
             ? $t('A member has asked you to guarantee their loan.', 'Mwanachama amekuomba umdhamini mkopo wake.')
             : $t("$guarantee_waiting members have asked you to guarantee their loans.", "Wanachama $guarantee_waiting wamekuomba uwadhamini mikopo yao.") ?></span>
         <a class="btn btn-warning btn-sm fw-bold" href="<?= getUrl('my_loans') ?>"><?= $t('Review', 'Angalia') ?></a>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($my_dividend): ?>
+    <div class="card border-0 shadow-sm mb-3" style="border-left:5px solid #1a7f4b !important;">
+        <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <div class="text-muted small text-uppercase fw-bold"><?= $t('My dividend', 'Gawio langu') ?> · <?= date('M Y', strtotime($my_dividend['period_from'])) ?> – <?= date('M Y', strtotime($my_dividend['period_to'])) ?></div>
+                <div class="fs-4 fw-bold text-success"><?= $fmt($my_dividend['amount']) ?></div>
+            </div>
+            <div class="text-end small text-muted">
+                <?= $my_dividend['method'] === 'shares' ? $t('Added to your shares', 'Limeongezwa kwenye hisa zako') : $t('Paid out in cash', 'Limelipwa taslimu') ?><br>
+                <?= $t('on share capital of', 'kwa mtaji wa hisa wa') ?> <?= $fmt($my_dividend['share_capital']) ?>
+            </div>
+        </div>
     </div>
     <?php endif; ?>
 
