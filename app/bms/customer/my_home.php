@@ -28,6 +28,12 @@ if ($customer_id > 0) {
 $savings      = vk_member_savings_total($pdo, $customer_id);
 $this_year    = vk_member_savings_since($pdo, $customer_id, date('Y-01-01'));
 $fines_due    = vk_member_outstanding_fines($pdo, $customer_id);
+// Shares / Social Fund / membership deposit. Shown only once the group uses
+// them, so a group that keeps one pot is not handed a row of empty cards.
+$fb_rules     = fb_load_settings($pdo);
+$buckets      = fb_member_balances($pdo, $customer_id, $fb_rules);
+$show_buckets = $fb_rules['share_price'] > 0
+    || ($buckets['shares'] + $buckets['social_fund'] + $buckets['deposit']) > 0;
 $monthly      = vk_member_monthly_savings($pdo, $customer_id, 12);   // ['YYYY-MM' => total]
 $streak       = vk_contribution_streak(array_keys($monthly), date('Y-m'));
 $saved_this_m = $monthly[date('Y-m')] ?? 0;
@@ -109,6 +115,47 @@ includeHeader();
             </div>
         </div>
     </div>
+
+    <?php if ($show_buckets): ?>
+    <!-- Shares & funds: the Social Fund and the deposit are shown apart from savings -->
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100" style="border-left:5px solid #1a7f4b !important;">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase fw-bold"><?= $t('Share capital', 'Mtaji wa hisa') ?></div>
+                    <div class="fs-4 fw-bold text-success"><?= $fmt($buckets['shares']) ?></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100" style="border-left:5px solid #0f4c81 !important;">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase fw-bold"><?= $t('Shares held', 'Idadi ya hisa') ?></div>
+                    <div class="fs-4 fw-bold text-primary"><?= $fb_rules['share_price'] > 0 ? rtrim(rtrim(number_format($buckets['share_count'], 2), '0'), '.') : '—' ?></div>
+                    <?php if ($fb_rules['share_price'] > 0): ?>
+                    <div class="small text-muted"><?= $t('at', 'kwa') ?> <?= $fmt($fb_rules['share_price']) ?> <?= $t('per share', 'kwa hisa') ?></div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100" style="border-left:5px solid #6f42c1 !important;">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase fw-bold"><?= $t('Social Fund paid', 'Mfuko wa Jamii') ?></div>
+                    <div class="fs-4 fw-bold" style="color:#6f42c1;"><?= $fmt($buckets['social_fund']) ?></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100" style="border-left:5px solid #adb5bd !important;">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase fw-bold"><?= $t('Membership deposit', 'Amana ya uanachama') ?></div>
+                    <div class="fs-4 fw-bold text-secondary"><?= $fmt($buckets['deposit']) ?></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <div class="row g-3">
         <!-- Contribution history -->

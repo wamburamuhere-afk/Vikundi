@@ -23,7 +23,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $description = $_POST['description'] ?? '';
 
     // Transactions form fields (validated against the allowed sets).
-    $allowed_types    = ['entrance', 'monthly', 'agm', 'fine', 'other'];
+    require_once __DIR__ . '/../includes/fund_buckets.php';
+    $allowed_types    = fb_types();
     $allowed_accounts = ['M-Koba', 'Bank', 'Cash', 'Mobile Money'];
 
     $contribution_type = in_array($_POST['contribution_type'] ?? '', $allowed_types, true)

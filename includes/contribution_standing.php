@@ -25,6 +25,8 @@
  *     place, and every screen follows.
  */
 
+require_once __DIR__ . '/fund_buckets.php'; // which contribution types are savings
+
 if (!function_exists('cs_is_opening')) {
     /** Is a raw contribution row money carried in from M-Koba (opening savings)? */
     function cs_is_opening(?string $mkobaTransId, ?string $account): bool
@@ -116,7 +118,7 @@ if (!function_exists('cs_group_savings_total')) {
               FROM contributions co
               JOIN customers c ON c.customer_id = co.member_id AND c.status <> 'deleted'
              WHERE co.status IN ('confirmed','approved','')
-               AND co.contribution_type <> 'fine'
+               AND co.contribution_type NOT IN (" . fb_sql_list(fb_not_savings_types()) . ")
         ")->fetchColumn();
     }
 }
@@ -147,7 +149,7 @@ if (!function_exists('cs_group_standing')) {
             LEFT JOIN contributions co
                    ON c.customer_id = co.member_id
                   AND co.status IN ('confirmed','approved','')
-                  AND co.contribution_type <> 'fine'
+                  AND co.contribution_type NOT IN (" . fb_sql_list(fb_not_savings_types()) . ")
             WHERE c.status <> 'deleted'
             GROUP BY c.customer_id
         ")->fetchAll(PDO::FETCH_ASSOC);
@@ -383,7 +385,7 @@ if (!function_exists('cs_statement_filter_sql')) {
     {
         $p = $alias === '' ? '' : rtrim($alias, '.') . '.';
         return "{$p}status IN ('confirmed','approved','')
-                AND ({$p}contribution_type IN ('monthly','entrance','other')
+                AND ({$p}contribution_type IN (" . fb_sql_list(fb_savings_types()) . ")
                      OR {$p}contribution_type = '' OR {$p}contribution_type IS NULL)";
     }
 }

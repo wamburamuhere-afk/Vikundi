@@ -174,6 +174,41 @@ function gs($settings, $key, $default = '') {
         </div>
     </div>
 
+    <!-- KADI 3: HISA NA MIFUKO (fund buckets — rules read by includes/fund_buckets.php) -->
+    <div class="col-12">
+        <div class="card border border-primary-subtle shadow-sm rounded-4 overflow-hidden">
+            <div class="card-header bg-white border-bottom py-3">
+                <h6 class="mb-0 fw-bold text-primary"><i class="bi bi-pie-chart-fill me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Hisa na Mifuko' : 'Shares & Funds' ?></h6>
+            </div>
+            <div class="card-body p-4 text-start">
+                <div class="alert alert-primary border-primary py-2 small mb-4">
+                    <i class="bi bi-info-circle-fill me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mfuko wa Jamii na Amana ya Uanachama huhifadhiwa kando — haviingii kwenye akiba ya mwanachama wala kwenye gawio. Ukiacha kiasi wazi, kanuni hiyo haitumiki.' : 'The Social Fund and the Membership Deposit are kept apart — they never count as a member\'s savings or toward a dividend. Leave an amount blank to switch that rule off.' ?>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold text-dark"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Bei ya Hisa Moja (TZS)' : 'Price per Share (TZS)' ?></label>
+                        <input type="number" min="0" step="any" name="share_price" class="form-control border-secondary-subtle" value="<?= htmlspecialchars(gs($settings_raw, 'share_price')) ?>">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold text-dark"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mchango wa Mzunguko ni Hisa?' : 'Cycle Contribution Buys Shares?' ?></label>
+                        <select name="shares_from_monthly" class="form-select border-secondary-subtle">
+                            <option value="off" <?= gs($settings_raw, 'shares_from_monthly', 'off') !== 'on' ? 'selected' : '' ?>><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Hapana — hisa hununuliwa kando' : 'No — shares are bought separately' ?></option>
+                            <option value="on" <?= gs($settings_raw, 'shares_from_monthly') === 'on' ? 'selected' : '' ?>><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Ndiyo — mchango ndio hisa' : 'Yes — the contribution is the share' ?></option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold text-dark"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mfuko wa Jamii kwa Mzunguko (TZS)' : 'Social Fund per Cycle (TZS)' ?></label>
+                        <input type="number" min="0" step="any" name="social_fund_amount" class="form-control border-secondary-subtle" value="<?= htmlspecialchars(gs($settings_raw, 'social_fund_amount')) ?>">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold text-dark"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Amana ya Uanachama (TZS)' : 'Membership Deposit (TZS)' ?></label>
+                        <input type="number" min="0" step="any" name="membership_deposit_amount" class="form-control border-secondary-subtle" value="<?= htmlspecialchars(gs($settings_raw, 'membership_deposit_amount')) ?>">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- KADI 4: SHERIA KALI (AUTO-TERMINATION) -->
     <div class="col-12">
         <div class="card border border-primary-subtle shadow-sm rounded-4 overflow-hidden">

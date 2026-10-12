@@ -55,7 +55,8 @@ if (!function_exists('vk_api_contrib_types')) {
     /** The contribution_type enum, as the column declares it. */
     function vk_api_contrib_types(): array
     {
-        return ['entrance', 'monthly', 'agm', 'fine', 'other'];
+        require_once __DIR__ . '/fund_buckets.php';
+        return fb_types();
     }
 }
 
@@ -168,7 +169,7 @@ if (!function_exists('vk_api_contrib_row')) {
             'evidence_url'    => !empty($r['evidence_path']) ? (string) $r['evidence_path'] : null,
             'is_opening'      => cs_is_opening($r['mkoba_trans_id'] ?? null, $r['account'] ?? null),
             'counts_toward_savings' => in_array($status, ['approved', 'confirmed', ''], true)
-                && in_array($type, ['monthly', 'entrance', 'other', ''], true),
+                && in_array($type, array_merge(fb_savings_types(), ['']), true),
             'created_at'  => $r['created_at']  ? date(DATE_ATOM, strtotime((string) $r['created_at']))  : null,
             'reviewed_at' => $r['reviewed_at'] ? date(DATE_ATOM, strtotime((string) $r['reviewed_at'])) : null,
             'approved_at' => $r['approved_at'] ? date(DATE_ATOM, strtotime((string) $r['approved_at'])) : null,

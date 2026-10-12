@@ -4,6 +4,50 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-12 — Fund buckets: shares, Social Fund, membership deposit — PR open
+
+**Branch:** `feat/fund-buckets-and-vicoba-settings` (off `develop`)
+**Developer:** Claude Code / Jabir Mussa
+
+**Why:** a prospect (Wise Wallet M-KOBA, 25 members) needs shares, a Social Fund and membership
+deposits kept apart, with year-end dividends on shares. Vikundi had one pot and no share concept. This
+is slice 1 of 4 toward that demo (then loans, dividends, demo instance).
+
+**Summary:** new `includes/fund_buckets.php` is the single definition of which pot a contribution
+belongs to. Three contribution types added — `share`, `social_fund`, `deposit`. Shares are member
+savings; the Social Fund and the deposit are ring-fenced and never are.
+
+**Schema:** `database/add_fund_bucket_contribution_types.php` widens `contributions.contribution_type`
+(values appended, existing rows untouched). Registered in `migrate.php`; `schema_sync.sql` updated for
+fresh installs. **Run `php database/migrate.php` on deploy.**
+
+**Settings (Group Settings → Shares & Funds):** `share_price`, `shares_from_monthly` (the cycle
+contribution IS the share purchase), `social_fund_amount`, `membership_deposit_amount`. Saved by the web
+handler and the mobile API (`vk_group_settings_writable()`). Nothing is seeded: an unset amount means
+the rule is off, never an invented default.
+
+**A real hazard fixed on the way.** `cs_group_savings_total()`, `cs_group_standing()` and
+`api/v1/contributions_summary.php` filtered on `contribution_type <> 'fine'`, so a Social Fund or
+deposit row would have been counted as member savings the moment one existed. They now exclude
+`fb_not_savings_types()`. The inclusion-style filters (`cs_statement_filter_sql()`, `member_savings.php`,
+the API's `counts_toward_savings`) take their list from `fb_savings_types()`, which adds `share`. Both
+financial ledgers skip ring-fenced rows before the M-Koba "opening balance" test.
+
+**Also:** the hand-copied type lists in five files now come from `fb_types()` / `fb_type_labels()`; the
+Transactions form offers the new types; Member Home shows share capital, shares held, Social Fund paid
+and deposit — only once the group uses them.
+
+**Verified:** `composer test` — 2,427 tests green (new `FundBucketsTest`, 16 tests; five source-pinned
+tests updated to assert the shared definition). Live on the local DB: group savings total and all 334
+member standings identical before and after (TSh 1,801,000); a Social Fund + deposit row leaves savings
+unchanged and a share row raises it (rolled back); settings save refused for a Member (403), accepted
+for admin; all three pages render without PHP errors.
+
+**Not in this slice:** loans (routes still disabled), dividends, group-level fund totals on the
+dashboard, and showing the Social Fund / deposit columns on statements.
+
+---
+
 ## Session — 2026-09-09 — Module 18: Profile — PR pending
 
 **Branch:** `develop` (feature branch not yet cut)

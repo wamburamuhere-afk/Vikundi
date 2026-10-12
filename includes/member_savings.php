@@ -12,6 +12,8 @@
  * The savings definition matches app/constant/reports/member_statement.php.
  */
 
+require_once __DIR__ . '/fund_buckets.php'; // which contribution types are savings
+
 if (!function_exists('vk_member_customer_id')) {
     /** The customer_id for a login user, or null when they have no member record. */
     function vk_member_customer_id(PDO $pdo, int $userId): ?int
@@ -34,7 +36,7 @@ if (!function_exists('vk_member_savings_total')) {
                FROM contributions
               WHERE member_id = ?
                 AND status IN ('confirmed', 'approved', '')
-                AND contribution_type IN ('monthly', 'entrance', 'other', '')"
+                AND contribution_type IN (" . fb_sql_list(fb_savings_types()) . ", '')"
         );
         $s->execute([$customerId]);
         return (float) $s->fetchColumn();
@@ -51,7 +53,7 @@ if (!function_exists('vk_member_savings_since')) {
                FROM contributions
               WHERE member_id = ?
                 AND status IN ('confirmed', 'approved', '')
-                AND contribution_type IN ('monthly', 'entrance', 'other', '')
+                AND contribution_type IN (" . fb_sql_list(fb_savings_types()) . ", '')
                 AND contribution_date >= ?"
         );
         $s->execute([$customerId, $sinceDate]);
@@ -72,7 +74,7 @@ if (!function_exists('vk_member_monthly_savings')) {
                FROM contributions
               WHERE member_id = ?
                 AND status IN ('confirmed', 'approved', '')
-                AND contribution_type IN ('monthly', 'entrance', 'other', '')
+                AND contribution_type IN (" . fb_sql_list(fb_savings_types()) . ", '')
                 AND contribution_date >= (CURDATE() - INTERVAL ? MONTH)
               GROUP BY ym
               ORDER BY ym"

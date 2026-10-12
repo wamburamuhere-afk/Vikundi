@@ -217,14 +217,16 @@ function fmt($n) { return number_format($n, 0); }
                             $agm_paid  = 0;
 
                             foreach ($m_contribs as $c) {
-                                if ($c['contribution_type'] == 'agm') {
+                                if (fb_is_ring_fenced($c['contribution_type'])) {
+                                    continue; // Social Fund / membership deposit — not member savings
+                                } elseif ($c['contribution_type'] == 'agm') {
                                     $agm_paid += $c['amount'];
                                 } elseif (cs_is_opening($c['mkoba_trans_id'] ?? null, $c['account'] ?? null)) {
                                     // Money carried in from M-Koba is an opening balance, not a NEW
                                     // monthly payment — shown on its own, never skimmed for the
                                     // entrance fee, and it can only reduce a deficit, never cause one.
                                     $opening += $c['amount'];
-                                } elseif ($c['contribution_type'] == 'entrance' || $c['contribution_type'] == 'monthly') {
+                                } elseif (in_array($c['contribution_type'], ['entrance', 'monthly', 'share'], true)) {
                                     $new_pool += $c['amount'];
                                 }
                             }

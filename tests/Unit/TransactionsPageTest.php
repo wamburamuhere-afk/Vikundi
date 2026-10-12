@@ -56,7 +56,8 @@ class TransactionsPageTest extends TestCase
     {
         $h = $this->src('actions/process_contribution.php');
         // Allowed sets are enforced (no arbitrary type/account written).
-        $this->assertStringContainsString("['entrance', 'monthly', 'agm', 'fine', 'other']", $h);
+        $this->assertStringContainsString('$allowed_types    = fb_types();', $h);
+        $this->assertStringContainsString('in_array($_POST[\'contribution_type\'] ?? \'\', $allowed_types, true)', $h);
         $this->assertStringContainsString("['M-Koba', 'Bank', 'Cash', 'Mobile Money']", $h);
         // New columns are written.
         $this->assertStringContainsString('receipt_number', $h);
