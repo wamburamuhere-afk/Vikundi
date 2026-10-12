@@ -4,7 +4,7 @@ This file tracks every development session, modification, and significant change
 
 ---
 
-## Session — 2026-10-12 — Fix: Chairperson had no Administration menu; Wise Wallet demo logo — committed locally, not pushed
+## Session — 2026-10-12 — Fix: Chairperson had no Administration menu; Wise Wallet demo logo — PR open
 
 **Branch:** `fix/chairperson-admin-menu-and-demo-logo` (off `develop`, after PR #524)
 **Developer:** Claude Code / Jabir Mussa
