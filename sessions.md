@@ -4,7 +4,7 @@ This file tracks every development session, modification, and significant change
 
 ---
 
-## Session — 2026-10-12 — Fund buckets: shares, Social Fund, membership deposit — not yet committed
+## Session — 2026-10-12 — Fund buckets: shares, Social Fund, membership deposit — PR open
 
 **Branch:** `feat/fund-buckets-and-vicoba-settings` (off `develop`)
 **Developer:** Claude Code / Jabir Mussa
