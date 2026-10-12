@@ -4,7 +4,34 @@ This file tracks every development session, modification, and significant change
 
 ---
 
-## Session — 2026-10-12 — Fix: two defects found by testing the demo in a real browser — PR open
+## Session — 2026-10-12 — Fix: every M-Koba import ended on an HTTP 500 page — PR open
+
+**Branch:** `fix/mkoba-import-error-page` (off `develop`, after PR #526)
+**Developer:** Claude Code / Jabir Mussa
+
+**Bug (found importing the demo statement in a real browser on the Wise Wallet site):** the import
+saved its rows and then showed "This page isn't working — HTTP ERROR 500" instead of the result.
+
+**Root cause:** `actions/import_contributions.php` closed the uploaded file twice — once where the CSV
+is read, and again at the end of the handler. A second `fclose()` on a closed handle throws a
+`TypeError` in PHP 8 (and an `.xlsx` upload never opens a handle at all, so it threw there too). The
+error came AFTER the transaction was committed, so the data was always saved and only the redirect and
+the result message were lost. **Pre-existing, and live on production**: every statement import there
+ends the same way. It went unseen in the earlier endpoint test because the local PHP prints errors
+inside a 200 response, and only the status code and the database were checked.
+
+**Fix:** the trailing `fclose()` is removed. The other upload handlers (`upload_contributions.php`,
+`process_member_import.php`) were checked: their early `fclose()` is followed by `exit`, so they are fine.
+
+**Verified:** `composer test` — 2,530 green (new regression test). Not yet re-checked in the browser;
+needs this merged and pulled on the demo site.
+
+**Also confirmed in the browser this session:** the print-footer fix (PR #526) is live; a dividend run
+distributes, and the member home page then shows the dividend and the larger share balance.
+
+---
+
+## Session — 2026-10-12 — Fix: two defects found by testing the demo in a real browser — merged (PR #526)
 
 **Branch:** `fix/loan-preview-and-dividend-print-footer` (off `develop`, after PR #525)
 **Developer:** Claude Code / Jabir Mussa
