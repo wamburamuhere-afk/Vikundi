@@ -4,7 +4,126 @@ This file tracks every development session, modification, and significant change
 
 ---
 
-## Session — 2026-10-12 — Fund buckets: shares, Social Fund, membership deposit — PR open
+## Session — 2026-10-12 — Loans 3/3: repayments, penalties, early payoff — PR open
+
+**Branch:** `feat/loan-types-and-rules` (off `develop`, after PR #521)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** a disbursed loan can now be repaid. `vl_record_payment()` applies each payment to the
+schedule and clears the loan on the last instalment; the arithmetic is pure, in `loan_rules.php`
+(`lr_allocate_payment()`, `lr_payoff()`, `lr_installment_penalty_due()`).
+
+**Rules:** a payment goes to the oldest instalment first — its penalty, then its interest, then its
+principal — so an instalment cannot be cleared with a penalty left on it. Penalties are worked out from
+the schedule on the day (after the grace days, per started month late) and never stored, so there is no
+cron job and nothing to drift. A payment cannot exceed the payoff figure, pre-date the pay-out or be
+future-dated. **Early payoff:** a flat loan still owes its full agreed interest (signed off); a
+reducing loan owes interest only for months that have started — the rest is waived and the loan's
+totals are reduced to match.
+
+**Access:** recording a repayment needs `disburse_loan` (create), and nobody records one on their own
+loan. Action `repay` on `actions/loan_action.php`, audit-logged.
+
+**Pages:** loan detail gains where-it-stands-today (due now, principal left, penalties, payoff figure),
+a penalty column, overdue highlighting, the repayments received and a Record repayment form. Member
+Home shows loan balance and the next instalment.
+
+**Removed:** `actions/record_loan_payment.php` (no permission check, no CSRF).
+
+**Verified:** `composer test` green — 2,492 tests (new `LoanRepaymentTest`, 14 tests, including six
+on-time instalments clearing a loan exactly). Live: a flat loan paid out two months ago showed a 5,600
+penalty on its late instalment, paid first; a reducing loan settled on day one for 309,000 with 9,000
+waived; member-recording (403), overpayment, pre-pay-out date and paying a cleared loan all refused;
+group fund reconciled to the shilling (2,232,878 − 900,000 lent + 471,000 repaid = 1,803,878). Local
+test data removed.
+
+**Known limits:** repayments paid through M-Koba are recorded by hand (the statement importer treats
+every row as a contribution); no mobile API for loans; no rescheduling, top-ups or loan reports. The
+~30 inherited BMS loan endpoints are still routed and still unaudited — they write to the old `loans`
+table, which this module does not use.
+
+---
+
+## Session — 2026-10-12 — Loans 2/3: apply, guarantee, approve, disburse — PR open
+
+**Branch:** `feat/loan-types-and-rules` (off `develop`, after PR #521)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** the loans UI is back on, rebuilt. New `includes/loans.php` is the workflow every page and
+endpoint goes through; `actions/loan_action.php` is the one endpoint for every state change.
+
+**Flow:** apply → `pending_guarantors` → (all guarantors accept) → `pending` → approved → disbursed.
+A guarantor declining cancels the application. The repayment schedule is fixed at disbursement, from
+the disbursement date.
+
+**Rules enforced server-side:** rate, limit and penalty come from the loan type, never the request; a
+member applies only as themselves (leadership may apply on a member's behalf); the limit counts loans
+still in the pipeline, so two applications cannot each fit it alone; a guarantor is another active
+member and answers only for themselves; nobody approves or pays out their own loan; rejecting needs a
+reason; each step is a conditional UPDATE so it cannot be taken twice; the group cannot disburse more
+than the fund holds.
+
+**Access:** approve/reject needs `approve_loan`, disburse needs `disburse_loan` (existing page keys).
+The loans list is leadership-only; a loan is visible to leadership, its borrower and its guarantors —
+anyone else gets the same "not found" as a missing loan.
+
+**Money:** `getGroupFundBalance()` now subtracts loans paid out and adds loan repayments
+(`fundBalanceFromTotals()` gained two optional arguments; existing callers unchanged).
+
+**Pages:** `loans` (list), `loans/details`, `my_loans` (own loans + guarantee requests), a shared apply
+modal with a live cost preview from `api/loan_preview` (no loan arithmetic in the browser). Finance menu
+gains Loans / My Loans; Member Home alerts a member with a guarantee request waiting.
+
+**Removed:** `actions/apply_for_loan.php`, `actions/approve_loan_vicoba.php` (no permission check, no
+CSRF, rate taken from the request) and the old `loan_application.php` page.
+
+**Verified:** `composer test` green (new `LoanWorkflowTest`). Live, 20-step run with four sessions:
+over-limit, over-period, self-guarantee, missing guarantor, customer_id spoof, second application over
+the remaining limit, borrower approving own loan (403), early approve, stranger answering a guarantee,
+double answer, member disbursing (403), disburse before approval, reject without reason, double approve,
+future date, double disburse, missing CSRF — all refused correctly; the happy path produced 6
+instalments summing to 600,000 + 72,000 and dropped the fund by exactly 600,000. Pages render clean for
+admin, borrower and guarantor; an unrelated member sees no loan data. Local test data removed.
+
+**Next:** 3/3 repayments, penalties, early payoff.
+
+---
+
+## Session — 2026-10-12 — Loans 1/3: loan types and rules — PR open
+
+**Branch:** `feat/loan-types-and-rules` (off `develop`, after PR #521)
+**Developer:** Claude Code / Jabir Mussa
+
+**Why:** the loans UI has been disabled since the initial commit, and the handlers behind it
+(`apply_for_loan`, `approve_loan_vicoba`, `record_loan_payment`) have no permission check or CSRF and
+take the interest rate from the request. This is a rebuild, in three PRs, on rules the group sets itself.
+
+**Design decisions (signed off by Jabir):** new tables, not the BMS `loans` tables (MyISAM, 50 unused
+columns, still written by ~30 old routed endpoints); guarantors accept in the web app; a flat loan paid
+off early still owes its full agreed interest; no mobile API for loans yet.
+
+**Schema:** `database/create_vicoba_loan_tables.php` — `vicoba_loan_types`, `vicoba_loans`,
+`vicoba_loan_guarantors`, `vicoba_loan_installments`, `vicoba_loan_payments`, all InnoDB. Nothing
+seeded. Registered in `migrate.php`. **Run `php database/migrate.php` on deploy.**
+
+**Rules:** new `includes/loan_rules.php`, pure (no DB): type validation, borrowing limit (shares ×
+multiple less what is owed, and/or a fixed cap — Social Fund and deposit never count), flat and reducing
+schedules, month-end-safe due dates, late penalty after grace days, and the rules snapshot a loan keeps
+for life.
+
+**Settings:** Group Settings → Loan Types (add / edit / switch off). `actions/save_loan_type.php` —
+authenticated, CSRF-protected, admin + Secretary only, audit-logged; types are switched off, never
+deleted.
+
+**Verified:** `composer test` — 2,461 green (new `LoanRulesTest`, 34 tests). Live: no session 401,
+no CSRF 403, Member 403, invalid input refused with reasons, create / duplicate-name / edit / toggle
+all correct, row renders with no PHP errors.
+
+**Next:** 2/3 apply → guarantors accept → approve → disburse; 3/3 repayments and penalties.
+
+---
+
+## Session — 2026-10-12 — Fund buckets: shares, Social Fund, membership deposit — merged (PR #521)
 
 **Branch:** `feat/fund-buckets-and-vicoba-settings` (off `develop`)
 **Developer:** Claude Code / Jabir Mussa

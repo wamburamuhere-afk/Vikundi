@@ -32,6 +32,16 @@ $settings_raw = $pdo->query("SELECT setting_key, setting_value FROM group_settin
 function gs($settings, $key, $default = '') {
     return (string)($settings[$key] ?? $default);
 }
+
+// Loan types — the group's own loan rules. Empty (not an error) on a database
+// that has not run the loans migration yet.
+try {
+    $loan_types = $pdo->query("SELECT * FROM vicoba_loan_types ORDER BY is_active DESC, name")->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) {
+    $loan_types = [];
+}
+$is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
+$lt = fn(string $en, string $sw): string => $is_sw ? $sw : $en;
 ?>
 
 <div class="row mb-0">
@@ -256,6 +266,147 @@ function gs($settings, $key, $default = '') {
 </div>
 </form>
 
+<!-- AINA ZA MIKOPO — outside the settings form: each type saves on its own -->
+<div class="row g-4 mb-5">
+    <div class="col-12">
+        <div class="card border border-primary-subtle shadow-sm rounded-4 overflow-hidden">
+            <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold text-primary"><i class="bi bi-bank me-2"></i> <?= $lt('Loan Types', 'Aina za Mikopo') ?></h6>
+                <button type="button" class="btn btn-primary btn-sm rounded-pill px-3" id="addLoanTypeBtn">
+                    <i class="bi bi-plus-lg me-1"></i> <?= $lt('Add Loan Type', 'Ongeza Aina') ?>
+                </button>
+            </div>
+            <div class="card-body p-4 text-start">
+                <div class="alert alert-primary border-primary py-2 small mb-4">
+                    <i class="bi bi-info-circle-fill me-2"></i> <?= $lt('Each loan type carries its own rules. A change here applies to new loans only — a loan already applied for keeps the rules it was given.', 'Kila aina ya mkopo ina kanuni zake. Mabadiliko hapa yanahusu mikopo mipya tu — mkopo ulioombwa tayari hubaki na kanuni zake.') ?>
+                </div>
+                <?php if (!$loan_types): ?>
+                    <p class="text-muted mb-0"><?= $lt('No loan types yet. Add one to start lending.', 'Hakuna aina za mikopo bado. Ongeza moja ili kuanza kukopesha.') ?></p>
+                <?php else: ?>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th><?= $lt('Name', 'Jina') ?></th>
+                                <th><?= $lt('Interest / month', 'Riba / mwezi') ?></th>
+                                <th><?= $lt('Max period', 'Muda wa juu') ?></th>
+                                <th><?= $lt('Limit', 'Kikomo') ?></th>
+                                <th><?= $lt('Guarantors', 'Wadhamini') ?></th>
+                                <th><?= $lt('Late penalty', 'Adhabu ya kuchelewa') ?></th>
+                                <th><?= $lt('Status', 'Hali') ?></th>
+                                <th class="text-end"><?= $lt('Actions', 'Vitendo') ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($loan_types as $ty):
+                            $limit = [];
+                            if ((float) $ty['max_share_multiple'] > 0) $limit[] = rtrim(rtrim(number_format((float) $ty['max_share_multiple'], 2), '0'), '.') . '× ' . $lt('shares', 'hisa');
+                            if ($ty['max_amount'] !== null)            $limit[] = 'TZS ' . number_format((float) $ty['max_amount']);
+                            $penalty = match ($ty['penalty_type']) {
+                                'percent' => rtrim(rtrim(number_format((float) $ty['penalty_value'], 2), '0'), '.') . '% ' . $lt('/ month', '/ mwezi'),
+                                'fixed'   => 'TZS ' . number_format((float) $ty['penalty_value']) . ' ' . $lt('/ month', '/ mwezi'),
+                                default   => $lt('None', 'Hakuna'),
+                            };
+                        ?>
+                            <tr class="<?= (int) $ty['is_active'] ? '' : 'text-muted' ?>">
+                                <td class="fw-bold"><?= htmlspecialchars($ty['name']) ?>
+                                    <?php if ($ty['description']): ?><div class="small text-muted fw-normal"><?= htmlspecialchars($ty['description']) ?></div><?php endif; ?>
+                                </td>
+                                <td><?= rtrim(rtrim(number_format((float) $ty['interest_rate'], 3), '0'), '.') ?>%
+                                    <span class="small text-muted"><?= $ty['interest_type'] === 'reducing' ? $lt('reducing', 'inayopungua') : $lt('flat', 'ya kudumu') ?></span></td>
+                                <td><?= (int) $ty['max_term_months'] ?> <?= $lt('months', 'miezi') ?></td>
+                                <td><?= $limit ? htmlspecialchars(implode(', ', $limit)) : $lt('No limit', 'Hakuna kikomo') ?></td>
+                                <td><?= (int) $ty['guarantors_required'] ?></td>
+                                <td><?= htmlspecialchars($penalty) ?><?php if ($ty['penalty_type'] !== 'none' && (int) $ty['grace_days'] > 0): ?>
+                                    <div class="small text-muted"><?= $lt('after', 'baada ya') ?> <?= (int) $ty['grace_days'] ?> <?= $lt('grace days', 'siku za msamaha') ?></div><?php endif; ?></td>
+                                <td><span class="badge bg-<?= (int) $ty['is_active'] ? 'success' : 'secondary' ?>"><?= (int) $ty['is_active'] ? $lt('Active', 'Inatumika') : $lt('Off', 'Imezimwa') ?></span></td>
+                                <td class="text-end text-nowrap">
+                                    <button type="button" class="btn btn-outline-primary btn-sm editLoanTypeBtn" data-type="<?= htmlspecialchars(json_encode($ty), ENT_QUOTES) ?>"><i class="bi bi-pencil"></i></button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm toggleLoanTypeBtn" data-id="<?= (int) $ty['id'] ?>" title="<?= (int) $ty['is_active'] ? $lt('Switch off', 'Zima') : $lt('Switch on', 'Washa') ?>"><i class="bi bi-<?= (int) $ty['is_active'] ? 'pause-circle' : 'play-circle' ?>"></i></button>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loan type modal -->
+<div class="modal fade" id="loanTypeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <form class="modal-content" id="loanTypeForm">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="loanTypeModalTitle"><?= $lt('Loan Type', 'Aina ya Mkopo') ?></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-start">
+                <input type="hidden" name="id" value="">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold"><?= $lt('Name', 'Jina') ?></label>
+                        <input type="text" name="name" class="form-control" maxlength="100" required placeholder="<?= $lt('e.g. Emergency Loan', 'mf. Mkopo wa Dharura') ?>">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold"><?= $lt('Description (optional)', 'Maelezo (si lazima)') ?></label>
+                        <input type="text" name="description" class="form-control" maxlength="255">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold"><?= $lt('Interest (% per month)', 'Riba (% kwa mwezi)') ?></label>
+                        <input type="number" name="interest_rate" class="form-control" min="0" max="100" step="any" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold"><?= $lt('Interest charged on', 'Riba hutozwa kwa') ?></label>
+                        <select name="interest_type" class="form-select">
+                            <option value="flat"><?= $lt('The amount borrowed (flat)', 'Kiasi kilichokopwa (ya kudumu)') ?></option>
+                            <option value="reducing"><?= $lt('What is still owed (reducing)', 'Deni lililobaki (inayopungua)') ?></option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold"><?= $lt('Maximum period (months)', 'Muda wa juu (miezi)') ?></label>
+                        <input type="number" name="max_term_months" class="form-control" min="1" max="120" step="1" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold"><?= $lt('Limit: multiple of shares', 'Kikomo: mara ngapi ya hisa') ?></label>
+                        <input type="number" name="max_share_multiple" class="form-control" min="0" max="100" step="any" placeholder="<?= $lt('blank = no share limit', 'wazi = hakuna kikomo') ?>">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold"><?= $lt('Limit: maximum amount (TZS)', 'Kikomo: kiasi cha juu (TZS)') ?></label>
+                        <input type="number" name="max_amount" class="form-control" min="0" step="any" placeholder="<?= $lt('blank = no fixed cap', 'wazi = hakuna kikomo') ?>">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold"><?= $lt('Guarantors required', 'Wadhamini wanaohitajika') ?></label>
+                        <input type="number" name="guarantors_required" class="form-control" min="0" max="10" step="1" value="0">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold"><?= $lt('Late penalty', 'Adhabu ya kuchelewa') ?></label>
+                        <select name="penalty_type" class="form-select" id="ltPenaltyType">
+                            <option value="none"><?= $lt('No penalty', 'Hakuna adhabu') ?></option>
+                            <option value="percent"><?= $lt('% of the overdue amount, per month', '% ya kiasi kilichochelewa, kwa mwezi') ?></option>
+                            <option value="fixed"><?= $lt('Fixed amount (TZS), per month', 'Kiasi maalum (TZS), kwa mwezi') ?></option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold"><?= $lt('Penalty value', 'Kiasi cha adhabu') ?></label>
+                        <input type="number" name="penalty_value" class="form-control" min="0" step="any" id="ltPenaltyValue">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold"><?= $lt('Grace days before penalty', 'Siku za msamaha') ?></label>
+                        <input type="number" name="grace_days" class="form-control" min="0" max="90" step="1" value="0">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal"><?= $lt('Cancel', 'Ghairi') ?></button>
+                <button type="submit" class="btn btn-primary px-4" id="saveLoanTypeBtn"><i class="bi bi-save me-1"></i> <?= $lt('Save', 'Hifadhi') ?></button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 function previewFile(input) {
     if (input.files && input.files[0]) {
@@ -326,6 +477,62 @@ $('#settingsForm').on('submit', function(e) {
         }
     });
 });
+// ── Loan types ───────────────────────────────────────────────────────────────
+(function () {
+    const modalEl = document.getElementById('loanTypeModal');
+    const form    = $('#loanTypeForm');
+    const lang    = '<?= $_SESSION['preferred_language'] ?? 'en' ?>';
+    const url     = '<?= getUrl("actions/save_loan_type") ?>';
+    const fields  = ['id', 'name', 'description', 'interest_rate', 'interest_type', 'max_term_months',
+                     'max_share_multiple', 'max_amount', 'guarantors_required', 'penalty_type', 'penalty_value', 'grace_days'];
+
+    function syncPenalty() {
+        const none = $('#ltPenaltyType').val() === 'none';
+        $('#ltPenaltyValue').prop('disabled', none);
+        if (none) $('#ltPenaltyValue').val('');
+    }
+    $('#ltPenaltyType').on('change', syncPenalty);
+
+    function openModal(type) {
+        form[0].reset();
+        form.find('[name=id]').val('');
+        if (type) {
+            fields.forEach(function (f) {
+                let v = type[f];
+                // Stored zeros that mean "not set" open as blank, not as a 0 to re-save.
+                if ((f === 'max_share_multiple' && Number(v) === 0) || v === null) v = '';
+                else if (v !== '' && !isNaN(v) && f !== 'name' && f !== 'description') v = Number(v);
+                form.find('[name=' + f + ']').val(v);
+            });
+        }
+        syncPenalty();
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+
+    $('#addLoanTypeBtn').on('click', function () { openModal(null); });
+    $(document).on('click', '.editLoanTypeBtn', function () { openModal($(this).data('type')); });
+
+    function done(res) {
+        if (res && res.success) {
+            Swal.fire({ icon: 'success', title: lang === 'sw' ? 'Imehifadhiwa!' : 'Saved!', timer: 1200, showConfirmButton: false })
+                .then(function () { location.reload(); });
+        } else {
+            Swal.fire(lang === 'sw' ? 'Hitilafu' : 'Error', (res && res.message) || '', 'error');
+        }
+    }
+    function failed(xhr) {
+        done(xhr.responseJSON || { success: false, message: lang === 'sw' ? 'Hitilafu ya seva.' : 'Server error.' });
+    }
+
+    form.on('submit', function (e) {
+        e.preventDefault();
+        $.ajax({ url: url, type: 'POST', data: form.serialize() + '&action=save', dataType: 'json' }).done(done).fail(failed);
+    });
+
+    $(document).on('click', '.toggleLoanTypeBtn', function () {
+        $.ajax({ url: url, type: 'POST', data: { action: 'toggle', id: $(this).data('id') }, dataType: 'json' }).done(done).fail(failed);
+    });
+})();
 </script>
 
 <?php require_once 'footer.php'; ?>
