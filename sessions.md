@@ -4,7 +4,36 @@ This file tracks every development session, modification, and significant change
 
 ---
 
-## Session — 2026-10-12 — Wise Wallet demo instance + fresh-install fixes — PR open
+## Session — 2026-10-12 — Fix: Chairperson had no Administration menu; Wise Wallet demo logo — PR open
+
+**Branch:** `fix/chairperson-admin-menu-and-demo-logo` (off `develop`, after PR #524)
+**Developer:** Claude Code / Jabir Mussa
+
+**Bug (reported by Jabir on the Wise Wallet demo site):** the Chairperson could not see the
+Administration menu. `header.php` gated it on `in_array($user_role_lower, ['admin','mwenyekiti',
+'chairman'])`, which omits `chairperson` — the exact role name `seed_vicoba_roles.php` creates. The
+Chairperson passed `isAdmin()` on every page but had no link to Users, Roles, System Settings or Group
+Settings. Never seen on the existing group because its top account has the role `admin`. Same defect
+`group_settings.php` and `dashboard.php` had. **Fix:** the menu now asks `vk_role_is_admin()`
+(`includes/roles.php`), the shared rule.
+
+**Demo logo:** new original artwork for the demo group — `assets/images/demo/wise_wallet_logo.svg`
+(source) rendered to `assets/images/wise_wallet_demo_logo.png`; the seeder now sets `group_logo` to it.
+
+**Found, NOT fixed (needs a decision):** the built-in default logo `assets/images/logo1.png` is the logo
+of an unrelated real company ("CELLI group"), in the repo since the initial commit. Every group that has
+not uploaded its own logo shows it on the login page and header. Needs a BJP/Vikundi default.
+
+**Verified:** `composer test` — 2,527 green (new `HeaderAdminMenuTest`, 5 tests). On a real install:
+the Chairperson gets the Administration menu and opens Users, Roles, System Settings and Group Settings;
+Secretary, Treasurer and a Member do not get the menu; login page and header use the new logo.
+
+**Noted:** the Secretary may open Group Settings but has no menu link to it (the link sits inside the
+Administration menu). Pre-existing; left alone.
+
+---
+
+## Session — 2026-10-12 — Wise Wallet demo instance + fresh-install fixes — merged (PR #524)
 
 **Branch:** `feat/wise-wallet-demo-seeder` (off `develop`, after PR #523)
 **Developer:** Claude Code / Jabir Mussa
