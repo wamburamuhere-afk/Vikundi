@@ -169,6 +169,18 @@ class LoanWorkflowTest extends TestCase
         $this->assertStringContainsString('vicoba_loan_guarantors', $mayView);
     }
 
+    public function testAStalePreviewReplyCannotOverwriteANewerOne(): void
+    {
+        // Found in the browser: changing fields quickly let a slow, older reply
+        // arrive last and blank the schedule for the amount on screen.
+        $modal = file_get_contents(__DIR__ . '/../../app/bms/loans/_apply_modal.php');
+        $this->assertStringContainsString('const seq = ++previewSeq;', $modal);
+        $this->assertStringContainsString('if (seq !== previewSeq || res.status !== \'success\') return;', $modal);
+        // The number is taken before the request is sent, and checked before anything is drawn.
+        $this->assertLessThan(strpos($modal, '$.getJSON(previewUrl'), strpos($modal, 'const seq = ++previewSeq;'));
+        $this->assertLessThan(strpos($modal, "\$('#laLimit').html("), strpos($modal, 'seq !== previewSeq'));
+    }
+
     public function testThePreviewUsesTheSameArithmeticAsTheRealLoan(): void
     {
         $preview = file_get_contents(__DIR__ . '/../../api/loan_preview.php');

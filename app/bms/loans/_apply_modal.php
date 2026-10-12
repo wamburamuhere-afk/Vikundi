@@ -98,6 +98,11 @@ $apply_all_members = $pdo->query(
     const money = n => 'TZS ' + Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 });
     const esc = s => $('<div>').text(s == null ? '' : s).html();
     let timer = null;
+    // Each preview request is numbered. Changing several fields quickly fires
+    // several requests, and a slow early one can arrive after a later one; only
+    // the answer to the LATEST request may update the form, or a stale reply
+    // (for an amount that is no longer on screen) blanks the schedule.
+    let previewSeq = 0;
 
     function borrower() { return $('#laMember').length ? Number($('#laMember').val() || 0) : selfId; }
 
@@ -114,12 +119,13 @@ $apply_all_members = $pdo->query(
     function refresh() {
         syncGuarantors();
         const type = $('#laType').val();
+        const seq = ++previewSeq;
         if (!type || !borrower()) { $('#laLimit, #laPreview').empty(); return; }
         $.getJSON(previewUrl, {
             loan_type_id: type, customer_id: borrower(),
             amount: $('#laAmount').val() || 0, term_months: $('#laMonths').val() || 0
         }).done(function (res) {
-            if (res.status !== 'success') return;
+            if (seq !== previewSeq || res.status !== 'success') return;
             const d = res.data;
             $('#laMonths').attr('max', d.max_term_months);
 

@@ -172,6 +172,15 @@ class DividendsTest extends TestCase
         $this->assertStringContainsString("FROM vicoba_dividend_lines l JOIN vicoba_dividend_runs r ON r.id = l.run_id WHERE r.status = 'distributed'", $src);
     }
 
+    public function testThePrintedByFooterIsOnPaperOnly(): void
+    {
+        // Found in the browser: the shared footer is a fixed strip, and on screen
+        // it sat over the dividend table.
+        $page = file_get_contents(__DIR__ . '/../../app/constant/accounts/dividends.php');
+        $this->assertStringContainsString('<div class="d-none d-print-block"><?php include PRINT_FOOTER_FILE; ?></div>', $page);
+        $this->assertSame(1, substr_count($page, 'include PRINT_FOOTER_FILE'));
+    }
+
     // ── access ───────────────────────────────────────────────────────────────
     public function testEachStepNeedsItsOwnPermissionAndMembersAreNotGrantedThePage(): void
     {

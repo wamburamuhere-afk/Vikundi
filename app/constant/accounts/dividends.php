@@ -229,5 +229,8 @@ $period_label = date('d M Y', strtotime($from)) . ' – ' . date('d M Y', strtot
 })();
 </script>
 
-<?php include PRINT_FOOTER_CSS_FILE; include PRINT_FOOTER_FILE; ?>
+<?php include PRINT_FOOTER_CSS_FILE; ?>
+<!-- The "Printed by" footer belongs on paper. Left as the shared include emits it,
+     it is a fixed strip across the bottom of the screen, over the table. -->
+<div class="d-none d-print-block"><?php include PRINT_FOOTER_FILE; ?></div>
 <?php includeFooter(); ob_end_flush(); ?>

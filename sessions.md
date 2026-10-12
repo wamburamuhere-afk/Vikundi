@@ -4,7 +4,35 @@ This file tracks every development session, modification, and significant change
 
 ---
 
-## Session — 2026-10-12 — Fix: Chairperson had no Administration menu; Wise Wallet demo logo — PR open
+## Session — 2026-10-12 — Fix: two defects found by testing the demo in a real browser — PR open
+
+**Branch:** `fix/loan-preview-and-dividend-print-footer` (off `develop`, after PR #525)
+**Developer:** Claude Code / Jabir Mussa
+
+First click-through of the Wise Wallet demo site in Chrome (as the Chairperson). Working: the
+Administration menu, loan-type editing, a new loan application, approve, pay out, record repayment
+(penalty paid first) and dividend confirm. Two defects:
+
+- **Loan cost preview could come up blank** (`app/bms/loans/_apply_modal.php`). Changing several fields
+  quickly fires several preview requests; a slow early reply arriving last overwrote the newer one.
+  Each request is now numbered and only the latest reply may update the form.
+- **"Printed by" footer on screen on the Dividends page** (`app/constant/accounts/dividends.php`). The
+  shared footer is a fixed strip with no on-screen hide rule; it is now wrapped so it prints only.
+
+**Noted, not changed:** every page that includes the shared print footer (My Fines, Users, Audit Logs,
+…) shows the same strip on screen. That is existing behaviour across the app and a design decision.
+
+**Verified:** `composer test` — 2,529 green (two new regression tests).
+
+**Browser test still to do:** dividend distribute, M-Koba import on screen, the Secretary / Treasurer /
+Member logins, a phone-sized screen.
+
+**Context:** the client has since seen the demo and proposal and agreed to proceed; management asked
+for a user guide (EN + SW), a presentation, and better loan / share / Social Fund reports by Thu 15 Oct.
+
+---
+
+## Session — 2026-10-12 — Fix: Chairperson had no Administration menu; Wise Wallet demo logo — merged (PR #525)
 
 **Branch:** `fix/chairperson-admin-menu-and-demo-logo` (off `develop`, after PR #524)
 **Developer:** Claude Code / Jabir Mussa
