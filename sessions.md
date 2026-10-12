@@ -4,7 +4,53 @@ This file tracks every development session, modification, and significant change
 
 ---
 
-## Session — 2026-10-12 — Reports: loans, shares and the Social Fund — PR open
+## Session — 2026-10-12 — Fix: four loose ends found testing every role in the browser — PR open
+
+**Branch:** `fix/officer-menu-and-expenses-access` (off `develop`, after PR #528)
+**Developer:** Claude Code / Jabir Mussa
+
+**Browser test completed** on the Wise Wallet demo site, as all five demo accounts (Chairperson,
+Treasurer, Secretary, two Members). Everything in the client guide works. Four loose ends:
+
+1. **Finance > Expenses bounced the Treasurer and the Secretary.** The page, and the whole bereavement
+   module (~20 checks), gate on `death_expenses`, a key no migration ever registered. New
+   `database/add_death_expenses_permission.php` registers it where missing and mirrors its grants from
+   `expenses` (same approach as `add_petty_cash_permission.php`). **A no-op where the key exists.**
+2. **The Secretary had no link to Group Settings**, though the page and its save handler admit them:
+   the only link sat in the admin-only Administration menu. They now get one under Management.
+3. **A Member was shown an M-Koba Reconciliation link they could not follow.** The link is now shown
+   only when `canView('mkoba_reconciliation')`.
+4. **The "Printed by" footer sat across the bottom of the screen** on every page using the shared print
+   footer. `includes/print_footer_css.php` now hides it on screen inside the application
+   (`body:has(.header-wrapper)`); standalone `print_*.php` previews keep it, and printing is unchanged.
+
+**CORRECTION to earlier entries and to the team report.** They said Expenses opens only for the
+Chairperson "on the live site today". That was inferred from the local database, which lacks
+`death_expenses`. `includes/death_expense_access.php` records the key being granted on the existing
+deployments, so the claim is very likely wrong for production. What is established: a database built
+by `migrate.php` alone lacks it. Production's permission list has not been read.
+
+**Learned about Member access.** `seed_vicoba_roles.php` resets the Member role to its defaults on
+every run, and the default is view on every key not in `vk_member_hidden_keys()`. On a fresh install
+the first `migrate.php` run seeds roles before some keys exist, so a Member's access widens on the
+second run — to include `mkoba_reconciliation`, `vicoba_reports`, `budget`, `member_payouts` and
+`death_expenses`. This is the standing policy (the local main database has the same grants), not a
+change made here. **Decision for management:** the group reconciliation page shows every member's
+phone number and payments; if members should not see that, add the key to `vk_member_hidden_keys()`.
+
+**Verified:** on a database without the key the migration adds it with grants identical to
+`expenses`, and a second run changes nothing. Real logins: Treasurer and Secretary now open Expenses
+(200); a Member is still refused the group list endpoint (403); only the Secretary gains a Group
+Settings link; the footer rule is served on application pages and standalone print pages have no
+application header. `composer test` — 2,545 green (new `OfficerAccessFixesTest`, 6 tests).
+
+**Deploy:** run `php database/migrate.php`.
+
+**Not tested:** a phone-sized screen; an actual printout.
+
+---
+
+## Session — 2026-10-12 — Reports: loans, shares and the Social Fund — merged (PR #528)
 
 **Branch:** `feat/loan-share-social-fund-reports` (off `develop`, after PR #526)
 **Developer:** Claude Code / Jabir Mussa

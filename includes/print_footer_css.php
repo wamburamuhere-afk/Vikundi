@@ -28,6 +28,15 @@
         }
         .footer-spacer { height: 12px; }
 
+        /* On screen, inside the application, the footer is not shown: it is a
+           fixed strip, and it sat across the bottom of every page that includes
+           it, over the content. A standalone print page (print_*.php) has no
+           application header, so its on-screen preview keeps the footer. */
+        @media screen {
+            body:has(.header-wrapper) .print-footer,
+            body:has(.header-wrapper) .footer-spacer { display: none !important; }
+        }
+
         @media print {
             body { padding-bottom: 4mm !important; }
             .footer-spacer { display: none !important; }
