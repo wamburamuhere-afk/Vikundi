@@ -191,7 +191,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['upload_file'])) {
         $response['message'] = 'Import error: ' . $e->getMessage();
     }
 
-    fclose($handle);
+    // No fclose() here. The CSV handle is closed where the file is read, above,
+    // and an .xlsx never opens one. Closing it a second time throws a TypeError
+    // in PHP 8 — AFTER the rows are committed — so every import saved its data
+    // and then showed the user an HTTP 500 instead of the result.
 } else {
     $response['message'] = 'Invalid request.';
 }
