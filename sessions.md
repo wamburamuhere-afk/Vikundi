@@ -4,6 +4,51 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-12 — Loans 2/3: apply, guarantee, approve, disburse — committed locally, not pushed
+
+**Branch:** `feat/loan-types-and-rules` (stacked on PR #521)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** the loans UI is back on, rebuilt. New `includes/loans.php` is the workflow every page and
+endpoint goes through; `actions/loan_action.php` is the one endpoint for every state change.
+
+**Flow:** apply → `pending_guarantors` → (all guarantors accept) → `pending` → approved → disbursed.
+A guarantor declining cancels the application. The repayment schedule is fixed at disbursement, from
+the disbursement date.
+
+**Rules enforced server-side:** rate, limit and penalty come from the loan type, never the request; a
+member applies only as themselves (leadership may apply on a member's behalf); the limit counts loans
+still in the pipeline, so two applications cannot each fit it alone; a guarantor is another active
+member and answers only for themselves; nobody approves or pays out their own loan; rejecting needs a
+reason; each step is a conditional UPDATE so it cannot be taken twice; the group cannot disburse more
+than the fund holds.
+
+**Access:** approve/reject needs `approve_loan`, disburse needs `disburse_loan` (existing page keys).
+The loans list is leadership-only; a loan is visible to leadership, its borrower and its guarantors —
+anyone else gets the same "not found" as a missing loan.
+
+**Money:** `getGroupFundBalance()` now subtracts loans paid out and adds loan repayments
+(`fundBalanceFromTotals()` gained two optional arguments; existing callers unchanged).
+
+**Pages:** `loans` (list), `loans/details`, `my_loans` (own loans + guarantee requests), a shared apply
+modal with a live cost preview from `api/loan_preview` (no loan arithmetic in the browser). Finance menu
+gains Loans / My Loans; Member Home alerts a member with a guarantee request waiting.
+
+**Removed:** `actions/apply_for_loan.php`, `actions/approve_loan_vicoba.php` (no permission check, no
+CSRF, rate taken from the request) and the old `loan_application.php` page.
+
+**Verified:** `composer test` green (new `LoanWorkflowTest`). Live, 20-step run with four sessions:
+over-limit, over-period, self-guarantee, missing guarantor, customer_id spoof, second application over
+the remaining limit, borrower approving own loan (403), early approve, stranger answering a guarantee,
+double answer, member disbursing (403), disburse before approval, reject without reason, double approve,
+future date, double disburse, missing CSRF — all refused correctly; the happy path produced 6
+instalments summing to 600,000 + 72,000 and dropped the fund by exactly 600,000. Pages render clean for
+admin, borrower and guarantor; an unrelated member sees no loan data. Local test data removed.
+
+**Next:** 3/3 repayments, penalties, early payoff.
+
+---
+
 ## Session — 2026-10-12 — Loans 1/3: loan types and rules — committed locally, not pushed
 
 **Branch:** `feat/loan-types-and-rules` (stacked on `feat/fund-buckets-and-vicoba-settings`, PR #521)

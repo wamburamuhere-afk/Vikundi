@@ -322,15 +322,14 @@ $routes = [
     'actions/update_contribution' => ROOT_DIR . '/actions/update_contribution.php',
     'actions/upload_contributions' => ROOT_DIR . '/actions/upload_contributions.php',
     'actions/process_contribution' => ROOT_DIR . '/actions/process_contribution.php',
-    // 'actions/apply_for_loan' => ROOT_DIR . '/actions/apply_for_loan.php',
-    // 'actions/approve_loan_vicoba' => ROOT_DIR . '/actions/approve_loan_vicoba.php',
     // 'actions/record_loan_payment' => ROOT_DIR . '/actions/record_loan_payment.php',
 
-    // Loans Module Pages (Disabled)
-    // 'loans'               => LOANS_DIR . '/loans_list.php',
-    // 'loans/details'       => LOANS_DIR . '/loan_details.php',
-    // 'loans/apply'         => LOANS_DIR . '/loan_application.php',
-    // 'my_loans'            => LOANS_DIR . '/my_loans.php',
+    // Loans module (VICOBA loans — see includes/loans.php)
+    'actions/loan_action' => ROOT_DIR . '/actions/loan_action.php',
+    'api/loan_preview'    => API_DIR . '/loan_preview.php',
+    'loans'               => LOANS_DIR . '/loans_list.php',
+    'loans/details'       => LOANS_DIR . '/loan_details.php',
+    'my_loans'            => LOANS_DIR . '/my_loans.php',
 
     // Fines Module
     'manage_fines'        => CUSTOMERS_DIR . '/manage_fines.php',

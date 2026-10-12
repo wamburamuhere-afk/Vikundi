@@ -32,6 +32,16 @@ $fines_due    = vk_member_outstanding_fines($pdo, $customer_id);
 // them, so a group that keeps one pot is not handed a row of empty cards.
 $fb_rules     = fb_load_settings($pdo);
 $buckets      = fb_member_balances($pdo, $customer_id, $fb_rules);
+// Guarantee requests waiting on this member's answer. Zero (not an error) on a
+// database that has not run the loans migration.
+try {
+    $gw = $pdo->prepare("SELECT COUNT(*) FROM vicoba_loan_guarantors g JOIN vicoba_loans l ON l.loan_id = g.loan_id
+                          WHERE g.guarantor_customer_id = ? AND g.status = 'pending' AND l.status = 'pending_guarantors'");
+    $gw->execute([$customer_id]);
+    $guarantee_waiting = (int) $gw->fetchColumn();
+} catch (Throwable $e) {
+    $guarantee_waiting = 0;
+}
 $show_buckets = $fb_rules['share_price'] > 0
     || ($buckets['shares'] + $buckets['social_fund'] + $buckets['deposit']) > 0;
 $monthly      = vk_member_monthly_savings($pdo, $customer_id, 12);   // ['YYYY-MM' => total]
@@ -68,6 +78,15 @@ includeHeader();
     <?php if ($customer_id <= 0): ?>
     <div class="alert alert-info"><?= $t('Your member profile is not set up yet. Please contact your group leadership.', 'Wasifu wako wa uanachama haujakamilika. Tafadhali wasiliana na uongozi wa kikundi.') ?></div>
     <?php else: ?>
+
+    <?php if ($guarantee_waiting > 0): ?>
+    <div class="alert alert-warning d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <span><i class="bi bi-shield-check me-2"></i><?= $guarantee_waiting === 1
+            ? $t('A member has asked you to guarantee their loan.', 'Mwanachama amekuomba umdhamini mkopo wake.')
+            : $t("$guarantee_waiting members have asked you to guarantee their loans.", "Wanachama $guarantee_waiting wamekuomba uwadhamini mikopo yao.") ?></span>
+        <a class="btn btn-warning btn-sm fw-bold" href="<?= getUrl('my_loans') ?>"><?= $t('Review', 'Angalia') ?></a>
+    </div>
+    <?php endif; ?>
 
     <!-- Headline cards -->
     <div class="row g-3 mb-3">
