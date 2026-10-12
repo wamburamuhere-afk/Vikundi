@@ -4,9 +4,9 @@ This file tracks every development session, modification, and significant change
 
 ---
 
-## Session — 2026-10-12 — Loans 3/3: repayments, penalties, early payoff — committed locally, not pushed
+## Session — 2026-10-12 — Loans 3/3: repayments, penalties, early payoff — PR open
 
-**Branch:** `feat/loan-types-and-rules` (stacked on PR #521)
+**Branch:** `feat/loan-types-and-rules` (off `develop`, after PR #521)
 **Developer:** Claude Code / Jabir Mussa
 
 **Summary:** a disbursed loan can now be repaid. `vl_record_payment()` applies each payment to the
@@ -44,9 +44,9 @@ table, which this module does not use.
 
 ---
 
-## Session — 2026-10-12 — Loans 2/3: apply, guarantee, approve, disburse — committed locally, not pushed
+## Session — 2026-10-12 — Loans 2/3: apply, guarantee, approve, disburse — PR open
 
-**Branch:** `feat/loan-types-and-rules` (stacked on PR #521)
+**Branch:** `feat/loan-types-and-rules` (off `develop`, after PR #521)
 **Developer:** Claude Code / Jabir Mussa
 
 **Summary:** the loans UI is back on, rebuilt. New `includes/loans.php` is the workflow every page and
@@ -89,9 +89,9 @@ admin, borrower and guarantor; an unrelated member sees no loan data. Local test
 
 ---
 
-## Session — 2026-10-12 — Loans 1/3: loan types and rules — committed locally, not pushed
+## Session — 2026-10-12 — Loans 1/3: loan types and rules — PR open
 
-**Branch:** `feat/loan-types-and-rules` (stacked on `feat/fund-buckets-and-vicoba-settings`, PR #521)
+**Branch:** `feat/loan-types-and-rules` (off `develop`, after PR #521)
 **Developer:** Claude Code / Jabir Mussa
 
 **Why:** the loans UI has been disabled since the initial commit, and the handlers behind it
@@ -123,7 +123,7 @@ all correct, row renders with no PHP errors.
 
 ---
 
-## Session — 2026-10-12 — Fund buckets: shares, Social Fund, membership deposit — PR open
+## Session — 2026-10-12 — Fund buckets: shares, Social Fund, membership deposit — merged (PR #521)
 
 **Branch:** `feat/fund-buckets-and-vicoba-settings` (off `develop`)
 **Developer:** Claude Code / Jabir Mussa
