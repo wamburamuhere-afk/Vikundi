@@ -4,7 +4,65 @@ This file tracks every development session, modification, and significant change
 
 ---
 
-## Session — 2026-10-12 — Dividends — PR open
+## Session — 2026-10-12 — Wise Wallet demo instance + fresh-install fixes — PR open
+
+**Branch:** `feat/wise-wallet-demo-seeder` (off `develop`, after PR #523)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** a demo seeder for the Wise Wallet M-KOBA prospect, and two migrations found necessary by
+installing into a completely empty database for the first time.
+
+**Server (done by Jabir, read-only survey by Claude):** new site
+`wisewallet.vikundi.bjptechnologies.co.tz` at `/var/www/wisewallet.vikundi.bjptechnologies.co.tz/public_html`,
+tracking `develop` (NOT in the deploy workflow, which resets production and `demo.vikundi` to `main`).
+Own database `bjptechn_wisewallet` and user `user_wisewallet`; `config.php` mode 640. Update with
+`git pull origin develop && php database/migrate.php`.
+
+**Fresh-install defect 1 — loans (regression from #522).** `approve_loan` / `disburse_loan` exist in
+databases restored from the original SQL dump but in no migration. On a clean install the Secretary and
+Treasurer could not open Loans, approve, pay out or record a repayment. Fixed:
+`database/add_loan_permissions.php`.
+
+**Fresh-install defect 2 — everyday pages (pre-existing).** Eleven page keys (`customers`, `expenses`,
+`document_library`, `document_templates`, `document_workflow`, `e_signatures`, `message_center`,
+`notification_center`, `system_settings`, `users`, `user_roles`) likewise only ever came from the dump.
+Fixed: `database/add_core_page_permissions.php` registers exactly the keys existing installs have;
+grants are left to the role seeder, so a new group behaves as the current one does. Both migrations
+run before `seed_vicoba_roles.php` and are no-ops on existing databases.
+
+**Seeder:** `database/seed_wise_wallet_demo.php` (CLI only, not in `migrate.php`). 25 invented members
+(three are the officers), ten months of shares / Social Fund / deposits, fines, expenses, one welfare
+payment, two loan types, eight loans in every state created through the real workflow, and
+`downloads/WiseWallet_MKoba_Statement_DEMO.csv` in the real ten-column M-Koba layout. Phones use an
+invented block and e-mails the reserved `.example` domain. The password is random unless given, and
+printed once. Guards: `demo_seed_guard.php`; refuses a database that already has people; `--fresh` only
+on a database whose group name is this seeder's.
+
+**Demo script:** `docs/client-deliverables/Wise_Wallet_Demo_Script.md`.
+
+**Verified** on `vikundi_demo_scratch`, emptied and rebuilt from nothing (previous contents backed up
+to `backups/vikundi_demo_scratch_backup_20261012.sql`): `migrate.php` runs with 0 errors; seeding
+succeeds first time and identically on `--fresh`; real logins work for all six demo accounts with the
+seeded password and fail with a wrong one; Secretary and Treasurer open Members, Loans, Dividends,
+Fines, Transactions, Contributions, Ledger, Reconciliation and Settings; a Member is kept out of the
+leadership pages; the statement imports through the real endpoint as 23 imported (530,000), 2 excluded
+(250,000) and 1 unmatched (20,000), totalling the statement's 800,000. Guards: a second run refuses, the
+main local database is refused with and without `--fresh` (row counts unchanged), a web request is
+refused, a short password is refused before anything is wiped. `composer test` — 2,522 green (new
+`WiseWalletSeederTest`, 12 tests).
+
+**Known issue, not fixed here:** `app/constant/accounts/expenses.php` gates on `death_expenses`, a key
+that exists in no database — including the current production one — so Expenses opens for admin-role
+users only. Officers hold `expenses`, which the page does not check. Also absent everywhere:
+`member_approvals`, `documents`, `library`, `audit_logs`, `backup_restore`. Left alone deliberately:
+changing them changes who can see what on a live group.
+
+**Also noted on the server:** `config.php` is mode 775 (world-readable) on the production and
+`demo.vikundi` sites; `main` is behind `develop` (stops at PR #520).
+
+---
+
+## Session — 2026-10-12 — Dividends — merged (PR #523)
 
 **Branch:** `feat/dividends` (off `develop`, after PR #522)
 **Developer:** Claude Code / Jabir Mussa

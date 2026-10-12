@@ -25,6 +25,8 @@ $migrations = [
     'grant_voting_permission.php',  // backfill 'voting' (view) for Secretary/Treasurer, same gap manage_voting already covered
     'add_contributions_permission.php', // register 'manage_contributions' (the code has always gated on it; the row never existed)
     'create_vicoba_dividend_tables.php', // dividend runs + lines, and the 'dividends' permission (before role seed)
+    'add_core_page_permissions.php', // the eleven everyday page keys that only ever came from the original SQL dump (absent on a fresh install; before role seed)
+    'add_loan_permissions.php',     // register 'approve_loan' / 'disburse_loan' (absent on a fresh install) + leadership grants (before role seed)
     'seed_vicoba_roles.php',        // the four VICOBA system roles + remove BMS roles
     'add_transaction_fields.php',   // contributions.receipt_number + account (Transactions form)
     'fix_death_expense_schema.php', // widen deceased_type, add 'dormant' + customers.is_active
