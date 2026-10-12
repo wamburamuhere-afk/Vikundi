@@ -65,4 +65,20 @@ class TransactionsPageTest extends TestCase
         // Date is validated to Y-m-d rather than blindly trusted.
         $this->assertStringContainsString("createFromFormat('Y-m-d'", $h);
     }
+
+    public function testAnImportEndsOnTheResultNotAnErrorPage(): void
+    {
+        // Found in the browser on a live server: the handler closed the uploaded
+        // file twice. The second fclose() throws a TypeError in PHP 8, after the
+        // rows are committed, so the import worked and the user saw HTTP 500.
+        $h = $this->src('actions/import_contributions.php');
+        $this->assertSame(1, substr_count($h, 'fclose($handle);'), 'the file is closed once, where it is read');
+
+        // The one close sits inside the CSV read, before any row is processed.
+        $this->assertLessThan(strpos($h, '$pdo->beginTransaction()'), strpos($h, 'fclose($handle);'));
+
+        // Whatever happens, the handler ends by redirecting with the outcome.
+        $tail = substr($h, strrpos($h, "\$_SESSION['import_response'] = \$response;"));
+        $this->assertStringContainsString("header('Location: ' . getUrl('transactions'));", $tail);
+    }
 }
