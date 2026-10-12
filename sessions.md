@@ -4,6 +4,47 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-12 — Reports: loans, shares and the Social Fund — PR open
+
+**Branch:** `feat/loan-share-social-fund-reports` (off `develop`, after PR #526)
+**Developer:** Claude Code / Jabir Mussa
+
+**Why:** management asked for better reports, "especially loans, shares and Social Fund", ahead of the
+Wise Wallet presentation. Those three areas had screens but no reports.
+
+**Four new printable reports** (Reports menu → "Loans, Shares & Social Fund"):
+
+| Route | Report | Shows |
+|---|---|---|
+| `reports/loans` | Loan Portfolio | Every loan with paid, still owed and penalty due; totals; overdue instalments with days late. Status filter. |
+| `reports/loan_repayments` | Loan Income & Repayments | Each repayment in a period split into principal, interest and penalty; income = interest + penalties. |
+| `reports/shares` | Shares Register | Each member's share capital, shares held and % of the group, as at a date. |
+| `reports/social_fund` | Social Fund Statement | Balance brought forward, paid in by member, each welfare payment out, closing balance. |
+
+Each has the group letterhead on paper, a Print button, a tab strip across the four, and both languages.
+New `includes/vicoba_reports.php` holds the queries and the shared page furniture.
+
+**No figure is calculated a second way.** Balances and penalties come from `loan_rules.php`, share
+capital from `dv_share_capital_as_at()`, the Social Fund from the same tables as
+`fb_social_fund_position()`.
+
+**Access — caught by logging in as a Member.** The pages were first gated on `vicoba_reports`, the key
+the older group reports use. That key is granted to every member, so each member's loans and arrears
+were readable by everyone. They are now gated on `vr_can_view()`: `approve_loan`, `disburse_loan` or
+`dividends`, none of which a Member holds. The menu links follow the same rule.
+
+**Verified** on the seeded scratch database: portfolio "still owed" 1,492,000 equals the Loans screen;
+interest 46,500 equals the Dividends screen; share capital 5,650,000 equals the fund buckets; Social
+Fund closing 362,000 equals `fb_social_fund_position()`, and opening + in − out reconciles for a
+shorter window. Real logins: Treasurer, Secretary and Chairperson open all four (200); a Member gets
+302 to /unauthorized and sees no links; the older group report stays open to members. `composer test`
+— 2,538 green (new `VicobaReportsTest`, 9 tests).
+
+**Not included:** Excel export; the extended member statement (shares / Social Fund / loans / dividend
+on one printout). Not yet clicked through in a browser.
+
+---
+
 ## Session — 2026-10-12 — Fix: two defects found by testing the demo in a real browser — PR open
 
 **Branch:** `fix/loan-preview-and-dividend-print-footer` (off `develop`, after PR #525)
