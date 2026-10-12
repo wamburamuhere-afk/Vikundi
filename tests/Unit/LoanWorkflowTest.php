@@ -80,9 +80,9 @@ class LoanWorkflowTest extends TestCase
 
     public function testEveryStateChangeIsAuditLogged(): void
     {
-        // apply -> logCreate; respond, cancel, approve/reject (one shared call)
-        // and disburse -> logUpdate.
-        $this->assertSame(1, substr_count(self::$action, 'logCreate('));
+        // apply and repay -> logCreate; respond, cancel, approve/reject (one
+        // shared call) and disburse -> logUpdate.
+        $this->assertSame(2, substr_count(self::$action, 'logCreate('));
         $this->assertSame(4, substr_count(self::$action, 'logUpdate('));
     }
 

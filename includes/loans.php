@@ -463,3 +463,143 @@ if (!function_exists('vl_may_view')) {
         return (bool) $st->fetchColumn();
     }
 }
+
+// ── Repayment ────────────────────────────────────────────────────────────────
+
+if (!function_exists('vl_rules')) {
+    /** The loan's own rules (its snapshot), in the shape loan_rules.php expects. */
+    function vl_rules(array $loan): array
+    {
+        return [
+            'interest_type' => (string) $loan['interest_type'],
+            'penalty_type'  => (string) $loan['penalty_type'],
+            'penalty_value' => (float) $loan['penalty_value'],
+            'grace_days'    => (int) $loan['grace_days'],
+        ];
+    }
+}
+
+if (!function_exists('vl_payments')) {
+    function vl_payments(PDO $pdo, int $loanId): array
+    {
+        $st = $pdo->prepare("SELECT * FROM vicoba_loan_payments WHERE loan_id = ? ORDER BY payment_date, id");
+        $st->execute([$loanId]);
+        return $st->fetchAll(PDO::FETCH_ASSOC);
+    }
+}
+
+if (!function_exists('vl_record_payment')) {
+    /**
+     * Record a repayment received against a disbursed loan and apply it to the
+     * schedule (lr_allocate_payment() decides how). Clears the loan when the last
+     * instalment is paid.
+     */
+    function vl_record_payment(PDO $pdo, int $loanId, float $amount, string $date, string $account, string $receipt, string $note, int $userId, bool $isSw = false): array
+    {
+        $no = static fn(string $en, string $sw): array => ['ok' => false, 'message' => $isSw ? $sw : $en];
+
+        if (vl_is_own_loan($pdo, $loanId, $userId)) {
+            return $no('You cannot record a repayment on your own loan.', 'Huwezi kurekodi rejesho la mkopo wako mwenyewe.');
+        }
+        $d = DateTime::createFromFormat('Y-m-d', $date);
+        if (!$d || $d->format('Y-m-d') !== $date || $date > date('Y-m-d')) {
+            return $no('Enter a valid payment date, not in the future.', 'Weka tarehe sahihi ya malipo, isiyo ya baadaye.');
+        }
+        if (!in_array($account, ['M-Koba', 'Bank', 'Cash', 'Mobile Money'], true)) {
+            return $no('Choose the account the money was received into.', 'Chagua akaunti iliyopokea fedha.');
+        }
+        $amount = lr_money($amount);
+        if ($amount <= 0) {
+            return $no('Enter the amount received.', 'Weka kiasi kilichopokelewa.');
+        }
+
+        $pdo->beginTransaction();
+        try {
+            $st = $pdo->prepare("SELECT * FROM vicoba_loans WHERE loan_id = ? AND status = 'disbursed' FOR UPDATE");
+            $st->execute([$loanId]);
+            $loan = $st->fetch(PDO::FETCH_ASSOC);
+            if (!$loan) {
+                $pdo->rollBack();
+                return $no('Repayments can only be recorded on a loan that has been paid out and is not yet cleared.', 'Marejesho hurekodiwa kwa mkopo uliotolewa na ambao haujaisha tu.');
+            }
+            if ($date < substr((string) $loan['disbursed_at'], 0, 10)) {
+                $pdo->rollBack();
+                return $no('The payment date cannot be before the loan was paid out.', 'Tarehe ya malipo haiwezi kuwa kabla ya mkopo kutolewa.');
+            }
+
+            $installments = vl_installments($pdo, $loanId);
+            $alloc = lr_allocate_payment($installments, $amount, $date, vl_rules($loan));
+            if (!$alloc['ok']) {
+                $pdo->rollBack();
+                $max = number_format((float) $alloc['max'], 2);
+                return $no("The most that can be received on this loan today is TZS {$max}.", "Kiasi cha juu kinachoweza kupokelewa kwa mkopo huu leo ni TZS {$max}.");
+            }
+
+            $up = $pdo->prepare(
+                "UPDATE vicoba_loan_installments
+                    SET principal_paid = principal_paid + ?, interest_paid = interest_paid + ?, penalty_paid = penalty_paid + ?,
+                        interest_due = interest_due - ?, status = ?, paid_at = IF(? = 'paid', COALESCE(paid_at, ?), paid_at)
+                  WHERE loan_id = ? AND seq = ?"
+            );
+            foreach ($alloc['lines'] as $l) {
+                $up->execute([$l['principal'], $l['interest'], $l['penalty'], $l['waive_interest'], $l['status'], $l['status'], $date . ' 00:00:00', $loanId, $l['seq']]);
+            }
+
+            $pdo->prepare(
+                "INSERT INTO vicoba_loan_payments (loan_id, payment_date, amount, principal_part, interest_part, penalty_part, account, receipt_number, note, recorded_by)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            )->execute([
+                $loanId, $date, $amount, $alloc['principal'], $alloc['interest'], $alloc['penalty'], $account,
+                mb_substr(trim($receipt), 0, 100) ?: null, mb_substr(trim($note), 0, 255) ?: null, $userId,
+            ]);
+
+            if ($alloc['settled']) {
+                $pdo->prepare("UPDATE vicoba_loans SET status = 'repaid', repaid_at = ?, total_interest = total_interest - ?, total_repayable = total_repayable - ? WHERE loan_id = ?")
+                    ->execute([$date . ' ' . date('H:i:s'), $alloc['waived_interest'], $alloc['waived_interest'], $loanId]);
+            }
+            $pdo->commit();
+        } catch (Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+
+        return ['ok' => true, 'status' => $alloc['settled'] ? 'repaid' : 'disbursed', 'allocation' => $alloc,
+                'message' => $alloc['settled'] ? ($isSw ? 'Rejesho limepokelewa. Mkopo umelipwa wote.' : 'Repayment recorded. The loan is fully repaid.')
+                                               : ($isSw ? 'Rejesho limepokelewa.' : 'Repayment recorded.')];
+    }
+}
+
+if (!function_exists('vl_member_loan_summary')) {
+    /**
+     * What a member owes across their disbursed loans today, and the next
+     * instalment due — for Member Home.
+     *
+     * @return array{loans:int,owed:float,next_due:?string,next_amount:float}
+     */
+    function vl_member_loan_summary(PDO $pdo, int $customerId, ?string $asOf = null): array
+    {
+        $asOf = $asOf ?? date('Y-m-d');
+        $out  = ['loans' => 0, 'owed' => 0.0, 'next_due' => null, 'next_amount' => 0.0];
+        $st = $pdo->prepare("SELECT * FROM vicoba_loans WHERE customer_id = ? AND status = 'disbursed'");
+        $st->execute([$customerId]);
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $loan) {
+            $out['loans']++;
+            $rules = vl_rules($loan);
+            foreach (vl_installments($pdo, (int) $loan['loan_id']) as $i) {
+                $unpaid = lr_installment_unpaid($i);
+                if ($unpaid <= 0) {
+                    continue;
+                }
+                $due = $unpaid + lr_installment_penalty_due($i, $asOf, $rules);
+                $out['owed'] += $due;
+                if ($out['next_due'] === null || $i['due_date'] < $out['next_due']) {
+                    $out['next_due']    = $i['due_date'];
+                    $out['next_amount'] = $due;
+                }
+            }
+        }
+        $out['owed'] = lr_money($out['owed']);
+        $out['next_amount'] = lr_money($out['next_amount']);
+        return $out;
+    }
+}

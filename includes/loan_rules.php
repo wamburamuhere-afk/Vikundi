@@ -248,3 +248,139 @@ if (!function_exists('lr_penalty')) {
         return 0.0;
     }
 }
+
+// ── Repayment ────────────────────────────────────────────────────────────────
+//
+// An instalment here is a row of vicoba_loan_installments:
+//   seq, due_date, principal_due, interest_due, principal_paid, interest_paid, penalty_paid
+// and $rules is the loan's own snapshot: interest_type, penalty_type,
+// penalty_value, grace_days.
+
+if (!function_exists('lr_installment_unpaid')) {
+    /** Principal and interest still owed on one instalment. */
+    function lr_installment_unpaid(array $i): float
+    {
+        return lr_money(max(0.0, (float) $i['principal_due'] - (float) $i['principal_paid'])
+                      + max(0.0, (float) $i['interest_due'] - (float) $i['interest_paid']));
+    }
+}
+
+if (!function_exists('lr_installment_penalty_due')) {
+    /**
+     * The late penalty outstanding on one instalment on a given day: the penalty
+     * on what is still unpaid for the months it has been late, less any penalty
+     * already paid on it. An instalment that has been cleared owes none.
+     */
+    function lr_installment_penalty_due(array $i, string $asOf, array $rules): float
+    {
+        $unpaid = lr_installment_unpaid($i);
+        if ($unpaid <= 0) {
+            return 0.0;
+        }
+        $months  = lr_months_overdue((string) $i['due_date'], $asOf, (int) ($rules['grace_days'] ?? 0));
+        $penalty = lr_penalty($unpaid, (string) ($rules['penalty_type'] ?? 'none'), (float) ($rules['penalty_value'] ?? 0), $months);
+        return lr_money(max(0.0, $penalty - (float) ($i['penalty_paid'] ?? 0)));
+    }
+}
+
+if (!function_exists('lr_period_started')) {
+    /** Has this instalment's month begun? Its period runs from the previous due date. */
+    function lr_period_started(array $i, string $asOf): bool
+    {
+        return lr_add_months((string) $i['due_date'], -1) <= $asOf;
+    }
+}
+
+if (!function_exists('lr_payoff')) {
+    /**
+     * What clears the whole loan on a given day.
+     *
+     *   flat      every unpaid instalment in full — the interest was agreed on the
+     *             amount borrowed for the whole period, so paying early does not
+     *             reduce it
+     *   reducing  interest is only ever charged on what is still owed, so the
+     *             months that have not started yet carry none; that interest is
+     *             waived on early settlement
+     *
+     * @return array{principal:float,interest:float,penalty:float,waived_interest:float,total:float}
+     */
+    function lr_payoff(array $installments, string $asOf, array $rules): array
+    {
+        $out = ['principal' => 0.0, 'interest' => 0.0, 'penalty' => 0.0, 'waived_interest' => 0.0];
+        $reducing = ($rules['interest_type'] ?? 'flat') === 'reducing';
+        foreach ($installments as $i) {
+            $interest = max(0.0, (float) $i['interest_due'] - (float) $i['interest_paid']);
+            $out['principal'] += max(0.0, (float) $i['principal_due'] - (float) $i['principal_paid']);
+            $out['penalty']   += lr_installment_penalty_due($i, $asOf, $rules);
+            if ($reducing && !lr_period_started($i, $asOf)) {
+                $out['waived_interest'] += $interest;
+            } else {
+                $out['interest'] += $interest;
+            }
+        }
+        $out = array_map('lr_money', $out);
+        $out['total'] = lr_money($out['principal'] + $out['interest'] + $out['penalty']);
+        return $out;
+    }
+}
+
+if (!function_exists('lr_allocate_payment')) {
+    /**
+     * Spread one repayment over the schedule. Pure — returns what to write.
+     *
+     * Oldest instalment first; within an instalment the penalty is paid before
+     * the interest and the interest before the principal, so an instalment can
+     * never be cleared while a penalty on it is left unpaid.
+     *
+     * A payment may not exceed the payoff figure. On a reducing loan, a payment
+     * that reaches the payoff figure settles the loan and waives the interest on
+     * the months that have not started.
+     *
+     * @return array{ok:bool,max?:float,principal?:float,interest?:float,penalty?:float,waived_interest?:float,settled?:bool,
+     *               lines?:array<int,array{seq:int,principal:float,interest:float,penalty:float,waive_interest:float,status:string}>}
+     */
+    function lr_allocate_payment(array $installments, float $amount, string $asOf, array $rules): array
+    {
+        $amount = lr_money($amount);
+        $payoff = lr_payoff($installments, $asOf, $rules);
+        if ($amount <= 0 || $amount > $payoff['total'] + 0.004) {
+            return ['ok' => false, 'max' => $payoff['total']];
+        }
+        $settle = ($rules['interest_type'] ?? 'flat') === 'reducing' && $amount >= $payoff['total'] - 0.004;
+
+        usort($installments, static fn($a, $b) => (int) $a['seq'] <=> (int) $b['seq']);
+        $left  = $amount;
+        $lines = [];
+        $sum   = ['principal' => 0.0, 'interest' => 0.0, 'penalty' => 0.0, 'waived_interest' => 0.0];
+
+        foreach ($installments as $i) {
+            $take = static function (float $owed) use (&$left): float {
+                $pay  = lr_money(min($owed, $left));
+                $left = lr_money($left - $pay);
+                return $pay;
+            };
+            $penalty = $take(lr_installment_penalty_due($i, $asOf, $rules));
+
+            $interestOwed = lr_money(max(0.0, (float) $i['interest_due'] - (float) $i['interest_paid']));
+            $waive = ($settle && !lr_period_started($i, $asOf)) ? $interestOwed : 0.0;
+            $interest = $take(lr_money($interestOwed - $waive));
+
+            $principalOwed = lr_money(max(0.0, (float) $i['principal_due'] - (float) $i['principal_paid']));
+            $principal = $take($principalOwed);
+
+            $cleared = ($principalOwed - $principal) < 0.005 && ($interestOwed - $waive - $interest) < 0.005;
+            $touched = ((float) $i['principal_paid'] + (float) $i['interest_paid'] + $principal + $interest) > 0;
+            $lines[] = [
+                'seq' => (int) $i['seq'], 'principal' => $principal, 'interest' => $interest, 'penalty' => $penalty,
+                'waive_interest' => $waive, 'status' => $cleared ? 'paid' : ($touched ? 'partial' : 'pending'),
+            ];
+            $sum['principal'] += $principal;
+            $sum['interest']  += $interest;
+            $sum['penalty']   += $penalty;
+            $sum['waived_interest'] += $waive;
+        }
+
+        $sum = array_map('lr_money', $sum);
+        return ['ok' => true, 'settled' => !in_array(false, array_map(static fn($l) => $l['status'] === 'paid', $lines), true), 'lines' => $lines] + $sum;
+    }
+}

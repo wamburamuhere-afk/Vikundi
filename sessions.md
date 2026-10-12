@@ -4,6 +4,46 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-12 — Loans 3/3: repayments, penalties, early payoff — committed locally, not pushed
+
+**Branch:** `feat/loan-types-and-rules` (stacked on PR #521)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** a disbursed loan can now be repaid. `vl_record_payment()` applies each payment to the
+schedule and clears the loan on the last instalment; the arithmetic is pure, in `loan_rules.php`
+(`lr_allocate_payment()`, `lr_payoff()`, `lr_installment_penalty_due()`).
+
+**Rules:** a payment goes to the oldest instalment first — its penalty, then its interest, then its
+principal — so an instalment cannot be cleared with a penalty left on it. Penalties are worked out from
+the schedule on the day (after the grace days, per started month late) and never stored, so there is no
+cron job and nothing to drift. A payment cannot exceed the payoff figure, pre-date the pay-out or be
+future-dated. **Early payoff:** a flat loan still owes its full agreed interest (signed off); a
+reducing loan owes interest only for months that have started — the rest is waived and the loan's
+totals are reduced to match.
+
+**Access:** recording a repayment needs `disburse_loan` (create), and nobody records one on their own
+loan. Action `repay` on `actions/loan_action.php`, audit-logged.
+
+**Pages:** loan detail gains where-it-stands-today (due now, principal left, penalties, payoff figure),
+a penalty column, overdue highlighting, the repayments received and a Record repayment form. Member
+Home shows loan balance and the next instalment.
+
+**Removed:** `actions/record_loan_payment.php` (no permission check, no CSRF).
+
+**Verified:** `composer test` green — 2,492 tests (new `LoanRepaymentTest`, 14 tests, including six
+on-time instalments clearing a loan exactly). Live: a flat loan paid out two months ago showed a 5,600
+penalty on its late instalment, paid first; a reducing loan settled on day one for 309,000 with 9,000
+waived; member-recording (403), overpayment, pre-pay-out date and paying a cleared loan all refused;
+group fund reconciled to the shilling (2,232,878 − 900,000 lent + 471,000 repaid = 1,803,878). Local
+test data removed.
+
+**Known limits:** repayments paid through M-Koba are recorded by hand (the statement importer treats
+every row as a contribution); no mobile API for loans; no rescheduling, top-ups or loan reports. The
+~30 inherited BMS loan endpoints are still routed and still unaudited — they write to the old `loans`
+table, which this module does not use.
+
+---
+
 ## Session — 2026-10-12 — Loans 2/3: apply, guarantee, approve, disburse — committed locally, not pushed
 
 **Branch:** `feat/loan-types-and-rules` (stacked on PR #521)

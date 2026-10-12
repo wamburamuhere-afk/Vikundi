@@ -322,8 +322,6 @@ $routes = [
     'actions/update_contribution' => ROOT_DIR . '/actions/update_contribution.php',
     'actions/upload_contributions' => ROOT_DIR . '/actions/upload_contributions.php',
     'actions/process_contribution' => ROOT_DIR . '/actions/process_contribution.php',
-    // 'actions/record_loan_payment' => ROOT_DIR . '/actions/record_loan_payment.php',
-
     // Loans module (VICOBA loans — see includes/loans.php)
     'actions/loan_action' => ROOT_DIR . '/actions/loan_action.php',
     'api/loan_preview'    => API_DIR . '/loan_preview.php',

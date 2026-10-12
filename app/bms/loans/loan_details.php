@@ -59,6 +59,23 @@ $can_respond  = $my_guarantee && $my_guarantee['status'] === 'pending' && $loan[
 $can_cancel   = $is_own && in_array($loan['status'], ['pending_guarantors', 'pending'], true);
 $can_decide   = !$is_own && $loan['status'] === 'pending' && canApprove('approve_loan');
 $can_disburse = !$is_own && $loan['status'] === 'approved' && canCreate('disburse_loan');
+$can_repay    = !$is_own && $loan['status'] === 'disbursed' && canCreate('disburse_loan');
+
+// Where the loan stands today: penalties are worked out from the schedule on the
+// day, never stored, so this is always current.
+$today    = date('Y-m-d');
+$rules    = vl_rules($loan);
+$payoff   = $installments ? lr_payoff($installments, $today, $rules) : null;
+$payments = vl_payments($pdo, $loan_id);
+$due_now  = 0.0;
+foreach ($installments as $k => $i) {
+    $pen = lr_installment_penalty_due($i, $today, $rules);
+    $lines[$k]['penalty'] = $pen + (float) $i['penalty_paid'];
+    $lines[$k]['overdue'] = lr_installment_unpaid($i) > 0 && $i['due_date'] < $today;
+    if (lr_installment_unpaid($i) > 0 && $i['due_date'] <= $today) {
+        $due_now += lr_installment_unpaid($i) + $pen;
+    }
+}
 
 $rate = rtrim(rtrim(number_format((float) $loan['interest_rate'], 3), '0'), '.');
 $penalty = match ($loan['penalty_type']) {
@@ -87,6 +104,9 @@ $penalty = match ($loan['penalty_type']) {
                 <?php endif; ?>
                 <?php if ($can_disburse): ?>
                 <button type="button" class="btn btn-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#disburseModal"><i class="bi bi-cash-stack me-1"></i><?= $t('Pay out', 'Toa mkopo') ?></button>
+                <?php endif; ?>
+                <?php if ($can_repay): ?>
+                <button type="button" class="btn btn-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#repayModal"><i class="bi bi-cash-coin me-1"></i><?= $t('Record repayment', 'Rekodi rejesho') ?></button>
                 <?php endif; ?>
                 <?php if ($can_cancel): ?>
                 <button type="button" class="btn btn-outline-secondary rounded-pill px-3 loanActBtn" data-action="cancel"><?= $t('Withdraw application', 'Ghairi ombi') ?></button>
@@ -118,6 +138,20 @@ $penalty = match ($loan['penalty_type']) {
         </div>
         <?php endforeach; ?>
     </div>
+
+    <?php if ($loan['status'] === 'disbursed' && $payoff): ?>
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row text-center g-3">
+                <div class="col-6 col-lg-3"><div class="small text-muted text-uppercase fw-bold"><?= $t('Due now', 'Kinachodaiwa sasa') ?></div><div class="fs-5 fw-bold <?= $due_now > 0 ? 'text-danger' : 'text-muted' ?>">TZS <?= number_format($due_now, 2) ?></div></div>
+                <div class="col-6 col-lg-3"><div class="small text-muted text-uppercase fw-bold"><?= $t('Principal left', 'Mkopo uliobaki') ?></div><div class="fs-5 fw-bold">TZS <?= number_format($payoff['principal'], 2) ?></div></div>
+                <div class="col-6 col-lg-3"><div class="small text-muted text-uppercase fw-bold"><?= $t('Late penalties', 'Adhabu za kuchelewa') ?></div><div class="fs-5 fw-bold <?= $payoff['penalty'] > 0 ? 'text-danger' : 'text-muted' ?>">TZS <?= number_format($payoff['penalty'], 2) ?></div></div>
+                <div class="col-6 col-lg-3"><div class="small text-muted text-uppercase fw-bold"><?= $t('To clear the loan today', 'Kumaliza mkopo leo') ?></div><div class="fs-5 fw-bold text-primary">TZS <?= number_format($payoff['total'], 2) ?></div>
+                    <?php if ($payoff['waived_interest'] > 0): ?><div class="small text-success"><?= $t('saves', 'unaokoa') ?> TZS <?= number_format($payoff['waived_interest'], 2) ?> <?= $t('interest', 'riba') ?></div><?php endif; ?></div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <div class="row g-3">
         <div class="col-lg-5">
@@ -184,16 +218,17 @@ $penalty = match ($loan['penalty_type']) {
                             <thead class="table-light"><tr>
                                 <th>#</th><th><?= $t('Due', 'Tarehe') ?></th>
                                 <th class="text-end"><?= $t('Principal', 'Mkopo') ?></th><th class="text-end"><?= $t('Interest', 'Riba') ?></th>
-                                <th class="text-end"><?= $t('Instalment', 'Rejesho') ?></th><th class="text-end"><?= $t('Paid', 'Imelipwa') ?></th>
+                                <th class="text-end"><?= $t('Instalment', 'Rejesho') ?></th><th class="text-end"><?= $t('Penalty', 'Adhabu') ?></th><th class="text-end"><?= $t('Paid', 'Imelipwa') ?></th>
                             </tr></thead>
                             <tbody>
                             <?php foreach ($lines as $l): ?>
-                                <tr class="<?= $l['status'] === 'paid' ? 'table-success' : '' ?>">
+                                <tr class="<?= $l['status'] === 'paid' ? 'table-success' : (!empty($l['overdue']) ? 'table-danger' : '') ?>">
                                     <td><?= (int) $l['seq'] ?></td>
                                     <td><?= date('d M Y', strtotime($l['due_date'])) ?></td>
                                     <td class="text-end"><?= number_format($l['principal'], 2) ?></td>
                                     <td class="text-end"><?= number_format($l['interest'], 2) ?></td>
                                     <td class="text-end fw-bold"><?= number_format($l['principal'] + $l['interest'], 2) ?></td>
+                                    <td class="text-end <?= ($l['penalty'] ?? 0) > 0 ? 'text-danger' : 'text-muted' ?>"><?= number_format($l['penalty'] ?? 0, 2) ?></td>
                                     <td class="text-end"><?= number_format($l['paid'], 2) ?></td>
                                 </tr>
                             <?php endforeach; ?>
@@ -203,9 +238,79 @@ $penalty = match ($loan['penalty_type']) {
                     <?php endif; ?>
                 </div>
             </div>
+            <?php if ($payments): ?>
+            <div class="card border-0 shadow-sm mt-3">
+                <div class="card-header bg-white fw-bold"><?= $t('Repayments received', 'Marejesho yaliyopokelewa') ?></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead class="table-light"><tr>
+                                <th><?= $t('Date', 'Tarehe') ?></th><th class="text-end"><?= $t('Amount', 'Kiasi') ?></th>
+                                <th class="text-end"><?= $t('Principal', 'Mkopo') ?></th><th class="text-end"><?= $t('Interest', 'Riba') ?></th>
+                                <th class="text-end"><?= $t('Penalty', 'Adhabu') ?></th><th><?= $t('Account', 'Akaunti') ?></th><th><?= $t('Receipt', 'Risiti') ?></th>
+                            </tr></thead>
+                            <tbody>
+                            <?php foreach ($payments as $p): ?>
+                                <tr>
+                                    <td><?= date('d M Y', strtotime($p['payment_date'])) ?></td>
+                                    <td class="text-end fw-bold"><?= number_format((float) $p['amount'], 2) ?></td>
+                                    <td class="text-end"><?= number_format((float) $p['principal_part'], 2) ?></td>
+                                    <td class="text-end"><?= number_format((float) $p['interest_part'], 2) ?></td>
+                                    <td class="text-end"><?= number_format((float) $p['penalty_part'], 2) ?></td>
+                                    <td><?= htmlspecialchars((string) $p['account']) ?></td>
+                                    <td><?= htmlspecialchars((string) $p['receipt_number']) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 </div>
+
+<?php if ($can_repay): ?>
+<div class="modal fade" id="repayModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content" id="repayForm">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold"><?= $t('Record repayment', 'Rekodi rejesho') ?></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-start">
+                <p class="small text-muted mb-3"><?= $t('The payment goes to the oldest instalment first: its penalty, then its interest, then its principal.', 'Malipo huanza na rejesho la zamani zaidi: adhabu yake, kisha riba, kisha mkopo.') ?></p>
+                <input type="hidden" name="action" value="repay">
+                <input type="hidden" name="loan_id" value="<?= (int) $loan_id ?>">
+                <div class="mb-3">
+                    <label class="form-label fw-bold"><?= $t('Amount received (TZS)', 'Kiasi kilichopokelewa (TZS)') ?></label>
+                    <input type="number" name="amount" class="form-control" min="1" step="any" required value="<?= $due_now > 0 ? htmlspecialchars((string) round($due_now, 2)) : '' ?>">
+                    <div class="form-text"><?= $t('Due now', 'Kinachodaiwa sasa') ?>: TZS <?= number_format($due_now, 2) ?> · <?= $t('to clear the loan', 'kumaliza mkopo') ?>: TZS <?= number_format((float) ($payoff['total'] ?? 0), 2) ?></div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold"><?= $t('Date received', 'Tarehe ya kupokea') ?></label>
+                    <input type="date" name="payment_date" class="form-control" value="<?= date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold"><?= $t('Received into', 'Imepokelewa kwenye') ?></label>
+                    <select name="account" class="form-select" required>
+                        <?php foreach (['M-Koba', 'Bank', 'Cash', 'Mobile Money'] as $acc): ?><option><?= $acc ?></option><?php endforeach; ?>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label fw-bold"><?= $t('Receipt / M-Koba reference (optional)', 'Risiti / kumbukumbu ya M-Koba (si lazima)') ?></label>
+                    <input type="text" name="receipt_number" class="form-control" maxlength="100">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal"><?= $t('Cancel', 'Ghairi') ?></button>
+                <button type="submit" class="btn btn-primary px-4"><?= $t('Save repayment', 'Hifadhi rejesho') ?></button>
+            </div>
+        </form>
+    </div>
+</div>
+<?php endif; ?>
 
 <?php if ($can_disburse): ?>
 <div class="modal fade" id="disburseModal" tabindex="-1" aria-hidden="true">
@@ -281,7 +386,7 @@ $penalty = match ($loan['penalty_type']) {
             .then(function (r) { if (r.isConfirmed) send({ action: action, loan_id: loanId, decision: decision }); });
     });
 
-    $('#disburseForm').on('submit', function (e) { e.preventDefault(); send($(this).serialize()); });
+    $('#disburseForm, #repayForm').on('submit', function (e) { e.preventDefault(); send($(this).serialize()); });
 })();
 </script>
 <?php includeFooter(); ob_end_flush(); ?>

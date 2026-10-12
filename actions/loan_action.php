@@ -7,8 +7,9 @@
 //   approve   leadership approves            (approve_loan)
 //   reject    leadership rejects, with reason (approve_loan)
 //   disburse  the money is paid out           (disburse_loan)
+//   repay     a repayment is received         (disburse_loan)
 //
-// Replaces apply_for_loan.php / approve_loan_vicoba.php, which checked only that
+// Replaces apply_for_loan.php / approve_loan_vicoba.php / record_loan_payment.php, which checked only that
 // SOMEONE was signed in, took customer_id and the interest rate from the request,
 // and had no CSRF protection. Here the caller's identity decides whose loan it
 // is, the rules come from the loan type, and each step is authorised on its own.
@@ -107,6 +108,22 @@ try {
             );
             if ($res['ok']) {
                 logUpdate('Loans', 'Disbursed', "LOAN#$loan_id");
+            }
+            break;
+
+        case 'repay':
+            // Receiving loan money is the same trust as paying it out.
+            if (!canCreate('disburse_loan')) {
+                $fail($denied, 403);
+            }
+            $paid = str_replace([',', ' '], '', (string) ($_POST['amount'] ?? ''));
+            $res = vl_record_payment(
+                $pdo, $loan_id, is_numeric($paid) ? (float) $paid : 0.0,
+                trim((string) ($_POST['payment_date'] ?? '')) ?: date('Y-m-d'), (string) ($_POST['account'] ?? ''),
+                (string) ($_POST['receipt_number'] ?? ''), (string) ($_POST['note'] ?? ''), $uid, $is_sw
+            );
+            if ($res['ok']) {
+                logCreate('Loan Repayments', 'TZS ' . number_format((float) $paid, 2), "LOAN#$loan_id");
             }
             break;
 
