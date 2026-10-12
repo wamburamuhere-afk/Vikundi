@@ -681,7 +681,14 @@ try {
                         </li>
                         
                         <!-- Settings & Admin -->
-                        <?php if (in_array($user_role_lower, ['admin', 'mwenyekiti', 'chairman'])): ?>
+                        <?php
+                        // Whoever isAdmin() treats as an admin sees the Administration menu. This
+                        // used to be a hand-written list — ['admin','mwenyekiti','chairman'] — that
+                        // left out 'chairperson', the exact role name seed_vicoba_roles.php creates,
+                        // so the head of a group had admin access to every page and no link to any
+                        // of them. Same defect group_settings.php and dashboard.php had.
+                        require_once __DIR__ . '/includes/roles.php';
+                        if (vk_role_is_admin($_SESSION['role_id'] ?? null, $user_role)): ?>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle px-3" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="bi bi-sliders"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Utawala (Admin)' : 'Administration' ?>

@@ -108,6 +108,9 @@ $ago   = static fn(string $spec): DateTimeImmutable => $today->modify('-' . $spe
 $startMonth = $today->modify('first day of this month')->modify('-10 months');
 $settings = [
     'group_name'                 => WW_GROUP_NAME,
+    // Original artwork for this demo (source: assets/images/demo/wise_wallet_logo.svg).
+    // Without it the group shows the app's built-in default logo.
+    'group_logo'                 => 'wise_wallet_demo_logo.png',
     'group_registration_number'  => 'DEMO/2026/001',
     'group_founded_date'         => $startMonth->format('Y-m-d'),
     'contribution_start_date'    => $startMonth->format('Y-m-d'),
