@@ -24,6 +24,7 @@ $migrations = [
     'create_voting_tables.php',     // voting tables + 'voting'/'manage_voting' permissions (before role seed)
     'grant_voting_permission.php',  // backfill 'voting' (view) for Secretary/Treasurer, same gap manage_voting already covered
     'add_contributions_permission.php', // register 'manage_contributions' (the code has always gated on it; the row never existed)
+    'create_vicoba_dividend_tables.php', // dividend runs + lines, and the 'dividends' permission (before role seed)
     'seed_vicoba_roles.php',        // the four VICOBA system roles + remove BMS roles
     'add_transaction_fields.php',   // contributions.receipt_number + account (Transactions form)
     'fix_death_expense_schema.php', // widen deceased_type, add 'dormant' + customers.is_active

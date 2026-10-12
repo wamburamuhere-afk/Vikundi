@@ -328,6 +328,8 @@ $routes = [
     'loans'               => LOANS_DIR . '/loans_list.php',
     'loans/details'       => LOANS_DIR . '/loan_details.php',
     'my_loans'            => LOANS_DIR . '/my_loans.php',
+    'dividends'           => ACCOUNTS_DIR . '/dividends.php',
+    'actions/dividend_action' => ROOT_DIR . '/actions/dividend_action.php',
 
     // Fines Module
     'manage_fines'        => CUSTOMERS_DIR . '/manage_fines.php',

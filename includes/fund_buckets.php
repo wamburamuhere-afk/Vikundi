@@ -229,6 +229,31 @@ if (!function_exists('fb_group_balances')) {
     }
 }
 
+if (!function_exists('fb_social_fund_position')) {
+    /**
+     * Where the Social Fund stands: what members have paid into it, less the
+     * welfare paid out of it. Death expenses and member payouts are the Social
+     * Fund's purpose, so they are charged here — never to the surplus a dividend
+     * is shared from (includes/dividends.php).
+     *
+     * @return array{paid_in:float,paid_out:float,balance:float}
+     */
+    function fb_social_fund_position(PDO $pdo): array
+    {
+        $sum = static function (string $sql) use ($pdo): float {
+            try {
+                return (float) $pdo->query($sql)->fetchColumn();
+            } catch (Throwable $e) {
+                return 0.0;
+            }
+        };
+        $in  = (float) fb_group_balances($pdo)['social_fund'];
+        $out = $sum("SELECT COALESCE(SUM(amount), 0) FROM death_expenses WHERE status = 'paid'")
+             + $sum("SELECT COALESCE(SUM(amount), 0) FROM member_payouts WHERE status = 'paid'");
+        return ['paid_in' => $in, 'paid_out' => $out, 'balance' => $in - $out];
+    }
+}
+
 if (!function_exists('fb_type_labels')) {
     /**
      * Display names for the recordable types.

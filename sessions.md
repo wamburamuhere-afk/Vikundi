@@ -4,7 +4,56 @@ This file tracks every development session, modification, and significant change
 
 ---
 
-## Session — 2026-10-12 — Loans 3/3: repayments, penalties, early payoff — PR open
+## Session — 2026-10-12 — Dividends — committed locally, not pushed
+
+**Branch:** `feat/dividends` (off `develop`, after PR #522)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** year-end dividends. New `includes/dividends.php`; page `dividends`; endpoint
+`actions/dividend_action.php`. Slice 3 of 4 toward the Wise Wallet demo.
+
+**Surplus** = loan interest + loan penalties + fines paid − general expenses − petty cash, for a chosen
+period (defaults to the current financial year). **Never included:** share capital, loan principal,
+the Social Fund, membership deposits, and — signed off — death expenses and member payouts, which are
+charged to the Social Fund (`fb_social_fund_position()`).
+
+**Split:** distributable × member's share capital ÷ all share capital, as at the period end date
+(signed off). Cents are distributed by largest remainder, so the lines always sum to the amount.
+
+**Flow:** preview (nothing saved) → **confirm** (figures frozen, nothing moves) → **distribute**, either
+in cash or added to members' shares — one choice per run (signed off). A confirmed run can be cancelled;
+a distributed run is final. Two runs cannot cover the same day; a period cannot end in the future; a
+loss is not shared out.
+
+**Schema:** `database/create_vicoba_dividend_tables.php` — `vicoba_dividend_runs`,
+`vicoba_dividend_lines`, and the `dividends` permission granted to leadership. Members are not granted
+it (`vk_member_hidden_keys()`). **Run `php database/migrate.php` on deploy.**
+
+**Settings (Group Settings → Shares & Funds):** financial year start month, and the percentage of
+surplus shared out (the rest stays as reserve). Unset = January, 100%.
+
+**Money:** `getGroupFundBalance()` subtracts distributed dividends. A dividend added to shares comes
+back as an approved `share` contribution, so the subtraction is what stops it being counted twice.
+
+**Access:** confirm = create, distribute = approve, cancel = delete on `dividends`; all authenticated,
+CSRF-protected, audit-logged. No figure is accepted from the request.
+
+**Also:** Finance menu gains Dividends; Member Home shows the member's latest dividend; the page prints
+as a dividend statement.
+
+**Verified:** `composer test` green — 2,510 tests (new `DividendsTest`, 18 tests). Live: Member confirm
+and distribute (403), no CSRF, bad method, future period, a loss-making period, overlapping period,
+double distribute and cancelling a distributed run all refused. A shares run produced 6 lines summing
+to exactly 47,680 (80% of a 59,600 surplus), left the fund unchanged and raised each member's shares; the
+same run as cash lowered the fund by exactly 47,680 and created no share rows. Local test data removed.
+
+**Known limits:** fines have no payment date, so a paid fine is placed in a period by when its row was
+last updated. A group that pays welfare but records no Social Fund contributions (true of the existing
+local data) shows a negative Social Fund balance on this page — accurate, but worth explaining.
+
+---
+
+## Session — 2026-10-12 — Loans 3/3: repayments, penalties, early payoff — merged (PR #522)
 
 **Branch:** `feat/loan-types-and-rules` (off `develop`, after PR #521)
 **Developer:** Claude Code / Jabir Mussa
@@ -44,7 +93,7 @@ table, which this module does not use.
 
 ---
 
-## Session — 2026-10-12 — Loans 2/3: apply, guarantee, approve, disburse — PR open
+## Session — 2026-10-12 — Loans 2/3: apply, guarantee, approve, disburse — merged (PR #522)
 
 **Branch:** `feat/loan-types-and-rules` (off `develop`, after PR #521)
 **Developer:** Claude Code / Jabir Mussa
@@ -89,7 +138,7 @@ admin, borrower and guarantor; an unrelated member sees no loan data. Local test
 
 ---
 
-## Session — 2026-10-12 — Loans 1/3: loan types and rules — PR open
+## Session — 2026-10-12 — Loans 1/3: loan types and rules — merged (PR #522)
 
 **Branch:** `feat/loan-types-and-rules` (off `develop`, after PR #521)
 **Developer:** Claude Code / Jabir Mussa

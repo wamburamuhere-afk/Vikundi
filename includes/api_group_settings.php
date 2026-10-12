@@ -116,6 +116,8 @@ if (!function_exists('vk_group_settings_writable')) {
             'shares_from_monthly'       => 'enum:on,off',
             'social_fund_amount'        => 'money',
             'membership_deposit_amount' => 'money',
+            'financial_year_start_month' => 'int',
+            'dividend_distribute_pct'   => 'money',
             'meeting_absence_fine'      => 'money',
             'fine_late_meeting'         => 'money',
             'fine_late_contribution'    => 'money',

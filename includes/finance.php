@@ -8,6 +8,7 @@
  *   OUT : paid death expenses + paid general expenses
  *         + paid petty-cash vouchers + paid member payouts
  *         + loans paid out to members
+ *         + dividends distributed (in cash, or turned into members' shares)
  * An expense/payout that is merely 'approved' is an authorised commitment that
  * hasn't left the account yet — see approvedNotYetPaidExpenses().
  *
@@ -28,10 +29,11 @@ if (!function_exists('fundBalanceFromTotals')) {
         float $pettyCashOut,
         float $payoutsOut,
         float $loansOut = 0.0,
-        float $loanRepaymentsIn = 0.0
+        float $loanRepaymentsIn = 0.0,
+        float $dividendsOut = 0.0
     ): float {
         $in  = $contributionsIn + $finesIn + $loanRepaymentsIn;
-        $out = $deathExpensesOut + $generalExpensesOut + $pettyCashOut + $payoutsOut + $loansOut;
+        $out = $deathExpensesOut + $generalExpensesOut + $pettyCashOut + $payoutsOut + $loansOut + $dividendsOut;
         return $in - $out;
     }
 }
@@ -69,7 +71,12 @@ if (!function_exists('getGroupFundBalance')) {
             // every repayment received comes back in. A loan that is only applied
             // for or approved has not moved any money yet.
             $sum("SELECT COALESCE(SUM(amount),0) FROM vicoba_loans WHERE status IN ('disbursed','repaid')"),
-            $sum("SELECT COALESCE(SUM(amount),0) FROM vicoba_loan_payments")
+            $sum("SELECT COALESCE(SUM(amount),0) FROM vicoba_loan_payments"),
+            // Dividends: a distributed dividend is out of the fund whichever way it
+            // was paid. In cash it has left the account. Turned into shares it
+            // comes straight back as a contribution (counted above), so taking it
+            // out here is what stops the same money being counted twice.
+            $sum("SELECT COALESCE(SUM(l.amount),0) FROM vicoba_dividend_lines l JOIN vicoba_dividend_runs r ON r.id = l.run_id WHERE r.status = 'distributed'")
         );
     }
 }

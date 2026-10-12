@@ -214,6 +214,19 @@ $lt = fn(string $en, string $sw): string => $is_sw ? $sw : $en;
                         <label class="form-label fw-bold text-dark"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Amana ya Uanachama (TZS)' : 'Membership Deposit (TZS)' ?></label>
                         <input type="number" min="0" step="any" name="membership_deposit_amount" class="form-control border-secondary-subtle" value="<?= htmlspecialchars(gs($settings_raw, 'membership_deposit_amount')) ?>">
                     </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold text-dark"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mwaka wa Fedha Huanza' : 'Financial Year Starts' ?></label>
+                        <select name="financial_year_start_month" class="form-select border-secondary-subtle">
+                            <?php foreach (['January','February','March','April','May','June','July','August','September','October','November','December'] as $mi => $mn): ?>
+                            <option value="<?= $mi + 1 ?>" <?= (int) gs($settings_raw, 'financial_year_start_month', '1') === $mi + 1 ? 'selected' : '' ?>><?= $mn ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold text-dark"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Ziada ya Kugawa kama Gawio (%)' : 'Surplus Shared as Dividend (%)' ?></label>
+                        <input type="number" min="0" max="100" step="any" name="dividend_distribute_pct" class="form-control border-secondary-subtle" value="<?= htmlspecialchars(gs($settings_raw, 'dividend_distribute_pct', '100')) ?>">
+                        <small class="text-muted"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Kinachobaki hubaki kwenye kikundi kama akiba.' : 'The rest stays in the group as reserve.' ?></small>
+                    </div>
                 </div>
             </div>
         </div>

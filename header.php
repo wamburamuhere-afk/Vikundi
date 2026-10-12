@@ -583,6 +583,9 @@ try {
                                 <?php if (canView('approve_loan') || canView('disburse_loan')): ?>
                                 <li><a class="dropdown-item" href="<?= getUrl('loans') ?>"><i class="bi bi-bank text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mikopo' : 'Loans' ?></a></li>
                                 <?php endif; ?>
+                                <?php if (canView('dividends')): ?>
+                                <li><a class="dropdown-item" href="<?= getUrl('dividends') ?>"><i class="bi bi-pie-chart-fill text-success me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Gawio' : 'Dividends' ?></a></li>
+                                <?php endif; ?>
                                 <?php if (canView('manage_fines')): ?>
                                 <li><a class="dropdown-item" href="<?= getUrl('manage_fines') ?>"><i class="bi bi-cash-coin text-danger me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Faini' : 'Fines' ?></a></li>
                                 <?php endif; ?>

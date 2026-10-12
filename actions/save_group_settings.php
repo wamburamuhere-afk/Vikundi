@@ -54,6 +54,7 @@ $allowed_keys = [
     'group_email', 'group_phone', 'group_postal_address', 'group_physical_address', 'group_tin', 'group_vrn', 'group_website',
     'monthly_contribution', 'entrance_fee', 'agm_fee', 'contribution_grace_days',
     'share_price', 'shares_from_monthly', 'social_fund_amount', 'membership_deposit_amount',
+    'financial_year_start_month', 'dividend_distribute_pct',
     'loan_interest_rate', 'loan_max_term_months', 'loan_multiplier', 'loan_grace_days',
     'fine_late_meeting', 'fine_late_contribution', 'fine_late_loan_payment', 'fine_absent_meeting',
     'shareout_month', 'profit_distribution_pct', 'current_cycle_year', 'auto_calculate_shareout',
