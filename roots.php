@@ -329,6 +329,11 @@ $routes = [
     'loans/details'       => LOANS_DIR . '/loan_details.php',
     'my_loans'            => LOANS_DIR . '/my_loans.php',
     'dividends'           => ACCOUNTS_DIR . '/dividends.php',
+    // Loan, share and Social Fund reports (includes/vicoba_reports.php)
+    'reports/loans'           => REPORTS_DIR . '/loan_portfolio_report.php',
+    'reports/loan_repayments' => REPORTS_DIR . '/loan_repayments_report.php',
+    'reports/shares'          => REPORTS_DIR . '/shares_register.php',
+    'reports/social_fund'     => REPORTS_DIR . '/social_fund_statement.php',
     'actions/dividend_action' => ROOT_DIR . '/actions/dividend_action.php',
 
     // Fines Module

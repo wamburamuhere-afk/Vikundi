@@ -669,6 +669,13 @@ try {
                                 <i class="bi bi-graph-up"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Ripoti' : 'Reports' ?>
                             </a>
                             <ul class="dropdown-menu shadow border-0 mt-0" aria-labelledby="reportsDropdown">
+                                <?php if (canView('approve_loan') || canView('disburse_loan') || canView('dividends')): $vk_rsw = ($_SESSION['preferred_language'] ?? 'en') === 'sw'; ?>
+                                <li><h6 class="dropdown-header"><?= $vk_rsw ? 'Mikopo, Hisa na Mfuko wa Jamii' : 'Loans, Shares & Social Fund' ?></h6></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('reports/loans') ?>"><i class="bi bi-bank me-2 text-primary"></i> <?= $vk_rsw ? 'Mikopo Yote' : 'Loan Portfolio' ?></a></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('reports/loan_repayments') ?>"><i class="bi bi-cash-coin me-2 text-success"></i> <?= $vk_rsw ? 'Mapato na Marejesho ya Mikopo' : 'Loan Income & Repayments' ?></a></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('reports/shares') ?>"><i class="bi bi-pie-chart me-2 text-primary"></i> <?= $vk_rsw ? 'Daftari la Hisa' : 'Shares Register' ?></a></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('reports/social_fund') ?>"><i class="bi bi-heart me-2 text-danger"></i> <?= $vk_rsw ? 'Taarifa ya Mfuko wa Jamii' : 'Social Fund Statement' ?></a></li>
+                                <?php endif; ?>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><h6 class="dropdown-header"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Usimamizi wa Fedha' : 'Financial Management' ?></h6></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('expense_report') ?>"><i class="bi bi-cash-coin me-2 text-danger"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mchanganuo wa Matumizi' : 'Expense Summary' ?></a></li>
