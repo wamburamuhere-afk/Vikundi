@@ -54,6 +54,7 @@ $migrations = [
     'add_petty_cash_permission.php', // register 'petty_cash' (mirrored from 'expenses'); the code has gated on it since it was written, the row never existed
     'add_budget_permission.php', // register 'budget' (leadership-only); the code has gated on it since it was written, the row never existed
     'add_fund_bucket_contribution_types.php', // contributions.contribution_type += share / social_fund / deposit (fund buckets)
+    'create_vicoba_loan_tables.php', // VICOBA loans module's own InnoDB tables (types, loans, guarantors, installments, payments)
     'add_member_payouts_permission.php', // register 'member_payouts' (Admin/Chairperson/Secretary — no Treasurer); normalizes record_payout.php's role-name array into RBAC
 ];
 

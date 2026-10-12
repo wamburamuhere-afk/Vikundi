@@ -4,6 +4,40 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-12 — Loans 1/3: loan types and rules — committed locally, not pushed
+
+**Branch:** `feat/loan-types-and-rules` (stacked on `feat/fund-buckets-and-vicoba-settings`, PR #521)
+**Developer:** Claude Code / Jabir Mussa
+
+**Why:** the loans UI has been disabled since the initial commit, and the handlers behind it
+(`apply_for_loan`, `approve_loan_vicoba`, `record_loan_payment`) have no permission check or CSRF and
+take the interest rate from the request. This is a rebuild, in three PRs, on rules the group sets itself.
+
+**Design decisions (signed off by Jabir):** new tables, not the BMS `loans` tables (MyISAM, 50 unused
+columns, still written by ~30 old routed endpoints); guarantors accept in the web app; a flat loan paid
+off early still owes its full agreed interest; no mobile API for loans yet.
+
+**Schema:** `database/create_vicoba_loan_tables.php` — `vicoba_loan_types`, `vicoba_loans`,
+`vicoba_loan_guarantors`, `vicoba_loan_installments`, `vicoba_loan_payments`, all InnoDB. Nothing
+seeded. Registered in `migrate.php`. **Run `php database/migrate.php` on deploy.**
+
+**Rules:** new `includes/loan_rules.php`, pure (no DB): type validation, borrowing limit (shares ×
+multiple less what is owed, and/or a fixed cap — Social Fund and deposit never count), flat and reducing
+schedules, month-end-safe due dates, late penalty after grace days, and the rules snapshot a loan keeps
+for life.
+
+**Settings:** Group Settings → Loan Types (add / edit / switch off). `actions/save_loan_type.php` —
+authenticated, CSRF-protected, admin + Secretary only, audit-logged; types are switched off, never
+deleted.
+
+**Verified:** `composer test` — 2,461 green (new `LoanRulesTest`, 34 tests). Live: no session 401,
+no CSRF 403, Member 403, invalid input refused with reasons, create / duplicate-name / edit / toggle
+all correct, row renders with no PHP errors.
+
+**Next:** 2/3 apply → guarantors accept → approve → disburse; 3/3 repayments and penalties.
+
+---
+
 ## Session — 2026-10-12 — Fund buckets: shares, Social Fund, membership deposit — PR open
 
 **Branch:** `feat/fund-buckets-and-vicoba-settings` (off `develop`)

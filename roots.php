@@ -316,6 +316,7 @@ $routes = [
     'dormant_members' => CUSTOMERS_DIR . '/dormant_members.php',
     'actions/add_member' => ROOT_DIR . '/actions/add_member.php',
     'actions/save_group_settings' => ROOT_DIR . '/actions/save_group_settings.php',
+    'actions/save_loan_type' => ROOT_DIR . '/actions/save_loan_type.php',
     'actions/approve_member' => ROOT_DIR . '/actions/approve_member.php',
     'actions/process_registration' => ROOT_DIR . '/actions/process_registration.php',
     'actions/update_contribution' => ROOT_DIR . '/actions/update_contribution.php',
