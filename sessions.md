@@ -4,7 +4,7 @@ This file tracks every development session, modification, and significant change
 
 ---
 
-## Session — 2026-10-12 — Wise Wallet demo instance + fresh-install fixes — committed locally, not pushed
+## Session — 2026-10-12 — Wise Wallet demo instance + fresh-install fixes — PR open
 
 **Branch:** `feat/wise-wallet-demo-seeder` (off `develop`, after PR #523)
 **Developer:** Claude Code / Jabir Mussa
