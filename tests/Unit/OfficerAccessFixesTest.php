@@ -106,4 +106,29 @@ class OfficerAccessFixesTest extends TestCase
         $print = substr($css, strpos($css, '@media print'));
         $this->assertStringNotContainsString('.print-footer', $print);
     }
+
+    // ── the settings form must not invent the group's rules ──────────────────
+    public function testTheSettingsFormShowsNoInventedContributionOrEntranceFee(): void
+    {
+        // Found on the demo site: the boxes opened on 10000 / 20000 when nothing
+        // was set, and Save stores what the form holds. Uploading a logo gave the
+        // group a 20,000 entrance fee, and every member's statement then showed a
+        // month unpaid.
+        $form = file_get_contents(__DIR__ . '/../../app/bms/customer/group_settings.php');
+        $this->assertStringNotContainsString("gs(\$settings_raw, 'monthly_contribution', '10000')", $form);
+        $this->assertStringNotContainsString("gs(\$settings_raw, 'entrance_fee', '20000')", $form);
+        $this->assertStringContainsString("value=\"<?= htmlspecialchars(gs(\$settings_raw, 'monthly_contribution')) ?>\"", $form);
+        $this->assertStringContainsString("value=\"<?= htmlspecialchars(gs(\$settings_raw, 'entrance_fee')) ?>\"", $form);
+
+        // Unset really does mean "none" to the calculations that read them.
+        $standing = file_get_contents(__DIR__ . '/../../includes/contribution_standing.php');
+        $this->assertStringContainsString("(float) (\$settings['entrance_fee'] ?? 0)", $standing);
+        $this->assertStringContainsString("(float) (\$settings['monthly_contribution'] ?? 0)", $standing);
+    }
+
+    public function testTheDemoSeederStatesItsEntranceFeeOutright(): void
+    {
+        $seeder = file_get_contents(__DIR__ . '/../../database/seed_wise_wallet_demo.php');
+        $this->assertMatchesRegularExpression("/'entrance_fee'\\s+=> '0',/", $seeder);
+    }
 }

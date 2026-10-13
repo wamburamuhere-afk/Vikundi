@@ -4,7 +4,38 @@ This file tracks every development session, modification, and significant change
 
 ---
 
-## Session — 2026-10-12 — Fix: four loose ends found testing every role in the browser — PR open
+## Session — 2026-10-13 — Fix: the settings form invented a monthly target and an entrance fee — PR open
+
+**Branch:** `fix/settings-form-fabricated-defaults` (off `develop`, after PR #529)
+**Developer:** Claude Code / Jabir Mussa
+
+**Bug (found capturing screenshots for the user guide on the Wise Wallet demo site):** a member who had
+paid every month showed September as "Not paid" and a deficit on their statement.
+
+**Root cause:** `app/bms/customer/group_settings.php` prefilled the Cycle Contribution box with 10000
+and the Entrance Fee box with 20000 when nothing was set. Save stores whatever the form holds, so
+saving ANY setting — here, uploading the group logo — gave the group a 20,000 entrance fee it never
+chose. Member statements then took 20,000 of each member's contributions as that fee, leaving a month
+short. This is the same class of defect the contribution standing module was written to end
+(per-screen `?? 10000` / `?? 20000` defaults); the form was the last place still doing it.
+**Pre-existing, and it affects any group that saves its settings while those two are unset.**
+
+**Fix:** both boxes now open blank when unset, with a placeholder ("Blank = no fixed amount" /
+"Blank = no entrance fee"). The demo seeder now sets `entrance_fee` to `0` outright, so a value saved
+before a `--fresh` cannot survive the reset.
+
+**Verified** on the scratch database: with `entrance_fee = 20000` the statement shows September unpaid
+(9 months covered); after a reset with the fixed seeder it is `0` and September is paid (10 months
+covered, only the current month open, which the M-Koba statement brings in). The form renders both
+boxes empty with their placeholders. `composer test` — 2,547 green (two new tests).
+
+**Demo site:** needs this pulled and one `--fresh` reseed to clear the 20,000 already saved there.
+
+**Browser test — completed 2026-10-12** as all five demo accounts; fixes #526–#529 confirmed live.
+
+---
+
+## Session — 2026-10-12 — Fix: four loose ends found testing every role in the browser — merged (PR #529)
 
 **Branch:** `fix/officer-menu-and-expenses-access` (off `develop`, after PR #528)
 **Developer:** Claude Code / Jabir Mussa

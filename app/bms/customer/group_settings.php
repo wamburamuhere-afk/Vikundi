@@ -173,11 +173,18 @@ $lt = fn(string $en, string $sw): string => $is_sw ? $sw : $en;
                 <div class="row g-3 text-start">
                     <div class="col-md-6">
                         <label class="form-label fw-bold text-dark"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mchango wa Mzunguko (TZS)' : 'Cycle Contribution (TZS)' ?></label>
-                        <input type="number" name="monthly_contribution" class="form-control border-secondary-subtle" value="<?= gs($settings_raw, 'monthly_contribution', '10000') ?>">
+                        <?php
+                        // No invented default in either box. They used to open on 10000 and
+                        // 20000 when nothing was set, and Save stores whatever the form holds —
+                        // so saving ANY setting (a new logo, say) silently gave the group a
+                        // monthly target and an entrance fee it never chose, and every member's
+                        // statement then skimmed that "entrance fee" off their contributions.
+                        ?>
+                        <input type="number" min="0" name="monthly_contribution" class="form-control border-secondary-subtle" value="<?= htmlspecialchars(gs($settings_raw, 'monthly_contribution')) ?>" placeholder="<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Wazi = hakuna kiwango' : 'Blank = no fixed amount' ?>">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-bold text-dark"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Kiingilio (Entrance Fee)' : 'Entrance Fee' ?></label>
-                        <input type="number" name="entrance_fee" class="form-control border-secondary-subtle" value="<?= gs($settings_raw, 'entrance_fee', '20000') ?>">
+                        <input type="number" min="0" name="entrance_fee" class="form-control border-secondary-subtle" value="<?= htmlspecialchars(gs($settings_raw, 'entrance_fee')) ?>" placeholder="<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Wazi = hakuna ada' : 'Blank = no entrance fee' ?>">
                     </div>
                 </div>
             </div>
