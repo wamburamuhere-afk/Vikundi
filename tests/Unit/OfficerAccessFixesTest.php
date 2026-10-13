@@ -131,4 +131,43 @@ class OfficerAccessFixesTest extends TestCase
         $seeder = file_get_contents(__DIR__ . '/../../database/seed_wise_wallet_demo.php');
         $this->assertMatchesRegularExpression("/'entrance_fee'\\s+=> '0',/", $seeder);
     }
+
+    // ── a comment must not swallow the code after it ─────────────────────────
+    public function testNoInlineCommentSwallowsAClosingBracketInAPageScript(): void
+    {
+        // Found in the browser: `render: d => ... // XSS-005 },` commented out the
+        // "}," that closed the column, the Fines page script stopped parsing, and
+        // the list never loaded — on the live site too, since 31 July.
+        $fines = file_get_contents(__DIR__ . '/../../app/bms/customer/manage_fines.php');
+        $this->assertStringNotContainsString('// XSS-005 },', $fines);
+        $this->assertStringContainsString("{ data:'status', render:d=>`<span class=\"badge bg-\${badge(d)}\">\${vkEsc(d)}</span>` },", $fines);
+
+        // The same mistake anywhere else: a tagged // comment followed, on the same
+        // line, by a bracket that closes something.
+        $root = realpath(__DIR__ . '/../../app');
+        $bad = [];
+        $it = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS));
+        foreach ($it as $file) {
+            if ($file->getExtension() !== 'php') {
+                continue;
+            }
+            foreach (file($file->getPathname()) as $n => $line) {
+                if (preg_match('~//\s*(XSS|SEC)-\d+[^\n]*[})\]];?,?\s*$~', $line)) {
+                    $bad[] = substr($file->getPathname(), strlen($root) + 1) . ':' . ($n + 1);
+                }
+            }
+        }
+        $this->assertSame([], $bad, 'a // comment is commenting out the bracket that follows it');
+    }
+
+    // ── My Settings shows the login username ─────────────────────────────────
+    public function testMySettingsShowsTheLoginUsernameNotTheFullName(): void
+    {
+        $page = file_get_contents(__DIR__ . '/../../app/constant/profile/my_settings.php');
+        $this->assertStringContainsString("htmlspecialchars((string) (\$user_data['username'] ?? ''))", $page);
+        $this->assertStringNotContainsString('value="<?= htmlspecialchars($username) ?>" readonly', $page);
+        // header.php really does reuse $username for the display name.
+        $header = file_get_contents(__DIR__ . '/../../header.php');
+        $this->assertStringContainsString("\$username = trim((\$user['first_name'] ?? '')", $header);
+    }
 }

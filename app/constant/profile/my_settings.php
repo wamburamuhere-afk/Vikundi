@@ -262,7 +262,8 @@ require_once HEADER_FILE;
                             <div class="col-md-12">
                                 <div class="mb-3">
                                     <label class="form-label small fw-bold text-muted"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jina la Mtumiaji (Username)' : 'Username' ?></label>
-                                    <input type="text" class="form-control bg-light" value="<?= htmlspecialchars($username) ?>" readonly>
+                                    <?php // The LOGIN username from the page's own query. header.php reuses $username for the person's full name, which is what this box used to show. ?>
+                                    <input type="text" class="form-control bg-light" value="<?= htmlspecialchars((string) ($user_data['username'] ?? '')) ?>" readonly>
                                     <div class="form-text x-small text-danger italic"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? '* Jina la mtumiaji haliwezi kubadilishwa' : '* Username cannot be changed' ?></div>
                                 </div>
                             </div>

@@ -131,7 +131,10 @@ $(function(){
             { data:'reason', className:'text-start', render:d=>esc(d||'—') },
             { data:'amount', render:d=>`<strong class="text-danger">TSh ${money(d)}</strong>` },
             { data:'created_at', render:d=>d?new Date(d).toLocaleDateString():'—' },
-            { data:'status', render:d=>`<span class="badge bg-${badge(d)}">${vkEsc(d)}</span>` // XSS-005 },
+            // XSS-005: the status is escaped. This note sits on its own line on purpose —
+            // written after the render function it commented out the closing "}," and the
+            // whole script stopped parsing, so the Fines list never loaded.
+            { data:'status', render:d=>`<span class="badge bg-${badge(d)}">${vkEsc(d)}</span>` },
             <?php if ($can_edit): ?>{ data:null, className:'text-end', render:(d,t,r)=>actions(r) }<?php endif; ?>
         ],
         order:[], dom:'lrtp',
