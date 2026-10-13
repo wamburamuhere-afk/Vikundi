@@ -119,6 +119,9 @@ $settings = [
     'cycle_type'                 => 'monthly',
     'max_members'                => '30',
     'monthly_contribution'       => '20000',
+    // Stated outright, not left unset: this group has no entrance fee, and a value
+    // saved through the settings form before a --fresh must not survive the reset.
+    'entrance_fee'               => '0',
     'deadline_day'               => '10',
     'auto_termination'           => 'off',
     'share_price'                => '5000',
