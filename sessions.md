@@ -4,7 +4,43 @@ This file tracks every development session, modification, and significant change
 
 ---
 
-## Session — 2026-10-13 — Fix: the settings form invented a monthly target and an entrance fee — PR open
+## Session — 2026-10-13 — Fix: the Fines page never loaded its list; My Settings showed the wrong username — PR open
+
+**Branch:** `fix/fines-page-script-and-username` (off `develop`, after PR #530)
+**Developer:** Claude Code / Jabir Mussa
+
+**Bug 1 — Finance > Fines showed TSh 0.00 and an empty table** for a group with six fines. Found
+capturing screenshots for the user guide; the browser console reported `SyntaxError: Unexpected token '{'`.
+
+**Root cause:** `app/bms/customer/manage_fines.php` line 134:
+`{ data:'status', render:d=>... // XSS-005 },` — the `//` note sits before the `},` that closes the
+column, so it comments the bracket out and the whole script stops parsing. Introduced 2026-07-31 by
+`fcb5144` (the shared client-side escaping change). **It is on `main`: the live site's Fines page has
+been broken the same way since that release.** Leaders there cannot list, mark paid or waive fines from
+this page. The data and the `api/get_fines` endpoint are fine.
+
+**Fix:** the note moves to its own line above the column.
+
+**Bug 2 — My Settings showed the member's full name in the "Username" box** ("Hassan Mrisho", with "this
+cannot be changed" beneath it) instead of the login username. The page sets `$username` from its own
+query, then `header.php` reuses `$username` for the display name. The box now reads
+`$user_data['username']` directly.
+
+**Sweep.** In the browser, as the Chairperson: every menu link plus the new pages (57 in all) fetched
+and each inline script compiled. 55 clean; the Fines page was the only script error (the other was a
+guessed address, not a menu link). A new test scans `app/` for any tagged `//` comment followed on the
+same line by a closing bracket.
+
+**Verified:** rendered Fines page — 0 syntax errors across its 9 scripts with the fix, 1 with the code
+on `main` (checked with `node --check`); `api/get_fines` returns the 6 fines; the username box shows
+`hmrisho`. `composer test` — 2,549 green (two new tests).
+
+**For production:** this is worth a release on its own — it restores a page that has been dead since
+31 July.
+
+---
+
+## Session — 2026-10-13 — Fix: the settings form invented a monthly target and an entrance fee — merged (PR #530)
 
 **Branch:** `fix/settings-form-fabricated-defaults` (off `develop`, after PR #529)
 **Developer:** Claude Code / Jabir Mussa
