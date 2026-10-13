@@ -554,6 +554,14 @@ try {
                                 <li><a class="dropdown-item" href="<?= getUrl('customers') ?>"><i class="bi bi-people text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Wanachama' : 'Members' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('dormant_members') ?>"><i class="bi bi-person-x text-warning me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Wanachama Wasiofanya Kazi' : 'Dormant Members' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('meetings') ?>"><i class="bi bi-calendar-event text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mikutano' : 'Meetings' ?></a></li>
+                                <?php
+                                // The Secretary may open and save Group Settings (group_settings.php and
+                                // save_group_settings.php both allow it), but the only link to it sits in
+                                // the Administration menu, which is admin-only. Give them their own.
+                                require_once __DIR__ . '/includes/roles.php';
+                                if (in_array($user_role_lower, ['secretary', 'katibu'], true) && !vk_role_is_admin($_SESSION['role_id'] ?? null, $user_role)): ?>
+                                <li><a class="dropdown-item" href="<?= getUrl('group_settings') ?>"><i class="bi bi-gear-fill text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mipangilio ya Kikundi' : 'Group Settings' ?></a></li>
+                                <?php endif; ?>
                                 <li><a class="dropdown-item" href="<?= getUrl('voting') ?>"><i class="bi bi-check2-square me-2" style="color:#6f42c1;"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Kura' : 'Voting' ?></a></li>
                                 <?php if (canView('leadership_applications')): ?>
                                 <li><a class="dropdown-item" href="<?= getUrl('leadership_application') ?>"><i class="bi bi-person-badge me-2" style="color:#6f42c1;"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Maombi ya Uongozi' : 'Leadership Applications' ?></a></li>
@@ -575,7 +583,9 @@ try {
                             <ul class="dropdown-menu shadow border-0 mt-0" aria-labelledby="financeDropdown">
                                 <li><h6 class="dropdown-header"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Usimamizi wa Fedha' : 'Financial Management' ?></h6></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('transactions') ?>"><i class="bi bi-arrow-left-right text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Miamala' : 'Transactions' ?></a></li>
+                                <?php if (canView('mkoba_reconciliation')): // leadership page; a Member following the link was bounced to "unauthorized" ?>
                                 <li><a class="dropdown-item" href="<?= getUrl('mkoba_reconciliation') ?>"><i class="bi bi-clipboard-check text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Ulinganishaji wa M-Koba' : 'M-Koba Reconciliation' ?></a></li>
+                                <?php endif; ?>
                                 <li><a class="dropdown-item" href="<?= getUrl('manage_contributions') ?>"><i class="bi bi-cash-stack text-success me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Michango' : 'Contributions' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('expenses') ?>"><i class="bi bi-cart-dash-fill text-danger me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Matumizi' : 'Expenses' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('petty_cash') ?>"><i class="bi bi-receipt text-info me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Miamala ya Vocha' : 'Petty Cash Voucher' ?></a></li>
