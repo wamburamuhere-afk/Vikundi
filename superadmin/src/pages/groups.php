@@ -10,6 +10,7 @@ $now = time();
 layout('Groups', 'groups', static function () use ($groups, $statuses, $status, $q, $now) { ?>
   <div class="d-flex align-items-center justify-content-between mb-3">
     <h1 class="h4 mb-0">Groups (<?= count($groups) ?>)</h1>
+    <a class="btn btn-primary" href="/create"><i class="bi bi-plus-lg me-1"></i>Create group</a>
   </div>
   <form method="get" action="/groups" class="row g-2 mb-3">
     <div class="col-sm-6 col-lg-4"><input class="form-control" name="q" value="<?= e($q) ?>" placeholder="Search by name or address"></div>

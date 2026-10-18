@@ -11,3 +11,4 @@ body { background: #f6f7f9; }
 .vk-login { max-width: 380px; }
 .table td, .table th { vertical-align: middle; }
 .vk-narrow { max-width: 560px; }
+.vk-secret { border-color: #0f4c81; background: #f0f6fc; }

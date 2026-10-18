@@ -22,6 +22,7 @@ if (PHP_SAPI !== 'cli') {
 }
 
 require_once __DIR__ . '/../includes/admin_requests.php';
+require_once __DIR__ . '/../includes/admin_mail.php';
 
 function log_line(string $s): void { fwrite(STDOUT, '[' . date('Y-m-d H:i:s') . "] $s\n"); }
 
@@ -33,6 +34,10 @@ if (!is_array($control) || !is_array($prov)) {
     fwrite(STDERR, "Error: $controlFile or $provFile is missing or invalid.\n");
     exit(1);
 }
+// The panel's settings: only the failure-email part is used here.
+$adminFile = getenv('VIKUNDI_ADMIN_CONFIG') ?: '/etc/vikundi/admin.php';
+$adminConf = is_readable($adminFile) ? require $adminFile : null;
+$adminConf = is_array($adminConf) ? $adminConf : null;
 
 try {
     $reg = new PDO($control['dsn'], $prov['user'], $prov['password'], [
@@ -121,9 +126,11 @@ while (true) {
         ]);
 
     log_line("#$id $status" . ($code !== null ? " (exit $code)" : '') . ($warning ? " - $warning" : ''));
-    if ($status === 'failed') {
-        // Email to the operator comes with the panel's write side (PR 3).
-        fwrite(STDERR, "#$id failed. See the Requests page or provision_requests.output.\n");
+    if (vk_admin_alert_needed($status, $warning)) {
+        [$subject, $body] = vk_admin_alert_message($id, $action, $sub, $status, $warning,
+            (string) ($row['admin_name'] ?? 'deleted super-admin'), (string) $output, $base);
+        $why = vk_admin_send_alert($adminConf, $subject, $body);
+        log_line("#$id alert email: " . ($why ?? 'sent'));
     }
 }
 

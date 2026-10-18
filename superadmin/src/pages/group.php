@@ -5,6 +5,24 @@ $g = data_group((string) $param);
 if (!$g) {
     not_found();
 }
+$allowed = vk_admin_allowed_actions($g['status']);
+$pending = group_has_pending($g['subdomain']);
+$actionError = null;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = (string) ($_POST['action'] ?? '');
+    if (!in_array($action, $allowed, true)) {
+        $actionError = 'That action is not available for a group that is ' . $g['status'] . '.';
+    } elseif ($pending) {
+        $actionError = 'A request for this group is still waiting or running. Wait for it to finish.';
+    } elseif ($action === 'archive' && trim((string) ($_POST['confirm'] ?? '')) !== $g['subdomain']) {
+        $actionError = "To archive, type the address '{$g['subdomain']}' exactly.";
+    } else {
+        $id = queue_request((int) $me['id'], $action, $g['subdomain']);
+        $_SESSION['flash'] = "Request #$id saved. The worker on the server picks it up within a minute.";
+        redirect("/requests/$id");
+    }
+}
 $backup = data_last_backup($g['subdomain']);
 $disk = data_disk_use($g['subdomain']);
 $requests = data_requests('', $g['subdomain'], 10);
@@ -12,7 +30,7 @@ $history = data_history($g['subdomain'], 10);
 $now = time();
 $base = (string) admin_config()['base_domain'];
 
-layout($g['name'], 'groups', static function () use ($g, $backup, $disk, $requests, $history, $now, $base) { ?>
+layout($g['name'], 'groups', static function () use ($g, $backup, $disk, $requests, $history, $now, $base, $allowed, $pending, $actionError) { ?>
   <nav class="small mb-2"><a href="/groups">Groups</a> / <?= e($g['name']) ?></nav>
   <div class="d-flex align-items-center gap-2 mb-3">
     <h1 class="h4 mb-0"><?= e($g['name']) ?></h1> <?= status_badge($g['status']) ?>
@@ -41,7 +59,32 @@ layout($g['name'], 'groups', static function () use ($g, $backup, $disk, $reques
     <div class="col-lg-5">
       <div class="vk-card h-100">
         <h2 class="h6 mb-3">Actions</h2>
-        <p class="text-secondary small mb-0">Suspend, resume, archive and certificate retry arrive with the next update of the panel.</p>
+        <?php if ($actionError): ?><div class="alert alert-danger py-2 small"><?= e($actionError) ?></div><?php endif; ?>
+        <?php if ($pending): ?>
+          <p class="small text-secondary mb-0">A request for this group is waiting or running. Actions come back when it finishes.</p>
+        <?php elseif (!$allowed): ?>
+          <p class="small text-secondary mb-0">No actions for a group that is <?= e($g['status']) ?>.<?php if ($g['status'] === 'archived'): ?> An archived group can only be brought back from the server.<?php endif; ?></p>
+        <?php else: ?>
+          <?php if (in_array('suspend', $allowed, true)): ?>
+          <form method="post" class="mb-2"><?= csrf_field() ?><input type="hidden" name="action" value="suspend">
+            <button class="btn btn-warning w-100">Suspend group</button>
+            <div class="form-text">Members see the offline page. Nothing is deleted.</div></form>
+          <?php endif; ?>
+          <?php if (in_array('resume', $allowed, true)): ?>
+          <form method="post" class="mb-2"><?= csrf_field() ?><input type="hidden" name="action" value="resume">
+            <button class="btn btn-primary w-100">Resume group</button>
+            <div class="form-text">Back online within a minute.</div></form>
+          <?php endif; ?>
+          <form method="post" class="mb-3"><?= csrf_field() ?><input type="hidden" name="action" value="cert">
+            <button class="btn btn-outline-secondary w-100">Retry https certificate</button></form>
+          <details>
+            <summary class="text-danger small">Archive group&hellip;</summary>
+            <form method="post" class="mt-2"><?= csrf_field() ?><input type="hidden" name="action" value="archive">
+              <p class="small mb-2">Takes a final backup, then takes the group offline for good. Nothing is deleted. Type <code><?= e($g['subdomain']) ?></code> to confirm.</p>
+              <input class="form-control form-control-sm mb-2" name="confirm" autocomplete="off" required>
+              <button class="btn btn-outline-danger btn-sm w-100">Archive <?= e($g['name']) ?></button></form>
+          </details>
+        <?php endif; ?>
       </div>
     </div>
     <div class="col-12">

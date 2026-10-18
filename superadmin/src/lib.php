@@ -12,7 +12,8 @@ if (!function_exists('vk_admin_route')) {
      *   /groups/<sub>       → group, <sub>
      *   /requests           → requests
      *   /requests/<id>      → request, <id>
-     *   /history, /login, /logout, /account
+     *   /create             → create (the new-group form)
+ *   /history, /login, /logout, /account
      */
     function vk_admin_route(string $path): ?array
     {
@@ -20,6 +21,7 @@ if (!function_exists('vk_admin_route')) {
         return match (true) {
             $path === '/', $path === '/groups' => ['groups', null],
             (bool) preg_match('#^/groups/([a-z0-9-]{3,30})$#', $path, $m) => ['group', $m[1]],
+            $path === '/create' => ['create', null],
             $path === '/requests' => ['requests', null],
             (bool) preg_match('#^/requests/([1-9][0-9]{0,9})$#', $path, $m) => ['request', $m[1]],
             $path === '/history' => ['history', null],
@@ -169,5 +171,28 @@ if (!function_exists('vk_admin_security_headers')) {
             'Cache-Control' => 'no-store',
             'Strict-Transport-Security' => 'max-age=31536000',
         ];
+    }
+}
+
+if (!function_exists('vk_admin_allowed_actions')) {
+    /**
+     * What the group page offers for a group's status. A group being created
+     * or already archived offers nothing; archive is never undone from the panel.
+     */
+    function vk_admin_allowed_actions(string $status): array
+    {
+        return match ($status) {
+            'active'    => ['suspend', 'archive', 'cert'],
+            'suspended' => ['resume', 'archive', 'cert'],
+            default     => [],
+        };
+    }
+}
+
+if (!function_exists('vk_admin_username_from_output')) {
+    /** The first Chairperson's username from a create request's (redacted) output. */
+    function vk_admin_username_from_output(?string $output): ?string
+    {
+        return preg_match('/First Chairperson: username (\S+),/', (string) $output, $m) ? $m[1] : null;
     }
 }

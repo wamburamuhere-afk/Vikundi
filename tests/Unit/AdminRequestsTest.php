@@ -16,6 +16,7 @@ class AdminRequestsTest extends TestCase
     public static function setUpBeforeClass(): void
     {
         require_once dirname(__DIR__, 2) . '/includes/admin_requests.php';
+        require_once dirname(__DIR__, 2) . '/includes/admin_mail.php';
     }
 
     private static function goodCreate(): array
@@ -163,5 +164,40 @@ class AdminRequestsTest extends TestCase
             $this->assertStringContainsString("CREATE TABLE IF NOT EXISTS $t", $sql);
         }
         $this->assertStringContainsString("ENUM('create','suspend','resume','archive','cert')", $sql);
+    }
+
+    public function testAnEmailGoesOutForFailuresAndWarningsOnly(): void
+    {
+        $this->assertTrue(vk_admin_alert_needed('failed', null));
+        $this->assertTrue(vk_admin_alert_needed('done', 'Group created, but the https certificate failed.'));
+        $this->assertFalse(vk_admin_alert_needed('done', null));
+    }
+
+    public function testTheAlertNamesTheRequestAndCarriesTheEndOfTheOutput(): void
+    {
+        $out = implode("\n", array_map(static fn($i) => "line $i", range(1, 60))) . "\nError: cannot create database";
+        [$subject, $body] = vk_admin_alert_message(7, 'create', 'mfano', 'failed', null, 'Jabir Mussa', $out, self::BASE);
+        $this->assertSame('[Vikundi] Request #7 failed: Create group mfano', $subject);
+        $this->assertStringContainsString('Asked by: Jabir Mussa', $body);
+        $this->assertStringContainsString('https://admin.' . self::BASE . '/requests/7', $body);
+        $this->assertStringContainsString('Error: cannot create database', $body);
+        $this->assertStringNotContainsString("line 1\n", $body, 'only the last 40 lines');
+
+        [$subject] = vk_admin_alert_message(8, 'create', 'x', 'done', 'cert failed', 'J', '', self::BASE);
+        $this->assertSame('[Vikundi] Request #8 needs a look: Create group x', $subject);
+    }
+
+    public function testWithoutMailSettingsNothingIsSentAndTheWorkerCarriesOn(): void
+    {
+        $this->assertSame('no alert_to / smtp settings in admin.php', vk_admin_send_alert(null, 's', 'b'));
+        $this->assertSame('no alert_to / smtp settings in admin.php', vk_admin_send_alert(['alert_to' => 'a@b.tz'], 's', 'b'));
+    }
+
+    public function testTheWorkerEmailsFromTheStoredPasswordFreeOutput(): void
+    {
+        $src = (string) file_get_contents(dirname(__DIR__, 2) . '/bin/run_requests.php');
+        $this->assertStringContainsString('if (vk_admin_alert_needed($status, $warning)) {', $src);
+        // $output is the copy after vk_req_extract_secret() removed the password.
+        $this->assertLessThan(strpos($src, 'vk_admin_alert_message('), strpos($src, '[$output, $secret] = vk_req_extract_secret($raw);'));
     }
 }

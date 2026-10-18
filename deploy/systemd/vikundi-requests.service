@@ -1,0 +1,12 @@
+# Carries out the super-admin panel's requests (bin/run_requests.php).
+# Install: sudo cp deploy/systemd/vikundi-requests.* /etc/systemd/system/
+#          sudo systemctl daemon-reload && sudo systemctl enable --now vikundi-requests.timer
+# Logs:    journalctl -u vikundi-requests -n 50
+[Unit]
+Description=Vikundi super-admin panel requests
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/srv/vikundi/app
+ExecStart=/usr/bin/php /srv/vikundi/app/bin/run_requests.php

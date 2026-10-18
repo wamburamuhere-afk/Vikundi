@@ -36,6 +36,7 @@ class SuperAdminPanelTest extends TestCase
             'request'           => ['/requests/12', ['request', '12']],
             'history'           => ['/history?group=demo', ['history', null]],
             'login'             => ['/login', ['login', null]],
+            'create form'       => ['/create', ['create', null]],
             'bad group name'    => ['/groups/../etc', null],
             'upper case group'  => ['/groups/Demo', null],
             'request zero'      => ['/requests/0', null],
@@ -152,5 +153,79 @@ class SuperAdminPanelTest extends TestCase
             $this->assertStringNotContainsString("'/etc/vikundi/tenants", $src, basename($f));
             $this->assertStringNotContainsString("'/etc/vikundi/provisioner", $src, basename($f));
         }
+    }
+
+    public function testTheGroupPageOffersOnlyWhatTheStatusAllows(): void
+    {
+        $this->assertSame(['suspend', 'archive', 'cert'], vk_admin_allowed_actions('active'));
+        $this->assertSame(['resume', 'archive', 'cert'], vk_admin_allowed_actions('suspended'));
+        $this->assertSame([], vk_admin_allowed_actions('archived'));
+        $this->assertSame([], vk_admin_allowed_actions('provisioning'));
+    }
+
+    public function testTheChairpersonUsernameIsReadFromTheRedactedOutput(): void
+    {
+        $out = "6/6 Active\n  First Chairperson: username ajuma, password (shown once in the panel)\n";
+        $this->assertSame('ajuma', vk_admin_username_from_output($out));
+        $this->assertNull(vk_admin_username_from_output('no chair here'));
+    }
+
+    public function testGroupActionsAreCheckedAndArchiveNeedsTheTypedAddress(): void
+    {
+        $src = (string) file_get_contents(self::$root . '/superadmin/src/pages/group.php');
+        $this->assertStringContainsString('if (!in_array($action, $allowed, true)) {', $src);
+        $this->assertStringContainsString('} elseif ($pending) {', $src);
+        $this->assertStringContainsString("\$action === 'archive' && trim((string) (\$_POST['confirm'] ?? '')) !== \$g['subdomain']", $src);
+    }
+
+    public function testTheCreateFormUsesTheWorkersOwnRules(): void
+    {
+        $src = (string) file_get_contents(self::$root . '/superadmin/src/pages/create.php');
+        $this->assertStringContainsString("vk_req_validate('create', \$sub, \$p, \$taken, \$hosts, \$base)", $src);
+        $this->assertStringContainsString("queue_request((int) \$me['id'], 'create', \$sub, \$p)", $src);
+    }
+
+    public function testTheOneTimePasswordGoesToWhoeverClearsItFirst(): void
+    {
+        $src = (string) file_get_contents(self::$root . '/superadmin/src/actions.php');
+        $this->assertStringContainsString('SET one_time_secret = NULL, secret_viewed_at = NOW() WHERE id = ? AND one_time_secret = ?', $src);
+        $this->assertStringContainsString('return $clear->rowCount() === 1 ? $secret : null;', $src);
+    }
+
+    public function testThePanelsDatabaseLoginCannotChangeGroupsOrHistory(): void
+    {
+        $sql = (string) file_get_contents(self::$root . '/database/control/admin_grants.sql');
+        $grants = implode(' ', array_filter(preg_split('/\R/', $sql), static fn($l) => !str_starts_with(ltrim($l), '--')));
+        foreach (['DELETE', 'DROP', 'CREATE', 'ALTER', 'ALL PRIVILEGES', 'GRANT OPTION'] as $word) {
+            $this->assertStringNotContainsString($word, $grants, $word);
+        }
+        $this->assertStringContainsString('GRANT SELECT ON vikundi_control.tenants', $grants);
+        $this->assertStringContainsString('GRANT SELECT, INSERT ON vikundi_control.admin_audit_log', $grants);
+        $this->assertDoesNotMatchRegularExpression('/UPDATE[^;]*admin_audit_log/', $grants);
+    }
+
+    public function testTheAdminSiteServesOnlyThePanelAndNeverTheGroupLookup(): void
+    {
+        $conf = (string) file_get_contents(self::$root . '/deploy/apache/vikundi-admin.conf');
+        $this->assertStringContainsString('DocumentRoot /srv/vikundi/app/superadmin/public', $conf);
+        $this->assertStringContainsString('php_admin_value auto_prepend_file none', $conf);
+        $this->assertMatchesRegularExpression('#<Directory /srv/vikundi/app>\s*AllowOverride None\s*Require all denied#', $conf);
+        $this->assertStringContainsString('FallbackResource /index.php', $conf);
+        $this->assertLessThan(0, strcmp('vikundi-admin.conf', 'zz-vikundi-groups.conf'), 'loads before the wildcard site');
+    }
+
+    public function testTheWorkerRunsEveryMinuteAsUbuntu(): void
+    {
+        $svc = (string) file_get_contents(self::$root . '/deploy/systemd/vikundi-requests.service');
+        $timer = (string) file_get_contents(self::$root . '/deploy/systemd/vikundi-requests.timer');
+        $this->assertStringContainsString('User=ubuntu', $svc);
+        $this->assertStringContainsString('ExecStart=/usr/bin/php /srv/vikundi/app/bin/run_requests.php', $svc);
+        $this->assertStringContainsString('OnCalendar=*-*-* *:*:00', $timer);
+    }
+
+    public function testThePanelsAddressIsAlwaysOnTheCertificate(): void
+    {
+        $src = (string) file_get_contents(self::$root . '/bin/provision_tenant.php');
+        $this->assertStringContainsString("\$subs = array_merge(['admin'], ", $src);
     }
 }
