@@ -21,6 +21,7 @@
  * initial plus the surname, deduplicated with a numeric suffix, and the initial
  * password is username@123. The app must tell the member to change it.
  */
+require_once __DIR__ . '/../../includes/tenant.php'; // vk_storage_path(): this group's file storage
 
 // Required here, not just by the includer: the router can reach this file
 // directly, and without the bootstrap vk_api_require_auth() would be undefined
@@ -70,7 +71,7 @@ if ($st->fetch()) {
 
 [$slip, $uploadError] = vk_api_store_upload(
     $_FILES['kianzio_slip'],
-    __DIR__ . '/../../uploads/contributions',
+    vk_storage_path('uploads/contributions'),
     'kianzio'
 );
 if ($slip === null) {
@@ -153,7 +154,7 @@ try {
     }
     // The slip is already on disk; drop it rather than leave an orphan that no
     // record points at.
-    @unlink(__DIR__ . '/../../uploads/contributions/' . $slip);
+    @unlink(vk_storage_path('uploads/contributions/' . $slip));
     vk_api_error(500, 'create_failed', 'The member could not be registered.');
 }
 

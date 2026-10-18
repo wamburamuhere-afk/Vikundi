@@ -73,7 +73,7 @@ if (!preg_match('/^[A-Za-z0-9_][A-Za-z0-9._-]{0,254}$/', $name) || str_contains(
     vk_upload_fail(400, 'Invalid asset name.');
 }
 
-$baseDir = realpath(ROOT_DIR . '/' . VK_UPLOAD_ROOTS[$type]);
+$baseDir = realpath(vk_storage_path(VK_UPLOAD_ROOTS[$type]));
 if ($baseDir === false) {
     vk_upload_fail(404, 'Not found.');
 }

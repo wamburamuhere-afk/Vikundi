@@ -3,6 +3,9 @@
 // local/dev hosts. Production never shows error text to users (security +
 // avoids corrupting AJAX/JSON responses).
 require_once __DIR__ . '/includes/env.php';
+// Where this group's stored files live (single site: the code folder; shared
+// server: the group's own folder). See includes/tenant.php.
+require_once __DIR__ . '/includes/tenant.php';
 $__vk_dev = vikundi_is_dev_host($_SERVER['HTTP_HOST'] ?? null);
 error_reporting(E_ALL);
 ini_set('log_errors', '1');

@@ -16,7 +16,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['doc_i
     $stmt->execute([$doc_id, $loan_id]);
     $doc = $stmt->fetch();
     if ($doc) {
-        if (file_exists($doc['file_path'])) unlink($doc['file_path']);
+        if (file_exists(vk_storage_path($doc['file_path']))) unlink(vk_storage_path($doc['file_path']));
         $pdo->prepare("DELETE FROM loan_documents WHERE id = ?")->execute([$doc_id]);
         redirectTo("loans/documents?loan_id=$loan_id&msg=deleted");
     }

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../includes/tenant.php'; // vk_storage_path(): this group's file storage
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/require_auth.php'; // audit B3: must be logged in
 require_once __DIR__ . '/../includes/require_csrf.php'; // audit H6: valid CSRF token required
@@ -74,7 +75,7 @@ try {
 
     // ── ATTACHMENTS HANDLING ──
     if (!empty($_FILES['attachments']['name'][0])) {
-        $upload_dir = __DIR__ . '/../uploads/document_library/';
+        $upload_dir = vk_storage_path('uploads/document_library') . '/';
         if (!file_exists($upload_dir)) {
             mkdir($upload_dir, 0755, true);
         }

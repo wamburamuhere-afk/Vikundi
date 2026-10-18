@@ -237,7 +237,7 @@ if ($_POST) {
                     $child_genders = $_POST['child_gender'] ?? [];
                     $child_dobs = $_POST['child_dob'] ?? [];
                     $child_files = $_FILES['child_photo'] ?? null; // E2: optional per-child photo replace
-                    $__photo_dir = ROOT_DIR . '/uploads/avatars';
+                    $__photo_dir = vk_storage_path('uploads/avatars');
 
                     $existing_children_stmt = $pdo->prepare("SELECT children_data FROM customers WHERE email = ?");
                     $existing_children_stmt->execute([$old_email]);
@@ -463,12 +463,10 @@ if ($_POST) {
                 $upload_path = 'uploads/avatars/' . $filename;
                 
                 // Create directory if it doesn't exist
-                if (!is_dir('uploads/avatars')) {
-                    mkdir('uploads/avatars', 0755, true);
-                }
+                vk_storage_dir('uploads/avatars');
                 
                 // Move uploaded file
-                if (move_uploaded_file($avatar['tmp_name'], $upload_path)) {
+                if (move_uploaded_file($avatar['tmp_name'], vk_storage_path($upload_path))) {
                     // Update user record with avatar path
                     $stmt = $pdo->prepare("UPDATE users SET avatar = ?, updated_at = NOW() WHERE user_id = ?");
                     $stmt->execute([$filename, $view_user_id]);

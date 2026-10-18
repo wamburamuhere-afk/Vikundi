@@ -4,6 +4,58 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-18 — Multi-tenant, PR 1 of 3: group lookup, offline/404 pages, per-group file storage
+
+**Branch:** `feat/multitenant-tenant-lookup` (off `develop`, after PR #531)
+**Developer:** Claude Code / Jabir Mussa
+**Design:** signed off by Jabir 2026-10-18 ("Vikundi Multi-Tenant Design" doc). One shared code folder
+serves every group; each group keeps its own database; the host name picks the group.
+
+**What changed**
+
+- `includes/tenant.php` — pure helpers (subdomain rules, host → group, status → serve/503/404,
+  `--tenant` for CLI) and the storage resolver `vk_storage_path()` / `vk_storage_dir()` /
+  `vk_logo_file()` / `vk_secret_key_file()`. Single-site mode (every current site, local dev):
+  paths resolve to the code folder exactly as before.
+- `includes/tenant_config.php` — the shared server's bootstrap. Loads `/etc/vikundi/control.php`,
+  finds the group in the `vikundi_control` registry, stops with 404 (unknown/archived/provisioning)
+  or 503 (suspended), loads `/etc/vikundi/tenants/<sub>.php` (DB password + JWT secret), connects
+  as the group's own MySQL user, and puts session files in the group's folder. **Never falls back
+  to a default database.** Must run as `auto_prepend_file` in the shared vhost (it refuses to run
+  if a session was already started: several entry points call `session_start()` before
+  `config.php`, and those sessions would otherwise not be separated by group).
+- `includes/tenant_pages.php` — standalone bilingual 404 / 503 pages (JSON for api/ajax/actions).
+  The 404 never names a group.
+- `database/control/schema.sql` — `tenants` + `tenant_hosts` (full host → group; how production
+  keeps `vikundi.bjptechnologies.co.tz`).
+- **Every stored-file path** (≈45 files: uploads, signatures, documents, avatars, contribution
+  slips, backups, uploaded logos, the AI/email/SMS secret key, the demo statement) now goes through
+  `vk_storage_path()` instead of `__DIR__`/`ROOT_DIR`. Several readers previously resolved DB paths
+  against the script's working directory; they now resolve against storage.
+- `index.php` — serves an uploaded `group_logo_*` from the group's storage when it is not in the
+  code folder, so the 20-odd `/assets/images/<logo>` links keep working unchanged.
+
+**Deviation from the design doc:** the JWT secret lives in the per-group secrets file, not a
+`tenants.jwt_secret` column — the web user can read the registry, so a column would expose every
+group's token secret to any one group's code path. The 60-second registry cache was left out:
+one indexed query per request.
+
+**Tests:** `tests/Unit/TenantTest.php` (42 tests), including a scan that fails if any code builds
+a stored-file path from the code folder. Updated two path assertions in `ProfileApiTest` and one
+in `GroupLogoTest`. Full suite: 2,591 tests, all passing.
+
+**Verified end to end** on a local sandbox (built-in server + `auto_prepend_file`, two groups):
+unknown, nested and foreign hosts → 404; suspended → 503 with the group name; active → its login;
+login works and session files land in the group's own folder; **a logged-in session cookie from
+group A sent to group B lands on B's login page**; an uploaded logo is served only to its group;
+avatars come from group storage through `api/get_upload`; `/uploads/` stays 403; CLI refuses to
+run without a valid `--tenant` and migrations run with one. Single-site mode re-checked unchanged.
+
+**Not in this PR (next):** `provision_tenant.php`, `migrate_all.php` (PR 2); cron loop, session
+clean-up on the server, `deploy.yml` (PR 3); server setup and moving the sites.
+
+---
+
 ## Session — 2026-10-13 — Fix: the Fines page never loaded its list; My Settings showed the wrong username — PR open
 
 **Branch:** `fix/fines-page-script-and-username` (off `develop`, after PR #530)

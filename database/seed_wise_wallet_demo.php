@@ -374,7 +374,8 @@ $must(vl_decide($pdo, $rejected['loan_id'], false, $chair['user_id'], 'An emerge
 // 7) The M-Koba statement to import during the demo
 // ---------------------------------------------------------------------------
 // Same ten columns, in the same order, as a real M-Koba statement export.
-$statementPath = __DIR__ . '/../downloads/WiseWallet_MKoba_Statement_DEMO.csv';
+require_once __DIR__ . '/../includes/tenant.php';
+$statementPath = vk_storage_dir('downloads') . 'WiseWallet_MKoba_Statement_DEMO.csv';
 $ref = static function (): string {
     $letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
     $pick = static fn(string $set, int $len): string => implode('', array_map(static fn() => $set[mt_rand(0, strlen($set) - 1)], range(1, $len)));

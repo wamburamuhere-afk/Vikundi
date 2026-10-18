@@ -13,7 +13,8 @@
 if (!function_exists('_aiSecretKey')) {
     function _aiSecretKey(): string
     {
-        $keyFile = __DIR__ . '/../includes/ai_secret.key';
+        require_once __DIR__ . '/../includes/tenant.php';
+        $keyFile = vk_secret_key_file();
         if (is_file($keyFile)) {
             $raw = trim((string)file_get_contents($keyFile));
             $key = base64_decode($raw, true);

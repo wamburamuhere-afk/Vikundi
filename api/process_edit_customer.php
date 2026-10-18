@@ -72,7 +72,7 @@ try {
     ];
 
     // Handle File Uploads
-    $upload_dir = __DIR__ . '/../uploads/customers/';
+    $upload_dir = vk_storage_path('uploads/customers') . '/';
     if (!is_dir($upload_dir)) {
         mkdir($upload_dir, 0755, true);
     }

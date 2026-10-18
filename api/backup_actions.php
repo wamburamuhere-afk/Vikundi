@@ -52,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 // Single source of truth for the backup directory — MUST match the path used by
 // backup_restore.php (table + auto-backup) and api/download_backup.php so
 // create/list/download/restore/delete all operate on the same files.
-$backupsDir = ROOT_DIR . '/backups/';
+$backupsDir = vk_storage_path('backups') . '/';
 if (!is_dir($backupsDir)) mkdir($backupsDir, 0755, true);
 
 $action = $_POST['action'] ?? '';

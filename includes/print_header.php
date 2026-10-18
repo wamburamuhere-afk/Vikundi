@@ -29,7 +29,7 @@ class PrintHeader
 
     private static function logoSrc(string $logoFile): string
     {
-        $path = ROOT_DIR . '/assets/images/' . $logoFile;
+        $path = vk_logo_file($logoFile);
         if (file_exists($path) && is_readable($path)) {
             $ext  = strtolower(pathinfo($path, PATHINFO_EXTENSION));
             $mime = in_array($ext, ['jpg', 'jpeg']) ? 'image/jpeg'

@@ -81,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_delete_doc_id'])) {
 // Helper functions (kept from original but renamed to avoid conflicts if needed)
 function handleDocumentUploadLocal($pdo, $post_data, $files) {
     try {
-        $upload_dir = 'uploads/document_library/';
+        $upload_dir = vk_storage_path('uploads/document_library') . '/';
         if (!file_exists($upload_dir)) {
             if (!mkdir($upload_dir, 0755, true)) {
                 throw new Exception("Failed to create upload directory");
@@ -161,8 +161,8 @@ function deleteDocumentLocal($pdo, $document_id) {
             throw new Exception("Permission denied");
         }
 
-        if (file_exists($document['file_path'])) {
-            unlink($document['file_path']);
+        if (file_exists(vk_storage_path($document['file_path']))) {
+            unlink(vk_storage_path($document['file_path']));
         }
 
         $pdo->prepare("DELETE FROM document_downloads WHERE document_id = ?")->execute([$document_id]);
@@ -194,10 +194,10 @@ function downloadDocumentLocal($pdo, $document_id) {
             die('You do not have permission to access this document.');
         }
 
-        $file_path = $document['file_path'];
-        // Fix path if it's relative but we are in the root file
-        if (!file_exists($file_path) && file_exists('uploads/document_library/' . basename($file_path))) {
-             $file_path = 'uploads/document_library/' . basename($file_path);
+        $file_path = vk_storage_path($document['file_path']);
+        // Older rows stored only a bare or differently-rooted name.
+        if (!file_exists($file_path) && file_exists(vk_storage_path('uploads/document_library/' . basename($document['file_path'])))) {
+             $file_path = vk_storage_path('uploads/document_library/' . basename($document['file_path']));
         }
 
         if (!file_exists($file_path)) {

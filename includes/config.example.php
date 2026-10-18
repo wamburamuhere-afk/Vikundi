@@ -1,6 +1,12 @@
 <?php
 // Copy this file to config.php and fill in your database credentials.
 // NEVER commit config.php — it is excluded by .gitignore.
+//
+// This is the single-site layout (one code folder and one database per site,
+// and local development). On the shared multi-group server config.php is
+// instead this one line — see includes/tenant_config.php:
+//
+//     <?php require_once __DIR__ . '/tenant_config.php'; $pdo = $GLOBALS['pdo'];
 
 $host     = 'localhost';
 $dbname   = 'vikundi';

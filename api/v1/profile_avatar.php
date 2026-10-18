@@ -19,6 +19,7 @@
  * left on disk, same reasoning as group-settings_logo.php: nothing else in
  * this codebase deletes an old upload on replacement.
  */
+require_once __DIR__ . '/../../includes/tenant.php'; // vk_storage_path(): this group's file storage
 
 require_once __DIR__ . '/../../includes/api_bootstrap.php';
 require_once __DIR__ . '/../../includes/api_profile.php';
@@ -38,7 +39,7 @@ if (!isset($_FILES['avatar'])
 
 [$stored, $err] = vk_api_store_upload(
     $_FILES['avatar'],
-    dirname(__DIR__, 2) . '/uploads/avatars',
+    vk_storage_path('uploads/avatars'),
     'avatar',
     2097152 // 2 MB — a phone camera original at full size is unnecessarily large for an avatar
 );

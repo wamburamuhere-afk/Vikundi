@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../includes/tenant.php'; // vk_storage_path(): this group's file storage
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../includes/config.php';
@@ -13,7 +14,7 @@ require_once __DIR__ . '/../core/permissions.php';
 requirePermissionJson('view', 'backup_restore');
 
 try {
-    $backup_dir = __DIR__ . '/../backups/';
+    $backup_dir = vk_storage_path('backups') . '/';
     if (!is_dir($backup_dir)) {
         mkdir($backup_dir, 0777, true);
     }
