@@ -101,6 +101,25 @@ function update_certificate(PDO $reg, array $control, string $base): bool
     return true;
 }
 
+/**
+ * A row in the super-admin history for a change made here on the command line.
+ * Skipped when the panel's worker ran this command (it writes its own row, with
+ * the super-admin's name), and when the history table does not exist yet.
+ */
+function server_audit(PDO $reg, string $action, ?string $sub, string $result, ?string $detail = null): void
+{
+    if (getenv('VIKUNDI_REQUEST_ID')) {
+        return;
+    }
+    $who = 'server (' . (function_exists('posix_getpwuid') ? (posix_getpwuid(posix_geteuid())['name'] ?? '?') : get_current_user()) . ')';
+    try {
+        $reg->prepare("INSERT INTO admin_audit_log (actor_type, actor_name, action, subdomain, result, detail) VALUES ('server', ?, ?, ?, ?, ?)")
+            ->execute([$who, $action, $sub, $result, $detail === null ? null : mb_substr($detail, 0, 500)]);
+    } catch (PDOException $e) {
+        // No history table yet (before the panel is set up): nothing to record into.
+    }
+}
+
 function tenant_or_fail(PDO $reg, string $sub): array
 {
     $row = vk_tenant_find($reg, $sub);
@@ -172,7 +191,9 @@ if (isset($args['list'])) {
 
 // ── --cert ───────────────────────────────────────────────────────────────────
 if (isset($args['cert'])) {
-    exit(update_certificate($reg, $control, $base) ? 0 : 1);
+    $ok = update_certificate($reg, $control, $base);
+    server_audit($reg, 'update certificate', null, $ok ? 'done' : 'failed');
+    exit($ok ? 0 : 1);
 }
 
 // ── --suspend / --resume / --archive ─────────────────────────────────────────
@@ -202,6 +223,7 @@ foreach (['suspend', 'resume', 'archive'] as $action) {
     $sql = 'UPDATE tenants SET status = ?' . ($stampCol ? ", $stampCol = NOW()" : '') . ($action === 'resume' ? ', suspended_at = NULL' : '') . ' WHERE id = ?';
     $reg->prepare($sql)->execute([$status, $row['id']]);
     out("{$row['subdomain']}: {$row['status']} -> $status");
+    server_audit($reg, "$action group", $row['subdomain'], 'done');
     exit(0);
 }
 
@@ -219,6 +241,7 @@ if (isset($args['add-host'])) {
     }
     $reg->prepare('INSERT INTO tenant_hosts (host, tenant_id) VALUES (?, ?)')->execute([$host, $row['id']]);
     out("$host -> {$row['subdomain']}");
+    server_audit($reg, 'add host', $row['subdomain'], 'done', $host);
     exit(0);
 }
 
@@ -345,8 +368,11 @@ try {
     fwrite(STDERR, "Error: " . $e->getMessage() . "\nUndoing the steps already taken...\n");
     $rollback();
     fwrite(STDERR, "Nothing was left behind. Fix the cause and run the command again.\n");
+    server_audit($reg, $adopt ? 'adopt group' : 'create group', $sub, 'failed', $e->getMessage());
     exit(1);
 }
 
 // The group is complete; a certificate problem must not undo it.
-exit(update_certificate($reg, $control, $base) ? 0 : 2);
+$certOk = update_certificate($reg, $control, $base);
+server_audit($reg, $adopt ? 'adopt group' : 'create group', $sub, 'done', $certOk ? null : 'https certificate failed');
+exit($certOk ? 0 : 2);

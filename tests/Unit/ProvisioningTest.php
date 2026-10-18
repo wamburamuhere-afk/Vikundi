@@ -195,7 +195,10 @@ class ProvisioningTest extends TestCase
     {
         $src = (string) file_get_contents(dirname(__DIR__, 2) . '/bin/provision_tenant.php');
         // The certificate step runs after the rollback block, outside it.
-        $this->assertGreaterThan(strrpos($src, '$rollback();'), strrpos($src, 'update_certificate($reg, $control, $base) ? 0 : 2'));
+        $certAt = strrpos($src, '$certOk = update_certificate($reg, $control, $base);');
+        $this->assertNotFalse($certAt);
+        $this->assertGreaterThan(strrpos($src, '$rollback();'), $certAt);
+        $this->assertStringContainsString('exit($certOk ? 0 : 2);', $src);
         $this->assertStringContainsString("isset(\$args['cert'])", $src);
     }
 
