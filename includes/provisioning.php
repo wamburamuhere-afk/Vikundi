@@ -132,3 +132,58 @@ if (!function_exists('vk_prov_status_change')) {
         };
     }
 }
+
+if (!function_exists('vk_prov_cert_names')) {
+    /**
+     * The addresses the shared certificate must cover: <subdomain>.<base> for every
+     * group ever registered, archived ones included, so the list only ever grows
+     * and certbot can always --expand the same certificate. Extra hosts mapped
+     * with --add-host keep their own certificate and are not listed here.
+     */
+    function vk_prov_cert_names(array $subdomains, string $base): array
+    {
+        $names = [];
+        foreach ($subdomains as $sub) {
+            $sub = strtolower(trim((string) $sub));
+            if ($sub !== '') {
+                $names[] = $sub . '.' . strtolower($base);
+            }
+        }
+        $names = array_values(array_unique($names));
+        sort($names);
+        return $names;
+    }
+}
+
+if (!function_exists('vk_prov_certbot_command')) {
+    /**
+     * The certbot command that issues or expands the shared certificate, proving
+     * each address over plain http (the *.vikundi DNS record already points here,
+     * so no DNS API is needed). Returns a shell-ready string, or an error message
+     * when the list is empty or past Let's Encrypt's 100 names per certificate.
+     *
+     * Runs through `sudo -n` unless already root: the provisioner is the ubuntu
+     * user, certbot needs root. The deploy hook reloads Apache after every issue
+     * and every automatic renewal.
+     *
+     * @return array{0:bool,1:string}  [ok, command-or-error]
+     */
+    function vk_prov_certbot_command(array $names, string $webroot, string $certName, bool $isRoot): array
+    {
+        if (!$names) {
+            return [false, 'no groups yet: nothing to put on the certificate.'];
+        }
+        if (count($names) > 100) {
+            return [false, count($names) . ' addresses: over the 100 a certificate can hold. Start a second certificate (cert_name) for the new groups.'];
+        }
+        $parts = ['certbot', 'certonly', '--webroot', '-w', $webroot, '--cert-name', $certName,
+                  '--expand', '--non-interactive', '--keep-until-expiring',
+                  '--deploy-hook', 'systemctl reload apache2'];
+        foreach ($names as $n) {
+            $parts[] = '-d';
+            $parts[] = $n;
+        }
+        $cmd = implode(' ', array_map('escapeshellarg', $parts));
+        return [true, ($isRoot ? '' : 'sudo -n ') . $cmd];
+    }
+}

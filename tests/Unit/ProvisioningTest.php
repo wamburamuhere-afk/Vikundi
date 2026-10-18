@@ -156,4 +156,46 @@ class ProvisioningTest extends TestCase
         $this->assertStringContainsString("'.last_auto_backup'", $src);
         $this->assertMatchesRegularExpression("/if \\(PHP_SAPI !== 'cli'\\)/", $src);
     }
+
+    public function testTheCertificateCoversEveryGroupsOwnAddressSortedAndOnce(): void
+    {
+        $this->assertSame(
+            ['ukuu.' . self::BASE, 'wisewallet.' . self::BASE],
+            vk_prov_cert_names(['wisewallet', 'ukuu', 'UKUU', ''], self::BASE)
+        );
+    }
+
+    public function testCertbotProvesEachAddressOverHttpAndExpandsOneCertificate(): void
+    {
+        [$ok, $cmd] = vk_prov_certbot_command(['a.' . self::BASE, 'b.' . self::BASE], '/var/lib/vikundi/acme', 'vikundi-groups', false);
+
+        $this->assertTrue($ok);
+        $this->assertStringStartsWith("sudo -n 'certbot' 'certonly' '--webroot' '-w' '/var/lib/vikundi/acme'", $cmd);
+        $this->assertStringContainsString("'--cert-name' 'vikundi-groups' '--expand' '--non-interactive'", $cmd);
+        $this->assertStringContainsString("'--deploy-hook' 'systemctl reload apache2'", $cmd);
+        $this->assertStringContainsString("'-d' 'a." . self::BASE . "' '-d' 'b." . self::BASE . "'", $cmd);
+    }
+
+    public function testRootRunsCertbotWithoutSudo(): void
+    {
+        [, $cmd] = vk_prov_certbot_command(['a.' . self::BASE], '/w', 'c', true);
+        $this->assertStringStartsWith("'certbot'", $cmd);
+    }
+
+    public function testCertbotRefusesAnEmptyOrOverfullCertificate(): void
+    {
+        $this->assertFalse(vk_prov_certbot_command([], '/w', 'c', false)[0]);
+        $many = array_map(static fn($i) => "g$i." . self::BASE, range(1, 101));
+        [$ok, $why] = vk_prov_certbot_command($many, '/w', 'c', false);
+        $this->assertFalse($ok);
+        $this->assertStringContainsString('100', $why);
+    }
+
+    public function testAFailedCertificateNeverUndoesTheGroup(): void
+    {
+        $src = (string) file_get_contents(dirname(__DIR__, 2) . '/bin/provision_tenant.php');
+        // The certificate step runs after the rollback block, outside it.
+        $this->assertGreaterThan(strrpos($src, '$rollback();'), strrpos($src, 'update_certificate($reg, $control, $base) ? 0 : 2'));
+        $this->assertStringContainsString("isset(\$args['cert'])", $src);
+    }
 }

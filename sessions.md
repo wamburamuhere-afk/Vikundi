@@ -4,6 +4,22 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-18 — Multi-tenant: https certificate without the DNS API
+
+**Branch:** `feat/multitenant-certificates`
+**Developer:** Claude Code / Jabir Mussa
+
+**Why:** the wildcard certificate needs a DNS API, and DUhosting's bot-protection page blocks every API call to cPanel from our server (domain, server name and IP all tried). BMS works around it with a manual wildcard that must be redone by hand every 90 days.
+
+**What changed:** each group's own address is added to one shared Let's Encrypt certificate (`vikundi-groups`), proven over plain http. The `*.vikundi` DNS record already points every address at our server, so no DNS API is needed, and certbot's existing timer renews it automatically.
+- `includes/provisioning.php`: `vk_prov_cert_names()` (every group ever registered, so the list only grows and `--expand` always works) and `vk_prov_certbot_command()` (webroot check, `--deploy-hook` reloads Apache, `sudo -n` unless root, refuses an empty list or more than 100 names).
+- `bin/provision_tenant.php`: new `--cert`; `--create` and `--adopt` update the certificate after the group is complete. A certificate failure exits 2 and prints the fix, but never undoes the group. Skipped when `acme_webroot` / `cert_name` are not in control.php.
+- Extra hosts from `--add-host` (e.g. production's own address) keep their own certificate.
+
+**Tests:** 5 new in `ProvisioningTest`. Full suite 2,616 passing, 15 skipped.
+
+---
+
 ## Session — 2026-10-18 — Multi-tenant, PR 3 of 3: nightly backup of every group, and the deploy
 
 **Branch:** `feat/multitenant-cron-deploy` (stacked on PR 2)

@@ -17,13 +17,19 @@
  *   php bin/provision_tenant.php --resume=wisewallet
  *   php bin/provision_tenant.php --archive=wisewallet     (final backup, then offline for good; deletes nothing)
  *   php bin/provision_tenant.php --list
+ *   php bin/provision_tenant.php --cert                   (re-issue the shared https certificate)
  *
  * Reads /etc/vikundi/control.php (paths, base domain) and /etc/vikundi/provisioner.php
- * (the vk_provisioner MySQL user, which may create and grant only vk_* databases and
+ * (the provisioner MySQL user, vikundi_prov, which may create and grant only vk_* databases and
  * write the registry). Never root, and never reachable from the web.
  *
  * --create undoes every step it took if any later step fails, so a failed run
  * leaves no half-made group behind.
+ *
+ * After --create and --adopt the group's address is added to the shared https
+ * certificate (certbot, http check, via `sudo -n`). Needs `acme_webroot` and
+ * `cert_name` in control.php; without them the step is skipped. A failed
+ * certificate does not undo the group: fix the cause and run --cert.
  */
 
 if (PHP_SAPI !== 'cli') {
@@ -65,6 +71,34 @@ try {
     ]);
 } catch (PDOException $e) {
     fail('cannot connect as the provisioner: ' . $e->getMessage());
+}
+
+/**
+ * Add every group's address to the shared certificate. Returns true when done
+ * or not configured; prints the command to run by hand when it fails.
+ */
+function update_certificate(PDO $reg, array $control, string $base): bool
+{
+    if (empty($control['acme_webroot']) || empty($control['cert_name'])) {
+        out('Certificate: skipped (acme_webroot / cert_name not set in control.php).');
+        return true;
+    }
+    $names = vk_prov_cert_names($reg->query('SELECT subdomain FROM tenants')->fetchAll(PDO::FETCH_COLUMN), $base);
+    $isRoot = function_exists('posix_geteuid') && posix_geteuid() === 0;
+    [$ok, $cmd] = vk_prov_certbot_command($names, (string) $control['acme_webroot'], (string) $control['cert_name'], $isRoot);
+    if (!$ok) {
+        fwrite(STDERR, "Certificate: $cmd\n");
+        return false;
+    }
+    out('Certificate: covering ' . count($names) . ' address(es)...');
+    exec($cmd . ' 2>&1', $output, $code);
+    if ($code !== 0) {
+        fwrite(STDERR, "Certificate: certbot failed (exit $code):\n  " . implode("\n  ", array_slice($output, -8)) . "\n"
+            . "Fix the cause, then run: php bin/provision_tenant.php --cert\n");
+        return false;
+    }
+    out('Certificate: ok.');
+    return true;
 }
 
 function tenant_or_fail(PDO $reg, string $sub): array
@@ -134,6 +168,11 @@ if (isset($args['list'])) {
         out(sprintf('%-62s %s', '', $r['hosts'] ?? '(no host)'));
     }
     exit(0);
+}
+
+// ── --cert ───────────────────────────────────────────────────────────────────
+if (isset($args['cert'])) {
+    exit(update_certificate($reg, $control, $base) ? 0 : 1);
 }
 
 // ── --suspend / --resume / --archive ─────────────────────────────────────────
@@ -305,3 +344,6 @@ try {
     fwrite(STDERR, "Nothing was left behind. Fix the cause and run the command again.\n");
     exit(1);
 }
+
+// The group is complete; a certificate problem must not undo it.
+exit(update_certificate($reg, $control, $base) ? 0 : 2);
