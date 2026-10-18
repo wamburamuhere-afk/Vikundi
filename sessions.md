@@ -4,6 +4,25 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-18 — Super-admin panel, PR 1 of 3: requests, worker, super-admin logins
+
+**Branch:** `feat/superadmin-requests-worker`
+**Developer:** Claude Code / Jabir Mussa
+**Design:** "Vikundi Super-Admin Panel — Design" (signed off 2026-10-18): the panel never changes a group itself; it saves a request, and a worker on the server carries it out.
+
+**Added:**
+- `database/control/admin_schema.sql`: `superadmins`, `provision_requests`, `admin_audit_log` in `vikundi_control`.
+- `includes/admin_requests.php`: the shared rules: `vk_req_validate()` (same address rules as the command line, plus name/phone/email checks), `vk_req_command_args()` (one argv element per value), `vk_req_extract_secret()` (takes the first Chairperson's password out of the stored output), `vk_req_outcome()` (exit 2 on create = done with a certificate warning), output trimming, super-admin username/password rules.
+- `bin/run_requests.php`: the worker. One at a time (MySQL `GET_LOCK`), atomic claim, validates again, runs `provision_tenant.php` with `proc_open` and an argv array (no shell), saves status/output/one-time password, writes a history row in the super-admin's name. Marks requests stuck 30 min as failed; erases unseen passwords after a day.
+- `bin/superadmin.php`: `--create`, `--reset-password` (also unlocks), `--disable`, `--enable`, `--list`; hidden password prompt typed twice; history rows.
+- `bin/provision_tenant.php`: command-line changes now write a `server` history row (skipped when the worker ran it, and when the table is not there yet).
+
+**Verified locally** (scratch registry, tables dropped after): super-admin created, weak password refused; the worker ran suspend, resume and cert, refused a create with a bad phone, wrote 4 history rows under "Jabir Mussa"; a second run with nothing waiting exited quietly; a CLI suspend wrote a `server` row. Not run locally: a successful create (needs the server's provisioner).
+
+**Tests:** `AdminRequestsTest` (22 new); one `ProvisioningTest` assertion updated for the reshaped certificate step. Full suite 2,642 passing, 15 skipped.
+
+---
+
 ## Session — 2026-10-18 — Multi-tenant: prepare moving the demo site
 
 **Branch:** `chore/multitenant-move-demo`
