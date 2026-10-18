@@ -656,7 +656,7 @@ final class ProfileApiTest extends TestCase
     public function testProfileAvatarStoresIntoTheUploadsAvatarsDirectory(): void
     {
         $this->assertStringContainsString(
-            "dirname(__DIR__, 2) . '/uploads/avatars'",
+            "vk_storage_path('uploads/avatars')",
             self::code('api/v1/profile_avatar.php')
         );
     }
@@ -742,7 +742,7 @@ final class ProfileApiTest extends TestCase
     public function testAvatarEndpointAppliesRealpathContainmentAgainstTheAvatarsDirectory(): void
     {
         $code = self::code('api/v1/avatar.php');
-        $this->assertStringContainsString("realpath(dirname(__DIR__, 2) . '/uploads/avatars')", $code);
+        $this->assertStringContainsString("realpath(vk_storage_path('uploads/avatars'))", $code);
         $this->assertStringContainsString('strpos($path, $baseDir) !== 0', $code);
     }
 

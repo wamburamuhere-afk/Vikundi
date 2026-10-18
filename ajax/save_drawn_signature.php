@@ -31,7 +31,7 @@ try {
     }
 
     $userId  = (int) $_SESSION['user_id'];
-    $userDir = ROOT_DIR . '/uploads/signatures/' . $userId;
+    $userDir = vk_storage_path('uploads/signatures/' . $userId);
     if (!is_dir($userDir)) {
         mkdir($userDir, 0777, true);
     }

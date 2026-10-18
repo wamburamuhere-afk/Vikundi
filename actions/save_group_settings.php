@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../includes/tenant.php'; // vk_storage_path(): this group's file storage
 // actions/save_group_settings.php
 if (session_status() === PHP_SESSION_NONE) session_start();
 header('Content-Type: application/json');
@@ -106,11 +107,9 @@ try {
 
         if (in_array($ext, $allowed_exts) && $vk_mime_ok) {
             $new_name = 'group_logo_' . time() . '.' . $ext;
-            $upload_path = __DIR__ . '/../assets/images/' . $new_name;
-            
-            if (!is_dir(__DIR__ . '/../assets/images/')) {
-                mkdir(__DIR__ . '/../assets/images/', 0777, true);
-            }
+            // A single site keeps uploaded logos in its own assets/images/; on the shared
+            // server they go in the group's storage (index.php serves them from there).
+            $upload_path = vk_storage_dir('assets/images') . $new_name;
 
             if (move_uploaded_file($file_tmp, $upload_path)) {
                 $stmt->execute(['group_logo', $new_name]);

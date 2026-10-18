@@ -26,7 +26,7 @@ try {
     // Handle file upload
     $image_url = '';
     if (isset($_FILES['product_image']) && $_FILES['product_image']['error'] === UPLOAD_ERR_OK) {
-        $upload_dir = '../uploads/products/';
+        $upload_dir = vk_storage_path('uploads/products') . '/';
         
         // Create directory if it doesn't exist
         if (!file_exists($upload_dir)) {
@@ -179,8 +179,8 @@ try {
     }
     
     // Delete uploaded file if transaction failed
-    if (!empty($image_url) && file_exists('../' . $image_url)) {
-        unlink('../' . $image_url);
+    if (!empty($image_url) && file_exists(vk_storage_path($image_url))) {
+        unlink(vk_storage_path($image_url));
     }
     
     echo json_encode([

@@ -11,6 +11,26 @@ require_once __DIR__ . '/roots.php';
 $request_uri = $_SERVER['REQUEST_URI'] ?? '/';
 $clean_uri = trim(strtok($request_uri, '?'), '/');
 
+// A group's uploaded logo is linked as /assets/images/<file> everywhere, as it
+// always has been. On a single site the file is really there and Apache serves
+// it before PHP runs. On the shared server it lives in the group's own storage,
+// so the request falls through to here and is served from that group's folder.
+if (preg_match('#(?:^|/)assets/images/(group_logo_[A-Za-z0-9_-]{1,80}\.(png|jpe?g|gif|webp))$#', $clean_uri, $m)) {
+    $logo = vk_storage_path('assets/images/' . $m[1]);
+    if (is_file($logo)) {
+        $types = ['png' => 'image/png', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'gif' => 'image/gif', 'webp' => 'image/webp'];
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        header('Content-Type: ' . $types[strtolower($m[2])]);
+        header('Content-Length: ' . filesize($logo));
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: public, max-age=86400');
+        readfile($logo);
+        exit;
+    }
+}
+
 // If accessing root URL directly
 if (empty($clean_uri) || $clean_uri === 'index.php') {
     // Check if user is logged in

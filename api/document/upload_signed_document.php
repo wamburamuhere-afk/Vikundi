@@ -45,7 +45,7 @@ if ($file['size'] > $max_size) {
 }
 
 // Create directory structure
-$upload_dir = __DIR__ . "/../uploads/loans/{$loan_id}/documents/";
+$upload_dir = vk_storage_path("uploads/loans/{$loan_id}/documents") . '/';
 if (!file_exists($upload_dir)) {
     mkdir($upload_dir, 0777, true);
 }
@@ -53,7 +53,7 @@ if (!file_exists($upload_dir)) {
 $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
 $filename = "{$document_type}_" . time() . "_" . rand(100, 999) . "." . $extension;
 $file_path = "uploads/loans/{$loan_id}/documents/{$filename}";
-$full_path = __DIR__ . "/../" . $file_path;
+$full_path = vk_storage_path($file_path);
 
 if (move_uploaded_file($file['tmp_name'], $full_path)) {
     try {

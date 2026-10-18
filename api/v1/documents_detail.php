@@ -12,6 +12,7 @@
  * that web action (it previously checked ownership only) — this endpoint
  * carries the same combined check from the start.
  */
+require_once __DIR__ . '/../../includes/tenant.php'; // vk_storage_path(): this group's file storage
 
 require_once __DIR__ . '/../../includes/api_bootstrap.php';
 require_once __DIR__ . '/../../includes/api_documents.php';
@@ -34,8 +35,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
         vk_api_error(403, 'forbidden', 'You do not have permission to delete this document.');
     }
 
-    if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
-        @unlink($doc['file_path']);
+    if (!empty($doc['file_path']) && file_exists(vk_storage_path($doc['file_path']))) {
+        @unlink(vk_storage_path($doc['file_path']));
     }
     $pdo->prepare('DELETE FROM document_downloads WHERE document_id = ?')->execute([$id]);
     $pdo->prepare('DELETE FROM documents WHERE id = ?')->execute([$id]);

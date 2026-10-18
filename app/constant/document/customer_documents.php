@@ -31,7 +31,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['doc_i
         $stmt->execute([(int)$doc_id, $customer_id]);
         $doc = $stmt->fetch();
         if ($doc) {
-            if (file_exists($doc['file_path'])) unlink($doc['file_path']);
+            if (file_exists(vk_storage_path($doc['file_path']))) unlink(vk_storage_path($doc['file_path']));
             $pdo->prepare("DELETE FROM customer_attachments WHERE id = ?")->execute([(int)$doc_id]);
         }
     } elseif ($source === 'customer_additional_attachments') {
@@ -39,7 +39,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['doc_i
         $stmt->execute([(int)$doc_id, $customer_id]);
         $doc = $stmt->fetch();
         if ($doc) {
-            if (file_exists($doc['attachment_path'])) unlink($doc['attachment_path']);
+            if (file_exists(vk_storage_path($doc['attachment_path']))) unlink(vk_storage_path($doc['attachment_path']));
             $pdo->prepare("DELETE FROM customer_additional_attachments WHERE attachment_id = ?")->execute([(int)$doc_id]);
         }
     } elseif ($source === 'customer_profile') {

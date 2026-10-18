@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../includes/tenant.php'; // vk_storage_path(): this group's file storage
 // api/delete_document.php
 // Suppress ALL PHP notices/warnings to prevent JSON corruption
 error_reporting(0);
@@ -47,14 +48,10 @@ try {
         throw new Exception("Ruhusa imekataliwa. Permission denied.");
     }
 
-    // Delete physical file — try multiple path resolutions
-    $paths_to_try = [
-        $document['file_path'],                              // absolute stored path
-        __DIR__ . '/../' . $document['file_path'],           // relative from api dir
-        $_SERVER['DOCUMENT_ROOT'] . '/' . ltrim($document['file_path'], '/'), // from docroot
-    ];
-    foreach ($paths_to_try as $p) {
-        if (file_exists($p)) { @unlink($p); break; }
+    // Delete the physical file from this group's storage.
+    $p = vk_storage_path((string) $document['file_path']);
+    if (file_exists($p)) {
+        @unlink($p);
     }
 
     // Remove download logs then the document record

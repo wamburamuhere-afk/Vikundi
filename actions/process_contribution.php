@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../includes/tenant.php'; // vk_storage_path(): this group's file storage
 // actions/process_contribution.php
 if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../includes/config.php';
@@ -71,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         require_once __DIR__ . '/../includes/api_upload.php';
         [$stored, $upload_error] = vk_api_store_upload(
             $_FILES['evidence'],
-            __DIR__ . '/../uploads/contributions',
+            vk_storage_path('uploads/contributions'),
             'receipt'
         );
         if ($upload_error !== null) {

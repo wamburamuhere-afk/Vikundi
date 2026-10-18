@@ -21,7 +21,7 @@ try {
         exit();
     }
 
-    $backup_dir = __DIR__ . '/../backups/';
+    $backup_dir = vk_storage_path('backups') . '/';
     $filepath = realpath($backup_dir . $filename);
 
     // Security check - ensure file is in backups folder

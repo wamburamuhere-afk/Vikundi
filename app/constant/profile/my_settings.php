@@ -48,7 +48,7 @@ if (isset($_POST['save_profile'])) {
             $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
             if (in_array($ext, $allowed)) {
                 $new_filename = 'profile_' . $_SESSION['user_id'] . '_' . time() . '.' . $ext;
-                $upload_path = ROOT_DIR . '/uploads/avatars/' . $new_filename;
+                $upload_path = vk_storage_path('uploads/avatars/' . $new_filename);
                 
                 // Ensure directory exists
                 if (!is_dir(dirname($upload_path))) {

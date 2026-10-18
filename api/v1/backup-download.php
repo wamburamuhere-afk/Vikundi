@@ -8,6 +8,7 @@
  * ADMIN/CHAIRPERSON ONLY. See api/v1/settings_backup.php for why this is its
  * own top-level resource rather than /settings/backup/{id}/download.
  */
+require_once __DIR__ . '/../../includes/tenant.php'; // vk_storage_path(): this group's file storage
 
 require_once __DIR__ . '/../../includes/api_bootstrap.php';
 require_once __DIR__ . '/../../includes/api_settings.php';
@@ -23,7 +24,7 @@ if ($filename === '') {
     vk_api_error(422, 'file_required', 'file is required.');
 }
 
-$backupsDir = realpath(__DIR__ . '/../../backups');
+$backupsDir = realpath(vk_storage_path('backups'));
 $filepath = $backupsDir ? realpath($backupsDir . '/' . $filename) : false;
 
 if (!$backupsDir || !$filepath || strpos($filepath, $backupsDir) !== 0) {

@@ -108,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'dob' => $dob,
                 'age' => $age,
                 'gender' => $child_genders[$i] ?? '',
-                'photo' => vk_save_child_photo($child_files, $i, ROOT_DIR . '/uploads/avatars/'),
+                'photo' => vk_save_child_photo($child_files, $i, vk_storage_path('uploads/avatars') . '/'),
             ];
         }
     }
@@ -221,7 +221,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // 1. Handle Passport Photo Upload
             $avatar = null;
             if (isset($_FILES['passport_photo']) && $_FILES['passport_photo']['error'] === 0) {
-                $upload_dir = ROOT_DIR . '/uploads/avatars/';
+                $upload_dir = vk_storage_path('uploads/avatars') . '/';
                 if (!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
                 
                 $file_ext = pathinfo($_FILES['passport_photo']['name'], PATHINFO_EXTENSION);
@@ -234,7 +234,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // 1b. Optional parent passport photos (PR-B). Same store as the member avatar.
             $vk_save_photo = function ($field) {
                 if (isset($_FILES[$field]) && $_FILES[$field]['error'] === 0) {
-                    $dir = ROOT_DIR . '/uploads/avatars/';
+                    $dir = vk_storage_path('uploads/avatars') . '/';
                     if (!is_dir($dir)) mkdir($dir, 0777, true);
                     $ext = pathinfo($_FILES[$field]['name'], PATHINFO_EXTENSION);
                     $name = $field . '_' . time() . '_' . uniqid() . '.' . $ext;
@@ -309,7 +309,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // 4. Handle Entrance Fee Slip (Kianzio)
             $evidence_path = null;
             if (isset($_FILES['kianzio_slip']) && $_FILES['kianzio_slip']['error'] === 0) {
-                $contrib_dir = ROOT_DIR . '/uploads/contributions/';
+                $contrib_dir = vk_storage_path('uploads/contributions') . '/';
                 if (!is_dir($contrib_dir)) mkdir($contrib_dir, 0777, true);
                 
                 $file_ext = pathinfo($_FILES['kianzio_slip']['name'], PATHINFO_EXTENSION);

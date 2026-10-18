@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../includes/tenant.php'; // vk_storage_path(): this group's file storage
 // actions/save_meeting.php — create or update a meeting (+ optional documents).
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/require_auth.php';  // audit B3: must be logged in
@@ -59,7 +60,7 @@ try {
 
     // ── Supporting documents → Document Library, linked to this meeting ──
     if (!empty($_FILES['attachments']['name'][0])) {
-        $upload_dir = __DIR__ . '/../uploads/document_library/';
+        $upload_dir = vk_storage_path('uploads/document_library') . '/';
         if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
         $allowed = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'gif'];
         $names = $_POST['attachment_names'] ?? [];

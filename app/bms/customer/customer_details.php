@@ -135,7 +135,7 @@ $labels = [
                 <div class="mb-3">
                     <?php 
                     $photo_path = !empty($customer['user_avatar']) ? 'uploads/avatars/' . $customer['user_avatar'] : ($customer['photo_path'] ?? '');
-                    if (!empty($photo_path) && file_exists(ROOT_DIR . '/' . $photo_path)): ?>
+                    if (!empty($photo_path) && file_exists(vk_storage_path($photo_path))): ?>
                         <img src="<?= BASE_URL . '/' . safe_output($photo_path) ?>" 
                              class="img-fluid rounded-4 shadow-sm" 
                              style="width: 100%; max-height: 250px; object-fit: cover;" 

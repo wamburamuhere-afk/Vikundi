@@ -32,8 +32,8 @@ try {
     $doc = $stmt->fetch();
 
     if ($doc) {
-        if (file_exists('../' . $doc['file_path'])) {
-            unlink('../' . $doc['file_path']);
+        if (file_exists(vk_storage_path($doc['file_path']))) {
+            unlink(vk_storage_path($doc['file_path']));
         }
         
         $stmt = $pdo->prepare("DELETE FROM collateral_attachments WHERE id = ?");

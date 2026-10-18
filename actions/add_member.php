@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../includes/tenant.php'; // vk_storage_path(): this group's file storage
 // actions/add_member.php
 header('Content-Type: application/json');
 
@@ -114,7 +115,7 @@ for ($i = 0; $i < count($child_names); $i++) {
             'dob' => $dob,
             'age' => $age,
             'gender' => $child_genders[$i] ?? '',
-            'photo' => vk_save_child_photo($child_files, $i, __DIR__ . '/../uploads/avatars'),
+            'photo' => vk_save_child_photo($child_files, $i, vk_storage_path('uploads/avatars')),
         ];
     }
 }
@@ -206,7 +207,7 @@ if (!isset($_FILES['kianzio_slip']) || $_FILES['kianzio_slip']['error'] !== UPLO
     exit();
 }
 
-$slip_dir = __DIR__ . '/../uploads/contributions';
+$slip_dir = vk_storage_path('uploads/contributions');
 if (!is_dir($slip_dir)) mkdir($slip_dir, 0755, true);
 $file_ext = pathinfo($_FILES['kianzio_slip']['name'], PATHINFO_EXTENSION);
 $kianzio_slip = 'kianzio_' . time() . '_' . uniqid() . '.' . $file_ext;
@@ -243,7 +244,7 @@ try {
     // Handle Passport Photo Upload
     $avatar = null;
     if (isset($_FILES['passport_photo']) && $_FILES['passport_photo']['error'] === UPLOAD_ERR_OK) {
-        $upload_dir = __DIR__ . '/../uploads/avatars';
+        $upload_dir = vk_storage_path('uploads/avatars');
         if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
         
         $ext = pathinfo($_FILES['passport_photo']['name'], PATHINFO_EXTENSION);
@@ -258,7 +259,7 @@ try {
     // Optional parent passport photos (PR-B). Same store as the member avatar.
     $vk_save_photo = function ($field) {
         if (isset($_FILES[$field]) && $_FILES[$field]['error'] === UPLOAD_ERR_OK) {
-            $dir = __DIR__ . '/../uploads/avatars';
+            $dir = vk_storage_path('uploads/avatars');
             if (!is_dir($dir)) mkdir($dir, 0755, true);
             $ext = pathinfo($_FILES[$field]['name'], PATHINFO_EXTENSION);
             $name = $field . '_' . time() . '_' . uniqid() . '.' . $ext;
