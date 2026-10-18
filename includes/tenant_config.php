@@ -34,13 +34,17 @@
 require_once __DIR__ . '/tenant.php';
 
 if (!function_exists('vk_tenant_stop')) {
-    /** End the request with the not-found or offline page (or a CLI error). */
-    function vk_tenant_stop(string $decision, ?array $row = null): never
+    /**
+     * End the request with the not-found or offline page. On the command line,
+     * print the real cause ($why) instead: an operator needs it, a visitor must
+     * never see it.
+     */
+    function vk_tenant_stop(string $decision, ?array $row = null, string $why = ''): never
     {
         if (PHP_SAPI === 'cli') {
-            fwrite(STDERR, $decision === 'suspended'
-                ? "Group '{$row['subdomain']}' is suspended.\n"
-                : "No such group. Pass --tenant=<subdomain> (or set VIKUNDI_TENANT).\n");
+            fwrite(STDERR, ($why !== '' ? $why : ($decision === 'suspended'
+                ? "Group '{$row['subdomain']}' is suspended."
+                : 'No such group. Pass --tenant=<subdomain> (or set VIKUNDI_TENANT).')) . "\n");
             exit(1);
         }
         require_once __DIR__ . '/tenant_pages.php';
@@ -55,7 +59,7 @@ if (vk_tenant_current() === null) {
         $control = is_file($controlFile) ? require $controlFile : null;
         if (!is_array($control)) {
             error_log('Vikundi: tenant mode but ' . $controlFile . ' is missing or invalid.');
-            vk_tenant_stop('not_found');
+            vk_tenant_stop('not_found', null, $controlFile . ' is missing or invalid.');
         }
 
         // A session that is already running was started before the group was
@@ -74,7 +78,7 @@ if (vk_tenant_current() === null) {
             ]);
         } catch (PDOException $e) {
             error_log('Vikundi: registry connection failed: ' . $e->getMessage());
-            vk_tenant_stop('not_found');
+            vk_tenant_stop('not_found', null, 'Cannot reach the registry: ' . $e->getMessage());
         }
 
         if (PHP_SAPI === 'cli') {
@@ -98,7 +102,7 @@ if (vk_tenant_current() === null) {
         $secrets = is_file($secretsFile) ? require $secretsFile : null;
         if (!is_array($secrets) || empty($secrets['db_password']) || empty($secrets['jwt_secret'])) {
             error_log('Vikundi: secrets missing for group ' . $row['subdomain']);
-            vk_tenant_stop('not_found');
+            vk_tenant_stop('not_found', null, 'Secrets file missing or incomplete: ' . $secretsFile);
         }
 
         try {

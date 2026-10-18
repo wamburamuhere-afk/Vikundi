@@ -4,6 +4,46 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-18 — Multi-tenant, PR 2 of 3: one command to create a group, one to migrate them all
+
+**Branch:** `feat/multitenant-provisioning` (stacked on `feat/multitenant-tenant-lookup`, PR 1)
+**Developer:** Claude Code / Jabir Mussa
+
+**What changed**
+
+- `bin/provision_tenant.php` (command line only; `bin/.htaccess` denies HTTP as well):
+  - `--create` — registers the group (status `provisioning`), creates `vk_<sub>` and a MySQL user
+    that can reach only it, writes `/etc/vikundi/tenants/<sub>.php` (0640), makes the group's
+    folders (02770), runs `database/migrate.php --tenant=<sub>`, sets the group name, creates the
+    first Chairperson (user + member row, the app's username convention, random password printed
+    once), then sets `active`. **Any failure undoes every step already taken.**
+  - `--adopt` — registers a site that already has its own database (how demo, Wise Wallet and
+    UKUU will move). The DB password is read from the terminal with echo off, never from argv,
+    and is checked before anything is written.
+  - `--add-host`, `--suspend`, `--resume`, `--archive` (final dump into the group's backups
+    first; deletes nothing), `--list`.
+  - Connects as `vk_provisioner` (`/etc/vikundi/provisioner.php`), never root.
+- `bin/migrate_all.php` — migrates every active and suspended group one at a time, one line each,
+  full output to `<data>/<sub>/private/last_migration.log`; one failure does not stop the rest;
+  exit 1 if any failed. `--only=<sub>` for one group.
+- `includes/provisioning.php` — the pure rules (names, validation, secrets file, arguments,
+  lifecycle). Subdomains for `--create` are capped at 29 characters: MySQL user names stop at 32.
+- `includes/tenant_config.php` — command-line failures now print the real cause (missing secrets
+  file, registry unreachable) instead of "No such group"; web visitors still see only the 404.
+
+**Tests:** `tests/Unit/ProvisioningTest.php` (18). Full suite passing.
+
+**Verified on a local sandbox:** a `--create` that failed at `CREATE DATABASE` (the local MySQL user
+has no such right) left nothing behind: no registry row, host, secrets file or folder. `--adopt` of
+an existing database ran its migrations and went active; a wrong password and a duplicate subdomain
+were refused; `--add-host` refused a host already mapped; suspend/resume/archive followed the
+lifecycle (archive wrote a 400 KB dump; an archived group is skipped by `migrate_all` and refused
+by `migrate.php`); `migrate_all` reported a broken group and still migrated the healthy one.
+**Not verified locally:** the success path of `--create` (needs a MySQL user allowed to create
+databases) — first run will be on the server with `vk_provisioner`.
+
+---
+
 ## Session — 2026-10-18 — Multi-tenant, PR 1 of 3: group lookup, offline/404 pages, per-group file storage
 
 **Branch:** `feat/multitenant-tenant-lookup` (off `develop`, after PR #531)
