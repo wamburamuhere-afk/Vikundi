@@ -4,6 +4,19 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-18 — Multi-tenant: the group's GRANT goes through a root routine
+
+**Branch:** `fix/multitenant-grant-procedure`
+**Developer:** Claude Code / Jabir Mussa
+
+**Found on the server:** the first `--create` (test group `majaribio`) failed at `GRANT ALL ON vk_majaribio.*` with MySQL 1044. A step-by-step check as `vikundi_prov` showed CREATE DATABASE and CREATE USER work, but MySQL will not let it GRANT on a database it reaches only through its `vk\_%` wildcard grant (`partial_revokes` is off; the grant itself was correct). The rollback worked: nothing was left behind.
+
+**Fix:** `database/control/procedures.sql` (run once as MySQL root) creates `vikundi_control.vk_grant_group(name)`, `SQL SECURITY DEFINER`, which only grants `vk_<x>@localhost` ALL on `vk_<x>` and refuses any other name (`REGEXP_LIKE(..., '^vk_[a-z0-9_]{1,29}$', 'c')`). The provisioner gets EXECUTE on it and nothing more of root's. `bin/provision_tenant.php` calls it instead of GRANT.
+
+**Verified locally:** the routine compiles; a valid name reaches the GRANT; `VK_bad`, a backtick injection, a quote and a non-vk name are refused. **Tests:** 1 new; full suite 2,618 passing.
+
+---
+
 ## Session — 2026-10-18 — Multi-tenant: https certificate without the DNS API
 
 **Branch:** `feat/multitenant-certificates`
