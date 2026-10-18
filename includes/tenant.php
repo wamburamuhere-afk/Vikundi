@@ -26,7 +26,9 @@ if (!function_exists('vk_tenant_reserved_subdomains')) {
     /** Names that can never be a group: infrastructure and our own sites. */
     function vk_tenant_reserved_subdomains(): array
     {
-        return ['www', 'admin', 'api', 'app', 'staging', 'demo', 'mail', 'smtp', 'ftp', 'test', 'dev', 'static', 'cdn'];
+        // 'demo' is not reserved: the demo site is the group `demo` on the
+        // shared server (moved 2026-10-18).
+        return ['www', 'admin', 'api', 'app', 'staging', 'mail', 'smtp', 'ftp', 'test', 'dev', 'static', 'cdn'];
     }
 }
 

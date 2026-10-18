@@ -10,9 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
-      # Never let one site's failure cancel the other's deploy. If demo breaks,
-      # production must still go out (and vice versa) — the red job tells us
-      # which one needs attention.
+      # Never let one site's failure cancel the other's deploy. If the shared
+      # folder breaks, production must still go out (and vice versa) — the red
+      # job tells us which one needs attention.
       fail-fast: false
       # One at a time: both targets are the same box and share composer's cache
       # directory, so parallel runs can race on it. Production goes first.
@@ -21,11 +21,10 @@ jobs:
         include:
           - name: production
             path: /var/www/vikundi.bjptechnologies.co.tz/public_html
-          - name: demo
-            path: /var/www/demo.vikundi.bjptechnologies.co.tz/public_html
           # The shared multi-group folder (includes/tenant_config.php). One pull
           # updates every group on it; bin/migrate_all.php migrates each group's
           # own database. Skipped until the server has been set up for it.
+          # The demo site lives here as the group `demo` (moved 2026-10-18).
           - name: shared
             path: /srv/vikundi/app
             mode: shared
