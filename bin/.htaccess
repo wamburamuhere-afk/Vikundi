@@ -1,0 +1,7 @@
+# Command-line tools (provisioning, migrations for every group). Never served
+# over HTTP; each script also refuses to run outside the command line.
+Require all denied
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>
