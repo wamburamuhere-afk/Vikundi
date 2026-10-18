@@ -287,7 +287,10 @@ try {
         $undo[] = static fn() => $srv->exec("DROP DATABASE IF EXISTS `$dbName`");
         $srv->exec("CREATE USER '$dbUser'@'localhost' IDENTIFIED BY " . $srv->quote($dbPassword));
         $undo[] = static fn() => $srv->exec("DROP USER IF EXISTS '$dbUser'@'localhost'");
-        $srv->exec("GRANT ALL PRIVILEGES ON `$dbName`.* TO '$dbUser'@'localhost'");
+        // Through root's one-purpose routine: MySQL will not let the provisioner
+        // GRANT on a database it reaches only by its vk_% wildcard (1044).
+        // See database/control/procedures.sql.
+        $srv->prepare('CALL vikundi_control.vk_grant_group(?)')->execute([$dbName]);
         out("2/6 Created database and MySQL user $dbName");
     } else {
         out("2/6 Using the existing database $dbName");

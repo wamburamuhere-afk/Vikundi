@@ -212,4 +212,18 @@ class ProvisioningTest extends TestCase
         $this->assertStringContainsString('$dbPassword = vk_prov_db_password();',
             (string) file_get_contents(dirname(__DIR__, 2) . '/bin/provision_tenant.php'));
     }
+
+    public function testTheGroupsGrantGoesThroughRootsOnePurposeRoutine(): void
+    {
+        $src = (string) file_get_contents(dirname(__DIR__, 2) . '/bin/provision_tenant.php');
+        $this->assertStringContainsString("CALL vikundi_control.vk_grant_group(?)", $src);
+        $this->assertStringNotContainsString('->exec("GRANT ', $src, 'the provisioner itself cannot GRANT (MySQL 1044)');
+
+        $sql = (string) file_get_contents(dirname(__DIR__, 2) . '/database/control/procedures.sql');
+        $this->assertStringContainsString('SQL SECURITY DEFINER', $sql);
+        $this->assertStringContainsString("REGEXP_LIKE(p_name, '^vk_[a-z0-9_]{1,29}$', 'c')", $sql);
+        $this->assertStringContainsString("GRANT EXECUTE ON PROCEDURE vikundi_control.vk_grant_group TO 'vikundi_prov'@'localhost'", $sql);
+        // Database and user share the name, so the routine needs only one argument.
+        $this->assertSame(vk_prov_db_name('a-b'), 'vk_a_b');
+    }
 }
