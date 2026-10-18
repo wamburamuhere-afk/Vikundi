@@ -1,0 +1,6 @@
+# The super-admin panel: everything that is not a real file goes to index.php.
+Options -Indexes -MultiViews
+FallbackResource /index.php
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
