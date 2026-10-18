@@ -83,7 +83,9 @@ function update_certificate(PDO $reg, array $control, string $base): bool
         out('Certificate: skipped (acme_webroot / cert_name not set in control.php).');
         return true;
     }
-    $names = vk_prov_cert_names($reg->query('SELECT subdomain FROM tenants')->fetchAll(PDO::FETCH_COLUMN), $base);
+    // 'admin' = the super-admin panel's own address (admin.<base>), always on it.
+    $subs = array_merge(['admin'], $reg->query('SELECT subdomain FROM tenants')->fetchAll(PDO::FETCH_COLUMN));
+    $names = vk_prov_cert_names($subs, $base);
     $isRoot = function_exists('posix_geteuid') && posix_geteuid() === 0;
     [$ok, $cmd] = vk_prov_certbot_command($names, (string) $control['acme_webroot'], (string) $control['cert_name'], $isRoot);
     if (!$ok) {

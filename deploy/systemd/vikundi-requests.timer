@@ -1,0 +1,10 @@
+# Runs vikundi-requests.service at the start of every minute.
+[Unit]
+Description=Run Vikundi super-admin panel requests every minute
+
+[Timer]
+OnCalendar=*-*-* *:*:00
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

@@ -7,6 +7,7 @@
 
 require_once __DIR__ . '/../src/bootstrap.php';
 require_once __DIR__ . '/../src/data.php';
+require_once __DIR__ . '/../src/actions.php';
 
 $route = vk_admin_route((string) ($_SERVER['REQUEST_URI'] ?? '/'));
 if ($route === null) {

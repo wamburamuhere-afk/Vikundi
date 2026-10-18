@@ -4,6 +4,26 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-18 — Super-admin panel, PR 3 of 3: the actions, and email on failure
+
+**Branch:** `feat/superadmin-panel-write`
+**Developer:** Claude Code / Jabir Mussa
+
+**Added:**
+- `/create`: the new-group form. Checked with the worker's own rules (`vk_req_validate`) when Create is pressed (the panel has no JavaScript, so not "as you type"); refuses a second request for an address already waiting; saves the request and opens its page.
+- Group page actions, offered by status (`vk_admin_allowed_actions`): suspend / resume, retry certificate, archive (inside a fold, needs the address typed). One pending request per group.
+- Request page: the first Chairperson's username, and "Show the password once": whoever's UPDATE clears it gets it (`take_one_time_secret`); a second click says it was already viewed.
+- My account: change own password (current + new twice, same rules as the CLI).
+- `includes/admin_mail.php` + worker: an email (PHPMailer, SMTP from `/etc/vikundi/admin.php`) when a request fails or finishes with a warning; the password-free output's last 40 lines and a link. Without settings it logs and carries on.
+- Server files in the repo, so setup is `cp` not long pastes: `deploy/apache/vikundi-admin.conf` (docroot `superadmin/public`, `AllowOverride None`, `auto_prepend_file none`, sorts before `zz-vikundi-groups.conf`), `deploy/systemd/vikundi-requests.{service,timer}` (every minute, as ubuntu), `database/control/admin_grants.sql` (vikundi_admin: no DELETE/DROP/CREATE, no UPDATE on history).
+- `bin/provision_tenant.php`: `admin.<base>` is always on the shared https certificate.
+
+**Verified locally** (scratch registry + PHP server, dropped after): taken address refused; good create queued; duplicate refused while waiting; suspend queued and run by the worker; second action refused while pending; archive refused with the wrong address, queued with the right one; suspend refused on a suspended group; failure alert path logged ("no settings"); password shown once then NULL in the database, second click refused; password change: wrong current / weak refused, good one changed; history rows for each. A real create (needs the server's provisioner) and a real email are first run on the server.
+
+**Tests:** 18 new across `SuperAdminPanelTest` and `AdminRequestsTest`. Full suite 2,682 passing, 15 skipped.
+
+---
+
 ## Session — 2026-10-18 — Super-admin panel, PR 2 of 3: the pages you read
 
 **Branch:** `feat/superadmin-panel-read`
