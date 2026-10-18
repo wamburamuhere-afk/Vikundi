@@ -226,4 +226,16 @@ class ProvisioningTest extends TestCase
         // Database and user share the name, so the routine needs only one argument.
         $this->assertSame(vk_prov_db_name('a-b'), 'vk_a_b');
     }
+
+    public function testTheDemoSiteCanBeRegisteredAsTheGroupDemo(): void
+    {
+        $this->assertNull(vk_prov_validate_new('demo', ['wisewallet'], [], self::BASE));
+        $this->assertNotContains('demo', vk_tenant_reserved_subdomains());
+    }
+
+    public function testTheDemoSiteIsNoLongerDeployedToItsOldFolder(): void
+    {
+        $yml = (string) file_get_contents(dirname(__DIR__, 2) . '/.github/workflows/deploy.yml');
+        $this->assertStringNotContainsString('/var/www/demo.vikundi.bjptechnologies.co.tz', $yml);
+    }
 }

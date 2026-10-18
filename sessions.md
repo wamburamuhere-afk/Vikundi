@@ -4,6 +4,22 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-18 — Multi-tenant: prepare moving the demo site
+
+**Branch:** `chore/multitenant-move-demo`
+**Developer:** Claude Code / Jabir Mussa
+
+**Server progress today:** the shared setup is live (`zz-vikundi-groups.conf`, control DB, nightly backup). Test group `majaribio` created end to end (login confirmed). Wise Wallet moved: adopted as `wisewallet`, files copied, old vhosts disabled, DB password rotated, now suspended until the client meeting.
+
+**This change:**
+- `includes/tenant.php`: `demo` is no longer a reserved subdomain, so the demo site can be adopted as the group `demo`.
+- `.github/workflows/deploy.yml`: the old `demo` target (`/var/www/demo.vikundi…`) is removed; the demo is updated through the shared folder from now on. Takes effect at the next develop → main release.
+- 2 new tests; full suite 2,620 passing.
+
+**Next:** UKUU (production) last, after develop is released to main. Then the super-admin dashboard (phase 2).
+
+---
+
 ## Session — 2026-10-18 — Multi-tenant: the group's GRANT goes through a root routine
 
 **Branch:** `fix/multitenant-grant-procedure`
