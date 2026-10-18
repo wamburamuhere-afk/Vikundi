@@ -4,6 +4,25 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-18 — Super-admin panel, PR 2 of 3: the pages you read
+
+**Branch:** `feat/superadmin-panel-read`
+**Developer:** Claude Code / Jabir Mussa
+
+**Added** (`superadmin/`, served only by its own Apache site, document root `superadmin/public`):
+- `public/index.php`: one entry point; every page but login needs a signed-in super-admin; every POST needs the session's token.
+- `src/bootstrap.php`: `/etc/vikundi/admin.php` config (the `vikundi_admin` login), session `vkadmin` (https-only, HttpOnly, SameSite=Strict, 30 min idle), login guard re-read on each request, layout. Times shown in Tanzania time: MySQL DATETIMEs are converted from MySQL's own zone (`db_time()`).
+- `src/lib.php`: routes, lockout (5 wrong → 15 min), idle check, sizes, dates, filters, token check, security headers (CSP `default-src 'none'`: no scripts at all).
+- `src/data.php`: reads `vikundi_control` and each group's data folder (last backup, disk use). Never a group's database.
+- Pages: login (same message for unknown user / wrong password / disabled; constant-time with a dummy hash), logout (POST), groups list (search + status filter), group page, requests, request (auto-refresh by header while waiting), history (filter by group), my account.
+- `.htaccess` (root) 404s `/superadmin` on every group address; `superadmin/.htaccess` denies as well.
+
+**Verified locally** (PHP built-in server, scratch registry, dropped after): redirects when signed out; POST without token → 400; 5 wrong passwords lock even the right one until a server reset; unknown user gets the same message; all pages 200, missing group/request 404; a group named `<script>` and command output with HTML are escaped; waiting request sends `Refresh: 5`; history shows sign-ins and changes; sign-out works. Screenshots checked in a browser. Found and fixed: times were mixed between MySQL's zone and UTC.
+
+**Tests:** `SuperAdminPanelTest` (26 new). Full suite 2,668 passing, 15 skipped.
+
+---
+
 ## Session — 2026-10-18 — Super-admin panel, PR 1 of 3: requests, worker, super-admin logins
 
 **Branch:** `feat/superadmin-requests-worker`

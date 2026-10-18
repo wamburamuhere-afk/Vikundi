@@ -22,6 +22,10 @@ Options -Indexes -MultiViews
 # Block direct access to internal files
 RewriteRule ^roots\.php$ - [F,L]
 
+# The super-admin panel's code is served only by its own site
+# (admin.vikundi..., document root superadmin/public). Never from a group's address.
+RewriteRule ^superadmin(/|$) - [R=404,L]
+
 # 1. Force Redirect .php to clean URL (page files only — NOT api/ajax/actions)
 # Use REQUEST_URI so the check works in subdirectory installs (e.g. /vikundi/api/...
 # still contains "/api/" even though %1 would start with "vikundi/").

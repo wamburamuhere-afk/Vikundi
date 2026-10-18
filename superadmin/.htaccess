@@ -1,0 +1,3 @@
+# Seen only by the groups' site (the admin site sets AllowOverride None for this
+# folder): the super-admin panel is never served from a group's address.
+Require all denied
