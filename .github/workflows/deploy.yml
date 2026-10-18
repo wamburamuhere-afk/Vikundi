@@ -23,6 +23,12 @@ jobs:
             path: /var/www/vikundi.bjptechnologies.co.tz/public_html
           - name: demo
             path: /var/www/demo.vikundi.bjptechnologies.co.tz/public_html
+          # The shared multi-group folder (includes/tenant_config.php). One pull
+          # updates every group on it; bin/migrate_all.php migrates each group's
+          # own database. Skipped until the server has been set up for it.
+          - name: shared
+            path: /srv/vikundi/app
+            mode: shared
 
     name: Deploy ${{ matrix.name }}
 
@@ -32,11 +38,12 @@ jobs:
         env:
           SITE_NAME: ${{ matrix.name }}
           SITE_PATH: ${{ matrix.path }}
+          SITE_MODE: ${{ matrix.mode || 'single' }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          envs: SITE_NAME,SITE_PATH
+          envs: SITE_NAME,SITE_PATH,SITE_MODE
           script: |
             set -e
 
@@ -46,6 +53,10 @@ jobs:
             # site sat on stale code before — an absent or non-git directory is
             # a setup problem we need told about, not swallowed.
             if [ ! -d "$SITE_PATH" ]; then
+              if [ "$SITE_MODE" = "shared" ]; then
+                echo "==> $SITE_PATH is not set up on this server yet; skipping the shared target."
+                exit 0
+              fi
               echo "ERROR: $SITE_PATH does not exist on this server." >&2
               exit 1
             fi
@@ -73,7 +84,13 @@ jobs:
             fi
 
             echo "==> Running database migrations"
-            php database/migrate.php || echo "migrate step reported issues"
+            if [ "$SITE_MODE" = "shared" ]; then
+              # Every group, one at a time. A failing group fails the deploy so
+              # it is seen; the other groups are still migrated.
+              php bin/migrate_all.php
+            else
+              php database/migrate.php || echo "migrate step reported issues"
+            fi
 
             echo "==> Clearing PHP OPcache so updated files take effect immediately"
             php -r 'if (function_exists("opcache_reset")) { opcache_reset(); echo "opcache reset\n"; }' || true

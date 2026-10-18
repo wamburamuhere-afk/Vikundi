@@ -4,6 +4,35 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-18 — Multi-tenant, PR 3 of 3: nightly backup of every group, and the deploy
+
+**Branch:** `feat/multitenant-cron-deploy` (stacked on PR 2)
+**Developer:** Claude Code / Jabir Mussa
+
+**Finding — no scheduled-job loop is needed.** The design planned "one cron entry that loops over the
+groups" for late penalties and member auto-termination. Neither needs it: auto-termination already runs
+on the first page load of the day and keeps its throttle in each group's own database, so it is per
+group already; `actions/calculate_penalties.php` is dead code (requires a `../config.php` that does not
+exist; already recorded as SEC-017), and loan penalties are computed when read. The cron the shared
+server does need is the nightly backup.
+
+**What changed**
+
+- `bin/backup_all.php` — nightly dump of every active and suspended group into its own backups
+  folder as `auto_backup_<date>.sql` (shows on that group's Backup & Restore page), updates the app's
+  `.last_auto_backup` marker so the page does not make a second one, prunes with the app's own 7-day
+  rule (manual and uploaded backups untouched). One failure does not stop the others; exit 1 if any.
+- `.github/workflows/deploy.yml` — a third target, `shared` (`/srv/vikundi/app`): pull once, then
+  `php bin/migrate_all.php` (a failing group fails the deploy). **Skipped with a notice while the folder
+  does not exist**, so this can merge before the server is set up. Production and demo deploy exactly
+  as before.
+- Tests added to `ProvisioningTest` for both. Full suite passing.
+
+**Verified on a local sandbox:** backup wrote a 0.4 MB dump, pruned a 10-day-old auto backup and kept a
+10-day-old manual one.
+
+---
+
 ## Session — 2026-10-18 — Multi-tenant, PR 2 of 3: one command to create a group, one to migrate them all
 
 **Branch:** `feat/multitenant-provisioning` (stacked on `feat/multitenant-tenant-lookup`, PR 1)

@@ -133,4 +133,27 @@ class ProvisioningTest extends TestCase
         $this->assertStringContainsString("stty -echo", $src, 'adopt reads the password from the terminal');
         $this->assertStringNotContainsString("\$args['db-password']", $src);
     }
+
+    public function testTheDeployUpdatesTheSharedFolderAndMigratesEveryGroup(): void
+    {
+        $yml = (string) file_get_contents(dirname(__DIR__, 2) . '/.github/workflows/deploy.yml');
+
+        $this->assertStringContainsString('path: /srv/vikundi/app', $yml);
+        $this->assertStringContainsString('php bin/migrate_all.php', $yml);
+        // Merging before the server is set up must not break the existing deploys.
+        $this->assertMatchesRegularExpression('/SITE_MODE" = "shared" \]; then\s*echo "==> \$SITE_PATH is not set up[^\n]*\n\s*exit 0/', $yml);
+        // The two existing sites keep deploying exactly as before.
+        $this->assertStringContainsString('path: /var/www/vikundi.bjptechnologies.co.tz/public_html', $yml);
+        $this->assertStringContainsString('php database/migrate.php || echo "migrate step reported issues"', $yml);
+    }
+
+    public function testTheNightlyBackupUsesTheAppsOwnAutoBackupNamingAndPruning(): void
+    {
+        $src = (string) file_get_contents(dirname(__DIR__, 2) . '/bin/backup_all.php');
+
+        $this->assertStringContainsString("'auto_backup_' . date('Y-m-d_H-i-s') . '.sql'", $src);
+        $this->assertStringContainsString('vikundi_prune_backups($dir, 7)', $src);
+        $this->assertStringContainsString("'.last_auto_backup'", $src);
+        $this->assertMatchesRegularExpression("/if \\(PHP_SAPI !== 'cli'\\)/", $src);
+    }
 }
