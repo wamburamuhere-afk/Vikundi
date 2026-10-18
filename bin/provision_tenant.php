@@ -263,7 +263,7 @@ if ($adopt) {
         fail('--chair-first, --chair-last and --chair-phone are required: the group needs its first Chairperson.');
     }
     $dbName = $dbUser = vk_prov_db_name($sub);
-    $dbPassword = vk_prov_secret();
+    $dbPassword = vk_prov_db_password();
 }
 
 // Every step that changes something registers how to undo it.

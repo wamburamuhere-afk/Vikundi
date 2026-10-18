@@ -15,8 +15,9 @@ This file tracks every development session, modification, and significant change
 - `includes/provisioning.php`: `vk_prov_cert_names()` (every group ever registered, so the list only grows and `--expand` always works) and `vk_prov_certbot_command()` (webroot check, `--deploy-hook` reloads Apache, `sudo -n` unless root, refuses an empty list or more than 100 names).
 - `bin/provision_tenant.php`: new `--cert`; `--create` and `--adopt` update the certificate after the group is complete. A certificate failure exits 2 and prints the fix, but never undoes the group. Skipped when `acme_webroot` / `cert_name` are not in control.php.
 - Extra hosts from `--add-host` (e.g. production's own address) keep their own certificate.
+- `vk_prov_db_password()`: group database passwords now always contain a symbol, capital, lowercase and digit — the server's MySQL `validate_password` policy rejected plain ones while setting up.
 
-**Tests:** 5 new in `ProvisioningTest`. Full suite 2,616 passing, 15 skipped.
+**Tests:** 6 new in `ProvisioningTest`. Full suite 2,617 passing, 15 skipped.
 
 ---
 

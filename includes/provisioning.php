@@ -63,6 +63,17 @@ if (!function_exists('vk_prov_secret')) {
     }
 }
 
+if (!function_exists('vk_prov_db_password')) {
+    /**
+     * A MySQL password that passes validate_password at MEDIUM (the server's
+     * policy): random, plus one symbol, upper, lower and digit guaranteed.
+     */
+    function vk_prov_db_password(): string
+    {
+        return vk_prov_secret(24) . '-Vk7';
+    }
+}
+
 if (!function_exists('vk_prov_secrets_file')) {
     /** The contents of /etc/vikundi/tenants/<subdomain>.php. */
     function vk_prov_secrets_file(string $dbPassword, string $jwtSecret): string

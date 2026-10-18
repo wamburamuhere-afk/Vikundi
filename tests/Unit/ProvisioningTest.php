@@ -198,4 +198,18 @@ class ProvisioningTest extends TestCase
         $this->assertGreaterThan(strrpos($src, '$rollback();'), strrpos($src, 'update_certificate($reg, $control, $base) ? 0 : 2'));
         $this->assertStringContainsString("isset(\$args['cert'])", $src);
     }
+
+    public function testDatabasePasswordsPassTheServersMediumPasswordPolicy(): void
+    {
+        $pw = vk_prov_db_password();
+        $this->assertGreaterThanOrEqual(8, strlen($pw));
+        $this->assertMatchesRegularExpression('/[A-Z]/', $pw);
+        $this->assertMatchesRegularExpression('/[a-z]/', $pw);
+        $this->assertMatchesRegularExpression('/[0-9]/', $pw);
+        $this->assertMatchesRegularExpression('/[^A-Za-z0-9]/', $pw);
+        $this->assertStringNotContainsString("'", $pw);
+        $this->assertNotSame($pw, vk_prov_db_password());
+        $this->assertStringContainsString('$dbPassword = vk_prov_db_password();',
+            (string) file_get_contents(dirname(__DIR__, 2) . '/bin/provision_tenant.php'));
+    }
 }
