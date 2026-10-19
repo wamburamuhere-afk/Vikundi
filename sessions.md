@@ -4,6 +4,27 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-19 — Member list import (UKUU Msakuzi, and any group after)
+
+**Branch:** `feat/member-import`
+**Developer:** Claude Code / Jabir Mussa
+
+**Why:** UKUU Msakuzi (paid client) sent 402 members (first sheet of their database file) and proposed member numbers. Their instruction: only the 6 leaders get logins.
+
+**Added:**
+- `bin/import_members.php`: loads a prepared CSV into one group (`--tenant=`). Dry run by default; `--commit` imports. Every member becomes a login + member record, as the Add Member form does (username = first initial + surname, made unique; email `<username>@<--email-domain>`). Leaders (Chairperson / Secretary / Treasurer) get a random password printed once; everyone else a random 32-character password nobody sees (no `username@123`). An existing login with the same phone + first + last name (the Chairperson the panel created) is filled in, not duplicated. Each row is logged in `member_import_log` by `--source` + `source_ref`, so re-runs skip finished rows. `users` is MyISAM: a half-made member's login is deleted again by hand.
+- The whole file is checked before anything is written: header, every row (phone 255…, gender Mwanaume/Mwanamke, known role), repeated source_ref / member number, and every value against the group's real column sizes (found when a 9-word name did not fit `users.middle_name`, 50).
+- `includes/member_list_import.php`: those rules, pure. **Note:** I first wrote them into `includes/member_import.php` by mistake, overwriting the existing bulk-upload parser; it was restored from git at once and is unchanged.
+- `.gitignore`: `*.import.csv` (member lists hold real names and phones).
+
+**UKUU data (not in git):** 402 members; 348 matched to a proposed number with confidence (real name → same words → M-Koba account name → the sheet-4 name list; a weaker match never takes a claimed number), 54 not. The sheet repeats S/N 252 for two people (second kept as 252b). Review workbook for the client: `docs/client-deliverables/UKUU_Mapitio_ya_Data.xlsx`; import file `docs/client-deliverables/ukuu_members.import.csv` (git-ignored). Column V (no heading) not imported. Deputies take their leader's role (Dutch).
+
+**Verified locally** on the scratch DB with a stand-in Florian (all removed after; scratch back to 25 members): no `--email-domain` refused; dry run changed nothing; an over-long name refused before writing; import 401 created + Florian filled, 0 failed; repeat run skipped all 402; no duplicate usernames/emails (two ANDREW KOMBA → akomba, akomba1); 348 numbers; roles 2/2/2/396; Florian got number, spouse, 5 children, kept his code; a member cannot log in (not even username@123); the vice chair logged in through the app with her printed password.
+
+**Tests:** `MemberListImportTest` (11). Full suite 2,694 passing, 15 skipped.
+
+---
+
 ## Session — 2026-10-19 — Neutral default logo (no more CELLI)
 
 **Branch:** `fix/neutral-default-logo`
