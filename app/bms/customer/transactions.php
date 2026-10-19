@@ -42,12 +42,8 @@ $accounts = ['M-Koba', 'Bank', 'Cash', 'Mobile Money'];
 // A fine is NOT a contribution. Offering it here wrote a contributions row with
 // contribution_type='fine', which My Fines never reads — the money reached the books
 // and the fine disappeared. Fines are recorded on the Fines page, in the fines table.
-$types = [
-    'monthly'  => $isSw ? 'Mchango wa Mwezi' : 'Monthly',
-    'entrance' => $isSw ? 'Ada ya Kujiunga' : 'Entrance',
-    'agm'      => $isSw ? 'Mkutano Mkuu (AGM)' : 'AGM',
-    'other'    => $isSw ? 'Nyingine' : 'Other',
-];
+require_once ROOT_DIR . '/includes/fund_buckets.php';
+$types = fb_type_labels($isSw);
 $statusBadge = [
     'pending'  => 'warning', 'reviewed' => 'info',
     'approved' => 'success', 'cancelled' => 'secondary',

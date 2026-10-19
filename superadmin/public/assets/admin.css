@@ -1,0 +1,14 @@
+/* Super-admin panel: a few touches on top of Bootstrap 5.3. */
+body { background: #f6f7f9; }
+.vk-topbar { background: #fff; }
+.vk-brand { font-weight: 600; color: #0f2e4f; text-decoration: none; }
+.vk-sidebar .nav-link { color: #1f2937; }
+.vk-sidebar .nav-link.active { background: #e6eef7; color: #0f4c81; font-weight: 600; }
+.vk-card { background: #fff; border: 1px solid #dee2e6; border-radius: .5rem; padding: 1rem 1.25rem; }
+.vk-dl dt { font-weight: 400; color: #6c757d; }
+.vk-dl dd { margin-bottom: .5rem; }
+.vk-output { background: #0f172a; color: #e2e8f0; border-radius: .5rem; padding: 1rem; max-height: 32rem; overflow: auto; font-size: .8rem; white-space: pre-wrap; }
+.vk-login { max-width: 380px; }
+.table td, .table th { vertical-align: middle; }
+.vk-narrow { max-width: 560px; }
+.vk-secret { border-color: #0f4c81; background: #f0f6fc; }

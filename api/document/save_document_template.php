@@ -34,7 +34,7 @@ try {
     $fileType = $templateType;
 
     if (isset($_FILES['template_file']) && $_FILES['template_file']['error'] === UPLOAD_ERR_OK) {
-        $uploadDir = ROOT_DIR . '/uploads/document_templates/';
+        $uploadDir = vk_storage_path('uploads/document_templates') . '/';
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0755, true);
         }

@@ -45,9 +45,18 @@ class RecordFineTest extends TestCase
 
     public function testTheRemainingContributionTypesAreUntouched(): void
     {
+        // The dropdown is now built from the shared label list, so the types are
+        // checked where they are defined rather than in the page's source.
         $src = file_get_contents(__DIR__ . '/../../app/bms/customer/transactions.php');
-        foreach (['monthly', 'entrance', 'agm', 'other'] as $type) {
-            $this->assertMatchesRegularExpression("/'$type'\s*=>/", $src, "$type must remain");
+        $this->assertStringContainsString('$types = fb_type_labels($isSw);', $src);
+
+        require_once __DIR__ . '/../../includes/fund_buckets.php';
+        foreach ([true, false] as $isSw) {
+            $labels = fb_type_labels($isSw);
+            foreach (['monthly', 'entrance', 'agm', 'other'] as $type) {
+                $this->assertArrayHasKey($type, $labels, "$type must remain");
+            }
+            $this->assertArrayNotHasKey('fine', $labels, 'a fine is not a contribution type');
         }
     }
 

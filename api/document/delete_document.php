@@ -48,8 +48,8 @@ try {
         $pdo->commit();
 
         // Delete physical file after successful database deletion
-        if (!empty($document['file_path']) && file_exists($document['file_path'])) {
-            @unlink($document['file_path']); // Use @ to suppress warnings if file doesn't exist
+        if (!empty($document['file_path']) && file_exists(vk_storage_path($document['file_path']))) {
+            @unlink(vk_storage_path($document['file_path'])); // Use @ to suppress warnings if file doesn't exist
         }
 
         echo json_encode([

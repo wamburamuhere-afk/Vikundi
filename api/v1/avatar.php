@@ -22,6 +22,7 @@
  * any future endpoint that names a sender/member's avatar), not only the
  * caller's own.
  */
+require_once __DIR__ . '/../../includes/tenant.php'; // vk_storage_path(): this group's file storage
 
 require_once __DIR__ . '/../../includes/api_bootstrap.php';
 
@@ -43,7 +44,7 @@ if (!preg_match('/^[A-Za-z0-9_][A-Za-z0-9._-]{0,254}$/', $name) || str_contains(
     vk_api_error(400, 'invalid_name', 'Invalid asset name.');
 }
 
-$baseDir = realpath(dirname(__DIR__, 2) . '/uploads/avatars');
+$baseDir = realpath(vk_storage_path('uploads/avatars'));
 if ($baseDir === false) {
     vk_api_error(404, 'not_found', 'No avatar was found with that name.');
 }

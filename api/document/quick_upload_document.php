@@ -17,7 +17,7 @@ try {
         throw new Exception('No file selected');
     }
 
-    $upload_dir = '../uploads/document_library/';
+    $upload_dir = vk_storage_path('uploads/document_library') . '/';
     if (!file_exists($upload_dir)) {
         if (!mkdir($upload_dir, 0755, true)) {
             throw new Exception("Failed to create upload directory");

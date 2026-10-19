@@ -204,16 +204,24 @@ final class GroupLogoTest extends TestCase
     /**
      * Eighteen web call sites and the TCPDF printouts read the logo as
      * '/assets/images/' . $group_logo. Storing it anywhere else means a logo
-     * uploaded from the phone renders in the app and nowhere else.
+     * uploaded from the phone renders in the app and nowhere else. Both uploads
+     * (the app's and the web form's) therefore go to the same store: the group's
+     * assets/images, which on a single site is the code folder's and on the shared
+     * server is the group's own (index.php serves it at the same URL).
      */
     public function testTheLogoIsStoredWhereTheWebAndThePrintoutsLookForIt(): void
     {
         $code = self::code('api/v1/group-settings_logo.php');
 
         $this->assertMatchesRegularExpression(
-            "/dirname\(__DIR__, 2\) \. '\/assets\/images'/",
+            "/vk_storage_path\('assets\/images'\)/",
             $code,
             'The upload must land in the directory the rest of the app reads.'
+        );
+        $this->assertStringContainsString(
+            "vk_storage_dir('assets/images')",
+            self::code('actions/save_group_settings.php'),
+            'The web form must store logos in the same place as the app.'
         );
         $this->assertStringContainsString("'group_logo'", $code, 'and be recorded under the key they read.');
     }
@@ -244,5 +252,16 @@ final class GroupLogoTest extends TestCase
         $this->assertNotFalse($gate);
         $this->assertNotFalse($store);
         $this->assertLessThan($store, $gate, 'The file is saved before the caller is checked.');
+    }
+
+    public function testTheDefaultLogoIsTheNeutralVikundiMarkNotAnotherCompanysLogo(): void
+    {
+        $file = dirname(__DIR__, 2) . '/assets/images/logo1.png';
+        $this->assertFileExists($file);
+        // sha256 of the CELLI group logo that used to sit here.
+        $this->assertNotSame('12016f2d54351072e096bb11d8fafac47d86a5238f3a7d94c3fde7d70dd0342c', hash_file('sha256', $file));
+        [$w, $h, $type] = getimagesize($file);
+        $this->assertSame(IMAGETYPE_PNG, $type);
+        $this->assertGreaterThan($h, $w, 'a wide mark, like the one it replaces');
     }
 }

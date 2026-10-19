@@ -15,7 +15,7 @@ $gs_data = $gs_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 $group_name = $gs_data['group_name'] ?? 'KIKUNDI';
 $group_logo = $gs_data['group_logo'] ?? 'logo1.png';
 
-$logo_path = ROOT_DIR . '/assets/images/' . $group_logo;
+$logo_path = vk_logo_file($group_logo);
 $logo_base64 = '';
 if (file_exists($logo_path)) {
     $logo_data = file_get_contents($logo_path);

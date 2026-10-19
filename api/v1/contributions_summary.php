@@ -52,7 +52,7 @@ $st = $pdo->prepare("
       FROM contributions co
       JOIN customers c ON c.customer_id = co.member_id AND c.status <> 'deleted'
      WHERE co.status IN ('confirmed','approved','')
-       AND co.contribution_type <> 'fine'
+       AND co.contribution_type NOT IN (" . fb_sql_list(fb_not_savings_types()) . ")
        AND co.contribution_date BETWEEN ? AND ?");
 $st->execute([$monthFrom, $monthTo]);
 $thisMonth = $st->fetch(PDO::FETCH_ASSOC) ?: ['amount' => 0, 'cnt' => 0];

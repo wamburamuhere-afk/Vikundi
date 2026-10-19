@@ -4,6 +4,806 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-19 — Deploy: main → the live groups, develop → the test site
+
+**Branch:** `chore/deploy-main-groups-develop-test`
+**Developer:** Claude Code / Jabir Mussa
+
+**Decision (Dutch):** the live groups follow `main`; `develop` deploys to `vikundi.bjptechnologies.co.tz`, which becomes the test site (its old data becomes test data). Until now every push to `main` would have reset the shared groups folder to `main`, which lacked the group lookup.
+
+**Change:** `.github/workflows/deploy.yml` triggers on `main` and `develop`; the branch picks the single target (`main` → `groups`, `/srv/vikundi/app`, `bin/migrate_all.php`; `develop` → `test-site`, the old site's folder, `database/migrate.php`). The pushed branch is what is checked out (`git checkout -B $SITE_BRANCH origin/$SITE_BRANCH`), so neither target ever receives the other branch's code.
+
+**Order on the server:** back up the old site's database (and every group) BEFORE merging this: GitHub runs the workflow file from the pushed branch, so the merge into `develop` deploys `develop` to the test site at once. Then the one-time release `develop` → `main`.
+
+**Caveat:** the test site runs as a single site, so group-only paths (host lookup, per-group storage, panel, worker) are first exercised on production; check a test group after each release.
+
+**Tests:** `ProvisioningTest` deploy test rewritten for the branch → target rules. Full suite 2,695 passing.
+
+---
+
+## Session — 2026-10-19 — First Chairperson always gets an email (UKUU profile was empty)
+
+**Branch:** `fix/chair-email-link`
+**Developer:** Claude Code / Jabir Mussa
+
+**Found on the server:** after the UKUU import, Florian Mtey's profile showed no number, parents, spouse or children although his member record held them. Root cause: the app links a login to its member record **by email** (`LEFT JOIN customers c ON LOWER(u.email) = LOWER(c.email)`; also My Settings, the app's profile API, approvals, password reset, ~11 places). The panel's create form leaves the Chairperson email optional, and `bin/provision_tenant.php` stored NULL on both rows, so the join found nothing. Imported members were fine (the import gives both rows the same automatic email).
+
+**Fixed on the server** (by hand): Florian's login and member record set to `fmtey@ukuu.vikundi.bjptechnologies.co.tz`.
+**Fix in code:** `vk_prov_chair_email()`: without a given email, the first Chairperson gets `<username>@<subdomain>.<base>` on both rows, like every other member.
+
+**Tests:** 1 new in `ProvisioningTest`. Full suite 2,695 passing.
+
+---
+
+## Session — 2026-10-19 — Member list import (UKUU Msakuzi, and any group after)
+
+**Branch:** `feat/member-import`
+**Developer:** Claude Code / Jabir Mussa
+
+**Why:** UKUU Msakuzi (paid client) sent 402 members (first sheet of their database file) and proposed member numbers. Their instruction: only the 6 leaders get logins.
+
+**Added:**
+- `bin/import_members.php`: loads a prepared CSV into one group (`--tenant=`). Dry run by default; `--commit` imports. Every member becomes a login + member record, as the Add Member form does (username = first initial + surname, made unique; email `<username>@<--email-domain>`). Leaders (Chairperson / Secretary / Treasurer) get a random password printed once; everyone else a random 32-character password nobody sees (no `username@123`). An existing login with the same phone + first + last name (the Chairperson the panel created) is filled in, not duplicated. Each row is logged in `member_import_log` by `--source` + `source_ref`, so re-runs skip finished rows. `users` is MyISAM: a half-made member's login is deleted again by hand.
+- The whole file is checked before anything is written: header, every row (phone 255…, gender Mwanaume/Mwanamke, known role), repeated source_ref / member number, and every value against the group's real column sizes (found when a 9-word name did not fit `users.middle_name`, 50).
+- `includes/member_list_import.php`: those rules, pure. **Note:** I first wrote them into `includes/member_import.php` by mistake, overwriting the existing bulk-upload parser; it was restored from git at once and is unchanged.
+- `.gitignore`: `*.import.csv` (member lists hold real names and phones).
+
+**UKUU data (not in git):** 402 members; 348 matched to a proposed number with confidence (real name → same words → M-Koba account name → the sheet-4 name list; a weaker match never takes a claimed number), 54 not. The sheet repeats S/N 252 for two people (second kept as 252b). Review workbook for the client: `docs/client-deliverables/UKUU_Mapitio_ya_Data.xlsx`; import file `docs/client-deliverables/ukuu_members.import.csv` (git-ignored). Column V (no heading) not imported. Deputies take their leader's role (Dutch).
+
+**Verified locally** on the scratch DB with a stand-in Florian (all removed after; scratch back to 25 members): no `--email-domain` refused; dry run changed nothing; an over-long name refused before writing; import 401 created + Florian filled, 0 failed; repeat run skipped all 402; no duplicate usernames/emails (two ANDREW KOMBA → akomba, akomba1); 348 numbers; roles 2/2/2/396; Florian got number, spouse, 5 children, kept his code; a member cannot log in (not even username@123); the vice chair logged in through the app with her printed password.
+
+**Tests:** `MemberListImportTest` (11). Full suite 2,694 passing, 15 skipped.
+
+---
+
+## Session — 2026-10-19 — Neutral default logo (no more CELLI)
+
+**Branch:** `fix/neutral-default-logo`
+**Developer:** Claude Code / Jabir Mussa
+
+**Found while testing the super-admin panel:** a brand-new group (`jaribio2`) showed the **CELLI group** logo. `assets/images/logo1.png`, the fallback for every group that has not uploaded a logo (login, header, printouts, PDFs, the mobile API's logo URL; about 20 call sites), was another company's logo.
+
+**Fix:** replaced the file's content with a neutral Vikundi mark (three members around a coin, "Vikundi", "Group savings & loans"), 593×200 PNG on white (no alpha, so TCPDF needs neither GD nor Imagick for it). Same file name, so no call site changes. Groups that uploaded their own logo are unaffected.
+
+**Tests:** 1 new in `GroupLogoTest` (not the old file's hash; a wide PNG). Full suite passing.
+
+**Takes effect:** shared server (`demo`, new groups) on the next `git pull` of develop there; the old production site at the next develop → main release.
+
+---
+
+## Session — 2026-10-18 — Super-admin panel, PR 3 of 3: the actions, and email on failure
+
+**Branch:** `feat/superadmin-panel-write`
+**Developer:** Claude Code / Jabir Mussa
+
+**Added:**
+- `/create`: the new-group form. Checked with the worker's own rules (`vk_req_validate`) when Create is pressed (the panel has no JavaScript, so not "as you type"); refuses a second request for an address already waiting; saves the request and opens its page.
+- Group page actions, offered by status (`vk_admin_allowed_actions`): suspend / resume, retry certificate, archive (inside a fold, needs the address typed). One pending request per group.
+- Request page: the first Chairperson's username, and "Show the password once": whoever's UPDATE clears it gets it (`take_one_time_secret`); a second click says it was already viewed.
+- My account: change own password (current + new twice, same rules as the CLI).
+- `includes/admin_mail.php` + worker: an email (PHPMailer, SMTP from `/etc/vikundi/admin.php`) when a request fails or finishes with a warning; the password-free output's last 40 lines and a link. Without settings it logs and carries on.
+- Server files in the repo, so setup is `cp` not long pastes: `deploy/apache/vikundi-admin.conf` (docroot `superadmin/public`, `AllowOverride None`, `auto_prepend_file none`, sorts before `zz-vikundi-groups.conf`), `deploy/systemd/vikundi-requests.{service,timer}` (every minute, as ubuntu), `database/control/admin_grants.sql` (vikundi_admin: no DELETE/DROP/CREATE, no UPDATE on history).
+- `bin/provision_tenant.php`: `admin.<base>` is always on the shared https certificate.
+
+**Verified locally** (scratch registry + PHP server, dropped after): taken address refused; good create queued; duplicate refused while waiting; suspend queued and run by the worker; second action refused while pending; archive refused with the wrong address, queued with the right one; suspend refused on a suspended group; failure alert path logged ("no settings"); password shown once then NULL in the database, second click refused; password change: wrong current / weak refused, good one changed; history rows for each. A real create (needs the server's provisioner) and a real email are first run on the server.
+
+**Tests:** 18 new across `SuperAdminPanelTest` and `AdminRequestsTest`. Full suite 2,682 passing, 15 skipped.
+
+---
+
+## Session — 2026-10-18 — Super-admin panel, PR 2 of 3: the pages you read
+
+**Branch:** `feat/superadmin-panel-read`
+**Developer:** Claude Code / Jabir Mussa
+
+**Added** (`superadmin/`, served only by its own Apache site, document root `superadmin/public`):
+- `public/index.php`: one entry point; every page but login needs a signed-in super-admin; every POST needs the session's token.
+- `src/bootstrap.php`: `/etc/vikundi/admin.php` config (the `vikundi_admin` login), session `vkadmin` (https-only, HttpOnly, SameSite=Strict, 30 min idle), login guard re-read on each request, layout. Times shown in Tanzania time: MySQL DATETIMEs are converted from MySQL's own zone (`db_time()`).
+- `src/lib.php`: routes, lockout (5 wrong → 15 min), idle check, sizes, dates, filters, token check, security headers (CSP `default-src 'none'`: no scripts at all).
+- `src/data.php`: reads `vikundi_control` and each group's data folder (last backup, disk use). Never a group's database.
+- Pages: login (same message for unknown user / wrong password / disabled; constant-time with a dummy hash), logout (POST), groups list (search + status filter), group page, requests, request (auto-refresh by header while waiting), history (filter by group), my account.
+- `.htaccess` (root) 404s `/superadmin` on every group address; `superadmin/.htaccess` denies as well.
+
+**Verified locally** (PHP built-in server, scratch registry, dropped after): redirects when signed out; POST without token → 400; 5 wrong passwords lock even the right one until a server reset; unknown user gets the same message; all pages 200, missing group/request 404; a group named `<script>` and command output with HTML are escaped; waiting request sends `Refresh: 5`; history shows sign-ins and changes; sign-out works. Screenshots checked in a browser. Found and fixed: times were mixed between MySQL's zone and UTC.
+
+**Tests:** `SuperAdminPanelTest` (26 new). Full suite 2,668 passing, 15 skipped.
+
+---
+
+## Session — 2026-10-18 — Super-admin panel, PR 1 of 3: requests, worker, super-admin logins
+
+**Branch:** `feat/superadmin-requests-worker`
+**Developer:** Claude Code / Jabir Mussa
+**Design:** "Vikundi Super-Admin Panel — Design" (signed off 2026-10-18): the panel never changes a group itself; it saves a request, and a worker on the server carries it out.
+
+**Added:**
+- `database/control/admin_schema.sql`: `superadmins`, `provision_requests`, `admin_audit_log` in `vikundi_control`.
+- `includes/admin_requests.php`: the shared rules: `vk_req_validate()` (same address rules as the command line, plus name/phone/email checks), `vk_req_command_args()` (one argv element per value), `vk_req_extract_secret()` (takes the first Chairperson's password out of the stored output), `vk_req_outcome()` (exit 2 on create = done with a certificate warning), output trimming, super-admin username/password rules.
+- `bin/run_requests.php`: the worker. One at a time (MySQL `GET_LOCK`), atomic claim, validates again, runs `provision_tenant.php` with `proc_open` and an argv array (no shell), saves status/output/one-time password, writes a history row in the super-admin's name. Marks requests stuck 30 min as failed; erases unseen passwords after a day.
+- `bin/superadmin.php`: `--create`, `--reset-password` (also unlocks), `--disable`, `--enable`, `--list`; hidden password prompt typed twice; history rows.
+- `bin/provision_tenant.php`: command-line changes now write a `server` history row (skipped when the worker ran it, and when the table is not there yet).
+
+**Verified locally** (scratch registry, tables dropped after): super-admin created, weak password refused; the worker ran suspend, resume and cert, refused a create with a bad phone, wrote 4 history rows under "Jabir Mussa"; a second run with nothing waiting exited quietly; a CLI suspend wrote a `server` row. Not run locally: a successful create (needs the server's provisioner).
+
+**Tests:** `AdminRequestsTest` (22 new); one `ProvisioningTest` assertion updated for the reshaped certificate step. Full suite 2,642 passing, 15 skipped.
+
+---
+
+## Session — 2026-10-18 — Multi-tenant: prepare moving the demo site
+
+**Branch:** `chore/multitenant-move-demo`
+**Developer:** Claude Code / Jabir Mussa
+
+**Server progress today:** the shared setup is live (`zz-vikundi-groups.conf`, control DB, nightly backup). Test group `majaribio` created end to end (login confirmed). Wise Wallet moved: adopted as `wisewallet`, files copied, old vhosts disabled, DB password rotated, now suspended until the client meeting.
+
+**This change:**
+- `includes/tenant.php`: `demo` is no longer a reserved subdomain, so the demo site can be adopted as the group `demo`.
+- `.github/workflows/deploy.yml`: the old `demo` target (`/var/www/demo.vikundi…`) is removed; the demo is updated through the shared folder from now on. Takes effect at the next develop → main release.
+- 2 new tests; full suite 2,620 passing.
+
+**Next:** UKUU (production) last, after develop is released to main. Then the super-admin dashboard (phase 2).
+
+---
+
+## Session — 2026-10-18 — Multi-tenant: the group's GRANT goes through a root routine
+
+**Branch:** `fix/multitenant-grant-procedure`
+**Developer:** Claude Code / Jabir Mussa
+
+**Found on the server:** the first `--create` (test group `majaribio`) failed at `GRANT ALL ON vk_majaribio.*` with MySQL 1044. A step-by-step check as `vikundi_prov` showed CREATE DATABASE and CREATE USER work, but MySQL will not let it GRANT on a database it reaches only through its `vk\_%` wildcard grant (`partial_revokes` is off; the grant itself was correct). The rollback worked: nothing was left behind.
+
+**Fix:** `database/control/procedures.sql` (run once as MySQL root) creates `vikundi_control.vk_grant_group(name)`, `SQL SECURITY DEFINER`, which only grants `vk_<x>@localhost` ALL on `vk_<x>` and refuses any other name (`REGEXP_LIKE(..., '^vk_[a-z0-9_]{1,29}$', 'c')`). The provisioner gets EXECUTE on it and nothing more of root's. `bin/provision_tenant.php` calls it instead of GRANT.
+
+**Verified locally:** the routine compiles; a valid name reaches the GRANT; `VK_bad`, a backtick injection, a quote and a non-vk name are refused. **Tests:** 1 new; full suite 2,618 passing.
+
+---
+
+## Session — 2026-10-18 — Multi-tenant: https certificate without the DNS API
+
+**Branch:** `feat/multitenant-certificates`
+**Developer:** Claude Code / Jabir Mussa
+
+**Why:** the wildcard certificate needs a DNS API, and DUhosting's bot-protection page blocks every API call to cPanel from our server (domain, server name and IP all tried). BMS works around it with a manual wildcard that must be redone by hand every 90 days.
+
+**What changed:** each group's own address is added to one shared Let's Encrypt certificate (`vikundi-groups`), proven over plain http. The `*.vikundi` DNS record already points every address at our server, so no DNS API is needed, and certbot's existing timer renews it automatically.
+- `includes/provisioning.php`: `vk_prov_cert_names()` (every group ever registered, so the list only grows and `--expand` always works) and `vk_prov_certbot_command()` (webroot check, `--deploy-hook` reloads Apache, `sudo -n` unless root, refuses an empty list or more than 100 names).
+- `bin/provision_tenant.php`: new `--cert`; `--create` and `--adopt` update the certificate after the group is complete. A certificate failure exits 2 and prints the fix, but never undoes the group. Skipped when `acme_webroot` / `cert_name` are not in control.php.
+- Extra hosts from `--add-host` (e.g. production's own address) keep their own certificate.
+- `vk_prov_db_password()`: group database passwords now always contain a symbol, capital, lowercase and digit — the server's MySQL `validate_password` policy rejected plain ones while setting up.
+
+**Tests:** 6 new in `ProvisioningTest`. Full suite 2,617 passing, 15 skipped.
+
+---
+
+## Session — 2026-10-18 — Multi-tenant, PR 3 of 3: nightly backup of every group, and the deploy
+
+**Branch:** `feat/multitenant-cron-deploy` (stacked on PR 2)
+**Developer:** Claude Code / Jabir Mussa
+
+**Finding — no scheduled-job loop is needed.** The design planned "one cron entry that loops over the
+groups" for late penalties and member auto-termination. Neither needs it: auto-termination already runs
+on the first page load of the day and keeps its throttle in each group's own database, so it is per
+group already; `actions/calculate_penalties.php` is dead code (requires a `../config.php` that does not
+exist; already recorded as SEC-017), and loan penalties are computed when read. The cron the shared
+server does need is the nightly backup.
+
+**What changed**
+
+- `bin/backup_all.php` — nightly dump of every active and suspended group into its own backups
+  folder as `auto_backup_<date>.sql` (shows on that group's Backup & Restore page), updates the app's
+  `.last_auto_backup` marker so the page does not make a second one, prunes with the app's own 7-day
+  rule (manual and uploaded backups untouched). One failure does not stop the others; exit 1 if any.
+- `.github/workflows/deploy.yml` — a third target, `shared` (`/srv/vikundi/app`): pull once, then
+  `php bin/migrate_all.php` (a failing group fails the deploy). **Skipped with a notice while the folder
+  does not exist**, so this can merge before the server is set up. Production and demo deploy exactly
+  as before.
+- Tests added to `ProvisioningTest` for both. Full suite passing.
+
+**Verified on a local sandbox:** backup wrote a 0.4 MB dump, pruned a 10-day-old auto backup and kept a
+10-day-old manual one.
+
+---
+
+## Session — 2026-10-18 — Multi-tenant, PR 2 of 3: one command to create a group, one to migrate them all
+
+**Branch:** `feat/multitenant-provisioning` (stacked on `feat/multitenant-tenant-lookup`, PR 1)
+**Developer:** Claude Code / Jabir Mussa
+
+**What changed**
+
+- `bin/provision_tenant.php` (command line only; `bin/.htaccess` denies HTTP as well):
+  - `--create` — registers the group (status `provisioning`), creates `vk_<sub>` and a MySQL user
+    that can reach only it, writes `/etc/vikundi/tenants/<sub>.php` (0640), makes the group's
+    folders (02770), runs `database/migrate.php --tenant=<sub>`, sets the group name, creates the
+    first Chairperson (user + member row, the app's username convention, random password printed
+    once), then sets `active`. **Any failure undoes every step already taken.**
+  - `--adopt` — registers a site that already has its own database (how demo, Wise Wallet and
+    UKUU will move). The DB password is read from the terminal with echo off, never from argv,
+    and is checked before anything is written.
+  - `--add-host`, `--suspend`, `--resume`, `--archive` (final dump into the group's backups
+    first; deletes nothing), `--list`.
+  - Connects as `vk_provisioner` (`/etc/vikundi/provisioner.php`), never root.
+- `bin/migrate_all.php` — migrates every active and suspended group one at a time, one line each,
+  full output to `<data>/<sub>/private/last_migration.log`; one failure does not stop the rest;
+  exit 1 if any failed. `--only=<sub>` for one group.
+- `includes/provisioning.php` — the pure rules (names, validation, secrets file, arguments,
+  lifecycle). Subdomains for `--create` are capped at 29 characters: MySQL user names stop at 32.
+- `includes/tenant_config.php` — command-line failures now print the real cause (missing secrets
+  file, registry unreachable) instead of "No such group"; web visitors still see only the 404.
+
+**Tests:** `tests/Unit/ProvisioningTest.php` (18). Full suite passing.
+
+**Verified on a local sandbox:** a `--create` that failed at `CREATE DATABASE` (the local MySQL user
+has no such right) left nothing behind: no registry row, host, secrets file or folder. `--adopt` of
+an existing database ran its migrations and went active; a wrong password and a duplicate subdomain
+were refused; `--add-host` refused a host already mapped; suspend/resume/archive followed the
+lifecycle (archive wrote a 400 KB dump; an archived group is skipped by `migrate_all` and refused
+by `migrate.php`); `migrate_all` reported a broken group and still migrated the healthy one.
+**Not verified locally:** the success path of `--create` (needs a MySQL user allowed to create
+databases) — first run will be on the server with `vk_provisioner`.
+
+---
+
+## Session — 2026-10-18 — Multi-tenant, PR 1 of 3: group lookup, offline/404 pages, per-group file storage
+
+**Branch:** `feat/multitenant-tenant-lookup` (off `develop`, after PR #531)
+**Developer:** Claude Code / Jabir Mussa
+**Design:** signed off by Jabir 2026-10-18 ("Vikundi Multi-Tenant Design" doc). One shared code folder
+serves every group; each group keeps its own database; the host name picks the group.
+
+**What changed**
+
+- `includes/tenant.php` — pure helpers (subdomain rules, host → group, status → serve/503/404,
+  `--tenant` for CLI) and the storage resolver `vk_storage_path()` / `vk_storage_dir()` /
+  `vk_logo_file()` / `vk_secret_key_file()`. Single-site mode (every current site, local dev):
+  paths resolve to the code folder exactly as before.
+- `includes/tenant_config.php` — the shared server's bootstrap. Loads `/etc/vikundi/control.php`,
+  finds the group in the `vikundi_control` registry, stops with 404 (unknown/archived/provisioning)
+  or 503 (suspended), loads `/etc/vikundi/tenants/<sub>.php` (DB password + JWT secret), connects
+  as the group's own MySQL user, and puts session files in the group's folder. **Never falls back
+  to a default database.** Must run as `auto_prepend_file` in the shared vhost (it refuses to run
+  if a session was already started: several entry points call `session_start()` before
+  `config.php`, and those sessions would otherwise not be separated by group).
+- `includes/tenant_pages.php` — standalone bilingual 404 / 503 pages (JSON for api/ajax/actions).
+  The 404 never names a group.
+- `database/control/schema.sql` — `tenants` + `tenant_hosts` (full host → group; how production
+  keeps `vikundi.bjptechnologies.co.tz`).
+- **Every stored-file path** (≈45 files: uploads, signatures, documents, avatars, contribution
+  slips, backups, uploaded logos, the AI/email/SMS secret key, the demo statement) now goes through
+  `vk_storage_path()` instead of `__DIR__`/`ROOT_DIR`. Several readers previously resolved DB paths
+  against the script's working directory; they now resolve against storage.
+- `index.php` — serves an uploaded `group_logo_*` from the group's storage when it is not in the
+  code folder, so the 20-odd `/assets/images/<logo>` links keep working unchanged.
+
+**Deviation from the design doc:** the JWT secret lives in the per-group secrets file, not a
+`tenants.jwt_secret` column — the web user can read the registry, so a column would expose every
+group's token secret to any one group's code path. The 60-second registry cache was left out:
+one indexed query per request.
+
+**Tests:** `tests/Unit/TenantTest.php` (42 tests), including a scan that fails if any code builds
+a stored-file path from the code folder. Updated two path assertions in `ProfileApiTest` and one
+in `GroupLogoTest`. Full suite: 2,591 tests, all passing.
+
+**Verified end to end** on a local sandbox (built-in server + `auto_prepend_file`, two groups):
+unknown, nested and foreign hosts → 404; suspended → 503 with the group name; active → its login;
+login works and session files land in the group's own folder; **a logged-in session cookie from
+group A sent to group B lands on B's login page**; an uploaded logo is served only to its group;
+avatars come from group storage through `api/get_upload`; `/uploads/` stays 403; CLI refuses to
+run without a valid `--tenant` and migrations run with one. Single-site mode re-checked unchanged.
+
+**Not in this PR (next):** `provision_tenant.php`, `migrate_all.php` (PR 2); cron loop, session
+clean-up on the server, `deploy.yml` (PR 3); server setup and moving the sites.
+
+---
+
+## Session — 2026-10-13 — Fix: the Fines page never loaded its list; My Settings showed the wrong username — PR open
+
+**Branch:** `fix/fines-page-script-and-username` (off `develop`, after PR #530)
+**Developer:** Claude Code / Jabir Mussa
+
+**Bug 1 — Finance > Fines showed TSh 0.00 and an empty table** for a group with six fines. Found
+capturing screenshots for the user guide; the browser console reported `SyntaxError: Unexpected token '{'`.
+
+**Root cause:** `app/bms/customer/manage_fines.php` line 134:
+`{ data:'status', render:d=>... // XSS-005 },` — the `//` note sits before the `},` that closes the
+column, so it comments the bracket out and the whole script stops parsing. Introduced 2026-07-31 by
+`fcb5144` (the shared client-side escaping change). **It is on `main`: the live site's Fines page has
+been broken the same way since that release.** Leaders there cannot list, mark paid or waive fines from
+this page. The data and the `api/get_fines` endpoint are fine.
+
+**Fix:** the note moves to its own line above the column.
+
+**Bug 2 — My Settings showed the member's full name in the "Username" box** ("Hassan Mrisho", with "this
+cannot be changed" beneath it) instead of the login username. The page sets `$username` from its own
+query, then `header.php` reuses `$username` for the display name. The box now reads
+`$user_data['username']` directly.
+
+**Sweep.** In the browser, as the Chairperson: every menu link plus the new pages (57 in all) fetched
+and each inline script compiled. 55 clean; the Fines page was the only script error (the other was a
+guessed address, not a menu link). A new test scans `app/` for any tagged `//` comment followed on the
+same line by a closing bracket.
+
+**Verified:** rendered Fines page — 0 syntax errors across its 9 scripts with the fix, 1 with the code
+on `main` (checked with `node --check`); `api/get_fines` returns the 6 fines; the username box shows
+`hmrisho`. `composer test` — 2,549 green (two new tests).
+
+**For production:** this is worth a release on its own — it restores a page that has been dead since
+31 July.
+
+---
+
+## Session — 2026-10-13 — Fix: the settings form invented a monthly target and an entrance fee — merged (PR #530)
+
+**Branch:** `fix/settings-form-fabricated-defaults` (off `develop`, after PR #529)
+**Developer:** Claude Code / Jabir Mussa
+
+**Bug (found capturing screenshots for the user guide on the Wise Wallet demo site):** a member who had
+paid every month showed September as "Not paid" and a deficit on their statement.
+
+**Root cause:** `app/bms/customer/group_settings.php` prefilled the Cycle Contribution box with 10000
+and the Entrance Fee box with 20000 when nothing was set. Save stores whatever the form holds, so
+saving ANY setting — here, uploading the group logo — gave the group a 20,000 entrance fee it never
+chose. Member statements then took 20,000 of each member's contributions as that fee, leaving a month
+short. This is the same class of defect the contribution standing module was written to end
+(per-screen `?? 10000` / `?? 20000` defaults); the form was the last place still doing it.
+**Pre-existing, and it affects any group that saves its settings while those two are unset.**
+
+**Fix:** both boxes now open blank when unset, with a placeholder ("Blank = no fixed amount" /
+"Blank = no entrance fee"). The demo seeder now sets `entrance_fee` to `0` outright, so a value saved
+before a `--fresh` cannot survive the reset.
+
+**Verified** on the scratch database: with `entrance_fee = 20000` the statement shows September unpaid
+(9 months covered); after a reset with the fixed seeder it is `0` and September is paid (10 months
+covered, only the current month open, which the M-Koba statement brings in). The form renders both
+boxes empty with their placeholders. `composer test` — 2,547 green (two new tests).
+
+**Demo site:** needs this pulled and one `--fresh` reseed to clear the 20,000 already saved there.
+
+**Browser test — completed 2026-10-12** as all five demo accounts; fixes #526–#529 confirmed live.
+
+---
+
+## Session — 2026-10-12 — Fix: four loose ends found testing every role in the browser — merged (PR #529)
+
+**Branch:** `fix/officer-menu-and-expenses-access` (off `develop`, after PR #528)
+**Developer:** Claude Code / Jabir Mussa
+
+**Browser test completed** on the Wise Wallet demo site, as all five demo accounts (Chairperson,
+Treasurer, Secretary, two Members). Everything in the client guide works. Four loose ends:
+
+1. **Finance > Expenses bounced the Treasurer and the Secretary.** The page, and the whole bereavement
+   module (~20 checks), gate on `death_expenses`, a key no migration ever registered. New
+   `database/add_death_expenses_permission.php` registers it where missing and mirrors its grants from
+   `expenses` (same approach as `add_petty_cash_permission.php`). **A no-op where the key exists.**
+2. **The Secretary had no link to Group Settings**, though the page and its save handler admit them:
+   the only link sat in the admin-only Administration menu. They now get one under Management.
+3. **A Member was shown an M-Koba Reconciliation link they could not follow.** The link is now shown
+   only when `canView('mkoba_reconciliation')`.
+4. **The "Printed by" footer sat across the bottom of the screen** on every page using the shared print
+   footer. `includes/print_footer_css.php` now hides it on screen inside the application
+   (`body:has(.header-wrapper)`); standalone `print_*.php` previews keep it, and printing is unchanged.
+
+**CORRECTION to earlier entries and to the team report.** They said Expenses opens only for the
+Chairperson "on the live site today". That was inferred from the local database, which lacks
+`death_expenses`. `includes/death_expense_access.php` records the key being granted on the existing
+deployments, so the claim is very likely wrong for production. What is established: a database built
+by `migrate.php` alone lacks it. Production's permission list has not been read.
+
+**Learned about Member access.** `seed_vicoba_roles.php` resets the Member role to its defaults on
+every run, and the default is view on every key not in `vk_member_hidden_keys()`. On a fresh install
+the first `migrate.php` run seeds roles before some keys exist, so a Member's access widens on the
+second run — to include `mkoba_reconciliation`, `vicoba_reports`, `budget`, `member_payouts` and
+`death_expenses`. This is the standing policy (the local main database has the same grants), not a
+change made here. **Decision for management:** the group reconciliation page shows every member's
+phone number and payments; if members should not see that, add the key to `vk_member_hidden_keys()`.
+
+**Verified:** on a database without the key the migration adds it with grants identical to
+`expenses`, and a second run changes nothing. Real logins: Treasurer and Secretary now open Expenses
+(200); a Member is still refused the group list endpoint (403); only the Secretary gains a Group
+Settings link; the footer rule is served on application pages and standalone print pages have no
+application header. `composer test` — 2,545 green (new `OfficerAccessFixesTest`, 6 tests).
+
+**Deploy:** run `php database/migrate.php`.
+
+**Not tested:** a phone-sized screen; an actual printout.
+
+---
+
+## Session — 2026-10-12 — Reports: loans, shares and the Social Fund — merged (PR #528)
+
+**Branch:** `feat/loan-share-social-fund-reports` (off `develop`, after PR #526)
+**Developer:** Claude Code / Jabir Mussa
+
+**Why:** management asked for better reports, "especially loans, shares and Social Fund", ahead of the
+Wise Wallet presentation. Those three areas had screens but no reports.
+
+**Four new printable reports** (Reports menu → "Loans, Shares & Social Fund"):
+
+| Route | Report | Shows |
+|---|---|---|
+| `reports/loans` | Loan Portfolio | Every loan with paid, still owed and penalty due; totals; overdue instalments with days late. Status filter. |
+| `reports/loan_repayments` | Loan Income & Repayments | Each repayment in a period split into principal, interest and penalty; income = interest + penalties. |
+| `reports/shares` | Shares Register | Each member's share capital, shares held and % of the group, as at a date. |
+| `reports/social_fund` | Social Fund Statement | Balance brought forward, paid in by member, each welfare payment out, closing balance. |
+
+Each has the group letterhead on paper, a Print button, a tab strip across the four, and both languages.
+New `includes/vicoba_reports.php` holds the queries and the shared page furniture.
+
+**No figure is calculated a second way.** Balances and penalties come from `loan_rules.php`, share
+capital from `dv_share_capital_as_at()`, the Social Fund from the same tables as
+`fb_social_fund_position()`.
+
+**Access — caught by logging in as a Member.** The pages were first gated on `vicoba_reports`, the key
+the older group reports use. That key is granted to every member, so each member's loans and arrears
+were readable by everyone. They are now gated on `vr_can_view()`: `approve_loan`, `disburse_loan` or
+`dividends`, none of which a Member holds. The menu links follow the same rule.
+
+**Verified** on the seeded scratch database: portfolio "still owed" 1,492,000 equals the Loans screen;
+interest 46,500 equals the Dividends screen; share capital 5,650,000 equals the fund buckets; Social
+Fund closing 362,000 equals `fb_social_fund_position()`, and opening + in − out reconciles for a
+shorter window. Real logins: Treasurer, Secretary and Chairperson open all four (200); a Member gets
+302 to /unauthorized and sees no links; the older group report stays open to members. `composer test`
+— 2,538 green (new `VicobaReportsTest`, 9 tests).
+
+**Not included:** Excel export; the extended member statement (shares / Social Fund / loans / dividend
+on one printout). Not yet clicked through in a browser.
+
+---
+
+## Session — 2026-10-12 — Fix: every M-Koba import ended on an HTTP 500 page — merged (PR #527)
+
+**Branch:** `fix/mkoba-import-error-page` (off `develop`, after PR #526)
+**Developer:** Claude Code / Jabir Mussa
+
+**Bug (found importing the demo statement in a real browser on the Wise Wallet site):** the import
+saved its rows and then showed "This page isn't working — HTTP ERROR 500" instead of the result.
+
+**Root cause:** `actions/import_contributions.php` closed the uploaded file twice — once where the CSV
+is read, and again at the end of the handler. A second `fclose()` on a closed handle throws a
+`TypeError` in PHP 8 (and an `.xlsx` upload never opens a handle at all, so it threw there too). The
+error came AFTER the transaction was committed, so the data was always saved and only the redirect and
+the result message were lost. **Pre-existing, and live on production**: every statement import there
+ends the same way. It went unseen in the earlier endpoint test because the local PHP prints errors
+inside a 200 response, and only the status code and the database were checked.
+
+**Fix:** the trailing `fclose()` is removed. The other upload handlers (`upload_contributions.php`,
+`process_member_import.php`) were checked: their early `fclose()` is followed by `exit`, so they are fine.
+
+**Verified:** `composer test` — 2,530 green (new regression test). Not yet re-checked in the browser;
+needs this merged and pulled on the demo site.
+
+**Also confirmed in the browser this session:** the print-footer fix (PR #526) is live; a dividend run
+distributes, and the member home page then shows the dividend and the larger share balance.
+
+---
+
+## Session — 2026-10-12 — Fix: two defects found by testing the demo in a real browser — merged (PR #526)
+
+**Branch:** `fix/loan-preview-and-dividend-print-footer` (off `develop`, after PR #525)
+**Developer:** Claude Code / Jabir Mussa
+
+First click-through of the Wise Wallet demo site in Chrome (as the Chairperson). Working: the
+Administration menu, loan-type editing, a new loan application, approve, pay out, record repayment
+(penalty paid first) and dividend confirm. Two defects:
+
+- **Loan cost preview could come up blank** (`app/bms/loans/_apply_modal.php`). Changing several fields
+  quickly fires several preview requests; a slow early reply arriving last overwrote the newer one.
+  Each request is now numbered and only the latest reply may update the form.
+- **"Printed by" footer on screen on the Dividends page** (`app/constant/accounts/dividends.php`). The
+  shared footer is a fixed strip with no on-screen hide rule; it is now wrapped so it prints only.
+
+**Noted, not changed:** every page that includes the shared print footer (My Fines, Users, Audit Logs,
+…) shows the same strip on screen. That is existing behaviour across the app and a design decision.
+
+**Verified:** `composer test` — 2,529 green (two new regression tests).
+
+**Browser test still to do:** dividend distribute, M-Koba import on screen, the Secretary / Treasurer /
+Member logins, a phone-sized screen.
+
+**Context:** the client has since seen the demo and proposal and agreed to proceed; management asked
+for a user guide (EN + SW), a presentation, and better loan / share / Social Fund reports by Thu 15 Oct.
+
+---
+
+## Session — 2026-10-12 — Fix: Chairperson had no Administration menu; Wise Wallet demo logo — merged (PR #525)
+
+**Branch:** `fix/chairperson-admin-menu-and-demo-logo` (off `develop`, after PR #524)
+**Developer:** Claude Code / Jabir Mussa
+
+**Bug (reported by Jabir on the Wise Wallet demo site):** the Chairperson could not see the
+Administration menu. `header.php` gated it on `in_array($user_role_lower, ['admin','mwenyekiti',
+'chairman'])`, which omits `chairperson` — the exact role name `seed_vicoba_roles.php` creates. The
+Chairperson passed `isAdmin()` on every page but had no link to Users, Roles, System Settings or Group
+Settings. Never seen on the existing group because its top account has the role `admin`. Same defect
+`group_settings.php` and `dashboard.php` had. **Fix:** the menu now asks `vk_role_is_admin()`
+(`includes/roles.php`), the shared rule.
+
+**Demo logo:** new original artwork for the demo group — `assets/images/demo/wise_wallet_logo.svg`
+(source) rendered to `assets/images/wise_wallet_demo_logo.png`; the seeder now sets `group_logo` to it.
+
+**Found, NOT fixed (needs a decision):** the built-in default logo `assets/images/logo1.png` is the logo
+of an unrelated real company ("CELLI group"), in the repo since the initial commit. Every group that has
+not uploaded its own logo shows it on the login page and header. Needs a BJP/Vikundi default.
+
+**Verified:** `composer test` — 2,527 green (new `HeaderAdminMenuTest`, 5 tests). On a real install:
+the Chairperson gets the Administration menu and opens Users, Roles, System Settings and Group Settings;
+Secretary, Treasurer and a Member do not get the menu; login page and header use the new logo.
+
+**Noted:** the Secretary may open Group Settings but has no menu link to it (the link sits inside the
+Administration menu). Pre-existing; left alone.
+
+---
+
+## Session — 2026-10-12 — Wise Wallet demo instance + fresh-install fixes — merged (PR #524)
+
+**Branch:** `feat/wise-wallet-demo-seeder` (off `develop`, after PR #523)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** a demo seeder for the Wise Wallet M-KOBA prospect, and two migrations found necessary by
+installing into a completely empty database for the first time.
+
+**Server (done by Jabir, read-only survey by Claude):** new site
+`wisewallet.vikundi.bjptechnologies.co.tz` at `/var/www/wisewallet.vikundi.bjptechnologies.co.tz/public_html`,
+tracking `develop` (NOT in the deploy workflow, which resets production and `demo.vikundi` to `main`).
+Own database `bjptechn_wisewallet` and user `user_wisewallet`; `config.php` mode 640. Update with
+`git pull origin develop && php database/migrate.php`.
+
+**Fresh-install defect 1 — loans (regression from #522).** `approve_loan` / `disburse_loan` exist in
+databases restored from the original SQL dump but in no migration. On a clean install the Secretary and
+Treasurer could not open Loans, approve, pay out or record a repayment. Fixed:
+`database/add_loan_permissions.php`.
+
+**Fresh-install defect 2 — everyday pages (pre-existing).** Eleven page keys (`customers`, `expenses`,
+`document_library`, `document_templates`, `document_workflow`, `e_signatures`, `message_center`,
+`notification_center`, `system_settings`, `users`, `user_roles`) likewise only ever came from the dump.
+Fixed: `database/add_core_page_permissions.php` registers exactly the keys existing installs have;
+grants are left to the role seeder, so a new group behaves as the current one does. Both migrations
+run before `seed_vicoba_roles.php` and are no-ops on existing databases.
+
+**Seeder:** `database/seed_wise_wallet_demo.php` (CLI only, not in `migrate.php`). 25 invented members
+(three are the officers), ten months of shares / Social Fund / deposits, fines, expenses, one welfare
+payment, two loan types, eight loans in every state created through the real workflow, and
+`downloads/WiseWallet_MKoba_Statement_DEMO.csv` in the real ten-column M-Koba layout. Phones use an
+invented block and e-mails the reserved `.example` domain. The password is random unless given, and
+printed once. Guards: `demo_seed_guard.php`; refuses a database that already has people; `--fresh` only
+on a database whose group name is this seeder's.
+
+**Demo script:** `docs/client-deliverables/Wise_Wallet_Demo_Script.md`.
+
+**Verified** on `vikundi_demo_scratch`, emptied and rebuilt from nothing (previous contents backed up
+to `backups/vikundi_demo_scratch_backup_20261012.sql`): `migrate.php` runs with 0 errors; seeding
+succeeds first time and identically on `--fresh`; real logins work for all six demo accounts with the
+seeded password and fail with a wrong one; Secretary and Treasurer open Members, Loans, Dividends,
+Fines, Transactions, Contributions, Ledger, Reconciliation and Settings; a Member is kept out of the
+leadership pages; the statement imports through the real endpoint as 23 imported (530,000), 2 excluded
+(250,000) and 1 unmatched (20,000), totalling the statement's 800,000. Guards: a second run refuses, the
+main local database is refused with and without `--fresh` (row counts unchanged), a web request is
+refused, a short password is refused before anything is wiped. `composer test` — 2,522 green (new
+`WiseWalletSeederTest`, 12 tests).
+
+**Known issue, not fixed here:** `app/constant/accounts/expenses.php` gates on `death_expenses`, a key
+that exists in no database — including the current production one — so Expenses opens for admin-role
+users only. Officers hold `expenses`, which the page does not check. Also absent everywhere:
+`member_approvals`, `documents`, `library`, `audit_logs`, `backup_restore`. Left alone deliberately:
+changing them changes who can see what on a live group.
+
+**Also noted on the server:** `config.php` is mode 775 (world-readable) on the production and
+`demo.vikundi` sites; `main` is behind `develop` (stops at PR #520).
+
+---
+
+## Session — 2026-10-12 — Dividends — merged (PR #523)
+
+**Branch:** `feat/dividends` (off `develop`, after PR #522)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** year-end dividends. New `includes/dividends.php`; page `dividends`; endpoint
+`actions/dividend_action.php`. Slice 3 of 4 toward the Wise Wallet demo.
+
+**Surplus** = loan interest + loan penalties + fines paid − general expenses − petty cash, for a chosen
+period (defaults to the current financial year). **Never included:** share capital, loan principal,
+the Social Fund, membership deposits, and — signed off — death expenses and member payouts, which are
+charged to the Social Fund (`fb_social_fund_position()`).
+
+**Split:** distributable × member's share capital ÷ all share capital, as at the period end date
+(signed off). Cents are distributed by largest remainder, so the lines always sum to the amount.
+
+**Flow:** preview (nothing saved) → **confirm** (figures frozen, nothing moves) → **distribute**, either
+in cash or added to members' shares — one choice per run (signed off). A confirmed run can be cancelled;
+a distributed run is final. Two runs cannot cover the same day; a period cannot end in the future; a
+loss is not shared out.
+
+**Schema:** `database/create_vicoba_dividend_tables.php` — `vicoba_dividend_runs`,
+`vicoba_dividend_lines`, and the `dividends` permission granted to leadership. Members are not granted
+it (`vk_member_hidden_keys()`). **Run `php database/migrate.php` on deploy.**
+
+**Settings (Group Settings → Shares & Funds):** financial year start month, and the percentage of
+surplus shared out (the rest stays as reserve). Unset = January, 100%.
+
+**Money:** `getGroupFundBalance()` subtracts distributed dividends. A dividend added to shares comes
+back as an approved `share` contribution, so the subtraction is what stops it being counted twice.
+
+**Access:** confirm = create, distribute = approve, cancel = delete on `dividends`; all authenticated,
+CSRF-protected, audit-logged. No figure is accepted from the request.
+
+**Also:** Finance menu gains Dividends; Member Home shows the member's latest dividend; the page prints
+as a dividend statement.
+
+**Verified:** `composer test` green — 2,510 tests (new `DividendsTest`, 18 tests). Live: Member confirm
+and distribute (403), no CSRF, bad method, future period, a loss-making period, overlapping period,
+double distribute and cancelling a distributed run all refused. A shares run produced 6 lines summing
+to exactly 47,680 (80% of a 59,600 surplus), left the fund unchanged and raised each member's shares; the
+same run as cash lowered the fund by exactly 47,680 and created no share rows. Local test data removed.
+
+**Known limits:** fines have no payment date, so a paid fine is placed in a period by when its row was
+last updated. A group that pays welfare but records no Social Fund contributions (true of the existing
+local data) shows a negative Social Fund balance on this page — accurate, but worth explaining.
+
+---
+
+## Session — 2026-10-12 — Loans 3/3: repayments, penalties, early payoff — merged (PR #522)
+
+**Branch:** `feat/loan-types-and-rules` (off `develop`, after PR #521)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** a disbursed loan can now be repaid. `vl_record_payment()` applies each payment to the
+schedule and clears the loan on the last instalment; the arithmetic is pure, in `loan_rules.php`
+(`lr_allocate_payment()`, `lr_payoff()`, `lr_installment_penalty_due()`).
+
+**Rules:** a payment goes to the oldest instalment first — its penalty, then its interest, then its
+principal — so an instalment cannot be cleared with a penalty left on it. Penalties are worked out from
+the schedule on the day (after the grace days, per started month late) and never stored, so there is no
+cron job and nothing to drift. A payment cannot exceed the payoff figure, pre-date the pay-out or be
+future-dated. **Early payoff:** a flat loan still owes its full agreed interest (signed off); a
+reducing loan owes interest only for months that have started — the rest is waived and the loan's
+totals are reduced to match.
+
+**Access:** recording a repayment needs `disburse_loan` (create), and nobody records one on their own
+loan. Action `repay` on `actions/loan_action.php`, audit-logged.
+
+**Pages:** loan detail gains where-it-stands-today (due now, principal left, penalties, payoff figure),
+a penalty column, overdue highlighting, the repayments received and a Record repayment form. Member
+Home shows loan balance and the next instalment.
+
+**Removed:** `actions/record_loan_payment.php` (no permission check, no CSRF).
+
+**Verified:** `composer test` green — 2,492 tests (new `LoanRepaymentTest`, 14 tests, including six
+on-time instalments clearing a loan exactly). Live: a flat loan paid out two months ago showed a 5,600
+penalty on its late instalment, paid first; a reducing loan settled on day one for 309,000 with 9,000
+waived; member-recording (403), overpayment, pre-pay-out date and paying a cleared loan all refused;
+group fund reconciled to the shilling (2,232,878 − 900,000 lent + 471,000 repaid = 1,803,878). Local
+test data removed.
+
+**Known limits:** repayments paid through M-Koba are recorded by hand (the statement importer treats
+every row as a contribution); no mobile API for loans; no rescheduling, top-ups or loan reports. The
+~30 inherited BMS loan endpoints are still routed and still unaudited — they write to the old `loans`
+table, which this module does not use.
+
+---
+
+## Session — 2026-10-12 — Loans 2/3: apply, guarantee, approve, disburse — merged (PR #522)
+
+**Branch:** `feat/loan-types-and-rules` (off `develop`, after PR #521)
+**Developer:** Claude Code / Jabir Mussa
+
+**Summary:** the loans UI is back on, rebuilt. New `includes/loans.php` is the workflow every page and
+endpoint goes through; `actions/loan_action.php` is the one endpoint for every state change.
+
+**Flow:** apply → `pending_guarantors` → (all guarantors accept) → `pending` → approved → disbursed.
+A guarantor declining cancels the application. The repayment schedule is fixed at disbursement, from
+the disbursement date.
+
+**Rules enforced server-side:** rate, limit and penalty come from the loan type, never the request; a
+member applies only as themselves (leadership may apply on a member's behalf); the limit counts loans
+still in the pipeline, so two applications cannot each fit it alone; a guarantor is another active
+member and answers only for themselves; nobody approves or pays out their own loan; rejecting needs a
+reason; each step is a conditional UPDATE so it cannot be taken twice; the group cannot disburse more
+than the fund holds.
+
+**Access:** approve/reject needs `approve_loan`, disburse needs `disburse_loan` (existing page keys).
+The loans list is leadership-only; a loan is visible to leadership, its borrower and its guarantors —
+anyone else gets the same "not found" as a missing loan.
+
+**Money:** `getGroupFundBalance()` now subtracts loans paid out and adds loan repayments
+(`fundBalanceFromTotals()` gained two optional arguments; existing callers unchanged).
+
+**Pages:** `loans` (list), `loans/details`, `my_loans` (own loans + guarantee requests), a shared apply
+modal with a live cost preview from `api/loan_preview` (no loan arithmetic in the browser). Finance menu
+gains Loans / My Loans; Member Home alerts a member with a guarantee request waiting.
+
+**Removed:** `actions/apply_for_loan.php`, `actions/approve_loan_vicoba.php` (no permission check, no
+CSRF, rate taken from the request) and the old `loan_application.php` page.
+
+**Verified:** `composer test` green (new `LoanWorkflowTest`). Live, 20-step run with four sessions:
+over-limit, over-period, self-guarantee, missing guarantor, customer_id spoof, second application over
+the remaining limit, borrower approving own loan (403), early approve, stranger answering a guarantee,
+double answer, member disbursing (403), disburse before approval, reject without reason, double approve,
+future date, double disburse, missing CSRF — all refused correctly; the happy path produced 6
+instalments summing to 600,000 + 72,000 and dropped the fund by exactly 600,000. Pages render clean for
+admin, borrower and guarantor; an unrelated member sees no loan data. Local test data removed.
+
+**Next:** 3/3 repayments, penalties, early payoff.
+
+---
+
+## Session — 2026-10-12 — Loans 1/3: loan types and rules — merged (PR #522)
+
+**Branch:** `feat/loan-types-and-rules` (off `develop`, after PR #521)
+**Developer:** Claude Code / Jabir Mussa
+
+**Why:** the loans UI has been disabled since the initial commit, and the handlers behind it
+(`apply_for_loan`, `approve_loan_vicoba`, `record_loan_payment`) have no permission check or CSRF and
+take the interest rate from the request. This is a rebuild, in three PRs, on rules the group sets itself.
+
+**Design decisions (signed off by Jabir):** new tables, not the BMS `loans` tables (MyISAM, 50 unused
+columns, still written by ~30 old routed endpoints); guarantors accept in the web app; a flat loan paid
+off early still owes its full agreed interest; no mobile API for loans yet.
+
+**Schema:** `database/create_vicoba_loan_tables.php` — `vicoba_loan_types`, `vicoba_loans`,
+`vicoba_loan_guarantors`, `vicoba_loan_installments`, `vicoba_loan_payments`, all InnoDB. Nothing
+seeded. Registered in `migrate.php`. **Run `php database/migrate.php` on deploy.**
+
+**Rules:** new `includes/loan_rules.php`, pure (no DB): type validation, borrowing limit (shares ×
+multiple less what is owed, and/or a fixed cap — Social Fund and deposit never count), flat and reducing
+schedules, month-end-safe due dates, late penalty after grace days, and the rules snapshot a loan keeps
+for life.
+
+**Settings:** Group Settings → Loan Types (add / edit / switch off). `actions/save_loan_type.php` —
+authenticated, CSRF-protected, admin + Secretary only, audit-logged; types are switched off, never
+deleted.
+
+**Verified:** `composer test` — 2,461 green (new `LoanRulesTest`, 34 tests). Live: no session 401,
+no CSRF 403, Member 403, invalid input refused with reasons, create / duplicate-name / edit / toggle
+all correct, row renders with no PHP errors.
+
+**Next:** 2/3 apply → guarantors accept → approve → disburse; 3/3 repayments and penalties.
+
+---
+
+## Session — 2026-10-12 — Fund buckets: shares, Social Fund, membership deposit — merged (PR #521)
+
+**Branch:** `feat/fund-buckets-and-vicoba-settings` (off `develop`)
+**Developer:** Claude Code / Jabir Mussa
+
+**Why:** a prospect (Wise Wallet M-KOBA, 25 members) needs shares, a Social Fund and membership
+deposits kept apart, with year-end dividends on shares. Vikundi had one pot and no share concept. This
+is slice 1 of 4 toward that demo (then loans, dividends, demo instance).
+
+**Summary:** new `includes/fund_buckets.php` is the single definition of which pot a contribution
+belongs to. Three contribution types added — `share`, `social_fund`, `deposit`. Shares are member
+savings; the Social Fund and the deposit are ring-fenced and never are.
+
+**Schema:** `database/add_fund_bucket_contribution_types.php` widens `contributions.contribution_type`
+(values appended, existing rows untouched). Registered in `migrate.php`; `schema_sync.sql` updated for
+fresh installs. **Run `php database/migrate.php` on deploy.**
+
+**Settings (Group Settings → Shares & Funds):** `share_price`, `shares_from_monthly` (the cycle
+contribution IS the share purchase), `social_fund_amount`, `membership_deposit_amount`. Saved by the web
+handler and the mobile API (`vk_group_settings_writable()`). Nothing is seeded: an unset amount means
+the rule is off, never an invented default.
+
+**A real hazard fixed on the way.** `cs_group_savings_total()`, `cs_group_standing()` and
+`api/v1/contributions_summary.php` filtered on `contribution_type <> 'fine'`, so a Social Fund or
+deposit row would have been counted as member savings the moment one existed. They now exclude
+`fb_not_savings_types()`. The inclusion-style filters (`cs_statement_filter_sql()`, `member_savings.php`,
+the API's `counts_toward_savings`) take their list from `fb_savings_types()`, which adds `share`. Both
+financial ledgers skip ring-fenced rows before the M-Koba "opening balance" test.
+
+**Also:** the hand-copied type lists in five files now come from `fb_types()` / `fb_type_labels()`; the
+Transactions form offers the new types; Member Home shows share capital, shares held, Social Fund paid
+and deposit — only once the group uses them.
+
+**Verified:** `composer test` — 2,427 tests green (new `FundBucketsTest`, 16 tests; five source-pinned
+tests updated to assert the shared definition). Live on the local DB: group savings total and all 334
+member standings identical before and after (TSh 1,801,000); a Social Fund + deposit row leaves savings
+unchanged and a share row raises it (rolled back); settings save refused for a Member (403), accepted
+for admin; all three pages render without PHP errors.
+
+**Not in this slice:** loans (routes still disabled), dividends, group-level fund totals on the
+dashboard, and showing the Social Fund / deposit columns on statements.
+
+---
+
 ## Session — 2026-09-09 — Module 18: Profile — PR pending
 
 **Branch:** `develop` (feature branch not yet cut)

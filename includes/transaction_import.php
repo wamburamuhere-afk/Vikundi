@@ -11,7 +11,7 @@
  */
 
 /** Allowed contribution types / accounts (kept in step with the record form). */
-function txn_allowed_types(): array    { return ['entrance', 'monthly', 'agm', 'fine', 'other']; }
+function txn_allowed_types(): array    { require_once __DIR__ . '/fund_buckets.php'; return fb_types(); }
 function txn_allowed_accounts(): array { return ['M-Koba', 'Bank', 'Cash', 'Mobile Money']; }
 
 /**

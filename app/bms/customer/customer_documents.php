@@ -142,7 +142,7 @@ function formatFileSize($bytes) {
 
 function handleCustomerDocumentUpload($pdo, $customer_id, $post_data, $files) {
     try {
-        $upload_dir = '../uploads/customer_documents/' . $customer_id . '/';
+        $upload_dir = vk_storage_path('uploads/customer_documents/' . (int) $customer_id) . '/';
         if (!file_exists($upload_dir)) {
             if (!mkdir($upload_dir, 0755, true)) {
                 throw new Exception("Failed to create upload directory");
@@ -243,8 +243,8 @@ function deleteCustomerDocument($pdo, $doc_id) {
         }
 
         // Delete file from server
-        if (file_exists($doc['file_path'])) {
-            unlink($doc['file_path']);
+        if (file_exists(vk_storage_path($doc['file_path']))) {
+            unlink(vk_storage_path($doc['file_path']));
         }
 
         // Delete database record

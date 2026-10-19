@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../includes/tenant.php'; // vk_storage_path(): this group's file storage
 // actions/save_group_settings.php
 if (session_status() === PHP_SESSION_NONE) session_start();
 header('Content-Type: application/json');
@@ -53,6 +54,8 @@ $allowed_keys = [
     'group_name', 'group_registration_number', 'group_founded_date', 'contribution_start_date', 'meeting_day', 'cycle_type', 'currency', 'max_members',
     'group_email', 'group_phone', 'group_postal_address', 'group_physical_address', 'group_tin', 'group_vrn', 'group_website',
     'monthly_contribution', 'entrance_fee', 'agm_fee', 'contribution_grace_days',
+    'share_price', 'shares_from_monthly', 'social_fund_amount', 'membership_deposit_amount',
+    'financial_year_start_month', 'dividend_distribute_pct',
     'loan_interest_rate', 'loan_max_term_months', 'loan_multiplier', 'loan_grace_days',
     'fine_late_meeting', 'fine_late_contribution', 'fine_late_loan_payment', 'fine_absent_meeting',
     'shareout_month', 'profit_distribution_pct', 'current_cycle_year', 'auto_calculate_shareout',
@@ -104,11 +107,9 @@ try {
 
         if (in_array($ext, $allowed_exts) && $vk_mime_ok) {
             $new_name = 'group_logo_' . time() . '.' . $ext;
-            $upload_path = __DIR__ . '/../assets/images/' . $new_name;
-            
-            if (!is_dir(__DIR__ . '/../assets/images/')) {
-                mkdir(__DIR__ . '/../assets/images/', 0777, true);
-            }
+            // A single site keeps uploaded logos in its own assets/images/; on the shared
+            // server they go in the group's storage (index.php serves them from there).
+            $upload_path = vk_storage_dir('assets/images') . $new_name;
 
             if (move_uploaded_file($file_tmp, $upload_path)) {
                 $stmt->execute(['group_logo', $new_name]);

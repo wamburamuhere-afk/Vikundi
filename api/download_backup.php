@@ -20,7 +20,7 @@ if (empty($filename)) {
     die('Missing filename');
 }
 
-$backup_dir = __DIR__ . '/../backups/';
+$backup_dir = vk_storage_path('backups') . '/';
 $filepath = realpath($backup_dir . $filename);
 
 // Ensure the file is inside the backups directory

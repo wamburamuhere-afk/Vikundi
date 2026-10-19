@@ -27,7 +27,7 @@ try {
     // Use __DIR__-relative path so the save always lands in uploads/document_library/
     // regardless of which working directory the front controller uses.
     // Vikundi stores all documents in uploads/document_library/ (same as document_library.php).
-    $upload_dir = __DIR__ . '/../uploads/document_library/';
+    $upload_dir = vk_storage_path('uploads/document_library') . '/';
     if (!is_dir($upload_dir)) {
         if (!mkdir($upload_dir, 0755, true)) {
             throw new Exception('Failed to create upload directory');

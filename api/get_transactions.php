@@ -24,6 +24,7 @@ header('Content-Type: application/json');
 // `edit` is the leadership test precisely because view is not. The rule lives in
 // includes/contribution_access.php so the web and the mobile API cannot drift.
 require_once __DIR__ . '/../includes/contribution_access.php';
+require_once __DIR__ . '/../includes/fund_buckets.php';
 vk_contrib_web_require_leader();
 
 $draw   = (int) ($_GET['draw'] ?? 1);
@@ -38,7 +39,7 @@ $validYmd = function ($d) {
     return ($d !== '' && $dt && $dt->format('Y-m-d') === $d) ? $d : '';
 };
 $status    = in_array($_GET['status'] ?? '', ['pending', 'reviewed', 'approved', 'cancelled'], true) ? $_GET['status'] : '';
-$type      = in_array($_GET['type'] ?? '', ['monthly', 'entrance', 'agm', 'fine', 'other'], true) ? $_GET['type'] : '';
+$type      = in_array($_GET['type'] ?? '', fb_types(), true) ? $_GET['type'] : '';
 $account   = in_array($_GET['account'] ?? '', ['M-Koba', 'Bank', 'Cash', 'Mobile Money'], true) ? $_GET['account'] : '';
 $member_id = ctype_digit((string) ($_GET['member_id'] ?? '')) ? (int) $_GET['member_id'] : 0;
 $from      = $validYmd($_GET['date_from'] ?? '');

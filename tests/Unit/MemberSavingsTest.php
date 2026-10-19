@@ -71,7 +71,10 @@ class MemberSavingsTest extends TestCase
         $this->assertStringContainsString('SELECT customer_id FROM customers WHERE user_id', $p);
         // same status/type filter as app/constant/reports/member_statement.php
         $this->assertStringContainsString("status IN ('confirmed', 'approved', '')", $p);
-        $this->assertStringContainsString("contribution_type IN ('monthly', 'entrance', 'other', '')", $p);
+        // ...the type list coming from the one shared definition, in all three queries
+        $this->assertSame(3, substr_count($p, "contribution_type IN (\" . fb_sql_list(fb_savings_types()) . \", '')"));
+        require_once __DIR__ . '/../../includes/fund_buckets.php';
+        $this->assertSame(['monthly', 'entrance', 'other', 'share'], fb_savings_types());
         // fines are the pending ones, keyed on customer_id
         $this->assertStringContainsString("FROM fines WHERE customer_id = ? AND status = 'pending'", $p);
     }

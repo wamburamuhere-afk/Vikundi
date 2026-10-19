@@ -29,7 +29,7 @@ try {
     // Stored paths are web paths (e.g. /uploads/...). Resolve to the filesystem before unlinking.
     foreach (['file_path', 'thumbnail_path'] as $pathKey) {
         if (!empty($signature[$pathKey])) {
-            $abs = ROOT_DIR . '/' . ltrim($signature[$pathKey], '/');
+            $abs = vk_storage_path($signature[$pathKey]);
             if (is_file($abs)) {
                 @unlink($abs);
             }

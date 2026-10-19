@@ -29,6 +29,7 @@
  * group, and it is the treasurer's approval — not the act of submitting — that
  * moves the books.
  */
+require_once __DIR__ . '/../../includes/tenant.php'; // vk_storage_path(): this group's file storage
 
 require_once __DIR__ . '/../../includes/api_bootstrap.php';
 require_once __DIR__ . '/../../includes/api_contributions.php';
@@ -134,7 +135,7 @@ $evidencePath = null;
 if (isset($_FILES['evidence']) && (int) ($_FILES['evidence']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
     [$stored, $err] = vk_api_store_upload(
         $_FILES['evidence'],
-        dirname(__DIR__, 2) . '/uploads/contributions',
+        vk_storage_path('uploads/contributions'),
         'receipt'
     );
     if ($err !== null) {

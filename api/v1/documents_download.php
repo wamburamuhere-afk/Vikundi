@@ -7,6 +7,7 @@
  * bump, same on-disk path fallback (a file_path saved as an absolute or
  * differently-rooted path is retried under uploads/document_library/basename).
  */
+require_once __DIR__ . '/../../includes/tenant.php'; // vk_storage_path(): this group's file storage
 
 require_once __DIR__ . '/../../includes/api_bootstrap.php';
 require_once __DIR__ . '/../../includes/api_documents.php';
@@ -23,9 +24,9 @@ $id  = (int) ($_GET['id'] ?? 0);
 $doc = vk_api_doc_load($pdo, $id);
 vk_api_doc_authorize_item($auth, $doc);
 
-$filePath = (string) $doc['file_path'];
-if (!file_exists($filePath) && file_exists('uploads/document_library/' . basename($filePath))) {
-    $filePath = 'uploads/document_library/' . basename($filePath);
+$filePath = vk_storage_path((string) $doc['file_path']);
+if (!file_exists($filePath) && file_exists(vk_storage_path('uploads/document_library/' . basename((string) $doc['file_path'])))) {
+    $filePath = vk_storage_path('uploads/document_library/' . basename((string) $doc['file_path']));
 }
 if (!file_exists($filePath)) {
     vk_api_error(404, 'file_missing', 'The stored file could not be found on the server.');

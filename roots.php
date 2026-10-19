@@ -3,6 +3,9 @@
 // local/dev hosts. Production never shows error text to users (security +
 // avoids corrupting AJAX/JSON responses).
 require_once __DIR__ . '/includes/env.php';
+// Where this group's stored files live (single site: the code folder; shared
+// server: the group's own folder). See includes/tenant.php.
+require_once __DIR__ . '/includes/tenant.php';
 $__vk_dev = vikundi_is_dev_host($_SERVER['HTTP_HOST'] ?? null);
 error_reporting(E_ALL);
 ini_set('log_errors', '1');
@@ -316,20 +319,25 @@ $routes = [
     'dormant_members' => CUSTOMERS_DIR . '/dormant_members.php',
     'actions/add_member' => ROOT_DIR . '/actions/add_member.php',
     'actions/save_group_settings' => ROOT_DIR . '/actions/save_group_settings.php',
+    'actions/save_loan_type' => ROOT_DIR . '/actions/save_loan_type.php',
     'actions/approve_member' => ROOT_DIR . '/actions/approve_member.php',
     'actions/process_registration' => ROOT_DIR . '/actions/process_registration.php',
     'actions/update_contribution' => ROOT_DIR . '/actions/update_contribution.php',
     'actions/upload_contributions' => ROOT_DIR . '/actions/upload_contributions.php',
     'actions/process_contribution' => ROOT_DIR . '/actions/process_contribution.php',
-    // 'actions/apply_for_loan' => ROOT_DIR . '/actions/apply_for_loan.php',
-    // 'actions/approve_loan_vicoba' => ROOT_DIR . '/actions/approve_loan_vicoba.php',
-    // 'actions/record_loan_payment' => ROOT_DIR . '/actions/record_loan_payment.php',
-
-    // Loans Module Pages (Disabled)
-    // 'loans'               => LOANS_DIR . '/loans_list.php',
-    // 'loans/details'       => LOANS_DIR . '/loan_details.php',
-    // 'loans/apply'         => LOANS_DIR . '/loan_application.php',
-    // 'my_loans'            => LOANS_DIR . '/my_loans.php',
+    // Loans module (VICOBA loans — see includes/loans.php)
+    'actions/loan_action' => ROOT_DIR . '/actions/loan_action.php',
+    'api/loan_preview'    => API_DIR . '/loan_preview.php',
+    'loans'               => LOANS_DIR . '/loans_list.php',
+    'loans/details'       => LOANS_DIR . '/loan_details.php',
+    'my_loans'            => LOANS_DIR . '/my_loans.php',
+    'dividends'           => ACCOUNTS_DIR . '/dividends.php',
+    // Loan, share and Social Fund reports (includes/vicoba_reports.php)
+    'reports/loans'           => REPORTS_DIR . '/loan_portfolio_report.php',
+    'reports/loan_repayments' => REPORTS_DIR . '/loan_repayments_report.php',
+    'reports/shares'          => REPORTS_DIR . '/shares_register.php',
+    'reports/social_fund'     => REPORTS_DIR . '/social_fund_statement.php',
+    'actions/dividend_action' => ROOT_DIR . '/actions/dividend_action.php',
 
     // Fines Module
     'manage_fines'        => CUSTOMERS_DIR . '/manage_fines.php',

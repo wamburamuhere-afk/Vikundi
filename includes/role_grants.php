@@ -63,6 +63,9 @@ if (!function_exists('vk_member_hidden_keys')) {
             // found live (both the web page and this session's own new API endpoint
             // gate on the same key) while building Module 14's API.
             'manage_leadership_applications',
+            // Calculating and distributing dividends is a leadership act; a member
+            // sees their own dividend on Member Home.
+            'dividends',
         ];
     }
 }

@@ -227,11 +227,13 @@ if (!function_exists('vk_api_ledger_build')) {
             $newPool = 0.0;
             $agmPaid = 0.0;
             foreach ($memberContribs as $c) {
-                if ($c['contribution_type'] === 'agm') {
+                if (fb_is_ring_fenced($c['contribution_type'])) {
+                    continue; // Social Fund / membership deposit — not member savings
+                } elseif ($c['contribution_type'] === 'agm') {
                     $agmPaid += (float) $c['amount'];
                 } elseif (cs_is_opening($c['mkoba_trans_id'] ?? null, $c['account'] ?? null)) {
                     $opening += (float) $c['amount'];
-                } elseif ($c['contribution_type'] === 'entrance' || $c['contribution_type'] === 'monthly') {
+                } elseif (in_array($c['contribution_type'], ['entrance', 'monthly', 'share'], true)) {
                     $newPool += (float) $c['amount'];
                 }
             }

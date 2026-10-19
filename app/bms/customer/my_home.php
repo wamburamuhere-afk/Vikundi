@@ -28,6 +28,34 @@ if ($customer_id > 0) {
 $savings      = vk_member_savings_total($pdo, $customer_id);
 $this_year    = vk_member_savings_since($pdo, $customer_id, date('Y-01-01'));
 $fines_due    = vk_member_outstanding_fines($pdo, $customer_id);
+// Shares / Social Fund / membership deposit. Shown only once the group uses
+// them, so a group that keeps one pot is not handed a row of empty cards.
+$fb_rules     = fb_load_settings($pdo);
+$buckets      = fb_member_balances($pdo, $customer_id, $fb_rules);
+// Guarantee requests waiting on this member's answer. Zero (not an error) on a
+// database that has not run the loans migration.
+try {
+    $gw = $pdo->prepare("SELECT COUNT(*) FROM vicoba_loan_guarantors g JOIN vicoba_loans l ON l.loan_id = g.loan_id
+                          WHERE g.guarantor_customer_id = ? AND g.status = 'pending' AND l.status = 'pending_guarantors'");
+    $gw->execute([$customer_id]);
+    $guarantee_waiting = (int) $gw->fetchColumn();
+} catch (Throwable $e) {
+    $guarantee_waiting = 0;
+}
+try {
+    require_once __DIR__ . '/../../../includes/loans.php';
+    $loan_summary = vl_member_loan_summary($pdo, $customer_id);
+} catch (Throwable $e) {
+    $loan_summary = ['loans' => 0, 'owed' => 0.0, 'next_due' => null, 'next_amount' => 0.0];
+}
+try {
+    require_once __DIR__ . '/../../../includes/dividends.php';
+    $my_dividend = dv_member_latest($pdo, $customer_id);
+} catch (Throwable $e) {
+    $my_dividend = null;
+}
+$show_buckets = $fb_rules['share_price'] > 0
+    || ($buckets['shares'] + $buckets['social_fund'] + $buckets['deposit']) > 0;
 $monthly      = vk_member_monthly_savings($pdo, $customer_id, 12);   // ['YYYY-MM' => total]
 $streak       = vk_contribution_streak(array_keys($monthly), date('Y-m'));
 $saved_this_m = $monthly[date('Y-m')] ?? 0;
@@ -62,6 +90,49 @@ includeHeader();
     <?php if ($customer_id <= 0): ?>
     <div class="alert alert-info"><?= $t('Your member profile is not set up yet. Please contact your group leadership.', 'Wasifu wako wa uanachama haujakamilika. Tafadhali wasiliana na uongozi wa kikundi.') ?></div>
     <?php else: ?>
+
+    <?php if ($guarantee_waiting > 0): ?>
+    <div class="alert alert-warning d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <span><i class="bi bi-shield-check me-2"></i><?= $guarantee_waiting === 1
+            ? $t('A member has asked you to guarantee their loan.', 'Mwanachama amekuomba umdhamini mkopo wake.')
+            : $t("$guarantee_waiting members have asked you to guarantee their loans.", "Wanachama $guarantee_waiting wamekuomba uwadhamini mikopo yao.") ?></span>
+        <a class="btn btn-warning btn-sm fw-bold" href="<?= getUrl('my_loans') ?>"><?= $t('Review', 'Angalia') ?></a>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($my_dividend): ?>
+    <div class="card border-0 shadow-sm mb-3" style="border-left:5px solid #1a7f4b !important;">
+        <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <div class="text-muted small text-uppercase fw-bold"><?= $t('My dividend', 'Gawio langu') ?> · <?= date('M Y', strtotime($my_dividend['period_from'])) ?> – <?= date('M Y', strtotime($my_dividend['period_to'])) ?></div>
+                <div class="fs-4 fw-bold text-success"><?= $fmt($my_dividend['amount']) ?></div>
+            </div>
+            <div class="text-end small text-muted">
+                <?= $my_dividend['method'] === 'shares' ? $t('Added to your shares', 'Limeongezwa kwenye hisa zako') : $t('Paid out in cash', 'Limelipwa taslimu') ?><br>
+                <?= $t('on share capital of', 'kwa mtaji wa hisa wa') ?> <?= $fmt($my_dividend['share_capital']) ?>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($loan_summary['loans'] > 0): ?>
+    <a href="<?= getUrl('my_loans') ?>" class="text-decoration-none">
+    <div class="card border-0 shadow-sm mb-3" style="border-left:5px solid #c0392b !important;">
+        <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <div class="text-muted small text-uppercase fw-bold"><?= $t('Loan balance', 'Deni la mkopo') ?></div>
+                <div class="fs-4 fw-bold text-danger"><?= $fmt($loan_summary['owed']) ?></div>
+            </div>
+            <?php if ($loan_summary['next_due']): ?>
+            <div class="text-end">
+                <div class="text-muted small text-uppercase fw-bold"><?= $t('Next instalment', 'Rejesho lijalo') ?></div>
+                <div class="fw-bold text-dark"><?= $fmt($loan_summary['next_amount']) ?> · <?= date('d M Y', strtotime($loan_summary['next_due'])) ?></div>
+            </div>
+            <?php endif; ?>
+        </div>
+    </div>
+    </a>
+    <?php endif; ?>
 
     <!-- Headline cards -->
     <div class="row g-3 mb-3">
@@ -109,6 +180,47 @@ includeHeader();
             </div>
         </div>
     </div>
+
+    <?php if ($show_buckets): ?>
+    <!-- Shares & funds: the Social Fund and the deposit are shown apart from savings -->
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100" style="border-left:5px solid #1a7f4b !important;">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase fw-bold"><?= $t('Share capital', 'Mtaji wa hisa') ?></div>
+                    <div class="fs-4 fw-bold text-success"><?= $fmt($buckets['shares']) ?></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100" style="border-left:5px solid #0f4c81 !important;">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase fw-bold"><?= $t('Shares held', 'Idadi ya hisa') ?></div>
+                    <div class="fs-4 fw-bold text-primary"><?= $fb_rules['share_price'] > 0 ? rtrim(rtrim(number_format($buckets['share_count'], 2), '0'), '.') : '—' ?></div>
+                    <?php if ($fb_rules['share_price'] > 0): ?>
+                    <div class="small text-muted"><?= $t('at', 'kwa') ?> <?= $fmt($fb_rules['share_price']) ?> <?= $t('per share', 'kwa hisa') ?></div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100" style="border-left:5px solid #6f42c1 !important;">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase fw-bold"><?= $t('Social Fund paid', 'Mfuko wa Jamii') ?></div>
+                    <div class="fs-4 fw-bold" style="color:#6f42c1;"><?= $fmt($buckets['social_fund']) ?></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100" style="border-left:5px solid #adb5bd !important;">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase fw-bold"><?= $t('Membership deposit', 'Amana ya uanachama') ?></div>
+                    <div class="fs-4 fw-bold text-secondary"><?= $fmt($buckets['deposit']) ?></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <div class="row g-3">
         <!-- Contribution history -->

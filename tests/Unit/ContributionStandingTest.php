@@ -107,6 +107,9 @@ class ContributionStandingTest extends TestCase
         $src = file_get_contents(__DIR__ . '/../../includes/contribution_standing.php');
         $this->assertStringContainsString('function cs_group_savings_total', $src);
         $this->assertStringContainsString("JOIN customers c ON c.customer_id = co.member_id AND c.status <> 'deleted'", $src);
-        $this->assertStringContainsString("co.contribution_type <> 'fine'", $src);
+        // Fines, and the ring-fenced Social Fund / membership deposit, are not
+        // savings — both group queries exclude them through the one shared list.
+        $this->assertSame(2, substr_count($src, 'co.contribution_type NOT IN (" . fb_sql_list(fb_not_savings_types()) . ")'));
+        $this->assertSame(['fine', 'social_fund', 'deposit'], fb_not_savings_types());
     }
 }

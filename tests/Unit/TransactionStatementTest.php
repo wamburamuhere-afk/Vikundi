@@ -223,8 +223,12 @@ class TransactionStatementTest extends TestCase
         // the count. So it now asserts there is exactly ONE definition.
         $src = file_get_contents(__DIR__ . '/../../includes/contribution_standing.php');
 
-        preg_match_all("/contribution_type IN \('monthly','entrance','other'\)/", $src, $m);
-        $this->assertCount(1, $m[0], 'the filter must be defined once, in cs_statement_filter_sql()');
+        // The type list itself now comes from includes/fund_buckets.php, so the
+        // one definition is the single place that list is spliced into a filter.
+        $this->assertSame(1, substr_count($src, 'contribution_type IN (" . fb_sql_list(fb_savings_types()) . ")'),
+            'the filter must be defined once, in cs_statement_filter_sql()');
+        $this->assertStringNotContainsString("IN ('monthly','entrance','other')", $src,
+            'no query may carry its own copy of the savings type list');
 
         // ...and all four queries must go through it (occurrences, less the definition).
         $this->assertSame(4, substr_count($src, 'cs_statement_filter_sql(') - 1,

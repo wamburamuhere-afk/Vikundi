@@ -48,7 +48,7 @@ if (isset($_POST['save_profile'])) {
             $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
             if (in_array($ext, $allowed)) {
                 $new_filename = 'profile_' . $_SESSION['user_id'] . '_' . time() . '.' . $ext;
-                $upload_path = ROOT_DIR . '/uploads/avatars/' . $new_filename;
+                $upload_path = vk_storage_path('uploads/avatars/' . $new_filename);
                 
                 // Ensure directory exists
                 if (!is_dir(dirname($upload_path))) {
@@ -262,7 +262,8 @@ require_once HEADER_FILE;
                             <div class="col-md-12">
                                 <div class="mb-3">
                                     <label class="form-label small fw-bold text-muted"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Jina la Mtumiaji (Username)' : 'Username' ?></label>
-                                    <input type="text" class="form-control bg-light" value="<?= htmlspecialchars($username) ?>" readonly>
+                                    <?php // The LOGIN username from the page's own query. header.php reuses $username for the person's full name, which is what this box used to show. ?>
+                                    <input type="text" class="form-control bg-light" value="<?= htmlspecialchars((string) ($user_data['username'] ?? '')) ?>" readonly>
                                     <div class="form-text x-small text-danger italic"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? '* Jina la mtumiaji haliwezi kubadilishwa' : '* Username cannot be changed' ?></div>
                                 </div>
                             </div>

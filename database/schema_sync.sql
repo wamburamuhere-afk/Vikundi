@@ -549,7 +549,7 @@ CREATE TABLE IF NOT EXISTS `contributions` (
   `contribution_id` int NOT NULL AUTO_INCREMENT,
   `member_id` int NOT NULL,
   `amount` decimal(15,2) NOT NULL DEFAULT '0.00',
-  `contribution_type` enum('entrance','monthly','agm','fine','other') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'monthly',
+  `contribution_type` enum('entrance','monthly','agm','fine','other','share','social_fund','deposit') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'monthly',
   `contribution_date` date NOT NULL,
   `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `mkoba_trans_type` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,

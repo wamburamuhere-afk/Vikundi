@@ -32,11 +32,11 @@ $auth = vk_api_require_auth();
 vk_api_settings_require_admin($auth);
 $callerId = (int) $auth['user_id'];
 
-$backupsDir = realpath(__DIR__ . '/../../backups') ?: (__DIR__ . '/../../backups');
+$backupsDir = vk_storage_path('backups');
 if (!is_dir($backupsDir)) {
     mkdir($backupsDir, 0755, true); // matches api/backup_actions.php and backup_restore.php's own mode
-    $backupsDir = realpath(__DIR__ . '/../../backups');
 }
+$backupsDir = realpath($backupsDir);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $filename = 'backup_v_' . date('Y-m-d_H-i-s') . '.sql';

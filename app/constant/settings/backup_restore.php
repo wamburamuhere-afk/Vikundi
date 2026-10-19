@@ -14,7 +14,7 @@ if (!isAdmin()) {
     exit;
 }
 
-$backupsDir = ROOT_DIR . '/backups/';
+$backupsDir = vk_storage_path('backups') . '/';
 if (!is_dir($backupsDir)) mkdir($backupsDir, 0755, true);
 
 $autoBackupNotice = '';

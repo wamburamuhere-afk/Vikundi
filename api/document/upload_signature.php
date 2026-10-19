@@ -27,7 +27,7 @@ try {
         throw new Exception('Invalid file type. Only PNG and JPEG are allowed.');
     }
 
-    $userDir = ROOT_DIR . '/uploads/signatures/' . $userId;
+    $userDir = vk_storage_path('uploads/signatures/' . $userId);
     if (!is_dir($userDir)) {
         mkdir($userDir, 0777, true);
     }

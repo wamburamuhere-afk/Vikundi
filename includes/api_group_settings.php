@@ -112,6 +112,12 @@ if (!function_exists('vk_group_settings_writable')) {
             'cycle_type'                => 'enum:monthly,weekly',
             'monthly_contribution'      => 'money',
             'entrance_fee'              => 'money',
+            'share_price'               => 'money',
+            'shares_from_monthly'       => 'enum:on,off',
+            'social_fund_amount'        => 'money',
+            'membership_deposit_amount' => 'money',
+            'financial_year_start_month' => 'int',
+            'dividend_distribute_pct'   => 'money',
             'meeting_absence_fine'      => 'money',
             'fine_late_meeting'         => 'money',
             'fine_late_contribution'    => 'money',
@@ -142,6 +148,7 @@ if (!function_exists('vk_group_settings_defaults')) {
             'max_members'      => '30',
             'deadline_day'     => '15',
             'auto_termination' => 'off',
+            'shares_from_monthly' => 'off',
         ];
     }
 }
@@ -264,7 +271,9 @@ if (!function_exists('vk_group_settings_may_edit')) {
 
 if (!function_exists('vk_group_settings_default_logo')) {
     /**
-     * The logo shown when the group has not uploaded one.
+     * The logo shown when the group has not uploaded one: a neutral Vikundi
+     * mark (until 2026-10-19 this file was another company's logo, CELLI group,
+     * which every new group showed).
      *
      * The file on disk was committed as LOGO1.png while eighteen call sites ask
      * for 'logo1.png'. Windows and macOS do not care; the Linux servers do, so

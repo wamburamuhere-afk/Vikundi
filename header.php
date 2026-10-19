@@ -554,6 +554,14 @@ try {
                                 <li><a class="dropdown-item" href="<?= getUrl('customers') ?>"><i class="bi bi-people text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Wanachama' : 'Members' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('dormant_members') ?>"><i class="bi bi-person-x text-warning me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Wanachama Wasiofanya Kazi' : 'Dormant Members' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('meetings') ?>"><i class="bi bi-calendar-event text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mikutano' : 'Meetings' ?></a></li>
+                                <?php
+                                // The Secretary may open and save Group Settings (group_settings.php and
+                                // save_group_settings.php both allow it), but the only link to it sits in
+                                // the Administration menu, which is admin-only. Give them their own.
+                                require_once __DIR__ . '/includes/roles.php';
+                                if (in_array($user_role_lower, ['secretary', 'katibu'], true) && !vk_role_is_admin($_SESSION['role_id'] ?? null, $user_role)): ?>
+                                <li><a class="dropdown-item" href="<?= getUrl('group_settings') ?>"><i class="bi bi-gear-fill text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mipangilio ya Kikundi' : 'Group Settings' ?></a></li>
+                                <?php endif; ?>
                                 <li><a class="dropdown-item" href="<?= getUrl('voting') ?>"><i class="bi bi-check2-square me-2" style="color:#6f42c1;"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Kura' : 'Voting' ?></a></li>
                                 <?php if (canView('leadership_applications')): ?>
                                 <li><a class="dropdown-item" href="<?= getUrl('leadership_application') ?>"><i class="bi bi-person-badge me-2" style="color:#6f42c1;"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Maombi ya Uongozi' : 'Leadership Applications' ?></a></li>
@@ -575,11 +583,19 @@ try {
                             <ul class="dropdown-menu shadow border-0 mt-0" aria-labelledby="financeDropdown">
                                 <li><h6 class="dropdown-header"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Usimamizi wa Fedha' : 'Financial Management' ?></h6></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('transactions') ?>"><i class="bi bi-arrow-left-right text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Miamala' : 'Transactions' ?></a></li>
+                                <?php if (canView('mkoba_reconciliation')): // leadership page; a Member following the link was bounced to "unauthorized" ?>
                                 <li><a class="dropdown-item" href="<?= getUrl('mkoba_reconciliation') ?>"><i class="bi bi-clipboard-check text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Ulinganishaji wa M-Koba' : 'M-Koba Reconciliation' ?></a></li>
+                                <?php endif; ?>
                                 <li><a class="dropdown-item" href="<?= getUrl('manage_contributions') ?>"><i class="bi bi-cash-stack text-success me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Michango' : 'Contributions' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('expenses') ?>"><i class="bi bi-cart-dash-fill text-danger me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Matumizi' : 'Expenses' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('petty_cash') ?>"><i class="bi bi-receipt text-info me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Miamala ya Vocha' : 'Petty Cash Voucher' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('budget') ?>"><i class="bi bi-calculator text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Bajeti' : 'Budget' ?></a></li>
+                                <?php if (canView('approve_loan') || canView('disburse_loan')): ?>
+                                <li><a class="dropdown-item" href="<?= getUrl('loans') ?>"><i class="bi bi-bank text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mikopo' : 'Loans' ?></a></li>
+                                <?php endif; ?>
+                                <?php if (canView('dividends')): ?>
+                                <li><a class="dropdown-item" href="<?= getUrl('dividends') ?>"><i class="bi bi-pie-chart-fill text-success me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Gawio' : 'Dividends' ?></a></li>
+                                <?php endif; ?>
                                 <?php if (canView('manage_fines')): ?>
                                 <li><a class="dropdown-item" href="<?= getUrl('manage_fines') ?>"><i class="bi bi-cash-coin text-danger me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Faini' : 'Fines' ?></a></li>
                                 <?php endif; ?>
@@ -593,6 +609,7 @@ try {
                                 <li><a class="dropdown-item" href="<?= getUrl('member_transactions') ?>"><i class="bi bi-arrow-left-right text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Miamala Yangu' : 'My Transactions' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('my_mkoba_reconciliation') ?>"><i class="bi bi-clipboard-check text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Ulinganishaji wa M-Koba Wangu' : 'My M-Koba Reconciliation' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('my_fines') ?>"><i class="bi bi-person-badge text-warning me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Faini Zangu' : 'My Fines' ?></a></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('my_loans') ?>"><i class="bi bi-bank text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mikopo Yangu' : 'My Loans' ?></a></li>
                                 <?php endif; ?>
                             </ul>
                         </li>
@@ -662,6 +679,13 @@ try {
                                 <i class="bi bi-graph-up"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Ripoti' : 'Reports' ?>
                             </a>
                             <ul class="dropdown-menu shadow border-0 mt-0" aria-labelledby="reportsDropdown">
+                                <?php if (canView('approve_loan') || canView('disburse_loan') || canView('dividends')): $vk_rsw = ($_SESSION['preferred_language'] ?? 'en') === 'sw'; ?>
+                                <li><h6 class="dropdown-header"><?= $vk_rsw ? 'Mikopo, Hisa na Mfuko wa Jamii' : 'Loans, Shares & Social Fund' ?></h6></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('reports/loans') ?>"><i class="bi bi-bank me-2 text-primary"></i> <?= $vk_rsw ? 'Mikopo Yote' : 'Loan Portfolio' ?></a></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('reports/loan_repayments') ?>"><i class="bi bi-cash-coin me-2 text-success"></i> <?= $vk_rsw ? 'Mapato na Marejesho ya Mikopo' : 'Loan Income & Repayments' ?></a></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('reports/shares') ?>"><i class="bi bi-pie-chart me-2 text-primary"></i> <?= $vk_rsw ? 'Daftari la Hisa' : 'Shares Register' ?></a></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('reports/social_fund') ?>"><i class="bi bi-heart me-2 text-danger"></i> <?= $vk_rsw ? 'Taarifa ya Mfuko wa Jamii' : 'Social Fund Statement' ?></a></li>
+                                <?php endif; ?>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><h6 class="dropdown-header"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Usimamizi wa Fedha' : 'Financial Management' ?></h6></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('expense_report') ?>"><i class="bi bi-cash-coin me-2 text-danger"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mchanganuo wa Matumizi' : 'Expense Summary' ?></a></li>
@@ -674,7 +698,14 @@ try {
                         </li>
                         
                         <!-- Settings & Admin -->
-                        <?php if (in_array($user_role_lower, ['admin', 'mwenyekiti', 'chairman'])): ?>
+                        <?php
+                        // Whoever isAdmin() treats as an admin sees the Administration menu. This
+                        // used to be a hand-written list — ['admin','mwenyekiti','chairman'] — that
+                        // left out 'chairperson', the exact role name seed_vicoba_roles.php creates,
+                        // so the head of a group had admin access to every page and no link to any
+                        // of them. Same defect group_settings.php and dashboard.php had.
+                        require_once __DIR__ . '/includes/roles.php';
+                        if (vk_role_is_admin($_SESSION['role_id'] ?? null, $user_role)): ?>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle px-3" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="bi bi-sliders"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Utawala (Admin)' : 'Administration' ?>

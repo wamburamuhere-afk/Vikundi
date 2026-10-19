@@ -24,6 +24,10 @@ $migrations = [
     'create_voting_tables.php',     // voting tables + 'voting'/'manage_voting' permissions (before role seed)
     'grant_voting_permission.php',  // backfill 'voting' (view) for Secretary/Treasurer, same gap manage_voting already covered
     'add_contributions_permission.php', // register 'manage_contributions' (the code has always gated on it; the row never existed)
+    'create_vicoba_dividend_tables.php', // dividend runs + lines, and the 'dividends' permission (before role seed)
+    'add_core_page_permissions.php', // the eleven everyday page keys that only ever came from the original SQL dump (absent on a fresh install; before role seed)
+    'add_death_expenses_permission.php', // register 'death_expenses' where missing (mirrored from 'expenses'); no-op where the key exists (before role seed)
+    'add_loan_permissions.php',     // register 'approve_loan' / 'disburse_loan' (absent on a fresh install) + leadership grants (before role seed)
     'seed_vicoba_roles.php',        // the four VICOBA system roles + remove BMS roles
     'add_transaction_fields.php',   // contributions.receipt_number + account (Transactions form)
     'fix_death_expense_schema.php', // widen deceased_type, add 'dormant' + customers.is_active
@@ -53,6 +57,8 @@ $migrations = [
     'grant_mkoba_reconciliation_to_leadership.php', // backfill 'mkoba_reconciliation' grant for Secretary/Treasurer on existing DBs
     'add_petty_cash_permission.php', // register 'petty_cash' (mirrored from 'expenses'); the code has gated on it since it was written, the row never existed
     'add_budget_permission.php', // register 'budget' (leadership-only); the code has gated on it since it was written, the row never existed
+    'add_fund_bucket_contribution_types.php', // contributions.contribution_type += share / social_fund / deposit (fund buckets)
+    'create_vicoba_loan_tables.php', // VICOBA loans module's own InnoDB tables (types, loans, guarantors, installments, payments)
     'add_member_payouts_permission.php', // register 'member_payouts' (Admin/Chairperson/Secretary — no Treasurer); normalizes record_payout.php's role-name array into RBAC
 ];
 

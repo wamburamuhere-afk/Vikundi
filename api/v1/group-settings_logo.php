@@ -27,6 +27,7 @@
  * reference it by name, and deleting the file would blank the logo on documents
  * that were already issued.
  */
+require_once __DIR__ . '/../../includes/tenant.php'; // vk_storage_path(): this group's file storage
 
 require_once __DIR__ . '/../../includes/api_bootstrap.php';
 require_once __DIR__ . '/../../includes/api_group_settings.php';
@@ -59,7 +60,7 @@ if (!in_array($ext, vk_group_settings_logo_types(), true)) {
 // original at full size is a slow load on every page that renders it.
 [$stored, $err] = vk_api_store_upload(
     $_FILES['logo'],
-    dirname(__DIR__, 2) . '/assets/images',
+    vk_storage_path('assets/images'), // the group's storage on the shared server; index.php serves it
     'group_logo',
     2097152
 );
