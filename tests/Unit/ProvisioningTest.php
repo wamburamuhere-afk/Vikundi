@@ -241,4 +241,15 @@ class ProvisioningTest extends TestCase
         $yml = (string) file_get_contents(dirname(__DIR__, 2) . '/.github/workflows/deploy.yml');
         $this->assertStringNotContainsString('/var/www/demo.vikundi.bjptechnologies.co.tz', $yml);
     }
+
+    public function testTheFirstChairpersonAlwaysHasAnEmailSoTheirMemberRecordIsFound(): void
+    {
+        // The app joins users to customers on email; an empty one hid the
+        // first Chairperson's whole profile (UKUU, 2026-10-19).
+        $this->assertSame('fmtey@ukuu.' . self::BASE, vk_prov_chair_email(null, 'fmtey', 'ukuu', self::BASE));
+        $this->assertSame('fmtey@ukuu.' . self::BASE, vk_prov_chair_email('  ', 'FMtey', 'ukuu', self::BASE));
+        $this->assertSame('chair@example.co.tz', vk_prov_chair_email(' Chair@Example.co.tz ', 'fmtey', 'ukuu', self::BASE));
+        $src = (string) file_get_contents(dirname(__DIR__, 2) . '/bin/provision_tenant.php');
+        $this->assertStringContainsString('$email = vk_prov_chair_email(', $src);
+    }
 }
