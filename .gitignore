@@ -51,3 +51,6 @@ includes/ai_secret.key
 
 # M-Koba member data export (real member PII — never commit)
 /M-Koba*.csv
+
+# Member import files hold real names and phone numbers: never commit them.
+*.import.csv
