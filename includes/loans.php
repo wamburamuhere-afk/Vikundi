@@ -264,6 +264,34 @@ if (!function_exists('vl_respond_guarantee')) {
     }
 }
 
+if (!function_exists('vl_record_guarantee_for')) {
+    /**
+     * A leader records a guarantor's answer on their behalf, for groups whose
+     * members do not sign in (UKUU: only the leaders have logins). The leader
+     * must say how the guarantor agreed (e.g. signed the paper form); that note
+     * is kept on the guarantee with the leader's name, and the action is
+     * audit-logged under the leader. Never on the leader's own loan.
+     */
+    function vl_record_guarantee_for(PDO $pdo, int $loanId, int $guarantorCustomerId, bool $accept, string $note, int $userId, string $leaderName, bool $isSw = false): array
+    {
+        if (vl_is_own_loan($pdo, $loanId, $userId)) {
+            return ['ok' => false, 'message' => $isSw ? 'Huwezi kurekodi udhamini kwenye mkopo wako mwenyewe.' : 'You cannot record a guarantee on your own loan.'];
+        }
+        $note = trim(preg_replace('/\s+/u', ' ', $note));
+        if (mb_strlen($note) < 3) {
+            return ['ok' => false, 'message' => $isSw ? 'Andika jinsi mdhamini alivyokubali, mfano: amesaini fomu.' : 'Write how the guarantor agreed, e.g. signed the paper form.'];
+        }
+        $res = vl_respond_guarantee($pdo, $loanId, $guarantorCustomerId, $accept,
+            mb_substr(($isSw ? 'Imerekodiwa na ' : 'Recorded by ') . trim($leaderName) . ': ' . $note, 0, 255), $isSw);
+        if ($res['ok']) {
+            $res['message'] = $accept
+                ? ($isSw ? 'Imerekodiwa: mdhamini amekubali.' : 'Recorded: the guarantor has accepted.')
+                : ($isSw ? 'Imerekodiwa: mdhamini amekataa. Ombi la mkopo limeghairiwa.' : 'Recorded: the guarantor has declined. The application is cancelled.');
+        }
+        return $res;
+    }
+}
+
 if (!function_exists('vl_is_own_loan')) {
     /** Is this loan the acting user's own? Nobody decides or pays out their own loan. */
     function vl_is_own_loan(PDO $pdo, int $loanId, int $userId): bool

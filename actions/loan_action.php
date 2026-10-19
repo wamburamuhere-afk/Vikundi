@@ -77,6 +77,25 @@ try {
             }
             break;
 
+        case 'respond_for':
+            // A leader answers for a guarantor who does not sign in, saying how they agreed.
+            if (!canApprove('approve_loan')) {
+                $fail($denied, 403);
+            }
+            $decision = (string) ($_POST['decision'] ?? '');
+            if (!in_array($decision, ['accept', 'decline'], true)) {
+                $fail($is_sw ? 'Chagua kukubali au kukataa.' : 'Choose accept or decline.');
+            }
+            $leader = $pdo->prepare("SELECT TRIM(CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, ''))) FROM users WHERE user_id = ?");
+            $leader->execute([$uid]);
+            $gid = $int('guarantor_customer_id');
+            $res = vl_record_guarantee_for($pdo, $loan_id, $gid, $decision === 'accept', (string) ($_POST['note'] ?? ''), $uid,
+                                           (string) ($leader->fetchColumn() ?: ('user #' . $uid)), $is_sw);
+            if ($res['ok']) {
+                logUpdate('Loans', 'Guarantee ' . ($decision === 'accept' ? 'accepted' : 'declined') . " for guarantor #$gid, recorded by a leader", "LOAN#$loan_id");
+            }
+            break;
+
         case 'cancel':
             if ($me === null) {
                 $fail($no_member, 403);
