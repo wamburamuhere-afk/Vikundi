@@ -1,33 +1,26 @@
-name: Deploy to Production
+name: Deploy
 
+# main    → the live groups (shared folder /srv/vikundi/app: UKUU, demo, Wise
+#           Wallet, the super-admin panel). Every group's database is migrated.
+# develop → the test site, vikundi.bjptechnologies.co.tz, where changes are
+#           checked before they are released to main.
+# The branch that was pushed is the branch that is deployed: a target never
+# receives code from the other branch.
 on:
   push:
     branches:
       - main
+      - develop
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     strategy:
-      # Never let one site's failure cancel the other's deploy. If the shared
-      # folder breaks, production must still go out (and vice versa) — the red
-      # job tells us which one needs attention.
       fail-fast: false
-      # One at a time: both targets are the same box and share composer's cache
-      # directory, so parallel runs can race on it. Production goes first.
       max-parallel: 1
       matrix:
-        include:
-          - name: production
-            path: /var/www/vikundi.bjptechnologies.co.tz/public_html
-          # The shared multi-group folder (includes/tenant_config.php). One pull
-          # updates every group on it; bin/migrate_all.php migrates each group's
-          # own database. Skipped until the server has been set up for it.
-          # The demo site lives here as the group `demo` (moved 2026-10-18).
-          - name: shared
-            path: /srv/vikundi/app
-            mode: shared
+        include: ${{ fromJSON(github.ref == 'refs/heads/main' && '[{"name":"groups","path":"/srv/vikundi/app","mode":"shared"}]' || '[{"name":"test-site","path":"/var/www/vikundi.bjptechnologies.co.tz/public_html","mode":"single"}]') }}
 
     name: Deploy ${{ matrix.name }}
 
@@ -37,16 +30,17 @@ jobs:
         env:
           SITE_NAME: ${{ matrix.name }}
           SITE_PATH: ${{ matrix.path }}
-          SITE_MODE: ${{ matrix.mode || 'single' }}
+          SITE_MODE: ${{ matrix.mode }}
+          SITE_BRANCH: ${{ github.ref_name }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          envs: SITE_NAME,SITE_PATH,SITE_MODE
+          envs: SITE_NAME,SITE_PATH,SITE_MODE,SITE_BRANCH
           script: |
             set -e
 
-            echo "==> Target: $SITE_NAME ($SITE_PATH)"
+            echo "==> Target: $SITE_NAME ($SITE_PATH) from $SITE_BRANCH"
 
             # Fail loudly rather than skipping. A silent skip is how the live
             # site sat on stale code before — an absent or non-git directory is
@@ -66,14 +60,16 @@ jobs:
               exit 1
             fi
 
-            echo "==> Force-syncing working tree to origin/main"
+            echo "==> Force-syncing working tree to origin/$SITE_BRANCH"
             # A plain 'git pull' silently fails when the server tree is dirty,
-            # leaving the live site on stale code (e.g. missing SMS Settings).
-            # Force it to match main. config.php and vendor/ are gitignored,
-            # so they are preserved by reset --hard — which is what keeps each
-            # site pointed at its own database.
-            git fetch origin main
-            git reset --hard origin/main
+            # leaving the site on stale code (e.g. missing SMS Settings). Force
+            # it to match the pushed branch; checkout -B also moves a checkout
+            # that was on the other branch. config.php and vendor/ are
+            # gitignored, so they survive — which is what keeps each site
+            # pointed at its own database.
+            git fetch origin "$SITE_BRANCH"
+            git checkout -q -B "$SITE_BRANCH" "origin/$SITE_BRANCH"
+            git reset --hard "origin/$SITE_BRANCH"
 
             echo "==> Installing PHP dependencies (PHPMailer etc.)"
             if command -v composer >/dev/null 2>&1; then
