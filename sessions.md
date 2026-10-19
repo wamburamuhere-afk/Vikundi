@@ -4,6 +4,21 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-19 — Neutral default logo (no more CELLI)
+
+**Branch:** `fix/neutral-default-logo`
+**Developer:** Claude Code / Jabir Mussa
+
+**Found while testing the super-admin panel:** a brand-new group (`jaribio2`) showed the **CELLI group** logo. `assets/images/logo1.png`, the fallback for every group that has not uploaded a logo (login, header, printouts, PDFs, the mobile API's logo URL; about 20 call sites), was another company's logo.
+
+**Fix:** replaced the file's content with a neutral Vikundi mark (three members around a coin, "Vikundi", "Group savings & loans"), 593×200 PNG on white (no alpha, so TCPDF needs neither GD nor Imagick for it). Same file name, so no call site changes. Groups that uploaded their own logo are unaffected.
+
+**Tests:** 1 new in `GroupLogoTest` (not the old file's hash; a wide PNG). Full suite passing.
+
+**Takes effect:** shared server (`demo`, new groups) on the next `git pull` of develop there; the old production site at the next develop → main release.
+
+---
+
 ## Session — 2026-10-18 — Super-admin panel, PR 3 of 3: the actions, and email on failure
 
 **Branch:** `feat/superadmin-panel-write`

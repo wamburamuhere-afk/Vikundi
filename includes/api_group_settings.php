@@ -271,7 +271,9 @@ if (!function_exists('vk_group_settings_may_edit')) {
 
 if (!function_exists('vk_group_settings_default_logo')) {
     /**
-     * The logo shown when the group has not uploaded one.
+     * The logo shown when the group has not uploaded one: a neutral Vikundi
+     * mark (until 2026-10-19 this file was another company's logo, CELLI group,
+     * which every new group showed).
      *
      * The file on disk was committed as LOGO1.png while eighteen call sites ask
      * for 'logo1.png'. Windows and macOS do not care; the Linux servers do, so
