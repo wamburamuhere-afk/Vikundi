@@ -198,3 +198,17 @@ if (!function_exists('vk_prov_certbot_command')) {
         return [true, ($isRoot ? '' : 'sudo -n ') . $cmd];
     }
 }
+
+if (!function_exists('vk_prov_chair_email')) {
+    /**
+     * The first Chairperson's email. The app links a login to its member record
+     * by email (profile, My Settings, approvals, the app's profile), so it must
+     * never be empty: without one given, use the same automatic address every
+     * imported or added member gets, <username>@<subdomain>.<base>.
+     */
+    function vk_prov_chair_email(?string $given, string $username, string $sub, string $base): string
+    {
+        $given = strtolower(trim((string) $given));
+        return $given !== '' ? $given : strtolower($username) . '@' . strtolower("$sub.$base");
+    }
+}

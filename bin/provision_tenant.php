@@ -348,7 +348,8 @@ try {
         }
         $username = (string) ($args['chair-username'] ?? vk_prov_username($first, $last));
         $chairPassword = vk_prov_secret(9);
-        $email = isset($args['chair-email']) ? (string) $args['chair-email'] : null;
+        // Never empty: the app finds a member's record by the login's email.
+        $email = vk_prov_chair_email(isset($args['chair-email']) ? (string) $args['chair-email'] : null, $username, $sub, $base);
         $tdb->prepare(
             "INSERT INTO users (username, password, email, phone, role, user_role, role_id, status, is_active, is_admin,
                                 first_name, last_name, language, preferred_language, created_at)

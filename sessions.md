@@ -4,6 +4,20 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-19 — First Chairperson always gets an email (UKUU profile was empty)
+
+**Branch:** `fix/chair-email-link`
+**Developer:** Claude Code / Jabir Mussa
+
+**Found on the server:** after the UKUU import, Florian Mtey's profile showed no number, parents, spouse or children although his member record held them. Root cause: the app links a login to its member record **by email** (`LEFT JOIN customers c ON LOWER(u.email) = LOWER(c.email)`; also My Settings, the app's profile API, approvals, password reset, ~11 places). The panel's create form leaves the Chairperson email optional, and `bin/provision_tenant.php` stored NULL on both rows, so the join found nothing. Imported members were fine (the import gives both rows the same automatic email).
+
+**Fixed on the server** (by hand): Florian's login and member record set to `fmtey@ukuu.vikundi.bjptechnologies.co.tz`.
+**Fix in code:** `vk_prov_chair_email()`: without a given email, the first Chairperson gets `<username>@<subdomain>.<base>` on both rows, like every other member.
+
+**Tests:** 1 new in `ProvisioningTest`. Full suite 2,695 passing.
+
+---
+
 ## Session — 2026-10-19 — Member list import (UKUU Msakuzi, and any group after)
 
 **Branch:** `feat/member-import`
