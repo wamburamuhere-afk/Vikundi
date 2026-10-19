@@ -4,6 +4,23 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-19 — Deploy: main → the live groups, develop → the test site
+
+**Branch:** `chore/deploy-main-groups-develop-test`
+**Developer:** Claude Code / Jabir Mussa
+
+**Decision (Dutch):** the live groups follow `main`; `develop` deploys to `vikundi.bjptechnologies.co.tz`, which becomes the test site (its old data becomes test data). Until now every push to `main` would have reset the shared groups folder to `main`, which lacked the group lookup.
+
+**Change:** `.github/workflows/deploy.yml` triggers on `main` and `develop`; the branch picks the single target (`main` → `groups`, `/srv/vikundi/app`, `bin/migrate_all.php`; `develop` → `test-site`, the old site's folder, `database/migrate.php`). The pushed branch is what is checked out (`git checkout -B $SITE_BRANCH origin/$SITE_BRANCH`), so neither target ever receives the other branch's code.
+
+**Order on the server:** back up the old site's database (and every group) BEFORE merging this: GitHub runs the workflow file from the pushed branch, so the merge into `develop` deploys `develop` to the test site at once. Then the one-time release `develop` → `main`.
+
+**Caveat:** the test site runs as a single site, so group-only paths (host lookup, per-group storage, panel, worker) are first exercised on production; check a test group after each release.
+
+**Tests:** `ProvisioningTest` deploy test rewritten for the branch → target rules. Full suite 2,695 passing.
+
+---
+
 ## Session — 2026-10-19 — First Chairperson always gets an email (UKUU profile was empty)
 
 **Branch:** `fix/chair-email-link`

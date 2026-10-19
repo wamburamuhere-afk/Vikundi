@@ -134,17 +134,24 @@ class ProvisioningTest extends TestCase
         $this->assertStringNotContainsString("\$args['db-password']", $src);
     }
 
-    public function testTheDeployUpdatesTheSharedFolderAndMigratesEveryGroup(): void
+    public function testMainDeploysTheGroupsAndDevelopDeploysTheTestSite(): void
     {
         $yml = (string) file_get_contents(dirname(__DIR__, 2) . '/.github/workflows/deploy.yml');
 
-        $this->assertStringContainsString('path: /srv/vikundi/app', $yml);
+        // Both branches trigger; the branch picks the one target it may reach.
+        $this->assertMatchesRegularExpression('/branches:\s*- main\s*- develop/', $yml);
+        $this->assertStringContainsString(
+            "github.ref == 'refs/heads/main' && '[{\"name\":\"groups\",\"path\":\"/srv/vikundi/app\",\"mode\":\"shared\"}]' || '[{\"name\":\"test-site\",\"path\":\"/var/www/vikundi.bjptechnologies.co.tz/public_html\",\"mode\":\"single\"}]'",
+            $yml
+        );
+        // The pushed branch, and only it, is what lands on the target.
+        $this->assertStringContainsString('SITE_BRANCH: ${{ github.ref_name }}', $yml);
+        $this->assertStringContainsString('git checkout -q -B "$SITE_BRANCH" "origin/$SITE_BRANCH"', $yml);
+        $this->assertStringNotContainsString('origin/main', $yml);
+        // Every group is migrated on the shared folder; the test site as a single site.
         $this->assertStringContainsString('php bin/migrate_all.php', $yml);
-        // Merging before the server is set up must not break the existing deploys.
-        $this->assertMatchesRegularExpression('/SITE_MODE" = "shared" \]; then\s*echo "==> \$SITE_PATH is not set up[^\n]*\n\s*exit 0/', $yml);
-        // The two existing sites keep deploying exactly as before.
-        $this->assertStringContainsString('path: /var/www/vikundi.bjptechnologies.co.tz/public_html', $yml);
         $this->assertStringContainsString('php database/migrate.php || echo "migrate step reported issues"', $yml);
+        $this->assertMatchesRegularExpression('/SITE_MODE" = "shared" \]; then\s*echo "==> \$SITE_PATH is not set up[^\n]*\n\s*exit 0/', $yml);
     }
 
     public function testTheNightlyBackupUsesTheAppsOwnAutoBackupNamingAndPruning(): void
