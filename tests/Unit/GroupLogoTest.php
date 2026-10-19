@@ -253,4 +253,15 @@ final class GroupLogoTest extends TestCase
         $this->assertNotFalse($store);
         $this->assertLessThan($store, $gate, 'The file is saved before the caller is checked.');
     }
+
+    public function testTheDefaultLogoIsTheNeutralVikundiMarkNotAnotherCompanysLogo(): void
+    {
+        $file = dirname(__DIR__, 2) . '/assets/images/logo1.png';
+        $this->assertFileExists($file);
+        // sha256 of the CELLI group logo that used to sit here.
+        $this->assertNotSame('12016f2d54351072e096bb11d8fafac47d86a5238f3a7d94c3fde7d70dd0342c', hash_file('sha256', $file));
+        [$w, $h, $type] = getimagesize($file);
+        $this->assertSame(IMAGETYPE_PNG, $type);
+        $this->assertGreaterThan($h, $w, 'a wide mark, like the one it replaces');
+    }
 }
