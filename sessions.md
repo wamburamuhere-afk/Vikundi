@@ -4,6 +4,24 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-19 — A leader can record a guarantor's answer (members who do not sign in)
+
+**Branch:** `feat/leader-records-guarantee`
+**Developer:** Claude Code / Jabir Mussa
+
+**Why:** a loan with guarantors waits at "Awaiting guarantors" until each guarantor accepts from their own account (`vl_respond_guarantee`, keyed on the caller). At UKUU only the 6 leaders sign in, so every loan needing a guarantor would be stuck. Dutch chose: a leader records the answer on the guarantor's behalf.
+
+**Change:**
+- `includes/loans.php` `vl_record_guarantee_for()`: refuses the leader's own loan and an empty note (≥ 3 characters: how the guarantor agreed, e.g. signed the paper form); then goes through `vl_respond_guarantee`, so the same status checks apply; the note is stored as "Recorded by <leader>: <note>".
+- `actions/loan_action.php` `respond_for`: leaders only (`canApprove('approve_loan')`), audit-logged.
+- `app/bms/loans/loan_details.php`: on a loan awaiting guarantors, leaders see `Record acceptance` / `Record decline` beside each waiting guarantor (not their own row); the note is shown under the guarantor. The member's name goes into the dialog as text (`titleText`), never HTML.
+
+**Verified locally** (scratch DB, restored after): a leader recorded the second guarantor's acceptance with a note; the loan moved to Awaiting approval; the note shows "Recorded by Amina Mollel: …"; the activity log has the entry under the leader.
+
+**Tests:** 3 new in `LoanWorkflowTest`, audit-log count updated. Full suite 2,698 passing.
+
+---
+
 ## Session — 2026-10-19 — Deploy: main → the live groups, develop → the test site
 
 **Branch:** `chore/deploy-main-groups-develop-test`
