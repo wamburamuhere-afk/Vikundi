@@ -80,10 +80,10 @@ class LoanWorkflowTest extends TestCase
 
     public function testEveryStateChangeIsAuditLogged(): void
     {
-        // apply and repay -> logCreate; respond, cancel, approve/reject (one
-        // shared call) and disburse -> logUpdate.
+        // apply and repay -> logCreate; respond, respond_for, cancel,
+        // approve/reject (one shared call) and disburse -> logUpdate.
         $this->assertSame(2, substr_count(self::$action, 'logCreate('));
-        $this->assertSame(4, substr_count(self::$action, 'logUpdate('));
+        $this->assertSame(5, substr_count(self::$action, 'logUpdate('));
     }
 
     // ── the service's guarantees ─────────────────────────────────────────────
@@ -191,5 +191,33 @@ class LoanWorkflowTest extends TestCase
         $modal = file_get_contents(__DIR__ . '/../../app/bms/loans/_apply_modal.php');
         $this->assertStringNotContainsString('interest_rate /', $modal);
         $this->assertStringContainsString('api/loan_preview', $modal);
+    }
+
+    // ── a leader records a guarantor's answer (members who do not sign in) ──
+    public function testOnlyALeaderMayRecordAGuarantorsAnswer(): void
+    {
+        $case = substr(self::$action, strpos(self::$action, "case 'respond_for':"), 900);
+        $this->assertStringContainsString("if (!canApprove('approve_loan')) {", $case);
+        $this->assertStringContainsString('vl_record_guarantee_for($pdo, $loan_id, $gid,', $case);
+    }
+
+    public function testRecordingForAGuarantorNeedsANoteAndNeverOnTheLeadersOwnLoan(): void
+    {
+        $body = $this->body('vl_record_guarantee_for');
+        $this->assertStringContainsString('if (vl_is_own_loan($pdo, $loanId, $userId)) {', $body);
+        $this->assertStringContainsString('if (mb_strlen($note) < 3) {', $body);
+        // It goes through the guarantor's own path, so the same status checks apply.
+        $this->assertStringContainsString('vl_respond_guarantee($pdo, $loanId, $guarantorCustomerId, $accept,', $body);
+        $this->assertStringContainsString("'Recorded by '", $body);
+        $this->assertLessThan(strpos($body, 'vl_respond_guarantee('), strpos($body, 'vl_is_own_loan('), 'checks come before any change');
+    }
+
+    public function testTheLoanPageOffersItToLeadersOnlyAndShowsNamesAsText(): void
+    {
+        $page = (string) file_get_contents(__DIR__ . '/../../app/bms/loans/loan_details.php');
+        $this->assertStringContainsString("\$can_record_for = !\$is_own && \$loan['status'] === 'pending_guarantors' && canApprove('approve_loan');", $page);
+        $this->assertStringContainsString('<?= htmlspecialchars($g[\'note\']) ?>', $page);
+        // The member's name goes into the dialog as text, never as HTML.
+        $this->assertStringContainsString("titleText: decision === 'accept'", $page);
     }
 }

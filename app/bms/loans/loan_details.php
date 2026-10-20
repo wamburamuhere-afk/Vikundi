@@ -57,6 +57,8 @@ foreach ($guarantors as $g) {
 // What this viewer may do right now. The server re-checks every one of these.
 $can_respond  = $my_guarantee && $my_guarantee['status'] === 'pending' && $loan['status'] === 'pending_guarantors';
 $can_cancel   = $is_own && in_array($loan['status'], ['pending_guarantors', 'pending'], true);
+// A leader may record a guarantor's answer for them (members who do not sign in).
+$can_record_for = !$is_own && $loan['status'] === 'pending_guarantors' && canApprove('approve_loan');
 $can_decide   = !$is_own && $loan['status'] === 'pending' && canApprove('approve_loan');
 $can_disburse = !$is_own && $loan['status'] === 'approved' && canCreate('disburse_loan');
 $can_repay    = !$is_own && $loan['status'] === 'disbursed' && canCreate('disburse_loan');
@@ -192,9 +194,18 @@ $penalty = match ($loan['penalty_type']) {
                                 'declined' => [$t('Declined', 'Amekataa'), 'danger'],
                                 default    => [$t('Waiting', 'Anasubiriwa'), 'warning'],
                             }; ?>
-                        <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
-                            <span><?= htmlspecialchars($g['name']) ?></span>
-                            <span class="badge bg-<?= $g_color ?>"><?= $g_label ?></span>
+                        <li class="list-group-item px-0">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span><?= htmlspecialchars($g['name']) ?></span>
+                                <span class="badge bg-<?= $g_color ?>"><?= $g_label ?></span>
+                            </div>
+                            <?php if (!empty($g['note'])): ?><div class="small text-muted mt-1"><?= htmlspecialchars($g['note']) ?></div><?php endif; ?>
+                            <?php if ($can_record_for && $g['status'] === 'pending' && (int) $g['guarantor_customer_id'] !== (int) $customer_id): ?>
+                            <div class="mt-2 d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-success rounded-pill guarantorForBtn" data-decision="accept" data-guarantor="<?= (int) $g['guarantor_customer_id'] ?>" data-name="<?= htmlspecialchars($g['name']) ?>"><i class="bi bi-check-lg me-1"></i><?= $t('Record acceptance', 'Rekodi kukubali') ?></button>
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill guarantorForBtn" data-decision="decline" data-guarantor="<?= (int) $g['guarantor_customer_id'] ?>" data-name="<?= htmlspecialchars($g['name']) ?>"><?= $t('Record decline', 'Rekodi kukataa') ?></button>
+                            </div>
+                            <?php endif; ?>
                         </li>
                         <?php endforeach; ?>
                     </ul>
@@ -384,6 +395,20 @@ $penalty = match ($loan['penalty_type']) {
         const p = prompts[decision || action];
         Swal.fire({ icon: 'question', title: p[0], text: p[1], showCancelButton: true, confirmButtonText: tr('Yes', 'Ndiyo'), cancelButtonText: tr('No', 'Hapana') })
             .then(function (r) { if (r.isConfirmed) send({ action: action, loan_id: loanId, decision: decision }); });
+    });
+
+    // A leader records a guarantor's answer for them, saying how they agreed.
+    $(document).on('click', '.guarantorForBtn', function () {
+        const decision = $(this).data('decision'), gid = $(this).data('guarantor'), name = $(this).data('name');
+        Swal.fire({
+            titleText: decision === 'accept' ? tr('Record that ' + name + ' accepts to guarantee?', 'Rekodi kwamba ' + name + ' amekubali kudhamini?')
+                                         : tr('Record that ' + name + ' declines?', 'Rekodi kwamba ' + name + ' amekataa?'),
+            text: decision === 'accept' ? '' : tr('The loan application will be cancelled.', 'Ombi la mkopo litaghairiwa.'),
+            input: 'text', inputLabel: tr('How did the guarantor agree? (kept on the loan, with your name)', 'Mdhamini alikubali vipi? (huhifadhiwa kwenye mkopo, pamoja na jina lako)'),
+            inputPlaceholder: tr('e.g. signed the paper form on 20 Oct', 'mfano: amesaini fomu tarehe 20 Okt'),
+            showCancelButton: true, confirmButtonText: tr('Record', 'Rekodi'), cancelButtonText: tr('Cancel', 'Ghairi'),
+            inputValidator: v => (v && v.trim().length >= 3) ? undefined : tr('Write how the guarantor agreed.', 'Andika jinsi mdhamini alivyokubali.')
+        }).then(function (r) { if (r.isConfirmed) send({ action: 'respond_for', loan_id: loanId, guarantor_customer_id: gid, decision: decision, note: r.value }); });
     });
 
     $('#disburseForm, #repayForm').on('submit', function (e) { e.preventDefault(); send($(this).serialize()); });
