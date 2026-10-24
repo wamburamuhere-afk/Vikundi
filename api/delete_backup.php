@@ -25,7 +25,7 @@ try {
     $filepath = realpath($backup_dir . $filename);
 
     // Security check - ensure file is in backups folder
-    if (strpos($filepath, realpath($backup_dir)) !== 0) {
+    if ($filepath === false || strpos($filepath, realpath($backup_dir) . DIRECTORY_SEPARATOR) !== 0) {
         throw new Exception('Invalid file path');
     }
 

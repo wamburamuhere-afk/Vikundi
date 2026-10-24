@@ -22,6 +22,32 @@ Options -Indexes -MultiViews
 # Block direct access to internal files
 RewriteRule ^roots\.php$ - [F,L]
 
+# ── Serve only what a browser needs (security fix, 24 Oct 2026) ───────────────
+# The app is deployed as a whole git checkout, so its private files sit inside
+# the web root. Nothing below is ever needed by a browser: refuse it all here,
+# before any rule can hand a request to PHP. These rules must not rely on the
+# server's own config; the app has to be safe on any server.
+#
+# a) Dot-files and folders: .git, .env, .claude, .github, .htaccess ...
+#    (/.well-known/ stays reachable for certificate renewals.)
+RewriteRule (^|/)\.(?!well-known/) - [R=404,L]
+# b) Private folders: backups, data, scripts, tests, tooling, libraries.
+RewriteRule ^(backups|database|bin|deploy|docs|tests|vendor|scripts|includes|core|TCPDF|uploads|sessions|private|storage|logs?|cache|tmp|node_modules)(/|$) - [R=404,L]
+# c) Of the files that exist on disk, serve only static assets and PHP.
+#    Exception: the two member-import templates the app links to.
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteCond %{REQUEST_URI} !\.(css|js|map|png|jpe?g|gif|svg|webp|ico|woff2?|ttf|eot|otf|php)$ [NC]
+RewriteCond %{REQUEST_URI} !(^|/)downloads/customer_import_template\.(csv|xlsx)$ [NC]
+RewriteRule ^ - [R=404,L]
+
+# The same for data and leftover files, without needing mod_rewrite.
+<FilesMatch "(?i)(\.(sql|gz|zip|tar|tgz|7z|bak[0-9]*|old|orig|swp|swo|log|key|pem|crt|env|ini|conf|lock|md|ya?ml|xml|json|sh|py|dist|csv|xlsx?)|~)$">
+    Require all denied
+</FilesMatch>
+<FilesMatch "^customer_import_template\.(csv|xlsx)$">
+    Require all granted
+</FilesMatch>
+
 # The super-admin panel's code is served only by its own site
 # (admin.vikundi..., document root superadmin/public). Never from a group's address.
 RewriteRule ^superadmin(/|$) - [R=404,L]
@@ -84,6 +110,9 @@ RewriteRule ^ index.php [L,QSA]
     php_value session.cookie_path "/"
 </IfModule>
 
-# Custom error pages
-ErrorDocument 404 /404.php
-ErrorDocument 403 /403.php
+# Error pages: short text from Apache itself. They used to point at /404.php
+# and /403.php, which do not exist, so a denied request fell through to PHP's
+# router (index.php) and the denied file was printed with the 403 status still
+# set. A denial must end here, with no body worth reading.
+ErrorDocument 404 "Not Found"
+ErrorDocument 403 "Forbidden"

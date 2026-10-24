@@ -6,6 +6,7 @@ require_once __DIR__ . '/includes/env.php';
 // Where this group's stored files live (single site: the code folder; shared
 // server: the group's own folder). See includes/tenant.php.
 require_once __DIR__ . '/includes/tenant.php';
+require_once __DIR__ . '/includes/route_guard.php'; // vk_route_endpoint_file()
 $__vk_dev = vikundi_is_dev_host($_SERVER['HTTP_HOST'] ?? null);
 error_reporting(E_ALL);
 ini_set('log_errors', '1');
@@ -1362,26 +1363,16 @@ if (!function_exists('handleRoute')) {
             }
         }
 
-        // 2. Fallback: Literal files in root or with .php
-        $possible_files = [
-            ROOT_DIR . '/' . ltrim($clean_uri, '/'),
-            ROOT_DIR . '/' . ltrim($clean_uri, '/') . '.php'
-        ];
-
-        foreach ($possible_files as $f) {
-            if (file_exists($f) && is_file($f)) {
-                $ext = pathinfo($f, PATHINFO_EXTENSION);
-
-                // Allow non-PHP files (assets) OR PHP files that are in internal folders
-                $isInternal = str_contains($uri_no_query, 'actions/') ||
-                              str_contains($uri_no_query, 'ajax/') ||
-                              str_contains($uri_no_query, 'api/');
-
-                if ($ext !== 'php' || $isInternal) {
-                    require_once $f;
-                    return true;
-                }
-            }
+        // 2. Fallback: a PHP endpoint under actions/, ajax/ or api/, named with or
+        //    without its .php. NEVER any other file: require_once would print a
+        //    .sql dump (or run code hidden in an upload) named in the URL. That is
+        //    exactly how Apache's denied requests leaked backups (24 Oct 2026):
+        //    the 403 page was missing, the request fell through to here, and the
+        //    file was included with the 403 status still set.
+        $f = vk_route_endpoint_file($clean_uri, ROOT_DIR);
+        if ($f !== null) {
+            require_once $f;
+            return true;
         }
 
         // 3. REST sub-paths for the mobile API only.

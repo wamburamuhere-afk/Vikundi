@@ -27,7 +27,7 @@ if ($filename === '') {
 $backupsDir = realpath(vk_storage_path('backups'));
 $filepath = $backupsDir ? realpath($backupsDir . '/' . $filename) : false;
 
-if (!$backupsDir || !$filepath || strpos($filepath, $backupsDir) !== 0) {
+if (!$backupsDir || !$filepath || strpos($filepath, $backupsDir . DIRECTORY_SEPARATOR) !== 0) {
     vk_api_error(404, 'not_found', 'No backup was found with that filename.');
 }
 if (!file_exists($filepath) || pathinfo($filepath, PATHINFO_EXTENSION) !== 'sql') {

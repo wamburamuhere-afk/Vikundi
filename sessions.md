@@ -4,6 +4,27 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-24 — SECURITY: database dumps and private files were served over the web
+
+**Branch:** `fix/security-no-file-leak`
+**Developer:** Claude Code / Jabir Mussa
+
+**Reported** (server owner's review, 24 Oct) and **confirmed from outside** (status/size only): `vikundi.bjptechnologies.co.tz/backups/auto_backup_2026-09-16_11-40-10.sql` → **403 with a 1,459,043-byte body** (the old production DB: UKUU members' names, phones, password hashes); `database/*.sql` → 200 on every address incl. ukuu. Also found: `includes/ai_secret.key` (200, test site), `.claude/settings.local.json`, `sessions.md`, `CLAUDE.md`, `composer.lock`, `.github/…`, `deploy/…`, `vendor/…` (200 everywhere).
+
+**Root cause:** `ErrorDocument 403 /403.php` pointed at a missing file, so a denied request fell through to `index.php`; `handleRoute()`'s fallback then `require_once`d any existing non-PHP file named in the URL, printing it with the 403 still set. Worse than reported: `require_once` *executes* PHP inside such a file, so code hidden in an upload in a denied folder would have run.
+
+**Fix:**
+- `includes/route_guard.php` `vk_route_endpoint_file()`: the fallback loads only a real `.php` under `actions/`, `ajax/` or `api/`, resolved inside the app; never a non-PHP file, never `..`.
+- `.htaccess`: text error pages (no PHP fall-through); refuse dot-files (except `/.well-known/`), private folders (backups, database, bin, deploy, docs, tests, vendor, includes, core, TCPDF, uploads, private, …) and any existing file that is not a static asset or PHP (exception: the two member-import templates); `FilesMatch` denies data/leftover extensions without mod_rewrite. `backups/` and `database/` carry their own `Require all denied`.
+- A single site's backups and AI key move to a private folder beside the code (`vk_private_dir()`: `VIKUNDI_PRIVATE_DIR` or `../private`); an old key in `includes/` is used until moved; backup folders created `0700` (was `0777`); backup path checks require the directory separator; a bad download path → 404 with no body.
+- Deleted 9 unused SQL files (`bms (2).sql`, `roles (1).sql`, `permissions (1).sql`, `role_permissions (2).sql`, `email_templates.sql`, `email_logs.sql`, `v_schema_updates.sql`, `add_invoice_permission.sql`, `add_bank_reconciliation_permission.sql`; nothing read them; `schema_sync.sql` kept). `.claude/settings.local.json` untracked. `.gitignore`: `/private/`, `/*.sql`, `*.sql.gz`, `*.dump`, `*.bak`.
+
+**Credentials:** none in git (history scanned; `admin_grants.sql` has no passwords: its "password" lines are column names). Exposed by the dump/key, to rotate: anything stored in the old production DB's settings (SMTP/SMS/AI keys) and the AI secret key.
+
+**Tests:** `WebRootSecurityTest` (21); `SettingsApiTest` assertion tightened. Full suite 2,723 passing.
+
+---
+
 ## Session — 2026-10-24 — M-Koba import never guesses a member on a shared phone
 
 **Branch:** `fix/mkoba-import-shared-phone`
