@@ -133,6 +133,27 @@ function unmatched_rows_to_csv(array $rows): string
 }
 
 /**
+ * Which member a payment belongs to, from the members whose phone matched.
+ * One match → that member. None → unmatched. More than one (a phone shared by
+ * several members, e.g. spouses) → unmatched too, with the reason, so a leader
+ * assigns it: guessing would credit the wrong member without anyone knowing.
+ *
+ * @param int[] $customerIds  every active member whose phone matched (fetch at least 2)
+ * @return array{0:?int,1:?string}  [customer_id, reason when unmatched]
+ */
+function txn_pick_member(array $customerIds): array
+{
+    $ids = array_values(array_unique(array_map('intval', $customerIds)));
+    if (count($ids) === 1) {
+        return [$ids[0], null];
+    }
+    if (!$ids) {
+        return [null, 'No matching member'];
+    }
+    return [null, 'Phone shared by ' . count($ids) . ' members: assign it to the right one'];
+}
+
+/**
  * Why an M-Koba row is NOT a member contribution (so it's kept for the tie-out
  * but never counted in the books). Returns '' for rows that ARE contributions.
  */
