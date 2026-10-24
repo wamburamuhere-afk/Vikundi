@@ -122,4 +122,32 @@ class TransactionImportTest extends TestCase
         $this->assertStringContainsString('712345678', $csv);
         $this->assertStringContainsString('No matching member', $csv);
     }
+
+    public function testAPaymentGoesToTheOneMemberWithThatPhone(): void
+    {
+        $this->assertSame([42, null], txn_pick_member([42]));
+        $this->assertSame([42, null], txn_pick_member(['42', 42]), 'the same member twice is still one member');
+    }
+
+    public function testAPhoneNobodyHasIsUnmatched(): void
+    {
+        $this->assertSame([null, 'No matching member'], txn_pick_member([]));
+    }
+
+    public function testAPhoneSharedByTwoMembersIsNeverGuessed(): void
+    {
+        // UKUU has 15 phones shared by two members (often spouses): the old
+        // LIMIT 1 credited whichever row came first, silently.
+        [$id, $why] = txn_pick_member([7, 19]);
+        $this->assertNull($id);
+        $this->assertStringStartsWith('Phone shared by 2 members', $why);
+    }
+
+    public function testTheImportAsksForEveryMatchAndUsesTheRule(): void
+    {
+        $src = (string) file_get_contents(__DIR__ . '/../../actions/import_contributions.php');
+        $this->assertStringNotContainsString("c.phone LIKE ?\n        LIMIT 1", $src);
+        $this->assertStringContainsString('[$member_id, $whyUnmatched] = txn_pick_member($findMember->fetchAll(PDO::FETCH_COLUMN));', $src);
+        $this->assertStringContainsString("'reason'     => \$whyUnmatched,", $src);
+    }
 }

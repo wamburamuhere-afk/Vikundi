@@ -71,8 +71,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['upload_file'])) {
         SELECT c.customer_id FROM customers c
         JOIN users u ON c.user_id = u.user_id
         WHERE u.status = 'active' AND c.is_deceased = 0 AND c.phone LIKE ?
-        LIMIT 1
-    ");
+        LIMIT 5
+    ");  // more than one row = a shared phone: never guess (txn_pick_member)
     $dupByReceipt = $pdo->prepare("SELECT COUNT(*) FROM contributions WHERE mkoba_receipt = ? AND member_id = ?");
     $dupByRow     = $pdo->prepare("SELECT COUNT(*) FROM contributions WHERE member_id = ? AND amount = ? AND contribution_date = ?");
     $insert = $pdo->prepare("
@@ -108,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['upload_file'])) {
             if ($p === null) { $skipped++; continue; } // non-contribution / missing phone or amount
 
             $findMember->execute(['%' . $p['phone']]);
-            $member_id = $findMember->fetchColumn();
+            [$member_id, $whyUnmatched] = txn_pick_member($findMember->fetchAll(PDO::FETCH_COLUMN));
             if (!$member_id) {
                 $unmatched[] = [
                     'name'       => $p['name'],
@@ -117,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['upload_file'])) {
                     'date'       => $p['date'] ?? '',
                     'receipt'    => $p['receipt'],
                     'trans_type' => $p['trans_type'],
-                    'reason'     => 'No matching member',
+                    'reason'     => $whyUnmatched,
                 ];
                 continue;
             }
@@ -173,7 +173,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['upload_file'])) {
                 fn($r) => ($r['name'] !== '' ? $r['name'] : 'Unknown') . ' (' . $r['phone'] . ')',
                 array_slice($unmatched, 0, 8)
             );
-            $parts[] = count($unmatched) . " unmatched (no member): " . implode(', ', $preview) . (count($unmatched) > 8 ? '…' : '');
+            $shared = count(array_filter($unmatched, fn($r) => str_starts_with((string) $r['reason'], 'Phone shared')));
+            $why = $shared ? ' (' . (count($unmatched) - $shared) . " no member, $shared on a phone shared by several members)" : ' (no member)';
+            $parts[] = count($unmatched) . " unmatched$why: " . implode(', ', $preview) . (count($unmatched) > 8 ? '…' : '');
             // Hold the full reject list for a one-shot CSV download on the page.
             $_SESSION['import_unmatched'] = $unmatched;
             $response['unmatched_count'] = count($unmatched);
