@@ -175,7 +175,13 @@ class TenantTest extends TestCase
         $root = dirname(__DIR__, 2);
         $this->assertNull(vk_tenant_current());
         $this->assertSame($root . '/uploads/avatars', vk_storage_path('uploads/avatars'));
-        $this->assertSame($root . '/includes/ai_secret.key', vk_secret_key_file());
+        // The AI key lives in the private folder outside the web root; a key
+        // still at the old place (includes/) is used until it is moved, so the
+        // answer depends on whether this checkout has one (CI starts without).
+        $old = $root . '/includes/ai_secret.key';
+        $expected = (!is_file(vk_private_dir() . '/ai_secret.key') && is_file($old)) ? $old : vk_private_dir() . '/ai_secret.key';
+        $this->assertSame($expected, vk_secret_key_file());
+        $this->assertStringStartsNotWith($root . '/backups', vk_storage_path('backups'), 'backups are outside the code folder');
     }
 
     public function testTenantModePutsEveryFileUnderTheGroupsOwnFolder(): void
