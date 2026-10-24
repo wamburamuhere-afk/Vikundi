@@ -4,6 +4,21 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-24 — M-Koba import never guesses a member on a shared phone
+
+**Branch:** `fix/mkoba-import-shared-phone`
+**Developer:** Claude Code / Jabir Mussa
+
+**Found before UKUU's first statement upload:** `actions/import_contributions.php` matched a payment to a member with `... c.phone LIKE ? LIMIT 1` and no ordering, so a phone shared by two members (UKUU has 15, often spouses) credited whichever row came first, silently.
+
+**Fix:** `txn_pick_member()` (includes/transaction_import.php): one match → that member; none → "No matching member"; more than one → unmatched with "Phone shared by N members: assign it to the right one". The lookup now returns every match; the reason goes into the downloadable unmatched CSV, and the page message counts the two kinds separately. Applies to the M-Koba statement and the group's own template (same path).
+
+**Verified locally** (scratch DB, restored after): two members given the same phone; the demo statement imported 21 payments, and the shared-phone payment was listed as unmatched with the reason and credited to neither.
+
+**Tests:** 4 new in `TransactionImportTest`. Full suite 2,702 passing.
+
+---
+
 ## Session — 2026-10-19 — A leader can record a guarantor's answer (members who do not sign in)
 
 **Branch:** `feat/leader-records-guarantee`
