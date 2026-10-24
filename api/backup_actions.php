@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 // backup_restore.php (table + auto-backup) and api/download_backup.php so
 // create/list/download/restore/delete all operate on the same files.
 $backupsDir = vk_storage_path('backups') . '/';
-if (!is_dir($backupsDir)) mkdir($backupsDir, 0755, true);
+if (!is_dir($backupsDir)) mkdir($backupsDir, 0700, true); // owner only: full database dumps
 
 $action = $_POST['action'] ?? '';
 

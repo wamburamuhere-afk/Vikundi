@@ -15,7 +15,7 @@ try {
     $backup_dir = vk_storage_path('backups');
     
     if (!is_dir($backup_dir)) {
-        mkdir($backup_dir, 0777, true);
+        mkdir($backup_dir, 0700, true); // owner only: full database dumps
     }
 
     $filename = 'backup_v_' . date('Y-m-d_H-i-s') . '.sql';

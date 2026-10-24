@@ -211,6 +211,27 @@ if (!function_exists('vk_storage_base')) {
     }
 }
 
+if (!function_exists('vk_private_dir')) {
+    /**
+     * Where a single site keeps what must never be under the web root: database
+     * backups and the AI secret key. (On the shared server each group's data
+     * folder, /var/lib/vikundi/<group>, already is outside it.)
+     *
+     * VIKUNDI_PRIVATE_DIR (a constant in config.php, or the environment) sets it.
+     * Default: a "private" folder beside the code folder, e.g. for
+     * /var/www/vikundi.bjptechnologies.co.tz/public_html that is
+     * /var/www/vikundi.bjptechnologies.co.tz/private.
+     */
+    function vk_private_dir(): string
+    {
+        $dir = defined('VIKUNDI_PRIVATE_DIR') ? (string) VIKUNDI_PRIVATE_DIR : (string) (getenv('VIKUNDI_PRIVATE_DIR') ?: '');
+        if ($dir === '') {
+            $dir = dirname(dirname(__DIR__)) . '/private';
+        }
+        return rtrim($dir, '/');
+    }
+}
+
 if (!function_exists('vk_storage_path')) {
     /**
      * The absolute path of a stored file or folder. Pass the path as the database
@@ -227,6 +248,11 @@ if (!function_exists('vk_storage_path')) {
     {
         $rel = vk_storage_relative($stored);
         $base = vk_storage_base();
+        // A single site's backups live outside the web root (security fix,
+        // 24 Oct 2026: dumps under public_html/backups were downloadable).
+        if ($rel !== null && vk_tenant_current() === null && preg_match('#^backups(/|$)#', $rel)) {
+            $base = vk_private_dir();
+        }
         return $rel === null ? $base . '/.vk-invalid-path' : $base . '/' . $rel;
     }
 }
@@ -265,8 +291,14 @@ if (!function_exists('vk_secret_key_file')) {
      */
     function vk_secret_key_file(): string
     {
-        return vk_tenant_current() === null
-            ? dirname(__DIR__) . '/includes/ai_secret.key'
-            : vk_storage_dir('private', 0700) . 'ai_secret.key';
+        if (vk_tenant_current() !== null) {
+            return vk_storage_dir('private', 0700) . 'ai_secret.key';
+        }
+        // A single site keeps it in the private folder, outside the web root.
+        // A key still at the old place (includes/) is used until it is moved, so
+        // saved API keys stay readable; includes/ is no longer served either way.
+        $new = vk_private_dir() . '/ai_secret.key';
+        $old = dirname(__DIR__) . '/includes/ai_secret.key';
+        return (!is_file($new) && is_file($old)) ? $old : $new;
     }
 }

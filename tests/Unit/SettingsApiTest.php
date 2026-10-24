@@ -987,7 +987,9 @@ final class SettingsApiTest extends TestCase
     {
         $code = self::code('api/v1/backup-download.php');
         $this->assertStringContainsString('realpath(', $code);
-        $this->assertStringContainsString('strpos($filepath, $backupsDir) !== 0', $code);
+        // The separator matters: without it a sibling folder whose name starts
+        // with the backups folder's would pass (security fix, 24 Oct 2026).
+        $this->assertStringContainsString('strpos($filepath, $backupsDir . DIRECTORY_SEPARATOR) !== 0', $code);
     }
 
     public function testBackupDownloadRequiresTheSqlExtension(): void

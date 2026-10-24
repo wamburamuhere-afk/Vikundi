@@ -24,8 +24,10 @@ $backup_dir = vk_storage_path('backups') . '/';
 $filepath = realpath($backup_dir . $filename);
 
 // Ensure the file is inside the backups directory
-if (strpos($filepath, realpath($backup_dir)) !== 0) {
-    die('Invalid file path');
+if ($filepath === false || realpath($backup_dir) === false
+    || strpos($filepath, realpath($backup_dir) . DIRECTORY_SEPARATOR) !== 0) {
+    http_response_code(404);
+    exit('Not found');
 }
 
 if (file_exists($filepath) && pathinfo($filepath, PATHINFO_EXTENSION) === 'sql') {
