@@ -54,3 +54,12 @@ includes/ai_secret.key
 
 # Member import files hold real names and phone numbers: never commit them.
 *.import.csv
+
+# Never commit dumps, backups or private data (security fix, 24 Oct 2026).
+/private/
+/*.sql
+*.sql.gz
+*.dump
+*.bak
+# Personal Claude Code settings (local permission lists).
+.claude/settings.local.json

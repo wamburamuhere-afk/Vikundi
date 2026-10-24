@@ -4,7 +4,8 @@
  * ------------------
  * Tiny symmetric encryption for the AI provider API key, so it is never stored
  * in plain text in the database. Uses AES-256-CBC with a random key kept in a
- * gitignored file (includes/ai_secret.key), generated automatically on first use.
+ * file outside the web root (vk_secret_key_file(): a single site's private folder,
+ * or the group's data folder), generated automatically on first use.
  *
  *   aiEncryptSecret(string $plain): string   — returns base64 ciphertext (iv prepended)
  *   aiDecryptSecret(string $cipher): ?string  — returns plain text, or null on failure
@@ -22,8 +23,12 @@ if (!function_exists('_aiSecretKey')) {
                 return $key;
             }
         }
-        // Generate and persist a fresh 256-bit key.
+        // Generate and persist a fresh 256-bit key. Its folder (a single site's
+        // private folder, outside the web root) is created owner-only if missing.
         $key = random_bytes(32);
+        if (!is_dir(dirname($keyFile))) {
+            @mkdir(dirname($keyFile), 0700, true);
+        }
         @file_put_contents($keyFile, base64_encode($key));
         @chmod($keyFile, 0600);
         return $key;

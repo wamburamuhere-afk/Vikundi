@@ -1,0 +1,8 @@
+# Never served over the web: SQL, migrations and backups are read only by the
+# app's own PHP code and command-line scripts. (The root .htaccess also refuses
+# this folder; this file keeps it closed if that rule is ever lost.)
+Require all denied
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>
