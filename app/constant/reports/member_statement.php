@@ -88,7 +88,7 @@ $summary = cs_year_summary($grid);
 
 // Expected of this member by now, and where that leaves them. Same helpers the
 // ledger and the dashboard use, so the three screens cannot disagree.
-$expected  = cs_expected_to_date($monthly_amt, $sched['anchor_ym'], $as_of);
+$expected  = cs_expected_to_date(cr_monthly_rule($settings_raw), $sched['anchor_ym'], $as_of);
 $standing  = cs_standing($opening, $new_money, $expected);
 
 // 7. Expenses (Condolences)

@@ -4,6 +4,57 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-28 — Contribution rates by date, and the late-payment rules (UKUU)
+
+**Branch:** `feat/contribution-rates-and-late-rules`
+**Developer:** Claude Code / Jabir Mussa
+
+**Asked by UKUU:** the monthly contribution was 5,000 from the start of the group to May 2026 and 10,000 from June 2026. A member who has not paid month M by the 9th of M+1 gets one 5,000 fine. If the contribution or the fine is still unpaid after the 15th, the member becomes Dormant. **Decided with Jabir:** Dormant members become Active again by themselves once paid up. Payments waiting for approval count as paid. Fines are paid separately (a leader marks them Paid/Waived). The rule starts from the month it is switched on and is never retroactive.
+
+**Rates by date** (`includes/contribution_rates.php`):
+- `group_settings.contribution_rates` stores the history as JSON: one "from the start" row plus dated changes.
+- `cr_monthly_rule()` returns a plan, or the flat `monthly_contribution` when there is no history, so other groups are unchanged.
+- The standing module (`cs_expected_to_date`, `cs_build_schedule`, `cs_calendar_grid`, `cs_transaction_grid`) takes either a flat amount or a plan; each month carries its own target. The schedule now also returns `rule` and `next_target`.
+- Callers that did their own arithmetic now use per-month targets: member and group statements (both kinds), the v1 API endpoints, the Contributions grid, and the Financial Ledger (web and API).
+- `monthly_contribution` is kept equal to today's rate (`cr_sync_current()`, on save and daily), so displays stay right.
+
+**Late-payment rules** (`includes/late_rules.php`):
+- `late_judge_member()` is pure; `late_run()` applies it.
+- Off by default. Settings: `late_rules_enabled`, `late_rules_start_ym` (blank = the month it is switched on), `late_fine_amount` (5000), `late_fine_day` (9), `late_dormant_day` (15).
+- **Counts as paid:** monthly payments that are pending, reviewed, approved or confirmed. Cumulative, so money paid ahead carries forward.
+- **History before the start month:** measured from each member's own first payment (imported members' join date is the import day, so it can't be used). Arrears from before are forgiven; money paid ahead carries in.
+- **Fines:** one per member per month (`fines.late_period`, unique key with `customer_id`).
+- **Dormancy:** Dormant after the dormant day if the month or its fine is unpaid. `customers.late_rule_dormant` marks the rule's own dormancy; only those members are reactivated. Members a leader made Dormant, and deceased members, are never touched.
+- **Daily run:** `vk_run_daily_contribution_rules()` in `actions/auto_terminate_members.php` (same once-a-day trigger). The old lifetime-total sweep steps aside when the late rule is on.
+
+**Group Settings:**
+- The Contribution Rates card has a "Changes to the monthly amount" table. With changes saved, Cycle Contribution is read-only and shows today's rate.
+- The "Strict Membership Policy" card is replaced by "Late Payment Rules". Its old switch was never read; the old sweep only listens to `auto_dormancy_enabled`. The mobile API keys are unchanged.
+- The save is validated before anything is written: rate rows, days 1–28 with the dormant day after the fine day, and the fine amount.
+
+**Migration:** `database/add_late_payment_rules.php` (registered; `schema_sync.sql` updated).
+
+**Bug caught by the full suite:** the first draft used the `lr_` prefix, which `includes/loan_rules.php` already owns (`lr_add_months` with a different meaning). Behind `function_exists()`, whichever file loaded first won, and loan schedules broke. Renamed to `late_`, plus a test that no function in these two files is defined anywhere else.
+
+**Verified locally** (copy of the local DB in `vikundi_demo_scratch`, restored after):
+- The migration runs twice cleanly.
+- On 9 Dec nothing happens. On 10 Dec the late and non-paying members are fined; a second run that day adds no new fines. On 16 Dec they are Dormant. On 20 Dec, with fines Paid/Waived and payments in, they are Active again.
+- The early (pending) payer is never fined. The leader-made Dormant member is untouched. The old sweep returns 0.
+- Settings: a bad dormant day is refused; the history saves and the monthly amount syncs to 10,000. Removing the change falls back to the flat amount.
+- A member joined in March shows Mar–May at 5,000 and Jun on at 10,000; expected 65,000, consistent across the statement.
+- Statements, ledger, grid, dashboard and fines pages load with no PHP errors.
+
+**Tests:** `ContributionRatesTest` (14), `LateRulesTest` (25); `OfficerAccessFixesTest` updated. Full suite 2,766 passing.
+
+**For UKUU, after release:**
+1. In Group Settings, enter the changes: from the start 5,000; June 2026 10,000.
+2. Import and approve the M-Koba history.
+3. Then switch the late rules on (they start that month).
+
+Shares off (`shares_from_monthly` = No, share price blank) and dividends removed from UKUU's roles are configuration, done separately.
+
+---
+
 ## Session — 2026-10-28 — "Add New User" was a dead link, and its form made users who cannot sign in
 
 **Branch:** `fix/add-user-page`

@@ -60,6 +60,7 @@ $migrations = [
     'add_fund_bucket_contribution_types.php', // contributions.contribution_type += share / social_fund / deposit (fund buckets)
     'create_vicoba_loan_tables.php', // VICOBA loans module's own InnoDB tables (types, loans, guarantors, installments, payments)
     'add_member_payouts_permission.php', // register 'member_payouts' (Admin/Chairperson/Secretary — no Treasurer); normalizes record_payout.php's role-name array into RBAC
+    'add_late_payment_rules.php', // fines.late_period (+ one-per-month key) and customers.late_rule_dormant, for includes/late_rules.php
 ];
 
 echo "== Vikundi database migrations ==\n";

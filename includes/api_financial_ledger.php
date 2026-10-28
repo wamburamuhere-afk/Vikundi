@@ -107,8 +107,13 @@ if (!function_exists('vk_api_ledger_member_calc')) {
         float $monthlyRate,
         float $entranceFeeRate,
         array $colIsValid,
-        int $validMonthsCount
+        int $validMonthsCount,
+        ?array $colRates = null
     ): array {
+        // One rate per column. Without a rate history every column has the flat
+        // monthly; with one (UKUU: 5,000 then 10,000) each month has its own.
+        $colRates = $colRates ?? array_fill(0, count($colIsValid), $monthlyRate);
+
         // Entrance fee comes off NEW money first — never off the opening balance.
         $entrancePaid = min($newPool, $entranceFeeRate);
         $remaining    = $newPool - $entrancePaid;
@@ -116,14 +121,14 @@ if (!function_exists('vk_api_ledger_member_calc')) {
         // With a fixed monthly, chunk the new money in monthly-sized pieces; with
         // no fixed monthly (save-what-you-can), spread it evenly across the
         // elapsed months so it still reads across the row.
-        $gridCap = $monthlyRate > 0
-            ? $monthlyRate
-            : ($validMonthsCount > 0 ? $remaining / $validMonthsCount : $remaining);
+        $evenCap = $validMonthsCount > 0 ? $remaining / $validMonthsCount : $remaining;
 
         $columns        = count($colIsValid);
         $monthlyTotal   = 0.0;
         $monthlyByMonth = array_fill(0, $columns, 0.0);
         foreach ($colIsValid as $i => $valid) {
+            $rate    = (float) ($colRates[$i] ?? $monthlyRate);
+            $gridCap = $rate > 0 ? $rate : $evenCap;
             if ($valid && $remaining > 0 && $gridCap > 0) {
                 $allocation = min($remaining, $gridCap);
                 $monthlyByMonth[$i] = $allocation;
@@ -138,7 +143,12 @@ if (!function_exists('vk_api_ledger_member_calc')) {
 
         // No fixed monthly => no target, so an unset monthly can never fabricate
         // a deficit (same rule cs_standing() itself encodes).
-        $targetAmt = $monthlyRate * $validMonthsCount;
+        $targetAmt = 0.0;
+        foreach ($colIsValid as $i => $valid) {
+            if ($valid) {
+                $targetAmt += (float) ($colRates[$i] ?? $monthlyRate);
+            }
+        }
         $standing  = cs_standing($opening, $newPool, $targetAmt, $assistance);
 
         return [
@@ -166,6 +176,7 @@ if (!function_exists('vk_api_ledger_build')) {
                         ->fetchAll(PDO::FETCH_KEY_PAIR);
         // No fixed monthly => no target (save-what-you-can), matching the web report.
         $monthlyRate            = (float) ($settings['monthly_contribution'] ?? 0);
+        $monthlyRule            = cr_monthly_rule($settings);
         $entranceFeeRate        = (float) ($settings['entrance_fee'] ?? 0);
         $contributionStartDate  = $settings['contribution_start_date'] ?? null;
 
@@ -174,9 +185,11 @@ if (!function_exists('vk_api_ledger_build')) {
         $diffMonths = vk_api_ledger_diff_months($ts1, $ts2);
 
         $months = [];
+        $colRates = [];
         for ($i = 0; $i < $diffMonths; $i++) {
             $mts = strtotime("+{$i} months", $ts1);
             $months[] = ['ym' => date('Y-m', $mts), 'label' => date('M Y', $mts)];
+            $colRates[] = cr_rate_for($monthlyRule, (int) date('Y', $mts), (int) date('n', $mts));
         }
 
         // The "M-Koba Name" falls back to the name captured on an imported
@@ -259,7 +272,7 @@ if (!function_exists('vk_api_ledger_build')) {
             $assistance = (float) ($payouts[$mid] ?? 0);
             $calc = vk_api_ledger_member_calc(
                 $opening, $newPool, $agmPaid, $assistance,
-                $monthlyRate, $entranceFeeRate, $colIsValid, $validMonthsCount
+                $monthlyRate, $entranceFeeRate, $colIsValid, $validMonthsCount, $colRates
             );
 
             $rows[] = [

@@ -79,6 +79,9 @@ $start_offset = $block * $periods_per_block;
 // fabricated a per-cell target and an inflated "expected" whenever these were unset.
 $monthly_val  = floatval($settings_raw['monthly_contribution'] ?? 0);
 $entrance_val = floatval($settings_raw['entrance_fee'] ?? 0);
+// With a rate history each month has its own target (UKUU: 5,000, then 10,000).
+require_once __DIR__ . '/../../../includes/contribution_rates.php';
+$monthly_rule = cr_monthly_rule($settings_raw);
 
 $columns = [];
 for ($i = 0; $i < $periods_per_block; $i++) {
@@ -92,6 +95,7 @@ for ($i = 0; $i < $periods_per_block; $i++) {
         'year'        => date('Y', $ts),
         'start'       => date('Y-m-01 00:00:00', $ts),
         'end'         => date('Y-m-t 23:59:59', $ts),
+        'target'      => cr_rate_for($monthly_rule, (int) date('Y', $ts), (int) date('n', $ts)),
     ];
 }
 $block_start = $columns[0]['start'];
@@ -152,7 +156,7 @@ foreach ($members as $m) {
     $cells = []; $rowBlock = 0.0; $rowFull = true; $rowAny = false;
     foreach ($columns as $ci => $col) {
         $paid = $blockSums[$mid][$col['ym']] ?? 0.0;
-        $status = vk_contribution_cell_status($paid, $monthly_val);
+        $status = vk_contribution_cell_status($paid, $col['target']);
         if ($status !== 'full') $rowFull = false;
         if ($paid > 0) $rowAny = true;
         $rowBlock += $paid;
@@ -166,7 +170,7 @@ foreach ($members as $m) {
     $sum_collected += $rowBlock;
     if ($rowFull) { $members_full++; } elseif (!$rowAny) { $members_behind++; }
 }
-$expected_block  = count($members) * $periods_per_block * $monthly_val;
+$expected_block  = count($members) * array_sum(array_column($columns, 'target'));
 $collection_rate = vk_collection_rate($sum_collected, $expected_block);
 
 // Members for the statement filter dropdown.
@@ -478,7 +482,7 @@ $cellClass = ['full' => 'vk-cell-full', 'partial' => 'vk-cell-partial', 'none' =
                     </tr>
                     <tr class="text-muted">
                         <td colspan="2" class="text-end"><?= $isSw ? 'Lengo' : 'Target' ?></td>
-                        <?php foreach ($columns as $col): ?><td><?= number_format(count($members) * $monthly_val, 0) ?></td><?php endforeach; ?>
+                        <?php foreach ($columns as $col): ?><td><?= number_format(count($members) * $col['target'], 0) ?></td><?php endforeach; ?>
                         <td><?= number_format($expected_block, 0) ?></td><td></td>
                     </tr>
                 </tfoot>

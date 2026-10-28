@@ -69,7 +69,7 @@ $schedule = cs_member_schedule($pdo, $memberId);
 $monthly  = (float) $schedule['monthly_amt'];
 
 $events = cs_member_transactions($pdo, $memberId);
-$grid    = cs_transaction_grid($events, $monthly, $schedule['anchor_ym']);
+$grid    = cs_transaction_grid($events, $schedule['rule'], $schedule['anchor_ym']);
 $summary = cs_year_summary($grid);
 
 $settings = $pdo->query('SELECT setting_key, setting_value FROM group_settings')

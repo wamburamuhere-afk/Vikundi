@@ -26,6 +26,7 @@
  */
 
 require_once __DIR__ . '/fund_buckets.php'; // which contribution types are savings
+require_once __DIR__ . '/contribution_rates.php'; // the monthly amount, as it changed over time
 
 if (!function_exists('cs_is_opening')) {
     /** Is a raw contribution row money carried in from M-Koba (opening savings)? */
@@ -64,9 +65,18 @@ if (!function_exists('cs_expected_to_date')) {
      * Monthly dues expected of a member by now. 0 when there is no fixed monthly
      * amount (save-what-you-can) — the entrance fee is deliberately NOT part of
      * this: an imported member already paid it in the real group.
+     *
+     * $monthly is a flat amount or a rate history (see contribution_rates.php).
      */
-    function cs_expected_to_date(float $monthly, ?string $anchorDate, ?DateTimeInterface $asOf = null): float
+    function cs_expected_to_date(float|array $monthly, ?string $anchorDate, ?DateTimeInterface $asOf = null): float
     {
+        if (is_array($monthly)) {
+            if (cs_months_elapsed($anchorDate, $asOf) <= 0) {
+                return 0.0;
+            }
+            $asOf = $asOf ?: new DateTime('today');
+            return cr_sum($monthly, (string) $anchorDate, $asOf->format('Y-m-d'));
+        }
         if ($monthly <= 0) {
             return 0.0;
         }
@@ -136,7 +146,7 @@ if (!function_exists('cs_group_standing')) {
     {
         $settings = $pdo->query("SELECT setting_key, setting_value FROM group_settings")
                         ->fetchAll(PDO::FETCH_KEY_PAIR);
-        $monthly = (float) ($settings['monthly_contribution'] ?? 0);
+        $monthly = cr_monthly_rule($settings);
 
         $rows = $pdo->query("
             SELECT c.customer_id,
@@ -177,12 +187,16 @@ if (!function_exists('cs_build_schedule')) {
      *
      * Returns: opening, new_money, total_paid, entrance_amt, entrance_paid,
      * entrance_status, monthly_amt, monthly_pot, total_months_covered, start_date,
-     * anchor_ym, columns_count, distribution[] (label, amount, status, target), advance.
+     * anchor_ym, columns_count, distribution[] (label, amount, status, target), advance,
+     * next_target (the target of the first month past the distribution).
+     *
+     * $monthly is a flat amount or a rate history: with a history each month carries
+     * its own target, and monthly_amt reports the rate in force "as of".
      */
     function cs_build_schedule(
         float $opening,
         float $newMoney,
-        float $monthly,
+        float|array $monthly,
         float $entrance,
         ?string $startDate,
         ?string $joinDate = null,
@@ -192,7 +206,6 @@ if (!function_exists('cs_build_schedule')) {
         $entrancePaid   = min($newMoney, $entrance);
         $entranceStatus = $entrancePaid >= $entrance ? 'paid' : ($entrancePaid > 0 ? 'partial' : 'unpaid');
         $monthlyPot     = $opening + max(0.0, $newMoney - $entrancePaid);
-        $monthsCovered  = $monthly > 0 ? (int) floor($monthlyPot / $monthly) : 0;
 
         // Anchor at the later of the group start and the member's own join month.
         $anchorTs = strtotime((string) $startDate);
@@ -203,19 +216,44 @@ if (!function_exists('cs_build_schedule')) {
             $anchorTs = $j;
         }
         $anchorYm = date('Y-m-01', $anchorTs);
-        $columns  = max(1, cs_months_elapsed($anchorYm, $asOf), $monthsCovered);
+
+        // The target of the month $i months after the anchor.
+        $aY = (int) date('Y', $anchorTs);
+        $aM = (int) date('n', $anchorTs);
+        $targetAt = static function (int $i) use ($monthly, $aY, $aM): float {
+            if (!is_array($monthly)) {
+                return $monthly;
+            }
+            $n = $aM - 1 + $i;
+            return cr_rate_for($monthly, $aY + intdiv($n, 12), $n % 12 + 1);
+        };
+
+        // Whole months the pot pays for, walking forward month by month (with a rate
+        // history the months cost different amounts). Capped at 100 years.
+        $monthsCovered = 0;
+        $pot = $monthlyPot;
+        while ($monthsCovered < 1200) {
+            $t = $targetAt($monthsCovered);
+            if ($t <= 0 || $pot < $t) {
+                break;
+            }
+            $pot -= $t;
+            $monthsCovered++;
+        }
+        $columns = max(1, cs_months_elapsed($anchorYm, $asOf), $monthsCovered);
 
         $distribution = [];
         $remaining = $monthlyPot;
         for ($i = 0; $i < $columns; $i++) {
             $monthTs = strtotime("$i months", strtotime($anchorYm));
-            $paid = min($remaining, $monthly);
+            $target = $targetAt($i);
+            $paid = min($remaining, $target);
             $remaining -= $paid;
             $distribution[] = [
                 'label'  => date('M Y', $monthTs),
                 'amount' => $paid,
-                'status' => $paid >= $monthly ? 'paid' : ($paid > 0 ? 'partial' : 'unpaid'),
-                'target' => $monthly,
+                'status' => $paid >= $target ? 'paid' : ($paid > 0 ? 'partial' : 'unpaid'),
+                'target' => $target,
             ];
         }
 
@@ -226,7 +264,7 @@ if (!function_exists('cs_build_schedule')) {
             'entrance_amt'         => $entrance,
             'entrance_paid'        => $entrancePaid,
             'entrance_status'      => $entranceStatus,
-            'monthly_amt'          => $monthly,
+            'monthly_amt'          => is_array($monthly) ? cr_rate_at($monthly, $asOf) : $monthly,
             'monthly_pot'          => $monthlyPot,
             'total_months_covered' => $monthsCovered,
             'start_date'           => $startDate,
@@ -234,6 +272,8 @@ if (!function_exists('cs_build_schedule')) {
             'columns_count'        => $columns,
             'distribution'         => $distribution,
             'advance'              => max(0.0, $remaining), // money beyond the shown months
+            'next_target'          => $targetAt($columns),
+            'rule'                 => $monthly, // flat amount or rate history, for callers
         ];
     }
 }
@@ -266,7 +306,8 @@ if (!function_exists('cs_calendar_grid')) {
     {
         $anchorYm     = $schedule['anchor_ym'] ?? date('Y-01-01');
         $distribution = $schedule['distribution'] ?? [];
-        $monthly      = (float) ($schedule['monthly_amt'] ?? 0);
+        // The month after the distribution: where a leftover remainder lands.
+        $monthly      = (float) ($schedule['next_target'] ?? $schedule['monthly_amt'] ?? 0);
         $unallocated  = (float) ($schedule['advance'] ?? 0);
 
         // cs_build_schedule() covers whole months only (floor), so a payment that is
@@ -409,7 +450,7 @@ if (!function_exists('cs_group_schedules')) {
     {
         $settings  = $pdo->query("SELECT setting_key, setting_value FROM group_settings")
                          ->fetchAll(PDO::FETCH_KEY_PAIR);
-        $monthly   = (float) ($settings['monthly_contribution'] ?? 0);
+        $monthly   = cr_monthly_rule($settings);
         $entrance  = (float) ($settings['entrance_fee'] ?? 0);
         $startDate = $settings['contribution_start_date']
                      ?? ($settings['group_founded_date'] ?? date('Y') . '-01-01');
@@ -639,7 +680,7 @@ if (!function_exists('cs_transaction_grid')) {
      */
     function cs_transaction_grid(
         array $events,
-        float $monthly,
+        float|array $monthly,
         ?string $anchorYm,
         ?DateTimeInterface $asOf = null
     ): array {
@@ -696,7 +737,8 @@ if (!function_exists('cs_transaction_grid')) {
                 $allocated = (float) ($buckets["$y-$m"] ?? 0);
                 // Billed only from the billing anchor, so the Target column here can
                 // never diverge from cs_expected_to_date() on the other statement.
-                $target    = ($due && !$before && $monthly > 0) ? $monthly : 0.0;
+                $rate      = cr_rate_for($monthly, $y, $m);
+                $target    = ($due && !$before && $rate > 0) ? $rate : 0.0;
 
                 if ($allocated > 0) {
                     $status = 'received';   // money arrived; that outranks every label
@@ -815,7 +857,7 @@ if (!function_exists('cs_member_schedule')) {
     {
         $settings = $pdo->query("SELECT setting_key, setting_value FROM group_settings")
                         ->fetchAll(PDO::FETCH_KEY_PAIR);
-        $monthly   = (float) ($settings['monthly_contribution'] ?? 0);
+        $monthly   = cr_monthly_rule($settings);
         $entrance  = (float) ($settings['entrance_fee'] ?? 0);
         $startDate = $settings['contribution_start_date']
                      ?? ($settings['group_founded_date'] ?? date('Y') . '-01-01');

@@ -181,7 +181,7 @@ if (!function_exists('vk_api_group_statement')) {
         $grids     = [];
         foreach ($schedules as $cid => $row) {
             $grid = $isTx
-                ? cs_transaction_grid($receipts[$cid] ?? [], $monthly, $row['schedule']['anchor_ym'], $asOf)
+                ? cs_transaction_grid($receipts[$cid] ?? [], cr_monthly_rule($settings), $row['schedule']['anchor_ym'], $asOf)
                 : cs_calendar_grid($row['schedule'], $asOf);
 
             $summary = cs_year_summary($grid);
