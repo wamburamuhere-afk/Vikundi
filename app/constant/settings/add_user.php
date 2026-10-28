@@ -25,9 +25,13 @@ if (!isset($_SESSION['role_id'])) {
 
 // Check admin permissions
 if (!isAdmin()) {
-    header("Location: unauthorized.php");
+    header('Location: ' . getUrl('dashboard'));   // unauthorized.php does not exist
     exit();
 }
+
+// A form that creates accounts (with admin roles) must carry the session's token.
+require_once __DIR__ . '/../../../includes/require_csrf.php';
+require_once __DIR__ . '/../../../includes/activity_logger.php';
 
 require_once 'header.php';
 
@@ -116,19 +120,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $password_hash = password_hash($password, PASSWORD_DEFAULT);
 
         // Insert user
+        // Status must be set: the column defaults to 'pending', which the login
+        // refuses, so a user added here could never sign in. The role's name goes
+        // in user_role/role too, as everywhere else in the app.
+        $role_name = '';
+        foreach ($roles as $r) {
+            if ((string) $r['role_id'] === (string) $role_id) { $role_name = (string) $r['role_name']; }
+        }
         $stmt = $pdo->prepare("INSERT INTO users 
-            (username, email, first_name, last_name, role_id, password, created_at) 
-            VALUES (?, ?, ?, ?, ?, ?, NOW())");
+            (username, email, first_name, last_name, role_id, role, user_role, password, status, is_active, preferred_language, created_at) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', 1, 'en', NOW())");
         
-        if ($stmt->execute([$username, $email, $first_name, $last_name, $role_id, $password_hash])) {
+        if ($stmt->execute([$username, $email, $first_name, $last_name, $role_id, $role_name, $role_name, $password_hash])) {
             $success = true;
+            logCreate('Users', "$username ($role_name)", 'USER#' . $pdo->lastInsertId());
             
             // Clear form
             $username = $email = $first_name = $last_name = $role_id = '';
             
             // Set success message
             $_SESSION['success_message'] = 'User created successfully!';
-            header("Location: users.php");
+            header('Location: ' . getUrl('users'));
             exit();
         } else {
             $errors['database'] = 'Error creating user. Please try again.';
@@ -157,6 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="card">
         <div class="card-body">
             <form method="POST" novalidate>
+                <?= csrf_field() ?>
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label for="username" class="form-label">Username *</label>
