@@ -575,6 +575,7 @@ $routes = [
     'system_settings' => SETTINGS_DIR . '/system_settings.php',
     'system_settings.php' => SETTINGS_DIR . '/system_settings.php',
     'users' => SETTINGS_DIR . '/users.php',
+    'add_user' => SETTINGS_DIR . '/add_user.php',   // "Add New User" on the Users page (was never routed: Page Not Found)
     'users.php' => SETTINGS_DIR . '/users.php',
     'user_roles' => SETTINGS_DIR . '/user_roles.php',
     'user_roles.php' => SETTINGS_DIR . '/user_roles.php',
