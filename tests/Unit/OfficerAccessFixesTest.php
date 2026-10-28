@@ -123,7 +123,9 @@ class OfficerAccessFixesTest extends TestCase
         // Unset really does mean "none" to the calculations that read them.
         $standing = file_get_contents(__DIR__ . '/../../includes/contribution_standing.php');
         $this->assertStringContainsString("(float) (\$settings['entrance_fee'] ?? 0)", $standing);
-        $this->assertStringContainsString("(float) (\$settings['monthly_contribution'] ?? 0)", $standing);
+        $this->assertStringContainsString('cr_monthly_rule($settings)', $standing);
+        $rates = file_get_contents(__DIR__ . '/../../includes/contribution_rates.php');
+        $this->assertStringContainsString("(float) (\$settings['monthly_contribution'] ?? 0)", $rates);
     }
 
     public function testTheDemoSeederStatesItsEntranceFeeOutright(): void

@@ -84,6 +84,11 @@ if (!function_exists('vk_run_auto_termination')) {
         if (($settings['auto_dormancy_enabled'] ?? '0') !== '1') {
             return 0;
         }
+        // The month-by-month late-payment rule (includes/late_rules.php) replaces
+        // this sweep for a group that switches it on; the two must never both run.
+        if (($settings['late_rules_enabled'] ?? '0') === '1') {
+            return 0;
+        }
 
         $required_total = vk_required_contribution_total($settings, new DateTime());
         if ($required_total <= 0) {
@@ -152,6 +157,41 @@ if (!function_exists('vk_mark_auto_termination_ran')) {
     }
 }
 
+if (!function_exists('vk_run_daily_contribution_rules')) {
+    /**
+     * Everything the daily run does, each part on its own so one failing does not
+     * stop the others: keep the monthly amount equal to today's rate, the old
+     * sweep (off unless switched on), and the late-payment rule (off unless
+     * switched on). Returns a one-line summary.
+     */
+    function vk_run_daily_contribution_rules(PDO $pdo): string {
+        require_once __DIR__ . '/../includes/late_rules.php';
+        $parts = [];
+        try {
+            $rate = cr_sync_current($pdo);
+            if ($rate !== null) {
+                $parts[] = 'monthly rate ' . $rate;
+            }
+        } catch (Throwable $e) {
+            error_log('Contribution rate sync: ' . $e->getMessage());
+        }
+        try {
+            $parts[] = 'old sweep moved ' . vk_run_auto_termination($pdo);
+        } catch (Throwable $e) {
+            error_log('Auto Termination Error: ' . $e->getMessage());
+        }
+        try {
+            $r = late_run($pdo);
+            $parts[] = $r['skipped']
+                ? 'late rule off'
+                : "late rule: {$r['fined']} fined, {$r['dormant']} dormant, {$r['reactivated']} reactivated";
+        } catch (Throwable $e) {
+            error_log('Late payment rule: ' . $e->getMessage());
+        }
+        return implode('; ', $parts);
+    }
+}
+
 // --- Entry points -------------------------------------------------------------
 // Run only when invoked as a CLI script directly (cron), or when included by a
 // web page that already has $pdo (header.php). When PHPUnit require()s this file
@@ -165,9 +205,9 @@ if ($__vk_cli_direct) {
     // cron / manual run: do the sweep unconditionally and record the date.
     require_once __DIR__ . '/../includes/config.php';
     try {
-        $moved = vk_run_auto_termination($pdo);
+        $summary = vk_run_daily_contribution_rules($pdo);
         vk_mark_auto_termination_ran($pdo, date('Y-m-d'));
-        fwrite(STDOUT, "Auto-termination sweep complete. Members moved to dormant: {$moved}\n");
+        fwrite(STDOUT, "Daily contribution rules complete: {$summary}\n");
     } catch (Exception $e) {
         fwrite(STDERR, "Auto Termination Error: " . $e->getMessage() . "\n");
         exit(1);
@@ -177,8 +217,8 @@ if ($__vk_cli_direct) {
     try {
         $today = date('Y-m-d');
         if (vk_auto_termination_due($pdo, $today)) {
-            vk_mark_auto_termination_ran($pdo, $today); // mark first; sweep is idempotent
-            vk_run_auto_termination($pdo);
+            vk_mark_auto_termination_ran($pdo, $today); // mark first; every part is idempotent
+            vk_run_daily_contribution_rules($pdo);
         }
     } catch (Exception $e) {
         // Fail silently in the header to avoid breaking the UI.

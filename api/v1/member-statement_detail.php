@@ -44,7 +44,7 @@ $entranceAmt = (float) ($settings['entrance_fee'] ?? 0);
 $sched   = cs_member_schedule($pdo, $memberId, $asOf);
 $grid    = cs_calendar_grid($sched, $asOf);
 $summary = cs_year_summary($grid);
-$expected = cs_expected_to_date($monthlyAmt, $sched['anchor_ym'], $asOf);
+$expected = cs_expected_to_date(cr_monthly_rule($settings), $sched['anchor_ym'], $asOf);
 $standing = cs_standing($sched['opening'], $sched['new_money'], $expected);
 
 $condolences = vk_api_reports_condolences($pdo, $memberId);
