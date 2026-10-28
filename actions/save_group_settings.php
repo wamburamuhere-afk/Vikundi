@@ -59,10 +59,66 @@ $allowed_keys = [
     'loan_interest_rate', 'loan_max_term_months', 'loan_multiplier', 'loan_grace_days',
     'fine_late_meeting', 'fine_late_contribution', 'fine_late_loan_payment', 'fine_absent_meeting',
     'shareout_month', 'profit_distribution_pct', 'current_cycle_year', 'auto_calculate_shareout',
-    'deadline_day', 'deadline_time', 'auto_termination'
+    'deadline_day', 'deadline_time', 'auto_termination',
+    'late_rules_enabled', 'late_rules_start_ym', 'late_fine_amount', 'late_fine_day', 'late_dormant_day',
 ];
 
 $lang = $_SESSION['preferred_language'] ?? 'en';
+
+// ── Contribution rate history and late-payment rules: check before saving anything ──
+require_once __DIR__ . '/../includes/late_rules.php';
+$vk_errors = [];
+$vk_rates_json = null; // null = this form did not send the rate table
+if (isset($_POST['rate_table_sent'])) {
+    // The web form always sends the marker; no rows means "no changes, one flat amount".
+    $vk_amounts = is_array($_POST['rate_amount'] ?? null) ? $_POST['rate_amount'] : [];
+    $vk_rows = [];
+    foreach (array_values($vk_amounts) as $i => $amt) {
+        $from = trim((string) (($_POST['rate_from'] ?? [])[$i] ?? ''));
+        $amt  = trim((string) $amt);
+        if ($amt === '' && $from === '') {
+            continue; // an empty row the leader added and left
+        }
+        $vk_rows[] = ['from' => $from, 'amount' => $amt];
+    }
+    $vk_errors = array_merge($vk_errors, cr_validate($vk_rows, $lang === 'sw'));
+    $vk_plan = cr_normalise($vk_rows);
+    if (count($vk_plan) > 1) {
+        $vk_rates_json = json_encode($vk_plan);
+    } else {
+        // One amount (or none) is just the plain monthly contribution.
+        $vk_rates_json = '';
+        if (count($vk_plan) === 1) {
+            $_POST['monthly_contribution'] = (string) $vk_plan[0]['amount'];
+        }
+    }
+}
+if (isset($_POST['late_fine_day']) || isset($_POST['late_dormant_day'])) {
+    $vk_fd = (int) ($_POST['late_fine_day'] ?? 9);
+    $vk_dd = (int) ($_POST['late_dormant_day'] ?? 15);
+    if ($vk_fd < 1 || $vk_fd > 28 || $vk_dd < 1 || $vk_dd > 28 || $vk_dd <= $vk_fd) {
+        $vk_errors[] = $lang === 'sw'
+            ? 'Siku ya faini na siku ya kusitishwa ziwe kati ya 1 na 28, na siku ya kusitishwa iwe baada ya siku ya faini.'
+            : 'The fine day and the dormant day must be between 1 and 28, and the dormant day must come after the fine day.';
+    }
+    $vk_fa = trim((string) ($_POST['late_fine_amount'] ?? ''));
+    if ($vk_fa !== '' && (!is_numeric($vk_fa) || (float) $vk_fa < 0)) {
+        $vk_errors[] = $lang === 'sw' ? 'Weka kiasi sahihi cha faini.' : 'Enter a valid fine amount.';
+    }
+    // The checkbox is absent when off. When on, the rule starts this month unless a month is given.
+    $_POST['late_rules_enabled'] = ($_POST['late_rules_enabled'] ?? '') === '1' ? '1' : '0';
+    $vk_start = trim((string) ($_POST['late_rules_start_ym'] ?? ''));
+    if ($vk_start !== '' && !preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $vk_start)) {
+        $vk_errors[] = $lang === 'sw' ? 'Mwezi wa kuanza si sahihi.' : 'The start month is not valid.';
+    }
+    if ($_POST['late_rules_enabled'] === '1' && $vk_start === '') {
+        $_POST['late_rules_start_ym'] = date('Y-m');
+    }
+}
+if ($vk_errors) {
+    echo json_encode(['success' => false, 'message' => implode(' ', $vk_errors)]);
+    exit();
+}
 
 try {
     // Prepare once, execute many
@@ -82,6 +138,12 @@ try {
              $stmt->execute(['auto_termination', 'off']);
              $updated_count++;
         }
+    }
+
+    if ($vk_rates_json !== null) {
+        $stmt->execute(['contribution_rates', $vk_rates_json]);
+        $updated_count++;
+        cr_sync_current($pdo); // the monthly amount follows the rate in force today
     }
 
     // HANDLE LOGO UPLOAD

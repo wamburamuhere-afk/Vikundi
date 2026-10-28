@@ -753,6 +753,7 @@ CREATE TABLE IF NOT EXISTS `customers` (
   `bank_address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `status` enum('active','inactive','suspended','blacklisted','pending') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'pending',
   `is_deceased` tinyint(1) DEFAULT '0',
+  `late_rule_dormant` tinyint(1) NOT NULL DEFAULT '0',
   `initial_savings` decimal(12,2) DEFAULT '0.00',
   `notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1145,7 +1146,9 @@ CREATE TABLE IF NOT EXISTS `fines` (
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `meeting_id` int DEFAULT NULL,
+  `late_period` char(7) DEFAULT NULL,
   PRIMARY KEY (`fine_id`),
+  UNIQUE KEY `uniq_late_fine` (`customer_id`,`late_period`),
   KEY `customer_id` (`customer_id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

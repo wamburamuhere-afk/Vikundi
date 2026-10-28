@@ -57,7 +57,7 @@ $per_member = [];
 $grids      = [];
 foreach ($schedules as $cid => $row) {
     $grid = $isTx
-        ? cs_transaction_grid($receipts[$cid] ?? [], $monthly_amt, $row['schedule']['anchor_ym'], $as_of)
+        ? cs_transaction_grid($receipts[$cid] ?? [], cr_monthly_rule($settings_raw), $row['schedule']['anchor_ym'], $as_of)
         : cs_calendar_grid($row['schedule'], $as_of);
 
     $summary = cs_year_summary($grid);

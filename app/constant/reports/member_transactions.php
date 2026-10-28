@@ -61,7 +61,7 @@ $opening_bf = (float) ($member['initial_savings'] ?? 0);
 
 $grid    = cs_transaction_grid(
     array_map(fn(array $r): array => ['date' => $r['date'], 'amount' => (float) $r['amount']], $receipts),
-    $monthly_amt,
+    cr_monthly_rule($settings_raw),
     $sched['anchor_ym'],
     $as_of
 );

@@ -72,6 +72,15 @@ $month1 = date('m', $ts1);
 $month2 = date('m', $ts2);
 $diff_months = (($year2 - $year1) * 12) + ($month2 - $month1) + 1;
 
+// Each column's own monthly target: the flat amount, or the rate in force that
+// month when the group keeps a rate history (UKUU: 5,000, then 10,000).
+$monthly_rule = cr_monthly_rule($settings);
+$col_rates = [];
+for ($i = 0; $i < $diff_months; $i++) {
+    $cts = strtotime("+$i months", $ts1);
+    $col_rates[$i] = cr_rate_for($monthly_rule, (int) date('Y', $cts), (int) date('n', $cts));
+}
+
 // 3. Fetch All Members. The "M-Koba Name" is stored on the customer (mpesa_name)
 // but the one-off import never populated it — so fall back to the name captured on
 // that member's imported contribution rows, which fills the column instead of "—".
@@ -259,13 +268,12 @@ function fmt($n) { return number_format($n, 0); }
                             // money in monthly-sized pieces; with no fixed monthly (save-what-you-can),
                             // spread it evenly across the elapsed months so it still reads across the
                             // row instead of lumping into the last column.
-                            $grid_cap = $monthly_rate > 0
-                                ? $monthly_rate
-                                : ($valid_months_count > 0 ? $remaining_for_months / $valid_months_count : $remaining_for_months);
+                            $even_cap = $valid_months_count > 0 ? $remaining_for_months / $valid_months_count : $remaining_for_months;
 
                             $monthly_total = 0;
                             $monthly_by_month = array_fill(0, $diff_months, 0);
                             for ($i = 0; $i < $diff_months; $i++) {
+                                $grid_cap = $col_rates[$i] > 0 ? $col_rates[$i] : $even_cap;
                                 if ($col_is_valid[$i] && $remaining_for_months > 0 && $grid_cap > 0) {
                                     $allocation = min($remaining_for_months, $grid_cap);
                                     $monthly_by_month[$i] = $allocation;
@@ -281,7 +289,10 @@ function fmt($n) { return number_format($n, 0); }
                             $total_assistance = (float)($payouts[$mid] ?? 0);
                             // Target honours the module's rule: no fixed monthly => 0 target, so an
                             // unset monthly can never fabricate a deficit.
-                            $target_amt = $monthly_rate * $valid_months_count;
+                            $target_amt = 0.0;
+                            foreach ($col_is_valid as $i => $ok) {
+                                if ($ok) $target_amt += $col_rates[$i];
+                            }
 
                             // Standing (total, surplus/deficit, balance, status) comes from the shared
                             // module so the ledger, dashboard and reports can never disagree again.
@@ -304,8 +315,8 @@ function fmt($n) { return number_format($n, 0); }
                             <td class="text-end text-success fw-semibold"><?= $opening > 0 ? fmt($opening) : '—' ?></td>
                             <td class="text-end"><?= $entrance_paid > 0 ? fmt($entrance_paid) : '—' ?></td>
                             
-                            <?php foreach ($monthly_by_month as $amt): ?>
-                                <td class="text-end <?= $amt < $monthly_rate && $amt > 0 ? 'text-warning' : ($amt >= $monthly_rate ? 'text-dark' : 'text-muted') ?>"><?= $amt > 0 ? fmt($amt) : '—' ?></td>
+                            <?php foreach ($monthly_by_month as $ci => $amt): $cr = $col_rates[$ci] ?? $monthly_rate; ?>
+                                <td class="text-end <?= $amt < $cr && $amt > 0 ? 'text-warning' : ($amt >= $cr ? 'text-dark' : 'text-muted') ?>"><?= $amt > 0 ? fmt($amt) : '—' ?></td>
                             <?php endforeach; ?>
 
                             <td class="text-end fw-bold bg-light border-start"><?= fmt($total_member_contributed) ?></td>

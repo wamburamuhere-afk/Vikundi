@@ -42,6 +42,12 @@ try {
 }
 $is_sw = ($_SESSION['preferred_language'] ?? 'en') === 'sw';
 $lt = fn(string $en, string $sw): string => $is_sw ? $sw : $en;
+
+// The monthly amount as it changed over time, and the late-payment rule.
+require_once ROOT_DIR . '/includes/late_rules.php';
+$rate_rule = cr_monthly_rule($settings_raw);
+$rate_rows = is_array($rate_rule) ? $rate_rule : [];
+$late = late_settings($settings_raw);
 ?>
 
 <div class="row mb-0">
@@ -187,6 +193,39 @@ $lt = fn(string $en, string $sw): string => $is_sw ? $sw : $en;
                         <input type="number" min="0" name="entrance_fee" class="form-control border-secondary-subtle" value="<?= htmlspecialchars(gs($settings_raw, 'entrance_fee')) ?>" placeholder="<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Wazi = hakuna ada' : 'Blank = no entrance fee' ?>">
                     </div>
                 </div>
+
+                <!-- Rate changes: the monthly amount as it changed over time (includes/contribution_rates.php) -->
+                <div class="mt-4 pt-3 border-top">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <div class="fw-bold text-dark"><?= $lt('Changes to the monthly amount', 'Mabadiliko ya kiwango cha mwezi') ?></div>
+                            <small class="text-muted"><?= $lt('Use this when the amount changed over time, for example 5,000 from the start and 10,000 from June 2026. Each month is then measured against the amount in force that month.', 'Tumia hapa kama kiwango kilibadilika, kwa mfano 5,000 tangu mwanzo na 10,000 kuanzia Juni 2026. Kila mwezi utapimwa kwa kiwango kilichokuwepo mwezi huo.') ?></small>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" id="addRateRow"><i class="bi bi-plus-lg me-1"></i><?= $lt('Add a change', 'Ongeza badiliko') ?></button>
+                    </div>
+                    <input type="hidden" name="rate_table_sent" value="1">
+                    <table class="table table-sm align-middle mb-0 <?= $rate_rows ? '' : 'd-none' ?>" id="rateTable">
+                        <thead class="small text-muted"><tr><th><?= $lt('From', 'Kuanzia') ?></th><th><?= $lt('Monthly amount (TZS)', 'Kiwango cha mwezi (TZS)') ?></th><th></th></tr></thead>
+                        <tbody>
+                        <?php foreach ($rate_rows as $ri => $rr): ?>
+                            <tr>
+                                <td>
+                                    <?php if ($rr['from'] === null): ?>
+                                        <input type="hidden" name="rate_from[]" value=""><span class="fw-semibold"><?= $lt('From the start', 'Tangu mwanzo') ?></span>
+                                    <?php else: ?>
+                                        <input type="month" name="rate_from[]" class="form-control form-control-sm" value="<?= htmlspecialchars($rr['from']) ?>" required>
+                                    <?php endif; ?>
+                                </td>
+                                <td><input type="number" min="0" step="any" name="rate_amount[]" class="form-control form-control-sm" value="<?= htmlspecialchars((string) (0 + $rr['amount'])) ?>" required></td>
+                                <td class="text-end"><?php if ($rr['from'] !== null): ?><button type="button" class="btn btn-sm btn-link text-danger rate-remove" title="<?= $lt('Remove', 'Ondoa') ?>"><i class="bi bi-x-lg"></i></button><?php endif; ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    <?php if ($rate_rows): ?>
+                        <small class="text-muted d-block mt-2"><i class="bi bi-info-circle me-1"></i><?= $lt('With changes saved, the Cycle Contribution above always shows the amount in force today.', 'Mabadiliko yakihifadhiwa, Mchango wa Mzunguko hapo juu huonyesha kiwango cha leo.') ?></small>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
     </div>
@@ -239,35 +278,46 @@ $lt = fn(string $en, string $sw): string => $is_sw ? $sw : $en;
         </div>
     </div>
 
-    <!-- KADI 4: SHERIA KALI (AUTO-TERMINATION) -->
+    <!-- KADI 4: LATE-PAYMENT RULES (includes/late_rules.php, run once a day) -->
     <div class="col-12">
         <div class="card border border-primary-subtle shadow-sm rounded-4 overflow-hidden">
             <div class="card-header bg-white border-bottom py-3">
-                <h6 class="mb-0 fw-bold text-primary"><i class="bi bi-shield-lock-fill me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Sheria Kali ya Uanachama' : 'Strict Membership Policy' ?></h6>
+                <h6 class="mb-0 fw-bold text-primary"><i class="bi bi-shield-lock-fill me-2"></i> <?= $lt('Late Payment Rules', 'Sheria za Kuchelewa Kulipa') ?></h6>
             </div>
             <div class="card-body p-4 text-start">
                 <div class="alert alert-primary border-primary py-2 small mb-4">
-                    <i class="bi bi-info-circle-fill me-2"></i> <strong><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Tahadhari:' : 'Warning:' ?></strong> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Ikiwa mwanachama atapitisha muda huu bila kulipa kiasi kilichopangwa, mfumo utamfuta (Terminate) moja kwa moja.' : 'If a member misses this deadline without paying the required amount, the system will auto-terminate them.' ?>
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    <?= $lt(
+                        'When switched on, the system checks every day. A member who has not paid a month\'s contribution by the fine day of the next month gets one fine. If the contribution or the fine is still unpaid after the dormant day, the member becomes Dormant, and Active again once everything is paid. Payments waiting for approval count as paid. Members a leader made Dormant are never touched.',
+                        'Ikiwashwa, mfumo hukagua kila siku. Mwanachama asiyelipa mchango wa mwezi hadi siku ya faini ya mwezi unaofuata anapata faini moja. Kama mchango au faini bado havijalipwa baada ya siku ya kusitishwa, anakuwa Dormant, na anarudi Active akishalipa vyote. Malipo yanayosubiri kuidhinishwa yanahesabika kama yamelipwa. Wanachama waliowekwa Dormant na kiongozi hawaguswi.'
+                    ) ?>
                 </div>
                 <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold text-dark"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Siku ya Mwisho ya Malipo' : 'Payment Deadline Day' ?></label>
-                        <select name="deadline_day" id="deadline_day" class="form-select border-secondary-subtle" data-current="<?= gs($settings_raw, 'deadline_day', '15') ?>">
-                            <!-- Will be populated by JS -->
-                        </select>
-                        <small class="text-muted italic"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mwisho wa kutoa mchango.' : 'Last day to submit payment.' ?></small>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold text-dark"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Saa ya Mwisho (Deadline Time)' : 'Deadline Time (HH:MM)' ?></label>
-                        <input type="time" name="deadline_time" class="form-control border-secondary-subtle" value="<?= gs($settings_raw, 'deadline_time', '23:59') ?>">
-                        <small class="text-muted italic"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Muda utakaofika mwanachama anafutwa.' : 'Time at which member is auto-kicked.' ?></small>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold text-dark"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Hali ya Auto-Termination' : 'Auto-Termination Status' ?></label>
-                        <div class="form-check form-switch mt-2">
-                            <input class="form-check-input" type="checkbox" name="auto_termination" value="on" <?= gs($settings_raw, 'auto_termination') === 'on' ? 'checked' : '' ?> style="transform: scale(1.3)">
-                            <label class="form-check-label ms-2 fw-bold text-dark"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Washa / Tuma Nje Waliopitisha' : 'Enable / Auto-Kick Overdue' ?></label>
+                    <div class="col-md-12">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="late_rules_enabled" id="late_rules_enabled" value="1" <?= $late['enabled'] ? 'checked' : '' ?> style="transform: scale(1.3)">
+                            <label class="form-check-label ms-2 fw-bold text-dark" for="late_rules_enabled"><?= $lt('Apply the late payment rules', 'Tumia sheria za kuchelewa kulipa') ?></label>
                         </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold text-dark"><?= $lt('Rules apply from', 'Sheria zinaanza mwezi') ?></label>
+                        <input type="month" name="late_rules_start_ym" class="form-control border-secondary-subtle" value="<?= htmlspecialchars((string) $late['start_ym']) ?>">
+                        <small class="text-muted"><?= $lt('Months before this are never fined. Blank = the month you switch it on.', 'Miezi ya kabla haitozwi faini. Wazi = mwezi unaowasha.') ?></small>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold text-dark"><?= $lt('Late fine (TZS)', 'Faini ya kuchelewa (TZS)') ?></label>
+                        <input type="number" min="0" step="any" name="late_fine_amount" class="form-control border-secondary-subtle" value="<?= htmlspecialchars((string) (0 + $late['fine'])) ?>">
+                        <small class="text-muted"><?= $lt('Once per member per month. 0 = no fine.', 'Mara moja kwa mwanachama kwa mwezi. 0 = hakuna faini.') ?></small>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold text-dark"><?= $lt('Pay by (day of next month)', 'Lipa kabla ya (siku ya mwezi unaofuata)') ?></label>
+                        <input type="number" min="1" max="28" name="late_fine_day" class="form-control border-secondary-subtle" value="<?= (int) $late['fine_day'] ?>">
+                        <small class="text-muted"><?= $lt('Unpaid after this day: fined.', 'Asipolipa hadi siku hii: faini.') ?></small>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold text-dark"><?= $lt('Dormant after (day of next month)', 'Dormant baada ya (siku ya mwezi unaofuata)') ?></label>
+                        <input type="number" min="1" max="28" name="late_dormant_day" class="form-control border-secondary-subtle" value="<?= (int) $late['dormant_day'] ?>">
+                        <small class="text-muted"><?= $lt('Contribution or fine unpaid after this day: Dormant.', 'Mchango au faini haijalipwa baada ya siku hii: Dormant.') ?></small>
                     </div>
                 </div>
             </div>
@@ -462,6 +512,44 @@ function updateDeadlineOptions() {
 
 $('#cycle_type').on('change', updateDeadlineOptions);
 $(document).ready(updateDeadlineOptions);
+
+// ── Rate changes table ──────────────────────────────────────────────────────
+(function () {
+    const lang = '<?= $is_sw ? 'sw' : 'en' ?>';
+    const t = (en, sw) => lang === 'sw' ? sw : en;
+    const $table = $('#rateTable'), $body = $table.find('tbody');
+    const $cycle = $('input[name="monthly_contribution"]');
+    const lockCycle = () => $cycle.prop('readonly', $body.children().length > 0);
+    const row = (from) => {
+        const fromCell = from === null
+            ? '<input type="hidden" name="rate_from[]" value=""><span class="fw-semibold">' + t('From the start', 'Tangu mwanzo') + '</span>'
+            : '<input type="month" name="rate_from[]" class="form-control form-control-sm" required>';
+        const remove = from === null ? '' : '<button type="button" class="btn btn-sm btn-link text-danger rate-remove"><i class="bi bi-x-lg"></i></button>';
+        return $('<tr><td>' + fromCell + '</td><td><input type="number" min="0" step="any" name="rate_amount[]" class="form-control form-control-sm" required></td><td class="text-end">' + remove + '</td></tr>');
+    };
+    $('#addRateRow').on('click', function () {
+        if ($body.children().length === 0) {
+            // The first change also records today's amount as the "from the start" row.
+            const $base = row(null);
+            $base.find('input[name="rate_amount[]"]').val($cycle.val());
+            $body.append($base);
+        }
+        $body.append(row(''));
+        $table.removeClass('d-none');
+        lockCycle();
+    });
+    $body.on('click', '.rate-remove', function () {
+        $(this).closest('tr').remove();
+        if ($body.children().length === 1) {
+            // Only "from the start" is left: that is the plain monthly amount again.
+            $cycle.val($body.find('input[name="rate_amount[]"]').val());
+            $body.empty();
+            $table.addClass('d-none');
+        }
+        lockCycle();
+    });
+    lockCycle();
+})();
 
 $('#settingsForm').on('submit', function(e) {
     e.preventDefault();
