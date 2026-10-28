@@ -4,6 +4,21 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-28 — "Add New User" was a dead link, and its form made users who cannot sign in
+
+**Branch:** `fix/add-user-page`
+**Developer:** Claude Code / Jabir Mussa
+
+**Found on UKUU** (Chairperson adding a BJP Support user): `Add New User` → **Page Not Found**. Not permissions: `add_user` was never in `roots.php` (git history has no such route). Once reachable, `add_user.php` also: inserted no `status` (column default `pending`, which the login refuses), no `user_role`/`role` name, no CSRF token, no audit entry, and sent non-admins to a non-existent `unauthorized.php`.
+
+**Fix:** route `add_user`; insert `status='active'`, `is_active=1`, role name in `role`/`user_role`; `require_csrf.php` after the admin check and before any output, `csrf_field()` in the form; `logCreate('Users', …)`; redirects via `getUrl()`.
+
+**Verified locally** (scratch copy, restored after): page opens for the Chairperson; POST without token → 403; created `bjpsupport` (Chairperson) active with role names; it signs in and reaches Group Settings and Transactions; activity log "Created new Users record: bjpsupport (Chairperson)".
+
+**Tests:** `AddUserPageTest` (4). Full suite 2,727 passing.
+
+---
+
 ## Session — 2026-10-24 — SECURITY: database dumps and private files were served over the web
 
 **Branch:** `fix/security-no-file-leak`
