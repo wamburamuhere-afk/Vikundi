@@ -4,6 +4,40 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-29 — Group Guide: a welcome guide every group has at /guide
+
+**Branch:** `feat/group-guide`
+**Developer:** Claude Code / Jabir Mussa
+
+**Why:** every new group needs a client-facing guide in English and Swahili. Writing one per group by hand doesn't scale. The guide is now part of the system and fills itself in for each group.
+
+**What changed**
+- `includes/group_guide.php` (new):
+  - `vk_guide_sections($ctx, $sw)` builds 18 sections in 4 parts: getting started, first steps, running the group, good practice and help.
+  - It's pure, in English and Kiswahili, with menu and button names in English as they appear on screen.
+  - It's filled in from the group's name and address.
+  - The Dividends section, the Shares payment type, the Shares Register and the share settings are left out when the super-admin switched those features off.
+  - A demo group gets a "these are samples" note.
+  - `vk_guide_rules_rows()` builds "Your group's rules today": the monthly contribution (with its rate history), Social Fund, entrance fee, share price, deadline, late-payment rule and each loan type.
+- `guide.php` (new), route `guide`:
+  - public like the sign-in page, so the link can be sent before the first sign-in;
+  - the group's figures show only when signed in;
+  - English/Kiswahili switch (`?lang=`), and "Download PDF" (browser print, colours kept);
+  - works at phone width;
+  - no credentials anywhere.
+- `header.php`: "Group Guide" in the user menu, opening in a new tab.
+- `superadmin/src/pages/group.php`: a "Group guide" row with English and Kiswahili links, to send to the group.
+- Content is based on the UKUU manuals. Every menu and button named in the guide was checked against the app.
+
+**Found, not changed:** `app/bms/customer/record_payout.php` (a member payout from the Social Fund, e.g. a wedding) has no route and no menu entry. So the guide only describes Condolences for Social Fund payments.
+
+**Tests:**
+- `tests/Unit/GroupGuideTest.php` (new, 9 tests);
+- full suite: 2,803 tests, all pass.
+- Rendered locally in English and Kiswahili, at phone width, and in print.
+
+---
+
 ## Session — 2026-10-29 — Demo groups get sample data; "Clear demo data" when they sign up
 
 **Branch:** `feat/demo-seed`

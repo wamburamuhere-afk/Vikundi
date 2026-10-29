@@ -59,6 +59,11 @@ layout($g['name'], 'groups', static function () use ($g, $backup, $disk, $reques
         <dl class="row vk-dl mb-0">
           <dt class="col-sm-4">Address</dt>
           <dd class="col-sm-8"><a href="https://<?= e($g['subdomain'] . '.' . $base) ?>" rel="noopener" target="_blank"><?= e($g['subdomain'] . '.' . $base) ?></a></dd>
+          <dt class="col-sm-4">Group guide</dt>
+          <dd class="col-sm-8"><?php $guide = 'https://' . $g['subdomain'] . '.' . $base . '/guide'; ?>
+            <a href="<?= e($guide) ?>?lang=en" rel="noopener" target="_blank">English</a> &middot;
+            <a href="<?= e($guide) ?>?lang=sw" rel="noopener" target="_blank">Kiswahili</a>
+            <div class="form-text">Send this link (or its Download PDF) to the group. The password goes separately.</div></dd>
           <?php if ($g['hosts']): ?>
           <dt class="col-sm-4">Also reached at</dt><dd class="col-sm-8"><?= e(implode(', ', $g['hosts'])) ?></dd>
           <?php endif; ?>

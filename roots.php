@@ -157,6 +157,9 @@ $routes = [
     // logged-out visitor must both reach this with zero redirects. Referenced
     // from the Vikundi Android app's Play Console listing.
     'privacy' => ROOT_DIR . '/privacy.php',
+    // The group's welcome guide. Public like the sign-in page so it can be sent to a
+    // new group; the group's own figures show only when signed in (guide.php).
+    'guide' => ROOT_DIR . '/guide.php',
     'dashboard' => ROOT_DIR . '/app/dashboard.php',
     // 'loan-dashboard' => ROOT_DIR . '/app/loan-dashboard.php',
     'register' => ROOT_DIR . '/register.php',
