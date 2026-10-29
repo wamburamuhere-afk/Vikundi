@@ -178,14 +178,16 @@ if (!function_exists('vk_admin_allowed_actions')) {
     /**
      * What the group page offers for a group's status. A group being created
      * or already archived offers nothing; archive is never undone from the panel.
+     * A demo group can also have its sample data cleared (it then becomes a real group).
      */
-    function vk_admin_allowed_actions(string $status): array
+    function vk_admin_allowed_actions(string $status, bool $isDemo = false): array
     {
-        return match ($status) {
+        $actions = match ($status) {
             'active'    => ['suspend', 'archive', 'cert', 'features'],
             'suspended' => ['resume', 'archive', 'cert', 'features'],
             default     => [],
         };
+        return ($actions && $isDemo) ? [...$actions, 'clear_demo'] : $actions;
     }
 }
 

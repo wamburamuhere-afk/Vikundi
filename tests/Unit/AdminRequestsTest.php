@@ -146,7 +146,7 @@ class AdminRequestsTest extends TestCase
     {
         $src = (string) file_get_contents(dirname(__DIR__, 2) . '/bin/provision_tenant.php');
         $this->assertStringContainsString("if (getenv('VIKUNDI_REQUEST_ID')) {", $src);
-        $this->assertSame(6, substr_count($src, 'server_audit($reg,'), 'cert, status changes, features, add-host, create failed, create done');
+        $this->assertSame(8, substr_count($src, 'server_audit($reg,'), 'cert, status changes, features, clear-demo failed and done, add-host, create failed, create done');
     }
 
     public function testTheNewScriptsRefuseToRunOverHttp(): void
@@ -163,7 +163,7 @@ class AdminRequestsTest extends TestCase
         foreach (['superadmins', 'provision_requests', 'admin_audit_log'] as $t) {
             $this->assertStringContainsString("CREATE TABLE IF NOT EXISTS $t", $sql);
         }
-        $this->assertStringContainsString("ENUM('create','suspend','resume','archive','cert','features')", $sql);
+        $this->assertStringContainsString("ENUM('create','suspend','resume','archive','cert','features','clear_demo')", $sql);
     }
 
     public function testAnEmailGoesOutForFailuresAndWarningsOnly(): void
