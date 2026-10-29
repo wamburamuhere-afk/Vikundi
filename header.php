@@ -11,6 +11,7 @@ if (!isset($_SESSION['user_id'])) {
 
 // Audit SEC-009: enforce the idle and absolute session bounds on every UI page.
 require_once __DIR__ . '/includes/session_guard.php';
+require_once __DIR__ . '/includes/features.php'; // vk_feature() for the menus below
 if (vk_session_expired()) {
     vk_session_end();
     header("Location: login?expired=1");
@@ -593,7 +594,7 @@ try {
                                 <?php if (canView('approve_loan') || canView('disburse_loan')): ?>
                                 <li><a class="dropdown-item" href="<?= getUrl('loans') ?>"><i class="bi bi-bank text-primary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mikopo' : 'Loans' ?></a></li>
                                 <?php endif; ?>
-                                <?php if (canView('dividends')): ?>
+                                <?php if (vk_feature('dividends') && canView('dividends')): ?>
                                 <li><a class="dropdown-item" href="<?= getUrl('dividends') ?>"><i class="bi bi-pie-chart-fill text-success me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Gawio' : 'Dividends' ?></a></li>
                                 <?php endif; ?>
                                 <?php if (canView('manage_fines')): ?>
@@ -680,10 +681,12 @@ try {
                             </a>
                             <ul class="dropdown-menu shadow border-0 mt-0" aria-labelledby="reportsDropdown">
                                 <?php if (canView('approve_loan') || canView('disburse_loan') || canView('dividends')): $vk_rsw = ($_SESSION['preferred_language'] ?? 'en') === 'sw'; ?>
-                                <li><h6 class="dropdown-header"><?= $vk_rsw ? 'Mikopo, Hisa na Mfuko wa Jamii' : 'Loans, Shares & Social Fund' ?></h6></li>
+                                <li><h6 class="dropdown-header"><?= vk_feature('shares') ? ($vk_rsw ? 'Mikopo, Hisa na Mfuko wa Jamii' : 'Loans, Shares & Social Fund') : ($vk_rsw ? 'Mikopo na Mfuko wa Jamii' : 'Loans & Social Fund') ?></h6></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('reports/loans') ?>"><i class="bi bi-bank me-2 text-primary"></i> <?= $vk_rsw ? 'Mikopo Yote' : 'Loan Portfolio' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('reports/loan_repayments') ?>"><i class="bi bi-cash-coin me-2 text-success"></i> <?= $vk_rsw ? 'Mapato na Marejesho ya Mikopo' : 'Loan Income & Repayments' ?></a></li>
+                                <?php if (vk_feature('shares')): ?>
                                 <li><a class="dropdown-item" href="<?= getUrl('reports/shares') ?>"><i class="bi bi-pie-chart me-2 text-primary"></i> <?= $vk_rsw ? 'Daftari la Hisa' : 'Shares Register' ?></a></li>
+                                <?php endif; ?>
                                 <li><a class="dropdown-item" href="<?= getUrl('reports/social_fund') ?>"><i class="bi bi-heart me-2 text-danger"></i> <?= $vk_rsw ? 'Taarifa ya Mfuko wa Jamii' : 'Social Fund Statement' ?></a></li>
                                 <?php endif; ?>
                                 <li><hr class="dropdown-divider"></li>

@@ -67,10 +67,16 @@ layout('Request #' . (int) $r['id'], 'requests', static function () use ($r, $pa
       <div class="vk-card h-100">
         <h2 class="h6 mb-3">Form details</h2>
         <dl class="row vk-dl mb-0">
+          <?php if ($r['action'] === 'features'): ?>
+          <?php foreach (vk_feature_catalog() as $k => $f): ?>
+          <dt class="col-sm-5"><?= e($f['label']) ?></dt><dd class="col-sm-7"><?= !empty($params['features'][$k]) ? 'On' : 'Off' ?></dd>
+          <?php endforeach; ?>
+          <?php else: ?>
           <?php foreach (['name' => 'Group name', 'chair_first' => 'Chairperson first name', 'chair_last' => 'Chairperson last name', 'chair_phone' => 'Chairperson phone', 'chair_email' => 'Chairperson email'] as $k => $label): ?>
             <?php if (($params[$k] ?? '') !== ''): ?><dt class="col-sm-5"><?= e($label) ?></dt><dd class="col-sm-7"><?= e((string) $params[$k]) ?></dd><?php endif; ?>
           <?php endforeach; ?>
           <dt class="col-sm-5">Demo group</dt><dd class="col-sm-7"><?= !empty($params['demo']) ? 'Yes' : 'No' ?></dd>
+          <?php endif; ?>
         </dl>
       </div>
     </div>

@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS tenants (
     db_user       VARCHAR(32)  NOT NULL,
     status        ENUM('provisioning','active','suspended','archived') NOT NULL DEFAULT 'provisioning',
     is_demo       TINYINT(1)   NOT NULL DEFAULT 0,
+    features      JSON         NULL,          -- {"shares":false,...}; unlisted = on (includes/features.php)
     created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     suspended_at  DATETIME     NULL,
     archived_at   DATETIME     NULL,

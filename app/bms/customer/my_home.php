@@ -50,12 +50,14 @@ try {
 }
 try {
     require_once __DIR__ . '/../../../includes/dividends.php';
-    $my_dividend = dv_member_latest($pdo, $customer_id);
+    $my_dividend = vk_feature('dividends') ? dv_member_latest($pdo, $customer_id) : null;
 } catch (Throwable $e) {
     $my_dividend = null;
 }
-$show_buckets = $fb_rules['share_price'] > 0
-    || ($buckets['shares'] + $buckets['social_fund'] + $buckets['deposit']) > 0;
+// Shares can be switched off for the group by the super-admin.
+$has_shares   = vk_feature('shares');
+$show_buckets = ($has_shares && $fb_rules['share_price'] > 0)
+    || (($has_shares ? $buckets['shares'] : 0) + $buckets['social_fund'] + $buckets['deposit']) > 0;
 $monthly      = vk_member_monthly_savings($pdo, $customer_id, 12);   // ['YYYY-MM' => total]
 $streak       = vk_contribution_streak(array_keys($monthly), date('Y-m'));
 $saved_this_m = $monthly[date('Y-m')] ?? 0;
@@ -184,6 +186,7 @@ includeHeader();
     <?php if ($show_buckets): ?>
     <!-- Shares & funds: the Social Fund and the deposit are shown apart from savings -->
     <div class="row g-3 mb-3">
+        <?php if ($has_shares): ?>
         <div class="col-6 col-lg-3">
             <div class="card border-0 shadow-sm h-100" style="border-left:5px solid #1a7f4b !important;">
                 <div class="card-body">
@@ -203,6 +206,7 @@ includeHeader();
                 </div>
             </div>
         </div>
+        <?php endif; ?>
         <div class="col-6 col-lg-3">
             <div class="card border-0 shadow-sm h-100" style="border-left:5px solid #6f42c1 !important;">
                 <div class="card-body">

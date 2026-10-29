@@ -100,7 +100,9 @@ if (!function_exists('vk_group_settings_writable')) {
      */
     function vk_group_settings_writable(): array
     {
-        return [
+        require_once __DIR__ . '/features.php';
+        // Settings of a feature the super-admin switched off are neither shown nor saved.
+        return array_diff_key([
             'group_name'                => 'text',
             'group_email'               => 'text',
             'group_phone'               => 'text',
@@ -126,7 +128,7 @@ if (!function_exists('vk_group_settings_writable')) {
             'contribution_grace_days'   => 'int',
             'deadline_day'              => 'day',
             'auto_termination'          => 'enum:on,off',
-        ];
+        ], array_flip(vk_feature_hidden_settings()));
     }
 }
 

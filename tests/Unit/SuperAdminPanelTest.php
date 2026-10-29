@@ -157,8 +157,8 @@ class SuperAdminPanelTest extends TestCase
 
     public function testTheGroupPageOffersOnlyWhatTheStatusAllows(): void
     {
-        $this->assertSame(['suspend', 'archive', 'cert'], vk_admin_allowed_actions('active'));
-        $this->assertSame(['resume', 'archive', 'cert'], vk_admin_allowed_actions('suspended'));
+        $this->assertSame(['suspend', 'archive', 'cert', 'features'], vk_admin_allowed_actions('active'));
+        $this->assertSame(['resume', 'archive', 'cert', 'features'], vk_admin_allowed_actions('suspended'));
         $this->assertSame([], vk_admin_allowed_actions('archived'));
         $this->assertSame([], vk_admin_allowed_actions('provisioning'));
     }
