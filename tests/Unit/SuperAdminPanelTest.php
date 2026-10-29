@@ -163,6 +163,15 @@ class SuperAdminPanelTest extends TestCase
         $this->assertSame([], vk_admin_allowed_actions('provisioning'));
     }
 
+    public function testOnlyADemoGroupOffersClearDemoData(): void
+    {
+        $this->assertSame(['suspend', 'archive', 'cert', 'features', 'clear_demo'], vk_admin_allowed_actions('active', true));
+        $this->assertSame(['resume', 'archive', 'cert', 'features', 'clear_demo'], vk_admin_allowed_actions('suspended', true));
+        $this->assertNotContains('clear_demo', vk_admin_allowed_actions('active', false));
+        $this->assertSame([], vk_admin_allowed_actions('provisioning', true));
+        $this->assertSame([], vk_admin_allowed_actions('archived', true));
+    }
+
     public function testTheChairpersonUsernameIsReadFromTheRedactedOutput(): void
     {
         $out = "6/6 Active\n  First Chairperson: username ajuma, password (shown once in the panel)\n";

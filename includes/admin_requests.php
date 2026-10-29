@@ -16,7 +16,7 @@ if (!function_exists('vk_req_actions')) {
     /** The actions the panel may ask for. Nothing else is ever run. */
     function vk_req_actions(): array
     {
-        return ['create', 'suspend', 'resume', 'archive', 'cert', 'features'];
+        return ['create', 'suspend', 'resume', 'archive', 'cert', 'features', 'clear_demo'];
     }
 }
 
@@ -114,6 +114,9 @@ if (!function_exists('vk_req_command_args')) {
         if ($action === 'features') {
             return ['--features=' . $sub, '--set=' . vk_features_to_spec((array) ($params['features'] ?? []))];
         }
+        if ($action === 'clear_demo') {
+            return ['--clear-demo=' . $sub];
+        }
         if ($action !== 'create') {
             return ['--' . $action . '=' . $sub];
         }
@@ -193,6 +196,7 @@ if (!function_exists('vk_req_audit_action')) {
             'archive' => 'archive group',
             'cert'    => 'update certificate',
             'features' => 'set features',
+            'clear_demo' => 'clear demo data',
             default   => $action,
         };
     }

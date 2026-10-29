@@ -4,6 +4,57 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-29 — Demo groups get sample data; "Clear demo data" when they sign up
+
+**Branch:** `feat/demo-seed`
+**Developer:** Claude Code / Jabir Mussa
+
+**Why:** a prospect (Pamoja Association Group, a family group of about 50: monthly contributions, loans, Social Fund for weddings and funerals) is getting a demo. Until now the panel's "Demo group" tick only put a label on the group, and the group started empty.
+
+**What changed**
+- `includes/demo_data.php` (new):
+  - `vk_demo_seed()` adds 19 sample members around the real first Chairperson, including a Secretary and a Treasurer.
+  - It adds six months of monthly contributions and Social Fund payments. Two members are behind, and half have not paid this month yet.
+  - It adds fines, expenses, a funeral payment and a wedding payment from the Social Fund, and two loan types with fixed limits, so they work with Shares off.
+  - It adds four loans through the real loan workflow: repaid, being repaid, overdue, and waiting for approval.
+  - It only takes a group that has nothing but its first Chairperson.
+- **Sample people:**
+  - e-mails on `demo.example`, phones `2557000003xx`, member numbers `DEMO-nn`;
+  - a random password nobody sees, so only the real Chairperson signs in.
+- `vk_demo_clear()`, all or nothing:
+  - empties the money tables;
+  - removes the sample people and their other records;
+  - removes the sample loan types, and the settings the seed filled in unless the group changed them.
+  - It keeps the Chairperson, other real logins, the group name and the audit log.
+- `bin/demo_data.php --tenant=<g> --seed|--clear` (new) works only on a group the registry marks as a demo.
+- **`bin/provision_tenant.php`:**
+  - `--create --demo` seeds the group inside the create, so a failure undoes the whole create;
+  - new `--clear-demo=<g>` clears the samples, sets `is_demo = 0` (it is now a real group) and records the change in the history.
+- **Panel:**
+  - the group page has "Clear demo data…" for demo groups only, and you type the address to confirm;
+  - the create form explains what the tick does.
+- Request queue: new action `clear_demo` → `--clear-demo=<g>`.
+- **Registry:** `provision_requests.action` gains `clear_demo`.
+  - `database/control/admin_schema.sql` is updated.
+  - New `database/control/add_clear_demo_action.sql` (run once as MySQL root, rerunnable).
+
+**Tests:**
+- `tests/Unit/DemoDataTest.php` (new);
+- `SuperAdminPanelTest`: clear_demo is offered only for demo groups;
+- `AdminRequestsTest`: the enum is updated, and `server_audit` calls go 6 → 8;
+- `GroupFeaturesTest`: now checks the features migration's own enum.
+- Full suite: 2,794 tests, all pass.
+
+**Verified locally** on a migrated empty group in shared-server mode:
+- the seed gave 19 members, 226 contributions and 4 loans; the dashboard and the loans page show them;
+- a second seed is refused;
+- `--clear-demo` left only the Chairperson and the group name, and flipped the group to real;
+- a repeated clear, or a seed on a real group, is refused.
+
+**Server step after deploy:** `mysql -u root -p vikundi_control < database/control/add_clear_demo_action.sql`
+
+---
+
 ## Session — 2026-10-29 — Per-group features, switched by the super-admin (Shares, Dividends)
 
 **Branch:** `feat/group-features`
