@@ -4,6 +4,8 @@
 ob_start();
 global $pdo;
 require_once __DIR__ . '/../../../roots.php';
+require_once ROOT_DIR . '/includes/features.php';
+vk_require_feature('dividends'); // switched off by the super-admin for some groups
 includeHeader();
 requireViewPermission('dividends');
 require_once ROOT_DIR . '/includes/dividends.php';

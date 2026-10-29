@@ -44,6 +44,9 @@ $accounts = ['M-Koba', 'Bank', 'Cash', 'Mobile Money'];
 // and the fine disappeared. Fines are recorded on the Fines page, in the fines table.
 require_once ROOT_DIR . '/includes/fund_buckets.php';
 $types = fb_type_labels($isSw);
+if (!vk_feature('shares')) {
+    unset($types['share']); // Shares switched off for this group by the super-admin
+}
 $statusBadge = [
     'pending'  => 'warning', 'reviewed' => 'info',
     'approved' => 'success', 'cancelled' => 'secondary',

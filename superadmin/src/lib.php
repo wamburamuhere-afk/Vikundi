@@ -182,8 +182,8 @@ if (!function_exists('vk_admin_allowed_actions')) {
     function vk_admin_allowed_actions(string $status): array
     {
         return match ($status) {
-            'active'    => ['suspend', 'archive', 'cert'],
-            'suspended' => ['resume', 'archive', 'cert'],
+            'active'    => ['suspend', 'archive', 'cert', 'features'],
+            'suspended' => ['resume', 'archive', 'cert', 'features'],
             default     => [],
         };
     }

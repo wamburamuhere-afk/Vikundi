@@ -4,6 +4,35 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-29 — Per-group features, switched by the super-admin (Shares, Dividends)
+
+**Branch:** `feat/group-features`
+**Developer:** Claude Code / Jabir Mussa
+
+**Asked by UKUU:** the group has no shares and no dividends ("vizime tuu kwa Ukuu"). Removing the `dividends` permission would not have hidden anything: every UKUU login is a Chairperson, Secretary or Treasurer, and `canView()` lets those roles see every page. Jabir chose to make it a super-admin decision, not a group setting.
+
+**How it works** (`includes/features.php`):
+- `vikundi_control.tenants.features` (JSON, e.g. `{"shares":false,"dividends":false}`). Unlisted = on, so other groups, a registry without the column, and single-site mode (test site, local) are unchanged.
+- `vk_feature('shares')` reads the group's registry row, which `tenant_config.php` already loads on every request (no extra query).
+- Off means off for everyone in the group: menu links, pages (`vk_require_feature()` answers 404 before the header), the settings fields (hidden and not saved, web and mobile API via `vk_feature_hidden_settings()`), the Shares type on the record-payment form (refused server-side too), and the share and dividend cards on My Home. Nothing is deleted.
+
+**Super-admin panel:** a Features card on each group's page. Saving queues a `features` request; the worker runs `bin/provision_tenant.php --features=<sub> --set=shares:off,dividends:off`, which updates only that column and writes a history row. The panel's MySQL login stays read-only on the registry.
+
+**Server step (once, as MySQL root):** `database/control/add_tenant_features.sql` adds the column and the `features` request type. It's safe to run twice. `schema.sql` and `admin_schema.sql` are updated for new installs.
+
+**Verified locally:**
+- The registry change ran twice cleanly on a throwaway copy of the old schema.
+- `--features` set the column, refused a bad `--set` and an unknown group, and wrote history.
+- The worker applied a queued request and refused a malformed one.
+- Pages were checked as a signed-in Admin with both features off and then on: the menus, Group Settings fields, Dividends and Shares Register (404), the record-payment type list and My Home.
+- The scratch DB was restored afterwards.
+
+**Not changed:** loan types can still set a share multiple as a loan limit. With Shares off, UKUU's loan types should not use one (share capital is 0).
+
+**Tests:** `tests/Unit/GroupFeaturesTest.php` (17). `SuperAdminPanelTest` and `AdminRequestsTest` were updated for the new request type.
+
+---
+
 ## Session — 2026-10-28 — Contribution rates by date, and the late-payment rules (UKUU)
 
 **Branch:** `feat/contribution-rates-and-late-rules`

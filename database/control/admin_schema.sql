@@ -31,9 +31,9 @@ CREATE TABLE IF NOT EXISTS superadmins (
 
 CREATE TABLE IF NOT EXISTS provision_requests (
     id                INT UNSIGNED  NOT NULL AUTO_INCREMENT,
-    action            ENUM('create','suspend','resume','archive','cert') NOT NULL,
+    action            ENUM('create','suspend','resume','archive','cert','features') NOT NULL,
     subdomain         VARCHAR(30)   NULL,              -- NULL only for 'cert'
-    params            JSON          NULL,              -- the create form's fields
+    params            JSON          NULL,              -- the create form's fields, or the features to set
     requested_by      INT UNSIGNED  NULL,
     status            ENUM('waiting','running','done','failed') NOT NULL DEFAULT 'waiting',
     exit_code         INT           NULL,

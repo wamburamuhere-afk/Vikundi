@@ -13,7 +13,10 @@ require_once __DIR__ . '/../includes/require_csrf.php';
 require_once __DIR__ . '/../core/permissions.php';
 require_once __DIR__ . '/../includes/dividends.php';
 require_once __DIR__ . '/../includes/activity_logger.php';
+require_once __DIR__ . '/../includes/features.php';
 global $pdo;
+
+vk_require_feature('dividends', true);
 
 header('Content-Type: application/json');
 

@@ -65,6 +65,10 @@ $allowed_keys = [
 
 $lang = $_SESSION['preferred_language'] ?? 'en';
 
+// Settings of a feature the super-admin switched off for this group are not saved.
+require_once __DIR__ . '/../includes/features.php';
+$allowed_keys = array_values(array_diff($allowed_keys, vk_feature_hidden_settings()));
+
 // ── Contribution rate history and late-payment rules: check before saving anything ──
 require_once __DIR__ . '/../includes/late_rules.php';
 $vk_errors = [];
