@@ -18,12 +18,17 @@
  *   php bin/provision_tenant.php --archive=wisewallet     (final backup, then offline for good; deletes nothing)
  *   php bin/provision_tenant.php --features=ukuu --set=shares:off,dividends:off
  *                                                         (which optional features the group has; see includes/features.php)
+ *   php bin/provision_tenant.php --clear-demo=pamoja     (a demo group signs up: remove the sample data,
+ *                                                         keep the Chairperson; the group is then a real one)
  *   php bin/provision_tenant.php --list
  *   php bin/provision_tenant.php --cert                   (re-issue the shared https certificate)
  *
  * Reads /etc/vikundi/control.php (paths, base domain) and /etc/vikundi/provisioner.php
  * (the provisioner MySQL user, vikundi_prov, which may create and grant only vk_* databases and
  * write the registry). Never root, and never reachable from the web.
+ *
+ * --create --demo also fills the group with sample data (bin/demo_data.php,
+ * includes/demo_data.php) so a prospect has something to look at.
  *
  * --create undoes every step it took if any later step fails, so a failed run
  * leaves no half-made group behind.
@@ -167,6 +172,14 @@ function make_dirs(string $dataRoot, string $sub): array
     return $made;
 }
 
+/** Run bin/demo_data.php for a group (--seed or --clear); its output goes straight through. */
+function run_demo_data(string $sub, string $what): bool
+{
+    $cmd = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__DIR__ . '/demo_data.php') . ' --tenant=' . escapeshellarg($sub) . ' ' . escapeshellarg('--' . $what);
+    passthru($cmd, $code);
+    return $code === 0;
+}
+
 function run_migrations(string $sub): bool
 {
     $cmd = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__DIR__ . '/../database/migrate.php') . ' --tenant=' . escapeshellarg($sub);
@@ -247,6 +260,26 @@ if (isset($args['features'])) {
     $reg->prepare('UPDATE tenants SET features = ? WHERE id = ?')->execute([vk_features_encode($want), $row['id']]);
     out("{$row['subdomain']}: $before -> $after");
     server_audit($reg, 'set features', $row['subdomain'], 'done', $after);
+    exit(0);
+}
+
+// ── --clear-demo ─────────────────────────────────────────────────────────────
+if (isset($args['clear-demo'])) {
+    $row = tenant_or_fail($reg, (string) $args['clear-demo']);
+    if (!(int) $row['is_demo']) {
+        fail("{$row['subdomain']} is not a demo group; its data is not touched.");
+    }
+    if (!in_array($row['status'], ['active', 'suspended'], true)) {
+        fail("{$row['subdomain']} is {$row['status']}.");
+    }
+    if (!run_demo_data($row['subdomain'], 'clear')) {
+        server_audit($reg, 'clear demo data', $row['subdomain'], 'failed');
+        fail('the sample data was not removed (output above). Nothing was changed.');
+    }
+    // Now a real group: the panel stops offering the clear, and demo_data.php refuses it.
+    $reg->prepare('UPDATE tenants SET is_demo = 0 WHERE id = ?')->execute([$row['id']]);
+    out("{$row['subdomain']}: demo -> real group");
+    server_audit($reg, 'clear demo data', $row['subdomain'], 'done');
     exit(0);
 }
 
@@ -382,6 +415,12 @@ try {
                                     phone, mobile, email, status, created_at, created_by)
              VALUES (?, ?, ?, 'M001', ?, 'individual', ?, ?, ?, 'active', NOW(), ?)"
         )->execute([$uid, $first, $last, "$first $last", $phone, $phone, $email, $uid]);
+        if (isset($args['demo'])) {
+            out('5b/6 Demo data:');
+            if (!run_demo_data($sub, 'seed')) {
+                throw new RuntimeException('demo data failed (output above).');
+            }
+        }
         $chairLine = "\n  First Chairperson: username $username, password $chairPassword\n"
                    . "  (shown once; give it to the Chairperson and ask them to change it under My Settings)";
     }

@@ -67,6 +67,7 @@ layout('Create group', 'groups', static function () use ($base, $sub, $p, $error
     <div class="form-check mb-3">
       <input class="form-check-input" type="checkbox" id="demo" name="demo" value="1"<?= $p['demo'] ? ' checked' : '' ?>>
       <label class="form-check-label" for="demo">Demo group (for prospects)</label>
+      <div class="form-text">Adds sample members, contributions, Social Fund payments and loans around the Chairperson. When they sign up, use <em>Clear demo data</em> on the group page.</div>
     </div>
     <button class="btn btn-primary w-100">Create group</button>
   </form>

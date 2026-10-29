@@ -5,7 +5,7 @@ $g = data_group((string) $param);
 if (!$g) {
     not_found();
 }
-$allowed = vk_admin_allowed_actions($g['status']);
+$allowed = vk_admin_allowed_actions($g['status'], (bool) (int) $g['is_demo']);
 $pending = group_has_pending($g['subdomain']);
 $actionError = null;
 
@@ -17,6 +17,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $actionError = 'A request for this group is still waiting or running. Wait for it to finish.';
     } elseif ($action === 'archive' && trim((string) ($_POST['confirm'] ?? '')) !== $g['subdomain']) {
         $actionError = "To archive, type the address '{$g['subdomain']}' exactly.";
+    } elseif ($action === 'clear_demo' && trim((string) ($_POST['confirm'] ?? '')) !== $g['subdomain']) {
+        $actionError = "To clear the demo data, type the address '{$g['subdomain']}' exactly.";
     } elseif ($action === 'features') {
         // Every known feature is sent: a ticked box is on, an unticked one is off.
         $want = [];
@@ -92,6 +94,15 @@ layout($g['name'], 'groups', static function () use ($g, $backup, $disk, $reques
           <?php endif; ?>
           <form method="post" class="mb-3"><?= csrf_field() ?><input type="hidden" name="action" value="cert">
             <button class="btn btn-outline-secondary w-100">Retry https certificate</button></form>
+          <?php if (in_array('clear_demo', $allowed, true)): ?>
+          <details class="mb-2">
+            <summary class="small">Clear demo data&hellip;</summary>
+            <form method="post" class="mt-2"><?= csrf_field() ?><input type="hidden" name="action" value="clear_demo">
+              <p class="small mb-2">For when this prospect signs up. Removes every sample member, contribution, loan, fine and expense. The Chairperson's login, the group's name and the settings they changed stay. The group then becomes a real group, and this cannot be undone. Type <code><?= e($g['subdomain']) ?></code> to confirm.</p>
+              <input class="form-control form-control-sm mb-2" name="confirm" autocomplete="off" required>
+              <button class="btn btn-outline-danger btn-sm w-100">Clear demo data</button></form>
+          </details>
+          <?php endif; ?>
           <details>
             <summary class="text-danger small">Archive group&hellip;</summary>
             <form method="post" class="mt-2"><?= csrf_field() ?><input type="hidden" name="action" value="archive">

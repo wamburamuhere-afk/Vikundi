@@ -158,8 +158,8 @@ final class GroupFeaturesTest extends TestCase
         $sql = $this->src('database/control/add_tenant_features.sql');
         $this->assertStringContainsString("COLUMN_NAME = 'features'", $sql);
         $this->assertStringContainsString("'ALTER TABLE tenants ADD COLUMN features JSON NULL AFTER is_demo', 'DO 0'", $sql);
+        $this->assertStringContainsString("ENUM('create','suspend','resume','archive','cert','features')", $sql);
         $enum = "ENUM('" . implode("','", vk_req_actions()) . "')";
-        $this->assertStringContainsString($enum, $sql);
         $this->assertStringContainsString($enum, $this->src('database/control/admin_schema.sql'));
         $this->assertStringContainsString('features      JSON         NULL', $this->src('database/control/schema.sql'));
     }
