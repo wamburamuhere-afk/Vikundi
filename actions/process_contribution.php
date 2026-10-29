@@ -6,6 +6,7 @@ require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/require_csrf.php'; // audit H6: valid CSRF token required
 require_once __DIR__ . '/../core/permissions.php';
 require_once __DIR__ . '/../includes/member_savings.php';
+require_once __DIR__ . '/../includes/features.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($_SESSION['user_id'])) {
@@ -26,6 +27,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Transactions form fields (validated against the allowed sets).
     require_once __DIR__ . '/../includes/fund_buckets.php';
     $allowed_types    = fb_types();
+    if (!vk_feature('shares')) {
+        $allowed_types = array_values(array_diff($allowed_types, ['share'])); // not offered when Shares is off
+    }
     $allowed_accounts = ['M-Koba', 'Bank', 'Cash', 'Mobile Money'];
 
     $contribution_type = in_array($_POST['contribution_type'] ?? '', $allowed_types, true)

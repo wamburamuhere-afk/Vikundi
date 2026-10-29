@@ -17,6 +17,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $actionError = 'A request for this group is still waiting or running. Wait for it to finish.';
     } elseif ($action === 'archive' && trim((string) ($_POST['confirm'] ?? '')) !== $g['subdomain']) {
         $actionError = "To archive, type the address '{$g['subdomain']}' exactly.";
+    } elseif ($action === 'features') {
+        // Every known feature is sent: a ticked box is on, an unticked one is off.
+        $want = [];
+        foreach (array_keys(vk_feature_catalog()) as $k) {
+            $want[$k] = !empty($_POST['feature'][$k]);
+        }
+        if ($want === vk_features_parse($g['features'] ?? null)) {
+            $actionError = 'Nothing changed.';
+        } else {
+            $id = queue_request((int) $me['id'], 'features', $g['subdomain'], ['features' => $want]);
+            $_SESSION['flash'] = "Request #$id saved. The worker on the server picks it up within a minute.";
+            redirect("/requests/$id");
+        }
     } else {
         $id = queue_request((int) $me['id'], $action, $g['subdomain']);
         $_SESSION['flash'] = "Request #$id saved. The worker on the server picks it up within a minute.";
@@ -29,8 +42,10 @@ $requests = data_requests('', $g['subdomain'], 10);
 $history = data_history($g['subdomain'], 10);
 $now = time();
 $base = (string) admin_config()['base_domain'];
+$features = vk_features_parse($g['features'] ?? null);
+$hasFeatureColumn = array_key_exists('features', $g);
 
-layout($g['name'], 'groups', static function () use ($g, $backup, $disk, $requests, $history, $now, $base, $allowed, $pending, $actionError) { ?>
+layout($g['name'], 'groups', static function () use ($g, $backup, $disk, $requests, $history, $now, $base, $allowed, $pending, $actionError, $features, $hasFeatureColumn) { ?>
   <nav class="small mb-2"><a href="/groups">Groups</a> / <?= e($g['name']) ?></nav>
   <div class="d-flex align-items-center gap-2 mb-3">
     <h1 class="h4 mb-0"><?= e($g['name']) ?></h1> <?= status_badge($g['status']) ?>
@@ -84,6 +99,28 @@ layout($g['name'], 'groups', static function () use ($g, $backup, $disk, $reques
               <input class="form-control form-control-sm mb-2" name="confirm" autocomplete="off" required>
               <button class="btn btn-outline-danger btn-sm w-100">Archive <?= e($g['name']) ?></button></form>
           </details>
+        <?php endif; ?>
+      </div>
+    </div>
+    <div class="col-12">
+      <div class="vk-card">
+        <h2 class="h6 mb-1">Features</h2>
+        <p class="small text-secondary mb-3">What this group has. A feature that is off disappears for everyone in the group, leaders included. Nothing is deleted: switching it back on brings it all back.</p>
+        <?php if (!$hasFeatureColumn): ?>
+          <p class="small text-danger mb-0">The registry has no features column yet. Run <code>database/control/add_tenant_features.sql</code> as MySQL root.</p>
+        <?php else: ?>
+        <form method="post"><?= csrf_field() ?><input type="hidden" name="action" value="features">
+          <?php foreach (vk_feature_catalog() as $k => $f): ?>
+          <div class="form-check form-switch mb-2">
+            <input class="form-check-input" type="checkbox" role="switch" id="feature-<?= e($k) ?>" name="feature[<?= e($k) ?>]" value="1"<?= $features[$k] ? ' checked' : '' ?><?= ($pending || !in_array('features', $allowed, true)) ? ' disabled' : '' ?>>
+            <label class="form-check-label" for="feature-<?= e($k) ?>"><strong><?= e($f['label']) ?></strong> <span class="small text-secondary">&mdash; <?= e($f['help']) ?></span></label>
+          </div>
+          <?php endforeach; ?>
+          <?php if (!$pending && in_array('features', $allowed, true)): ?>
+          <button class="btn btn-primary btn-sm mt-1">Save features</button>
+          <div class="form-text">Takes effect within a minute, when the worker runs.</div>
+          <?php endif; ?>
+        </form>
         <?php endif; ?>
       </div>
     </div>

@@ -10,12 +10,13 @@
  */
 
 require_once __DIR__ . '/provisioning.php';
+require_once __DIR__ . '/features.php';
 
 if (!function_exists('vk_req_actions')) {
     /** The actions the panel may ask for. Nothing else is ever run. */
     function vk_req_actions(): array
     {
-        return ['create', 'suspend', 'resume', 'archive', 'cert'];
+        return ['create', 'suspend', 'resume', 'archive', 'cert', 'features'];
     }
 }
 
@@ -52,6 +53,25 @@ if (!function_exists('vk_req_validate')) {
             return [];
         }
         $sub = (string) $sub;
+        if ($action === 'features') {
+            if (!vk_tenant_valid_subdomain($sub)) {
+                return ['Not a valid group address.'];
+            }
+            $f = $params['features'] ?? null;
+            $want = array_keys(vk_feature_catalog());
+            $got = is_array($f) ? array_keys($f) : [];
+            sort($want);
+            sort($got);
+            if (!is_array($f) || $got !== $want) {
+                return ['Give every feature, and only known features.'];
+            }
+            foreach ($f as $k => $on) {
+                if (!is_bool($on)) {
+                    return ["Feature '$k' must be on or off."];
+                }
+            }
+            return [];
+        }
         if ($action !== 'create') {
             return vk_tenant_valid_subdomain($sub) ? [] : ['Not a valid group address.'];
         }
@@ -90,6 +110,9 @@ if (!function_exists('vk_req_command_args')) {
     {
         if ($action === 'cert') {
             return ['--cert'];
+        }
+        if ($action === 'features') {
+            return ['--features=' . $sub, '--set=' . vk_features_to_spec((array) ($params['features'] ?? []))];
         }
         if ($action !== 'create') {
             return ['--' . $action . '=' . $sub];
@@ -169,6 +192,7 @@ if (!function_exists('vk_req_audit_action')) {
             'resume'  => 'resume group',
             'archive' => 'archive group',
             'cert'    => 'update certificate',
+            'features' => 'set features',
             default   => $action,
         };
     }

@@ -4,6 +4,8 @@
 ob_start();
 global $pdo;
 require_once __DIR__ . "/../../../roots.php";
+require_once ROOT_DIR . "/includes/features.php";
+vk_require_feature("shares"); // switched off by the super-admin for some groups
 includeHeader();
 require_once ROOT_DIR . "/includes/vicoba_reports.php";
 // Leadership only — see vr_can_view() for why this is not the "vicoba_reports" key.

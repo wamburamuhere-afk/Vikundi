@@ -16,6 +16,8 @@
  *   php bin/provision_tenant.php --suspend=wisewallet     (the offline page)
  *   php bin/provision_tenant.php --resume=wisewallet
  *   php bin/provision_tenant.php --archive=wisewallet     (final backup, then offline for good; deletes nothing)
+ *   php bin/provision_tenant.php --features=ukuu --set=shares:off,dividends:off
+ *                                                         (which optional features the group has; see includes/features.php)
  *   php bin/provision_tenant.php --list
  *   php bin/provision_tenant.php --cert                   (re-issue the shared https certificate)
  *
@@ -38,6 +40,7 @@ if (PHP_SAPI !== 'cli') {
 }
 
 require_once __DIR__ . '/../includes/provisioning.php';
+require_once __DIR__ . '/../includes/features.php';
 
 $args = vk_prov_parse_args($argv);
 
@@ -226,6 +229,24 @@ foreach (['suspend', 'resume', 'archive'] as $action) {
     $reg->prepare($sql)->execute([$status, $row['id']]);
     out("{$row['subdomain']}: {$row['status']} -> $status");
     server_audit($reg, "$action group", $row['subdomain'], 'done');
+    exit(0);
+}
+
+// ── --features ───────────────────────────────────────────────────────────────
+if (isset($args['features'])) {
+    $row = tenant_or_fail($reg, (string) $args['features']);
+    if (!array_key_exists('features', $row)) {
+        fail('the registry has no features column yet: run database/control/add_tenant_features.sql as MySQL root.');
+    }
+    $want = vk_features_from_spec((string) ($args['set'] ?? ''));
+    if (is_string($want)) {
+        fail("--set: $want (e.g. --set=" . vk_features_to_spec([]) . ')');
+    }
+    $before = vk_features_to_spec(vk_features_parse($row['features']));
+    $after  = vk_features_to_spec($want);
+    $reg->prepare('UPDATE tenants SET features = ? WHERE id = ?')->execute([vk_features_encode($want), $row['id']]);
+    out("{$row['subdomain']}: $before -> $after");
+    server_audit($reg, 'set features', $row['subdomain'], 'done', $after);
     exit(0);
 }
 

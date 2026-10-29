@@ -125,6 +125,7 @@ require_once CONFIG_FILE;
 require_once HELPERS_FILE; // Load Helper Functions
 require_once ROOT_DIR . '/includes/activity_logger.php'; // Activity Logger
 require_once ROOT_DIR . '/core/permissions.php'; // Load permissions
+require_once ROOT_DIR . '/includes/features.php'; // vk_feature(): shares / dividends, set per group by the super-admin
 require_once ROOT_DIR . '/core/workflow.php';     // Three-approval workflow helpers
 require_once ROOT_DIR . '/includes/print_header.php'; // Print header class
 require_once ROOT_DIR . '/actions/check_auth.php';

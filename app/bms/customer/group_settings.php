@@ -234,13 +234,14 @@ $late = late_settings($settings_raw);
     <div class="col-12">
         <div class="card border border-primary-subtle shadow-sm rounded-4 overflow-hidden">
             <div class="card-header bg-white border-bottom py-3">
-                <h6 class="mb-0 fw-bold text-primary"><i class="bi bi-pie-chart-fill me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Hisa na Mifuko' : 'Shares & Funds' ?></h6>
+                <h6 class="mb-0 fw-bold text-primary"><i class="bi bi-pie-chart-fill me-2"></i> <?= vk_feature('shares') ? (($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Hisa na Mifuko' : 'Shares & Funds') : (($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mifuko' : 'Funds') ?></h6>
             </div>
             <div class="card-body p-4 text-start">
                 <div class="alert alert-primary border-primary py-2 small mb-4">
                     <i class="bi bi-info-circle-fill me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mfuko wa Jamii na Amana ya Uanachama huhifadhiwa kando — haviingii kwenye akiba ya mwanachama wala kwenye gawio. Ukiacha kiasi wazi, kanuni hiyo haitumiki.' : 'The Social Fund and the Membership Deposit are kept apart — they never count as a member\'s savings or toward a dividend. Leave an amount blank to switch that rule off.' ?>
                 </div>
                 <div class="row g-3">
+                    <?php if (vk_feature('shares')): // the super-admin can switch Shares off for a group ?>
                     <div class="col-md-3">
                         <label class="form-label fw-bold text-dark"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Bei ya Hisa Moja (TZS)' : 'Price per Share (TZS)' ?></label>
                         <input type="number" min="0" step="any" name="share_price" class="form-control border-secondary-subtle" value="<?= htmlspecialchars(gs($settings_raw, 'share_price')) ?>">
@@ -252,6 +253,7 @@ $late = late_settings($settings_raw);
                             <option value="on" <?= gs($settings_raw, 'shares_from_monthly') === 'on' ? 'selected' : '' ?>><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Ndiyo — mchango ndio hisa' : 'Yes — the contribution is the share' ?></option>
                         </select>
                     </div>
+                    <?php endif; ?>
                     <div class="col-md-3">
                         <label class="form-label fw-bold text-dark"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mfuko wa Jamii kwa Mzunguko (TZS)' : 'Social Fund per Cycle (TZS)' ?></label>
                         <input type="number" min="0" step="any" name="social_fund_amount" class="form-control border-secondary-subtle" value="<?= htmlspecialchars(gs($settings_raw, 'social_fund_amount')) ?>">
@@ -268,11 +270,13 @@ $late = late_settings($settings_raw);
                             <?php endforeach; ?>
                         </select>
                     </div>
+                    <?php if (vk_feature('dividends')): ?>
                     <div class="col-md-3">
                         <label class="form-label fw-bold text-dark"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Ziada ya Kugawa kama Gawio (%)' : 'Surplus Shared as Dividend (%)' ?></label>
                         <input type="number" min="0" max="100" step="any" name="dividend_distribute_pct" class="form-control border-secondary-subtle" value="<?= htmlspecialchars(gs($settings_raw, 'dividend_distribute_pct', '100')) ?>">
                         <small class="text-muted"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Kinachobaki hubaki kwenye kikundi kama akiba.' : 'The rest stays in the group as reserve.' ?></small>
                     </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
