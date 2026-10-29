@@ -745,6 +745,7 @@ try {
                             <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-0">
                                 <li><a class="dropdown-item" href="<?= getUrl('profile') ?>"><i class="bi bi-person me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Wasifu Wangu' : 'My Profile' ?></a></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('my_settings') ?>"><i class="bi bi-gear me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mipangilio Yangu' : 'My Settings' ?></a></li>
+                                <li><a class="dropdown-item" href="<?= getUrl('guide') ?>" target="_blank" rel="noopener"><i class="bi bi-book me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Mwongozo wa Kikundi' : 'Group Guide' ?></a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="<?= getUrl('help') ?>"><i class="bi bi-question-circle"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Msaada' : 'Help' ?></a></li>
                                 <li><hr class="dropdown-divider"></li>
