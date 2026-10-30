@@ -81,7 +81,7 @@ function not_found(): never
 {
     http_response_code(404);
     layout('Not found', '', static function () {
-        echo '<h1 class="h4">Not found</h1><p>That page or group does not exist.</p><p><a href="/groups">Back to groups</a></p>';
+        echo '<div class="vk-card vk-empty"><i class="bi bi-signpost-split"></i><h1 class="h5">Not found</h1><p>That page or group does not exist.</p><a class="btn btn-primary btn-sm" href="/groups">Back to groups</a></div>';
     });
     exit;
 }
@@ -170,14 +170,52 @@ function req_label(string $action): string
 
 function status_badge(string $status): string
 {
-    return '<span class="badge rounded-pill text-bg-' . vk_admin_status_class($status) . '">' . e(ucfirst($status)) . '</span>';
+    return '<span class="vk-pill ' . vk_admin_status_class($status) . '">' . e(ucfirst($status)) . '</span>';
+}
+
+/** The page heading: optional breadcrumb, title, subtitle and buttons on the right. */
+function page_head(string $title, string $sub = '', string $actions = '', array $crumbs = []): void
+{
+    echo '<div class="vk-head"><div>';
+    if ($crumbs) {
+        $parts = [];
+        foreach ($crumbs as $label => $href) {
+            $parts[] = $href ? '<a href="' . e($href) . '">' . e($label) . '</a>' : e($label);
+        }
+        echo '<div class="vk-crumb">' . implode(' / ', $parts) . '</div>';
+    }
+    echo '<h1>' . e($title) . '</h1>';
+    if ($sub !== '') {
+        echo '<div class="sub">' . e($sub) . '</div>';
+    }
+    echo '</div>' . ($actions !== '' ? '<div class="d-flex gap-2 flex-wrap">' . $actions . '</div>' : '') . '</div>';
 }
 
 // ── layout ──────────────────────────────────────────────────────────────────
+/**
+ * Every page. The panel runs no JavaScript and allows no inline styles
+ * (vk_admin_security_headers): the look is all in /assets/admin.css, and on a
+ * phone the menu is a <details> element.
+ */
 function layout(string $title, string $active, callable $body): void
 {
     $me = $active === 'login' ? null : admin_current();
-    $nav = ['groups' => ['Groups', 'bi-collection'], 'requests' => ['Requests', 'bi-hourglass-split'], 'history' => ['History', 'bi-clock-history'], 'account' => ['My account', 'bi-person']];
+    $nav = ['groups' => ['Groups', 'bi-grid-1x2'], 'requests' => ['Requests', 'bi-hourglass-split'],
+            'history' => ['History', 'bi-clock-history'], 'account' => ['My account', 'bi-person-circle']];
+    $pending = $me ? data_pending_count() : 0;
+    $logo = '<span class="mark">V</span><span class="name">Vikundi<small>Super-Admin</small></span>';
+    $menu = static function () use ($nav, $active, $pending): void { ?>
+      <ul class="vk-nav">
+        <?php foreach ($nav as $key => [$label, $icon]): ?>
+          <li><a class="<?= $active === $key ? 'active' : '' ?>" href="/<?= $key ?>"><i class="bi <?= $icon ?>"></i><?= e($label) ?>
+            <?php if ($key === 'requests' && $pending > 0): ?><span class="count"><?= $pending ?></span><?php endif; ?></a></li>
+        <?php endforeach; ?>
+        <li><a class="cta" href="/create"><i class="bi bi-plus-circle"></i>Create group</a></li>
+      </ul>
+    <?php };
+    $signOut = static function (): void { ?>
+      <form method="post" action="/logout" class="d-inline"><?= csrf_field() ?><button>Sign out</button></form>
+    <?php };
     ?><!doctype html>
 <html lang="en">
 <head>
@@ -190,35 +228,30 @@ function layout(string $title, string $active, callable $body): void
 <link rel="stylesheet" href="/assets/admin.css">
 </head>
 <body>
-<header class="vk-topbar border-bottom">
-  <div class="container-fluid d-flex align-items-center justify-content-between py-2">
-    <a class="vk-brand" href="/groups">Vikundi Super-Admin</a>
-    <?php if ($me): ?>
-      <div class="small text-secondary">Signed in: <?= e($me['full_name']) ?> &nbsp;|&nbsp;
-        <form method="post" action="/logout" class="d-inline"><?= csrf_field() ?><button class="btn btn-link btn-sm p-0 align-baseline">Sign out</button></form>
-      </div>
-    <?php endif; ?>
-  </div>
-</header>
-<div class="container-fluid">
-  <div class="row">
-    <?php if ($me): ?>
-    <nav class="col-md-3 col-lg-2 py-3 vk-sidebar">
-      <ul class="nav nav-pills flex-column gap-1">
-        <?php foreach ($nav as $key => [$label, $icon]): ?>
-          <li class="nav-item"><a class="nav-link<?= $active === $key ? ' active' : '' ?>" href="/<?= $key ?>"><i class="bi <?= $icon ?> me-2"></i><?= e($label) ?></a></li>
-        <?php endforeach; ?>
-      </ul>
-    </nav>
-    <main class="col-md-9 col-lg-10 py-3 px-md-4">
-    <?php else: ?>
-    <main class="col-12 py-5">
-    <?php endif; ?>
-      <?php if ($m = flash()): ?><div class="alert alert-info"><?= e($m) ?></div><?php endif; ?>
-      <?php $body(); ?>
-    </main>
-  </div>
+<?php if (!$me): ?>
+<div class="vk-auth"><div class="box">
+  <div class="vk-logo"><?= $logo ?></div>
+  <?php if ($m = flash()): ?><div class="alert alert-info py-2 small"><?= e($m) ?></div><?php endif; ?>
+  <?php $body(); ?>
+</div></div>
+<?php else: ?>
+<details class="vk-mobilebar">
+  <summary><a class="vk-logo" href="/groups"><?= $logo ?></a><span class="menu"><i class="bi bi-list"></i> Menu<?= $pending > 0 ? ' (' . $pending . ')' : '' ?></span></summary>
+  <?php $menu(); ?>
+  <div class="foot"><?= e($me['full_name']) ?> &middot; <?php $signOut(); ?></div>
+</details>
+<div class="vk-shell">
+  <aside class="vk-side">
+    <a class="vk-logo" href="/groups"><?= $logo ?></a>
+    <?php $menu(); ?>
+    <div class="foot"><div class="who"><?= e($me['full_name']) ?></div><?php $signOut(); ?></div>
+  </aside>
+  <main class="vk-main">
+    <?php if ($m = flash()): ?><div class="alert alert-info"><i class="bi bi-info-circle me-1"></i><?= e($m) ?></div><?php endif; ?>
+    <?php $body(); ?>
+  </main>
 </div>
+<?php endif; ?>
 </body>
 </html>
 <?php

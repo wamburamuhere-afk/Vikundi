@@ -4,6 +4,49 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-30 — Super-admin panel redesign
+
+**Branch:** `feat/admin-panel-ui`
+**Developer:** Claude Code / Jabir Mussa
+
+**What changed:** the panel's look only. Every form handler, check and request stays as it was. The panel still runs no JavaScript and allows no inline styles (its Content-Security-Policy), so the whole design is in `superadmin/public/assets/admin.css`.
+- **Layout** (`superadmin/src/bootstrap.php`):
+  - a navy gradient sidebar with the logo, a menu with icons, a count of waiting requests beside Requests, a Create group button, and who is signed in;
+  - on a phone, a top bar whose menu is a `<details>` element;
+  - a full-screen sign-in page;
+  - status shown as coloured pills, and a shared `page_head()` for page headings.
+- **Groups:** tiles (total, active, suspended, archived, demo), search and status tabs, and a card per group. Each card shows:
+  - status and a coloured top edge;
+  - demo and features-off chips;
+  - last backup, in green, amber or red;
+  - disk, creation date and database;
+  - Manage, Open site and Guide buttons.
+  - Working groups come first and archived ones last.
+- **Group page:**
+  - a header banner (address, status, chips, Open site and Guide EN/SW buttons) and tiles for backup, disk and creation date;
+  - the Details card, an Actions card (Suspend/Resume, Retry certificate) and the Features switches;
+  - a red **Danger zone** for Clear demo data and Archive, still needing the typed address, and hidden while a request is pending;
+  - recent requests, and the history as a timeline.
+  - "Also reached at" no longer repeats the main address.
+- **Requests:** status tabs with counts. The page refreshes itself every 10 seconds while anything is waiting or running.
+- **Request page:**
+  - a progress stepper (Saved → Waiting/Running → Finished or Failed);
+  - the Chairperson's one-time password card highlighted;
+  - the command output folded, and opened by itself when the request failed.
+- History, Create group (grouped into "The group" and "First Chairperson") and My account are restyled.
+- **New helpers:**
+  - `vk_admin_backup_state()`: ok within 36 hours, late, or none;
+  - `vk_admin_request_steps()`;
+  - `vk_admin_group_counts()`;
+  - `data_pending_count()` and `data_request_counts()`.
+
+**Tests:**
+- `tests/Unit/SuperAdminPanelUiTest.php` (new): the helpers, no `<script>`, inline style or inline handler in any panel page, the phone menu without JavaScript, and the typed confirmations kept;
+- full suite: 2,809 tests, all pass.
+- Previewed locally with invented groups at computer and phone width; nothing scrolls sideways.
+
+---
+
 ## Session — 2026-10-29 — Group Guide: a welcome guide every group has at /guide
 
 **Branch:** `feat/group-guide`

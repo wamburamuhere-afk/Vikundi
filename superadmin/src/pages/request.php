@@ -23,25 +23,31 @@ if ($pending) {
     header('Refresh: 5'); // the panel runs no JavaScript; the browser reloads the page
 }
 
-layout('Request #' . (int) $r['id'], 'requests', static function () use ($r, $params, $pending, $now, $revealed, $revealMissed, $chairUser) { ?>
-  <nav class="small mb-2"><a href="/requests">Requests</a> / #<?= (int) $r['id'] ?></nav>
-  <div class="d-flex align-items-center gap-2 mb-3">
-    <h1 class="h4 mb-0">#<?= (int) $r['id'] ?>: <?= e(req_label($r['action'])) ?><?= $r['subdomain'] ? ' ' . e($r['subdomain']) : '' ?></h1>
-    <?= status_badge($r['status']) ?>
+layout('Request #' . (int) $r['id'], 'requests', static function () use ($r, $params, $pending, $now, $revealed, $revealMissed, $chairUser) {
+    page_head('#' . (int) $r['id'] . ' ' . req_label($r['action']) . ($r['subdomain'] ? ' · ' . $r['subdomain'] : ''),
+              'Asked ' . vk_admin_when(db_time($r['created_at']), $now) . ($r['admin_name'] ? ' by ' . $r['admin_name'] : ''),
+              status_badge($r['status']), ['Requests' => '/requests', '#' . (int) $r['id'] => '']); ?>
+  <div class="vk-card mb-3">
+    <ol class="vk-steps">
+      <?php foreach (vk_admin_request_steps($r['status']) as [$label, $state]): ?><li class="<?= $state ?>"><?= e($label) ?></li><?php endforeach; ?>
+    </ol>
+    <?php if ($pending): ?><p class="small text-secondary text-center mb-0"><i class="bi bi-arrow-repeat me-1"></i>The worker on the server picks requests up within a minute. This page refreshes by itself.</p><?php endif; ?>
+    <?php if ($r['status'] === 'failed'): ?><p class="small text-danger text-center mb-0">It failed. The command output below says why; nothing was half-done. Fix the cause and ask again.</p><?php endif; ?>
   </div>
-  <?php if ($pending): ?><div class="alert alert-warning py-2">The worker on the server picks requests up within a minute. This page refreshes by itself.</div><?php endif; ?>
-  <?php if ($r['warning']): ?><div class="alert alert-warning py-2"><?= e($r['warning']) ?></div><?php endif; ?>
+  <?php if ($r['warning']): ?><div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i><?= e($r['warning']) ?></div><?php endif; ?>
   <?php if ($r['action'] === 'create' && $r['status'] === 'done' && $chairUser): ?>
     <div class="vk-card vk-secret mb-3">
-      <h2 class="h6">First Chairperson login</h2>
-      <p class="mb-1">Address: <a href="https://<?= e($r['subdomain'] . '.' . admin_config()['base_domain']) ?>" target="_blank" rel="noopener"><?= e($r['subdomain'] . '.' . admin_config()['base_domain']) ?></a></p>
-      <p class="mb-1">Username: <strong><?= e($chairUser) ?></strong></p>
+      <h2><i class="bi bi-key"></i>First Chairperson login</h2>
+      <dl class="row vk-dl mb-1">
+        <dt class="col-sm-3">Address</dt><dd class="col-sm-9"><a href="https://<?= e($r['subdomain'] . '.' . admin_config()['base_domain']) ?>" target="_blank" rel="noopener"><?= e($r['subdomain'] . '.' . admin_config()['base_domain']) ?></a></dd>
+        <dt class="col-sm-3">Username</dt><dd class="col-sm-9"><strong><?= e($chairUser) ?></strong></dd>
+        <?php if ($revealed !== null): ?><dt class="col-sm-3">Password</dt><dd class="col-sm-9"><span class="pw"><?= e($revealed) ?></span></dd><?php endif; ?>
+      </dl>
       <?php if ($revealed !== null): ?>
-        <p class="mb-1">Password: <strong class="font-monospace fs-5"><?= e($revealed) ?></strong></p>
-        <p class="small text-danger mb-0">Write it down or send it to the Chairperson now. It will not be shown again. Ask them to change it under My Settings.</p>
+        <p class="small text-danger mb-0"><i class="bi bi-exclamation-circle me-1"></i>Write it down or send it to the Chairperson now. It will not be shown again. Ask them to change it under My Settings.</p>
       <?php elseif ((int) $r['has_secret']): ?>
-        <form method="post" class="mt-2"><?= csrf_field() ?><input type="hidden" name="reveal" value="1">
-          <button class="btn btn-primary btn-sm">Show the password once</button>
+        <form method="post"><?= csrf_field() ?><input type="hidden" name="reveal" value="1">
+          <button class="btn btn-primary btn-sm"><i class="bi bi-eye me-1"></i>Show the password once</button>
           <span class="small text-secondary ms-2">It is erased as soon as it is shown.</span></form>
       <?php else: ?>
         <p class="small text-secondary mb-0"><?= $revealMissed ? 'Someone has already viewed this password. ' : '' ?>The password was shown<?= $r['secret_viewed_at'] ? ' on ' . e(vk_admin_when(db_time($r['secret_viewed_at']), $now)) : '' ?> and has been erased.
@@ -52,6 +58,7 @@ layout('Request #' . (int) $r['id'], 'requests', static function () use ($r, $pa
   <div class="row g-3">
     <div class="col-lg-6">
       <div class="vk-card h-100">
+        <h2><i class="bi bi-info-circle"></i>Request</h2>
         <dl class="row vk-dl mb-0">
           <dt class="col-sm-4">Asked by</dt><dd class="col-sm-8"><?= e($r['admin_name'] ?? '') ?></dd>
           <dt class="col-sm-4">Asked</dt><dd class="col-sm-8"><?= e(vk_admin_when(db_time($r['created_at']), $now)) ?></dd>
@@ -65,7 +72,7 @@ layout('Request #' . (int) $r['id'], 'requests', static function () use ($r, $pa
     <?php if ($params): ?>
     <div class="col-lg-6">
       <div class="vk-card h-100">
-        <h2 class="h6 mb-3">Form details</h2>
+        <h2><i class="bi bi-ui-checks"></i>Form details</h2>
         <dl class="row vk-dl mb-0">
           <?php if ($r['action'] === 'features'): ?>
           <?php foreach (vk_feature_catalog() as $k => $f): ?>
@@ -83,8 +90,10 @@ layout('Request #' . (int) $r['id'], 'requests', static function () use ($r, $pa
     <?php endif; ?>
     <?php if ($r['output'] !== null && $r['output'] !== ''): ?>
     <div class="col-12">
-      <h2 class="h6">Command output</h2>
-      <pre class="vk-output"><?= e($r['output']) ?></pre>
+      <details class="vk-card"<?= $r['status'] === 'failed' ? ' open' : '' ?>>
+        <summary class="fw-semibold"><i class="bi bi-terminal me-1"></i>Command output</summary>
+        <pre class="vk-output mt-3"><?= e($r['output']) ?></pre>
+      </details>
     </div>
     <?php endif; ?>
   </div>
