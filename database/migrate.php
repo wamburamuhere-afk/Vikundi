@@ -61,6 +61,7 @@ $migrations = [
     'create_vicoba_loan_tables.php', // VICOBA loans module's own InnoDB tables (types, loans, guarantors, installments, payments)
     'add_member_payouts_permission.php', // register 'member_payouts' (Admin/Chairperson/Secretary — no Treasurer); normalizes record_payout.php's role-name array into RBAC
     'add_late_payment_rules.php', // fines.late_period (+ one-per-month key) and customers.late_rule_dormant, for includes/late_rules.php
+    'add_member_entrance_fee.php', // customers.entrance_fee (NULL = the group's fee), for cs_entrance_for()
 ];
 
 echo "== Vikundi database migrations ==\n";

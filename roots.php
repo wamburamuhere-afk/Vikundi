@@ -285,6 +285,7 @@ $routes = [
     'cash_register' => ACCOUNTS_DIR . '/cash_register.php',
     'petty_cash' => ACCOUNTS_DIR . '/petty_cash.php',
     'actions/save_petty_cash' => ROOT_DIR . '/actions/save_petty_cash.php',
+    'actions/save_member_entrance_fee' => ROOT_DIR . '/actions/save_member_entrance_fee.php',
     'actions/fetch_petty_cash' => ROOT_DIR . '/actions/fetch_petty_cash.php',
     'actions/approve_petty_cash' => ROOT_DIR . '/actions/approve_petty_cash.php',
     'actions/delete_petty_cash' => ROOT_DIR . '/actions/delete_petty_cash.php',

@@ -36,6 +36,64 @@ if (!function_exists('cs_is_opening')) {
     }
 }
 
+if (!function_exists('cs_entrance_for')) {
+    /**
+     * A member's entrance fee: their own amount when one is set (customers.entrance_fee),
+     * otherwise the group's. NULL or '' means "not set", so every member without one
+     * keeps the group fee exactly as before. 0 is a real amount (no fee for them).
+     */
+    function cs_entrance_for($memberFee, array $settings): float
+    {
+        if ($memberFee !== null && trim((string) $memberFee) !== '') {
+            return max(0.0, (float) $memberFee);
+        }
+        return (float) ($settings['entrance_fee'] ?? 0);
+    }
+}
+
+if (!function_exists('cs_mkoba_pays_entrance')) {
+    /**
+     * The group setting 'mkoba_pays_entrance': when on, money carried in from M-Koba
+     * pays the entrance fee first and only the rest goes to the monthly contributions
+     * (UKUU asked for this). Off by default: M-Koba money stays an opening balance that
+     * is never used for the entrance fee, which is how every other group works.
+     */
+    function cs_mkoba_pays_entrance(array $settings): bool
+    {
+        return (string) ($settings['mkoba_pays_entrance'] ?? '0') === '1';
+    }
+}
+
+if (!function_exists('cs_skim_entrance')) {
+    /**
+     * Take the entrance fee off a member's payments, oldest first, and return what is
+     * left for the monthly contributions. Pure. $payments: ['date' => 'Y-m-d', 'amount'].
+     * A payment fully used for the fee is dropped; a partly used one keeps the rest.
+     */
+    function cs_skim_entrance(array $payments, float $fee): array
+    {
+        if ($fee <= 0 || !$payments) {
+            return $payments;
+        }
+        usort($payments, static fn($a, $b) => strcmp((string) ($a['date'] ?? ''), (string) ($b['date'] ?? '')));
+        $out = [];
+        foreach ($payments as $p) {
+            $amount = (float) ($p['amount'] ?? 0);
+            if ($fee > 0) {
+                $take = min($fee, $amount);
+                $fee -= $take;
+                $amount -= $take;
+                if ($amount <= 0.005) {
+                    continue;
+                }
+                $p['amount'] = $amount;
+            }
+            $out[] = $p;
+        }
+        return $out;
+    }
+}
+
 if (!function_exists('cs_months_elapsed')) {
     /**
      * Whole months from an anchor month up to and including "as of" (min 0).
@@ -81,6 +139,23 @@ if (!function_exists('cs_expected_to_date')) {
             return 0.0;
         }
         return $monthly * cs_months_elapsed($anchorDate, $asOf);
+    }
+}
+
+if (!function_exists('cs_schedule_expected')) {
+    /**
+     * What a member is expected to have paid by now, from their schedule: the elapsed
+     * months, plus their entrance fee when the group's 'mkoba_pays_entrance' switch is
+     * on (the fee is taken from their money first, so it is owed too). Switch off:
+     * exactly cs_expected_to_date(), as before.
+     */
+    function cs_schedule_expected(array $schedule, array $settings, ?DateTimeInterface $asOf = null): float
+    {
+        $expected = cs_expected_to_date($schedule['rule'] ?? 0.0, $schedule['anchor_ym'] ?? null, $asOf);
+        if (cs_mkoba_pays_entrance($settings)) {
+            $expected += (float) ($schedule['entrance_amt'] ?? 0);
+        }
+        return $expected;
     }
 }
 
@@ -147,9 +222,10 @@ if (!function_exists('cs_group_standing')) {
         $settings = $pdo->query("SELECT setting_key, setting_value FROM group_settings")
                         ->fetchAll(PDO::FETCH_KEY_PAIR);
         $monthly = cr_monthly_rule($settings);
+        $fromMkoba = cs_mkoba_pays_entrance($settings);
 
         $rows = $pdo->query("
-            SELECT c.customer_id,
+            SELECT c.customer_id, c.entrance_fee,
                    COALESCE(SUM(CASE WHEN (co.mkoba_trans_id IS NOT NULL AND co.mkoba_trans_id <> '') OR co.account = 'M-Koba'
                                      THEN co.amount ELSE 0 END), 0) AS opening,
                    COALESCE(SUM(CASE WHEN (co.mkoba_trans_id IS NULL OR co.mkoba_trans_id = '') AND (co.account IS NULL OR co.account <> 'M-Koba')
@@ -167,6 +243,10 @@ if (!function_exists('cs_group_standing')) {
         $out = [];
         foreach ($rows as $r) {
             $expected = cs_expected_to_date($monthly, $r['first_date'], $asOf);
+            if ($fromMkoba) {
+                // The fee comes out of their money first, so it is owed on top of the months.
+                $expected += cs_entrance_for($r['entrance_fee'] ?? null, $settings);
+            }
             $out[(int) $r['customer_id']] = cs_standing((float) $r['opening'], (float) $r['newmoney'], $expected)
                 + ['first_date' => $r['first_date']];
         }
@@ -181,7 +261,8 @@ if (!function_exists('cs_build_schedule')) {
      * in ~60 lines each). Pure: no DB, so it is fully unit-testable.
      *
      * Opening (carried-in M-Koba) counts toward the pot and is never skimmed for the
-     * entrance fee; the entrance comes off NEW money only; the pot is laid across the
+     * entrance fee; the entrance comes off NEW money only (unless $entranceFromOpening:
+     * the group's 'mkoba_pays_entrance' switch, where all money pays it first); the pot is laid across the
      * months from the later of the group start and the member's join, up to now. A
      * monthly of 0 means no target (every cell target 0, the whole pot is advance).
      *
@@ -200,12 +281,15 @@ if (!function_exists('cs_build_schedule')) {
         float $entrance,
         ?string $startDate,
         ?string $joinDate = null,
-        ?DateTimeInterface $asOf = null
+        ?DateTimeInterface $asOf = null,
+        bool $entranceFromOpening = false
     ): array {
         $totalPaid      = $opening + $newMoney;
-        $entrancePaid   = min($newMoney, $entrance);
+        // Normally the entrance comes off NEW money only. With the group's
+        // 'mkoba_pays_entrance' switch on, M-Koba (opening) money pays it too.
+        $entrancePaid   = min($entranceFromOpening ? $totalPaid : $newMoney, $entrance);
         $entranceStatus = $entrancePaid >= $entrance ? 'paid' : ($entrancePaid > 0 ? 'partial' : 'unpaid');
-        $monthlyPot     = $opening + max(0.0, $newMoney - $entrancePaid);
+        $monthlyPot     = max(0.0, $totalPaid - $entrancePaid);
 
         // Anchor at the later of the group start and the member's own join month.
         $anchorTs = strtotime((string) $startDate);
@@ -451,13 +535,13 @@ if (!function_exists('cs_group_schedules')) {
         $settings  = $pdo->query("SELECT setting_key, setting_value FROM group_settings")
                          ->fetchAll(PDO::FETCH_KEY_PAIR);
         $monthly   = cr_monthly_rule($settings);
-        $entrance  = (float) ($settings['entrance_fee'] ?? 0);
+        $fromMkoba = cs_mkoba_pays_entrance($settings);
         $startDate = $settings['contribution_start_date']
                      ?? ($settings['group_founded_date'] ?? date('Y') . '-01-01');
 
         $rows = $pdo->query("
             SELECT c.customer_id, c.first_name, c.middle_name, c.last_name,
-                   c.created_at, c.initial_savings,
+                   c.created_at, c.initial_savings, c.entrance_fee,
                    COALESCE(SUM(CASE WHEN (co.mkoba_trans_id IS NOT NULL AND co.mkoba_trans_id <> '') OR co.account = 'M-Koba'
                                      THEN co.amount ELSE 0 END), 0) AS opening,
                    COALESCE(SUM(CASE WHEN (co.mkoba_trans_id IS NULL OR co.mkoba_trans_id = '') AND (co.account IS NULL OR co.account <> 'M-Koba')
@@ -478,8 +562,8 @@ if (!function_exists('cs_group_schedules')) {
                 'name'     => trim(implode(' ', array_filter([$r['first_name'], $r['middle_name'], $r['last_name']]))),
                 'joined'   => $r['created_at'],
                 'schedule' => cs_build_schedule(
-                    (float) $r['opening'], $newMoney, $monthly, $entrance,
-                    $startDate, $r['created_at'] ?? null, $asOf
+                    (float) $r['opening'], $newMoney, $monthly, cs_entrance_for($r['entrance_fee'] ?? null, $settings),
+                    $startDate, $r['created_at'] ?? null, $asOf, $fromMkoba
                 ),
             ];
         }
@@ -858,13 +942,13 @@ if (!function_exists('cs_member_schedule')) {
         $settings = $pdo->query("SELECT setting_key, setting_value FROM group_settings")
                         ->fetchAll(PDO::FETCH_KEY_PAIR);
         $monthly   = cr_monthly_rule($settings);
-        $entrance  = (float) ($settings['entrance_fee'] ?? 0);
         $startDate = $settings['contribution_start_date']
                      ?? ($settings['group_founded_date'] ?? date('Y') . '-01-01');
 
-        $cust = $pdo->prepare("SELECT initial_savings, created_at FROM customers WHERE customer_id = ?");
+        $cust = $pdo->prepare("SELECT initial_savings, created_at, entrance_fee FROM customers WHERE customer_id = ?");
         $cust->execute([$memberId]);
-        $cust = $cust->fetch(PDO::FETCH_ASSOC) ?: ['initial_savings' => 0, 'created_at' => null];
+        $cust = $cust->fetch(PDO::FETCH_ASSOC) ?: ['initial_savings' => 0, 'created_at' => null, 'entrance_fee' => null];
+        $entrance = cs_entrance_for($cust['entrance_fee'] ?? null, $settings);
 
         $split = $pdo->prepare("
             SELECT
@@ -880,6 +964,7 @@ if (!function_exists('cs_member_schedule')) {
         $opening  = (float) $split['opening'];
         $newMoney = (float) ($cust['initial_savings'] ?? 0) + (float) $split['newmoney'];
 
-        return cs_build_schedule($opening, $newMoney, $monthly, $entrance, $startDate, $cust['created_at'] ?? null, $asOf);
+        return cs_build_schedule($opening, $newMoney, $monthly, $entrance, $startDate, $cust['created_at'] ?? null, $asOf,
+                                 cs_mkoba_pays_entrance($settings));
     }
 }

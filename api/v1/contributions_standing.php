@@ -67,7 +67,7 @@ $summary  = cs_year_summary($grid);
 // Derived exactly as app/constant/reports/member_statement.php derives it, from
 // the member's OWN anchor rather than a group-wide start date — otherwise a
 // member who joined last year is billed for months that predate their record.
-$expected = cs_expected_to_date($schedule['rule'], $schedule['anchor_ym']);
+$expected = cs_schedule_expected($schedule, $settings);
 $standing = cs_standing($schedule['opening'], $schedule['new_money'], $expected);
 
 // Flattened for the phone: the calendar grid is a year => month => cell tree

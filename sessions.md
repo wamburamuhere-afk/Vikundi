@@ -4,6 +4,38 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-10-30 — Each member's own entrance fee; M-Koba money pays it first (UKUU)
+
+**Branch:** `feat/member-entrance-fee`
+**Developer:** Claude Code / Jabir Mussa
+
+**Why:** UKUU's chairperson sent each member's entrance fee (401 members, five amounts from 45,000 to 500,000) and asked that, when the M-Koba statement is uploaded, each member's money first clears their fee and the rest goes to the monthly contributions. Before this change the fee was one amount for the whole group, and M-Koba money was never used for it.
+
+**What changed:**
+- **Database:** `customers.entrance_fee` DECIMAL(15,2) NULL (`database/add_member_entrance_fee.php`, registered in `migrate.php`, so the deploy adds it to every group). NULL means the group's fee, so nothing changes for anyone without one.
+- **Group setting `mkoba_pays_entrance`** (off by default). On: M-Koba money pays the fee first. Off: exactly the old behaviour (pinned by tests). Switch in Group Settings → Contributions, under the entrance fee.
+- **One calculation, used everywhere** (`includes/contribution_standing.php`):
+  - `cs_entrance_for()` — the member's own fee, or the group's;
+  - `cs_mkoba_pays_entrance()` — the switch;
+  - `cs_build_schedule(..., $entranceFromOpening)` — with the switch on, the fee comes from all the member's money, not only non-M-Koba money;
+  - `cs_schedule_expected()` — what is owed: the months, plus the fee when the switch is on (member statement, its API, the mobile standing API);
+  - `cs_group_standing()` adds the fee to what is owed when the switch is on;
+  - `cs_skim_entrance()` — the late-payment rules take the fee off a member's oldest payments first when the switch is on, so nobody is fined for money that went to their fee.
+- **Financial Ledger** (page and API): the member's own fee; with the switch on, M-Koba money joins the pool, pays the fee, and is spread across the months (the Opening column is then empty), and the fee is added to the target.
+- **Setting a member's fee:** leaders get an "Entrance fee" item in the member's menu on the Members list (`actions/save_member_entrance_fee.php`: leaders only, CSRF, audit-logged; blank = the group's fee).
+- **Loading the list:** `bin/import_entrance_fees.php` with matching helpers in `includes/entrance_fee_import.php`:
+  - `match` (no database) matches the list to the member import file. Sure matches: a phone next to the real name, the same name, or the same words. Only a suggestion: anything found only through the M-Koba name or phone (the account is often someone else's), a member record holding two names, a close spelling, or two rows for one member;
+  - `apply --tenant=… --source=… [--others-joined=YYYY-MM-DD] [--commit]` finds each member through `member_import_log`, skips anyone renamed since, sets the fee and the join date from the "New member as of" note, writes an undo file first, and is a dry run unless `--commit`.
+- UKUU's list: 330 sure, 37 to confirm, 34 not found (mostly members who joined after the import). The chairperson's confirmation sheet is `docs/client-deliverables/UKUU_Viingilio_Thibitisha.xlsx` (personal data: never committed).
+
+**Found, not fixed:**
+- Imported members' join date is the import day, so statements spread their money from then on. `--others-joined` lets the fee import set the real start for members from before.
+- `app/bms/customer/edit_customer.php` posts to `process_edit_customer.php` relative to `/customers/edit`, which has no route.
+
+**Tests:** `MemberEntranceFeeTest` (14) and `EntranceFeeImportTest` (11); four source-pinning tests updated for the new helpers. Suite: 2,834 tests pass, 15 skipped.
+
+---
+
 ## Session — 2026-10-30 — Super-admin panel redesign
 
 **Branch:** `feat/admin-panel-ui`
