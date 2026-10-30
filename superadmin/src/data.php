@@ -126,3 +126,21 @@ function data_history(?string $sub = null, int $limit = 200): array
     $st->execute($args);
     return $st->fetchAll();
 }
+
+/** Requests still waiting or running: the badge beside Requests in the menu. */
+function data_pending_count(): int
+{
+    static $n = null;
+    return $n ??= (int) admin_db()->query("SELECT COUNT(*) FROM provision_requests WHERE status IN ('waiting', 'running')")->fetchColumn();
+}
+
+/** Requests in each status, for the Requests page's tabs. */
+function data_request_counts(): array
+{
+    $c = ['' => 0, 'waiting' => 0, 'running' => 0, 'done' => 0, 'failed' => 0];
+    foreach (admin_db()->query('SELECT status, COUNT(*) AS n FROM provision_requests GROUP BY status') as $r) {
+        $c[$r['status']] = (int) $r['n'];
+        $c[''] += (int) $r['n'];
+    }
+    return $c;
+}
