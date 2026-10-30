@@ -154,9 +154,11 @@ final class ContributionRatesTest extends TestCase
         $root = __DIR__ . '/../../';
         $expect = [
             'api/v1/my_transactions.php'                 => "cs_transaction_grid(\$events, \$schedule['rule']",
-            'api/v1/contributions_standing.php'          => "cs_expected_to_date(\$schedule['rule']",
-            'api/v1/member-statement_detail.php'         => 'cs_expected_to_date(cr_monthly_rule($settings)',
-            'app/constant/reports/member_statement.php'  => 'cs_expected_to_date(cr_monthly_rule($settings_raw)',
+            // cs_schedule_expected() reads the schedule's own 'rule' (see contribution_standing.php).
+            'api/v1/contributions_standing.php'          => 'cs_schedule_expected($schedule, $settings)',
+            'api/v1/member-statement_detail.php'         => 'cs_schedule_expected($sched, $settings, $asOf)',
+            'app/constant/reports/member_statement.php'  => 'cs_schedule_expected($sched, $settings_raw, $as_of)',
+            'includes/contribution_standing.php'         => "cs_expected_to_date(\$schedule['rule'] ?? 0.0",
             'api/v1/member-transactions_detail.php'      => 'cr_monthly_rule($settings),',
             'app/constant/reports/member_transactions.php' => 'cr_monthly_rule($settings_raw),',
             'includes/group_statement.php'               => 'cr_monthly_rule($settings_raw)',

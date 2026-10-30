@@ -191,6 +191,14 @@ $late = late_settings($settings_raw);
                     <div class="col-md-6">
                         <label class="form-label fw-bold text-dark"><?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Kiingilio (Entrance Fee)' : 'Entrance Fee' ?></label>
                         <input type="number" min="0" name="entrance_fee" class="form-control border-secondary-subtle" value="<?= htmlspecialchars(gs($settings_raw, 'entrance_fee')) ?>" placeholder="<?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Wazi = hakuna ada' : 'Blank = no entrance fee' ?>">
+                        <small class="text-muted"><?= $lt('A member can have their own amount, set on their profile.', 'Mwanachama anaweza kuwa na kiasi chake, kinachowekwa kwenye wasifu wake.') ?></small>
+                    </div>
+                    <div class="col-md-12">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="mkoba_pays_entrance" id="mkoba_pays_entrance" value="1" <?= (string) ($settings_raw['mkoba_pays_entrance'] ?? '0') === '1' ? 'checked' : '' ?> style="transform: scale(1.3)">
+                            <label class="form-check-label ms-2 fw-bold text-dark" for="mkoba_pays_entrance"><?= $lt('M-Koba payments pay the entrance fee first', 'Malipo ya M-Koba yalipe kiingilio kwanza') ?></label>
+                        </div>
+                        <small class="text-muted"><?= $lt('On: money from the M-Koba statement first clears each member\'s entrance fee, and the rest goes to the monthly contributions. Off: M-Koba money is an opening balance and the entrance fee comes only from other payments.', 'Ikiwashwa: pesa za taarifa ya M-Koba zinalipa kwanza kiingilio cha kila mwanachama, kinachobaki kinaenda kwenye michango ya kila mwezi. Ikizimwa: pesa za M-Koba ni salio la kuanzia na kiingilio kinatoka kwenye malipo mengine tu.') ?></small>
                     </div>
                 </div>
 

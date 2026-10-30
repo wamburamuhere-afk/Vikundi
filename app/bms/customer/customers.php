@@ -22,7 +22,7 @@ require_once __DIR__ . '/../../../includes/csrf.php';
 $query = "
     SELECT 
         u.user_id, u.username, u.email, u.first_name, u.middle_name, u.last_name, u.status as user_status, u.user_role, u.created_at,
-        c.customer_id, c.phone, c.address, c.city, c.nida_number, c.registration_number, c.state, c.district, c.initial_savings, c.is_deceased
+        c.customer_id, c.phone, c.address, c.city, c.nida_number, c.registration_number, c.state, c.district, c.initial_savings, c.is_deceased, c.entrance_fee
     FROM users u
     LEFT JOIN customers c ON u.user_id = c.user_id
     WHERE u.status IN ('active', 'pending', 'suspended') 
@@ -284,6 +284,7 @@ if (!canSeeMemberSensitiveData()) {
                                                 <li><a class="dropdown-item py-2 rounded" href="<?= getUrl('profile') ?>?id=<?= $m['user_id'] ?>&edit=1&ref=list"><i class="bi bi-pencil-square text-info me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Badili Taarifa (Edit)' : 'Edit Member' ?></a></li>
                                                 <li><a class="dropdown-item py-2 text-primary fw-bold rounded" href="javascript:void(0)" onclick="openStatusModal(<?= $m['user_id'] ?>, '<?= $m['user_status'] ?>')"><i class="bi bi-check-circle-fill me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Badili Hali (Status)' : 'Change Status' ?></a></li>
                                                 <li><a class="dropdown-item py-2 rounded" href="javascript:void(0)" onclick='assignRegNumber(<?= (int) $m['user_id'] ?>, <?= json_encode($m['registration_number'] ?? '') ?>)'><i class="bi bi-hash text-secondary me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Namba ya Usajili' : 'Registration No.' ?></a></li>
+                                                <li><a class="dropdown-item py-2 rounded" href="javascript:void(0)" onclick='setEntranceFee(<?= (int) $m['user_id'] ?>, <?= json_encode($m['entrance_fee'] === null ? '' : (string) (float) $m['entrance_fee']) ?>)'><i class="bi bi-door-open text-success me-2"></i> <?= ($_SESSION['preferred_language'] ?? 'en') === 'sw' ? 'Kiingilio' : 'Entrance fee' ?></a></li>
                                             <?php endif; ?>
 
                                             <?php if ($can_delete_members): ?>
@@ -1177,6 +1178,29 @@ function assignRegNumber(userId, currentReg) {
     }).then(r => {
         if (!r.isConfirmed) return;
         $.post(REG_SAVE_URL, { user_id: userId, registration_number: (r.value || '').trim() }, function(res){
+            if (res.success) { Swal.fire({ icon:'success', title: REG_IS_SW ? 'Imehifadhiwa' : 'Saved', timer:1300, showConfirmButton:false }).then(() => location.reload()); }
+            else { Swal.fire('Error', res.message, 'error'); }
+        }, 'json').fail(() => Swal.fire('Error', 'Server error', 'error'));
+    });
+}
+
+// A member's own entrance fee. Blank = the group's fee (actions/save_member_entrance_fee.php).
+const ENTRANCE_SAVE_URL = '<?= getUrl("actions/save_member_entrance_fee") ?>';
+const GROUP_ENTRANCE_FEE = <?= json_encode((string) (float) ($pdo->query("SELECT setting_value FROM group_settings WHERE setting_key = 'entrance_fee'")->fetchColumn() ?: 0)) ?>;
+function setEntranceFee(userId, current) {
+    Swal.fire({
+        title: REG_IS_SW ? 'Kiingilio cha mwanachama' : 'Member entrance fee',
+        input: 'number',
+        inputValue: current || '',
+        inputAttributes: { min: 0, step: 'any' },
+        inputLabel: REG_IS_SW
+            ? 'Acha wazi kutumia kiingilio cha kikundi (TZS ' + Number(GROUP_ENTRANCE_FEE).toLocaleString() + ')'
+            : 'Leave blank to use the group fee (TZS ' + Number(GROUP_ENTRANCE_FEE).toLocaleString() + ')',
+        showCancelButton: true,
+        confirmButtonText: REG_IS_SW ? 'Hifadhi' : 'Save'
+    }).then(r => {
+        if (!r.isConfirmed) return;
+        $.post(ENTRANCE_SAVE_URL, { user_id: userId, entrance_fee: (r.value || '').trim() }, function(res){
             if (res.success) { Swal.fire({ icon:'success', title: REG_IS_SW ? 'Imehifadhiwa' : 'Saved', timer:1300, showConfirmButton:false }).then(() => location.reload()); }
             else { Swal.fire('Error', res.message, 'error'); }
         }, 'json').fail(() => Swal.fire('Error', 'Server error', 'error'));

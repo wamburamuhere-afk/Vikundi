@@ -108,8 +108,16 @@ if (!function_exists('vk_api_ledger_member_calc')) {
         float $entranceFeeRate,
         array $colIsValid,
         int $validMonthsCount,
-        ?array $colRates = null
+        ?array $colRates = null,
+        bool $entranceFromOpening = false
     ): array {
+        // The group's 'mkoba_pays_entrance' switch: M-Koba money joins the pool, pays
+        // the entrance fee first and the rest is spread across the months; the fee is
+        // then owed on top of the months. Off: exactly the old behaviour.
+        if ($entranceFromOpening) {
+            $newPool += $opening;
+            $opening = 0.0;
+        }
         // One rate per column. Without a rate history every column has the flat
         // monthly; with one (UKUU: 5,000 then 10,000) each month has its own.
         $colRates = $colRates ?? array_fill(0, count($colIsValid), $monthlyRate);
@@ -149,9 +157,13 @@ if (!function_exists('vk_api_ledger_member_calc')) {
                 $targetAmt += (float) ($colRates[$i] ?? $monthlyRate);
             }
         }
+        if ($entranceFromOpening) {
+            $targetAmt += $entranceFeeRate;
+        }
         $standing  = cs_standing($opening, $newPool, $targetAmt, $assistance);
 
         return [
+            'opening'                  => $opening,
             'entrance_paid'            => $entrancePaid,
             'monthly_by_month'         => $monthlyByMonth,
             'monthly_total'            => $monthlyTotal,
@@ -177,7 +189,7 @@ if (!function_exists('vk_api_ledger_build')) {
         // No fixed monthly => no target (save-what-you-can), matching the web report.
         $monthlyRate            = (float) ($settings['monthly_contribution'] ?? 0);
         $monthlyRule            = cr_monthly_rule($settings);
-        $entranceFeeRate        = (float) ($settings['entrance_fee'] ?? 0);
+        $fromMkoba              = cs_mkoba_pays_entrance($settings);
         $contributionStartDate  = $settings['contribution_start_date'] ?? null;
 
         $ts1        = strtotime($startDate);
@@ -201,7 +213,7 @@ if (!function_exists('vk_api_ledger_build')) {
                             (SELECT mkoba_member_name FROM contributions
                               WHERE member_id = c.customer_id AND mkoba_member_name IS NOT NULL AND mkoba_member_name <> ''
                               LIMIT 1)) AS mpesa_name,
-                   c.status, c.created_at
+                   c.status, c.created_at, c.entrance_fee
             FROM customers c
             WHERE c.status != 'deleted'
             ORDER BY c.first_name ASC")->fetchAll(PDO::FETCH_ASSOC);
@@ -272,8 +284,10 @@ if (!function_exists('vk_api_ledger_build')) {
             $assistance = (float) ($payouts[$mid] ?? 0);
             $calc = vk_api_ledger_member_calc(
                 $opening, $newPool, $agmPaid, $assistance,
-                $monthlyRate, $entranceFeeRate, $colIsValid, $validMonthsCount, $colRates
+                $monthlyRate, cs_entrance_for($m['entrance_fee'] ?? null, $settings),
+                $colIsValid, $validMonthsCount, $colRates, $fromMkoba
             );
+            $opening = $calc['opening'];
 
             $rows[] = [
                 'member_id'         => $mid,

@@ -42,7 +42,7 @@ $settings_raw = $pdo->query("SELECT setting_key, setting_value FROM group_settin
 // The old `?? 10000` / `?? 20000` fabricated a target and a false unpaid entrance for
 // every member whenever the group had these unset (the case on the current data).
 $monthly_amt = floatval($settings_raw['monthly_contribution'] ?? 0);
-$entrance_amt = floatval($settings_raw['entrance_fee'] ?? 0);
+// The entrance fee is the member's own (or the group's): it comes from the schedule below.
 $contribution_start_date = $settings_raw['contribution_start_date'] ?? ($settings_raw['group_founded_date'] ?? date('Y') . '-01-01');
 
 // 3. Calculate Dependant Count
@@ -77,6 +77,7 @@ $sched = cs_member_schedule($pdo, $member_id, $as_of);
 $opening              = $sched['opening'];
 $new_money            = $sched['new_money'];
 $total_paid           = $sched['total_paid'];
+$entrance_amt         = $sched['entrance_amt'];
 $entrance_paid_amt    = $sched['entrance_paid'];
 $entrance_status      = $sched['entrance_status'];
 $total_months_covered = $sched['total_months_covered'];
@@ -88,7 +89,7 @@ $summary = cs_year_summary($grid);
 
 // Expected of this member by now, and where that leaves them. Same helpers the
 // ledger and the dashboard use, so the three screens cannot disagree.
-$expected  = cs_expected_to_date(cr_monthly_rule($settings_raw), $sched['anchor_ym'], $as_of);
+$expected  = cs_schedule_expected($sched, $settings_raw, $as_of);
 $standing  = cs_standing($opening, $new_money, $expected);
 
 // 7. Expenses (Condolences)

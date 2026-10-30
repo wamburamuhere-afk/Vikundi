@@ -30,6 +30,7 @@
  */
 
 require_once __DIR__ . '/contribution_rates.php';
+require_once __DIR__ . '/contribution_standing.php'; // cs_entrance_for(), cs_skim_entrance()
 
 if (!function_exists('late_settings')) {
     /** The rule's settings, with UKUU's numbers as the defaults. */
@@ -196,6 +197,9 @@ if (!function_exists('late_run')) {
         }
         $out['skipped'] = false;
         $rule = cr_monthly_rule($settings);
+        // 'mkoba_pays_entrance': each member's entrance fee is paid first, so that
+        // money does not count toward their months (off: unchanged).
+        $skimEntrance = cs_mkoba_pays_entrance($settings);
 
         // A member a leader reactivated is no longer "made dormant by the rule".
         $pdo->exec("UPDATE customers SET late_rule_dormant = 0 WHERE late_rule_dormant = 1 AND status <> 'dormant'");
@@ -203,7 +207,7 @@ if (!function_exists('late_run')) {
         // Active members, plus the dormant ones this rule put there. Members a
         // leader made dormant, and deceased members, are left alone.
         $members = $pdo->query("
-            SELECT customer_id, user_id, status, created_at, first_name, last_name
+            SELECT customer_id, user_id, status, created_at, first_name, last_name, entrance_fee
               FROM customers
              WHERE is_deceased = 0
                AND (status = 'active' OR (status = 'dormant' AND late_rule_dormant = 1))
@@ -243,7 +247,11 @@ if (!function_exists('late_run')) {
             $fromYm = max($cfg['start_ym'], $joinYm);
             $name = trim($m['first_name'] . ' ' . $m['last_name']);
 
-            $j = late_judge_member($payments[$cid] ?? [], $rule, $fromYm, $fines[$cid] ?? [], $cfg, $today);
+            $memberPayments = $payments[$cid] ?? [];
+            if ($skimEntrance) {
+                $memberPayments = cs_skim_entrance($memberPayments, cs_entrance_for($m['entrance_fee'] ?? null, $settings));
+            }
+            $j = late_judge_member($memberPayments, $rule, $fromYm, $fines[$cid] ?? [], $cfg, $today);
 
             foreach ($j['fine_months'] as $ym) {
                 $reason = 'Late contribution: ' . late_month_label($ym) . ' / Kuchelewa mchango: ' . late_month_label($ym, true);

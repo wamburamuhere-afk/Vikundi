@@ -53,7 +53,7 @@ if (!vk_role_is_admin($_SESSION['role_id'] ?? null, $vk_role) && !$vk_is_secreta
 $allowed_keys = [
     'group_name', 'group_registration_number', 'group_founded_date', 'contribution_start_date', 'meeting_day', 'cycle_type', 'currency', 'max_members',
     'group_email', 'group_phone', 'group_postal_address', 'group_physical_address', 'group_tin', 'group_vrn', 'group_website',
-    'monthly_contribution', 'entrance_fee', 'agm_fee', 'contribution_grace_days',
+    'monthly_contribution', 'entrance_fee', 'mkoba_pays_entrance', 'agm_fee', 'contribution_grace_days',
     'share_price', 'shares_from_monthly', 'social_fund_amount', 'membership_deposit_amount',
     'financial_year_start_month', 'dividend_distribute_pct',
     'loan_interest_rate', 'loan_max_term_months', 'loan_multiplier', 'loan_grace_days',
@@ -118,6 +118,10 @@ if (isset($_POST['late_fine_day']) || isset($_POST['late_dormant_day'])) {
     if ($_POST['late_rules_enabled'] === '1' && $vk_start === '') {
         $_POST['late_rules_start_ym'] = date('Y-m');
     }
+}
+if (isset($_POST['rate_table_sent'])) {
+    // The web form's contributions section: the switch is absent from the post when off.
+    $_POST['mkoba_pays_entrance'] = ($_POST['mkoba_pays_entrance'] ?? '') === '1' ? '1' : '0';
 }
 if ($vk_errors) {
     echo json_encode(['success' => false, 'message' => implode(' ', $vk_errors)]);

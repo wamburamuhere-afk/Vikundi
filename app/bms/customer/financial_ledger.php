@@ -53,7 +53,10 @@ $settings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 // No fixed monthly => no target (save-what-you-can), matching the module. The old
 // `?? 10000` fabricated a target — and false deficits — whenever this was unset.
 $monthly_rate = (float)($settings['monthly_contribution'] ?? 0);
-$entrance_fee_rate = (float)($settings['entrance_fee'] ?? 0);
+$entrance_fee_rate = (float)($settings['entrance_fee'] ?? 0); // the group fee; a member may have their own (cs_entrance_for)
+// The group's 'mkoba_pays_entrance' switch: M-Koba money pays the entrance fee first,
+// then the months, instead of standing aside as an opening balance. Off by default.
+$mkoba_pays_entrance = cs_mkoba_pays_entrance($settings);
 $agm_fee_rate = (float)($settings['agm_fee'] ?? 0);
 $group_logo = $settings['group_logo'] ?? 'logo1.png';
 $group_name = $settings['group_name'] ?? 'VIKUNDI SYSTEM';
@@ -90,7 +93,7 @@ $stmt = $pdo->query("
                     (SELECT mkoba_member_name FROM contributions
                       WHERE member_id = c.customer_id AND mkoba_member_name IS NOT NULL AND mkoba_member_name <> ''
                       LIMIT 1)) AS mpesa_name,
-           c.status, c.created_at
+           c.status, c.created_at, c.entrance_fee
     FROM customers c
     WHERE c.status != 'deleted'
     ORDER BY c.first_name ASC");
@@ -240,8 +243,16 @@ function fmt($n) { return number_format($n, 0); }
                                 }
                             }
 
+                            // The member's own entrance fee, or the group's.
+                            $member_entrance = cs_entrance_for($m['entrance_fee'] ?? null, $settings);
+                            if ($mkoba_pays_entrance) {
+                                // Switch on: M-Koba money joins the pool, so it pays the entrance
+                                // fee first and the rest is spread across the months.
+                                $new_pool += $opening;
+                                $opening = 0;
+                            }
                             // Entrance fee comes off NEW money first (never off the opening balance).
-                            $entrance_paid = min($new_pool, $entrance_fee_rate);
+                            $entrance_paid = min($new_pool, $member_entrance);
                             $remaining_for_months = $new_pool - $entrance_paid;
 
                             $this_month  = date('Y-m-01');
@@ -292,6 +303,9 @@ function fmt($n) { return number_format($n, 0); }
                             $target_amt = 0.0;
                             foreach ($col_is_valid as $i => $ok) {
                                 if ($ok) $target_amt += $col_rates[$i];
+                            }
+                            if ($mkoba_pays_entrance) {
+                                $target_amt += $member_entrance; // owed first, before the months
                             }
 
                             // Standing (total, surplus/deficit, balance, status) comes from the shared

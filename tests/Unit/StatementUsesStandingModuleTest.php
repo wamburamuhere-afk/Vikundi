@@ -35,7 +35,8 @@ class StatementUsesStandingModuleTest extends TestCase
         $this->assertStringNotContainsString("'monthly_contribution'] ?? 10000", $this->src);
         $this->assertStringNotContainsString("'entrance_fee'] ?? 20000", $this->src);
         $this->assertStringContainsString("floatval(\$settings_raw['monthly_contribution'] ?? 0)", $this->src);
-        $this->assertStringContainsString("floatval(\$settings_raw['entrance_fee'] ?? 0)", $this->src);
+        // The entrance fee is the member's own or the group's, from the shared schedule.
+        $this->assertStringContainsString("\$entrance_amt         = \$sched['entrance_amt'];", $this->src);
     }
 
     public function testScheduleGoesThroughTheSharedModule(): void
