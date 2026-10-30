@@ -198,3 +198,51 @@ if (!function_exists('vk_admin_username_from_output')) {
         return preg_match('/First Chairperson: username (\S+),/', (string) $output, $m) ? $m[1] : null;
     }
 }
+
+if (!function_exists('vk_admin_backup_state')) {
+    /**
+     * How fresh a group's last backup is: 'ok' (within 36 hours: the nightly
+     * backup ran), 'late' (older), or 'none'.
+     */
+    function vk_admin_backup_state(?int $backupTime, int $now): string
+    {
+        if ($backupTime === null) {
+            return 'none';
+        }
+        return ($now - $backupTime) <= 36 * 3600 ? 'ok' : 'late';
+    }
+}
+
+if (!function_exists('vk_admin_request_steps')) {
+    /**
+     * A request's progress for the stepper: Saved → Picked up → Finished (or Failed).
+     * Each step: [label, state] with state done | current | failed | todo.
+     */
+    function vk_admin_request_steps(string $status): array
+    {
+        return match ($status) {
+            'waiting' => [['Saved', 'done'], ['Waiting for the worker', 'current'], ['Finished', 'todo']],
+            'running' => [['Saved', 'done'], ['Running', 'current'], ['Finished', 'todo']],
+            'done'    => [['Saved', 'done'], ['Ran', 'done'], ['Finished', 'done']],
+            'failed'  => [['Saved', 'done'], ['Ran', 'done'], ['Failed', 'failed']],
+            default   => [['Saved', 'done'], ['Waiting for the worker', 'todo'], ['Finished', 'todo']],
+        };
+    }
+}
+
+if (!function_exists('vk_admin_group_counts')) {
+    /** The Groups page's tiles: total, each status, and demo groups. */
+    function vk_admin_group_counts(array $groups): array
+    {
+        $c = ['total' => count($groups), 'active' => 0, 'suspended' => 0, 'provisioning' => 0, 'archived' => 0, 'demo' => 0];
+        foreach ($groups as $g) {
+            if (isset($c[$g['status'] ?? ''])) {
+                $c[$g['status']]++;
+            }
+            if ((int) ($g['is_demo'] ?? 0) === 1) {
+                $c['demo']++;
+            }
+        }
+        return $c;
+    }
+}

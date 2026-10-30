@@ -59,22 +59,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 layout('Sign in', 'login', static function () use ($error, $username) { ?>
-  <div class="vk-login mx-auto">
-    <h1 class="h4 mb-1">Vikundi Super-Admin</h1>
-    <p class="text-secondary small mb-4">BJP Technologies staff only.</p>
-    <?php if ($error): ?><div class="alert alert-danger py-2"><?= e($error) ?></div><?php endif; ?>
-    <form method="post" action="/login" class="vk-card" autocomplete="off">
+    <h1 class="h5 mb-1">Sign in</h1>
+    <p class="text-secondary small mb-3">BJP Technologies staff only.</p>
+    <?php if ($error): ?><div class="alert alert-danger py-2 small"><?= e($error) ?></div><?php endif; ?>
+    <form method="post" action="/login" autocomplete="off">
       <?= csrf_field() ?>
       <div class="mb-3">
         <label class="form-label" for="username">Username</label>
-        <input class="form-control" id="username" name="username" value="<?= e($username) ?>" required autofocus>
+        <input class="form-control form-control-lg" id="username" name="username" value="<?= e($username) ?>" required autofocus>
       </div>
       <div class="mb-3">
         <label class="form-label" for="password">Password</label>
-        <input class="form-control" id="password" name="password" type="password" required>
+        <input class="form-control form-control-lg" id="password" name="password" type="password" required>
       </div>
-      <button class="btn btn-primary w-100">Sign in</button>
+      <button class="btn btn-primary btn-lg w-100">Sign in</button>
     </form>
-    <p class="text-secondary small mt-3">Lost your password? It is reset on the server.</p>
-  </div>
+    <p class="text-secondary small mt-3 mb-0">Lost your password? It is reset on the server.</p>
 <?php });
