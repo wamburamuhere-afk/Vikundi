@@ -677,7 +677,7 @@ class ContributionsApiTest extends TestCase
         $code = self::code('api/v1/contributions_standing.php');
 
         foreach (['cs_member_schedule(', 'cs_calendar_grid(', 'cs_arrears_from_grid(',
-                  'cs_year_summary(', 'cs_expected_to_date(', 'cs_standing('] as $fn) {
+                  'cs_year_summary(', 'cs_schedule_expected(', 'cs_standing('] as $fn) {
             $this->assertStringContainsString($fn, $code, "standing must use {$fn}.");
         }
 

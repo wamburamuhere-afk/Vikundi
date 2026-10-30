@@ -39,12 +39,11 @@ $asOf = vk_api_reports_as_of($_GET['as_of'] ?? null);
 
 $settings = $pdo->query('SELECT setting_key, setting_value FROM group_settings')->fetchAll(PDO::FETCH_KEY_PAIR);
 $monthlyAmt  = (float) ($settings['monthly_contribution'] ?? 0);
-$entranceAmt = (float) ($settings['entrance_fee'] ?? 0);
-
 $sched   = cs_member_schedule($pdo, $memberId, $asOf);
+$entranceAmt = (float) $sched['entrance_amt']; // the member's own fee, or the group's
 $grid    = cs_calendar_grid($sched, $asOf);
 $summary = cs_year_summary($grid);
-$expected = cs_expected_to_date(cr_monthly_rule($settings), $sched['anchor_ym'], $asOf);
+$expected = cs_schedule_expected($sched, $settings, $asOf);
 $standing = cs_standing($sched['opening'], $sched['new_money'], $expected);
 
 $condolences = vk_api_reports_condolences($pdo, $memberId);

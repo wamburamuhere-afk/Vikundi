@@ -37,8 +37,9 @@ class LedgerOpeningSavingsTest extends TestCase
     {
         // Imported money accumulates into $opening, not the new entrance/monthly pool.
         $this->assertStringContainsString('$opening += $c[\'amount\']', $this->src);
-        // Entrance fee is taken from NEW money only.
-        $this->assertStringContainsString('$entrance_paid = min($new_pool, $entrance_fee_rate)', $this->src);
+        // Entrance fee is taken from NEW money only (the member's own fee, or the group's;
+        // with 'mkoba_pays_entrance' on, M-Koba money joins the pool first).
+        $this->assertStringContainsString('$entrance_paid = min($new_pool, $member_entrance)', $this->src);
         $this->assertStringNotContainsString('min($total_raw_pool, $entrance_fee_rate)', $this->src);
     }
 
