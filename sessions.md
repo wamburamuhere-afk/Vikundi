@@ -4,6 +4,24 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-11-02 — Wise Wallet goes live at the same address
+
+**Branch:** `chore/wisewallet-go-live`
+**Developer:** Claude Code / Jabir Mussa
+
+**Why:** Wise Wallet signed up and wants the real system at `wisewallet.vikundi.bjptechnologies.co.tz`. The demo group there holds invented data from `database/seed_wise_wallet_demo.php`, which the panel's "Clear demo data" cannot remove (that only clears data the panel's own demo seed created).
+
+**What changed:** `bin/wisewallet_go_live.php --tenant=wisewallet … [--commit]`:
+- refuses any group whose name is not the demo's "Wise Wallet M-KOBA";
+- the dry run lists every table with data, split into what is wiped (members, money, loans, meetings, documents, logs) and what is kept (roles, permissions, templates, system settings), plus any login that isn't a sample person;
+- with `--commit` it wipes those tables, removes the demo's rules from Group Settings, sets the real name, address, e-mail and phone, and creates the first Chairperson the same way `provision_tenant.php --create` does, printing the password once.
+
+Tested on the local scratch database: seeded the demo, ran the dry run and the commit, checked that one Chairperson is left and the password works, and that a second run is refused. Scratch restored.
+
+**Tests:** `WisewalletGoLiveTest` (5). Suite: 2,839 tests pass, 15 skipped.
+
+---
+
 ## Session — 2026-10-30 — Each member's own entrance fee; M-Koba money pays it first (UKUU)
 
 **Branch:** `feat/member-entrance-fee`
