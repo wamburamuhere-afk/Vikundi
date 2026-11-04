@@ -16,6 +16,8 @@
  * Nothing is deleted; switching it back on brings it all back.
  */
 
+require_once __DIR__ . '/favicon.php'; // vk_favicon_tags()
+
 if (!function_exists('vk_feature_catalog')) {
     /** The features that can be switched off, with their panel labels. */
     function vk_feature_catalog(): array
@@ -159,7 +161,7 @@ if (!function_exists('vk_require_feature')) {
         $back = $sw ? 'Rudi mwanzo' : 'Back to the dashboard';
         $home = function_exists('getUrl') ? getUrl('dashboard') : '/';
         echo '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
-           . '<title>' . htmlspecialchars($msg) . '</title></head><body style="font-family:system-ui,sans-serif;text-align:center;padding:4rem 1rem">'
+           . '<title>' . htmlspecialchars($msg) . '</title>' . vk_favicon_tags() . '</head><body style="font-family:system-ui,sans-serif;text-align:center;padding:4rem 1rem">'
            . '<h1 style="font-size:1.25rem">' . htmlspecialchars($msg) . '</h1>'
            . '<p><a href="' . htmlspecialchars($home) . '">' . htmlspecialchars($back) . '</a></p></body></html>';
         exit;

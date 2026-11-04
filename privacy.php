@@ -15,6 +15,7 @@ header('Content-Type: text/html; charset=UTF-8');
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Vikundi — Privacy Policy</title>
+<?php require_once __DIR__ . '/includes/favicon.php'; echo vk_favicon_tags(); ?>
 <style>
   :root { --ink:#1a1c1e; --muted:#5b5f66; --blue:#1B5FC7; --line:#e3e6ea; --bg:#ffffff; }
   * { box-sizing: border-box; }

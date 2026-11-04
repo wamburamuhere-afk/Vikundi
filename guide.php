@@ -62,6 +62,7 @@ $title = $sw ? 'Mwongozo wa Kikundi' : 'Group Guide';
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex">
 <title><?= $h($groupName . ' — ' . $title) ?></title>
+<?php require_once __DIR__ . '/includes/favicon.php'; echo vk_favicon_tags(); ?>
 <style>
   :root { --brand:#0f4c81; --brand2:#1769aa; --tint:#eaf2fb; --ink:#1f2d3d; --muted:#5b6b7c; --line:#d9e3ee;
           --tip:#e8f6ee; --tipb:#2e8b57; --note:#eaf2fb; --noteb:#1769aa; --imp:#fff4e5; --impb:#d9822b; }

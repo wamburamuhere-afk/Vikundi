@@ -172,6 +172,7 @@ try {
     })();
     </script>
     <title><?php echo isset($page_title) ? $page_title : 'VIKUNDI MANAGEMENT SYSTEM'; ?></title>
+    <?php require_once __DIR__ . '/includes/favicon.php'; echo vk_favicon_tags(); ?>
     
     <!-- jQuery first -->
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
