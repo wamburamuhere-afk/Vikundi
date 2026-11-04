@@ -8,6 +8,8 @@
  * An API or AJAX caller gets the same answer as JSON.
  */
 
+require_once __DIR__ . '/favicon.php'; // vk_favicon_tags()
+
 if (!function_exists('vk_tenant_page_text')) {
     /** [status, English title, English body, Swahili title, Swahili body]. */
     function vk_tenant_page_text(string $decision): array
@@ -72,7 +74,7 @@ if (!function_exists('vk_tenant_page_html')) {
         return '<!doctype html><html lang="en"><head><meta charset="utf-8">'
             . '<meta name="viewport" content="width=device-width, initial-scale=1">'
             . '<meta name="robots" content="noindex">'
-            . '<title>' . $e($titleEn) . ' · Vikundi</title>'
+            . '<title>' . $e($titleEn) . ' · Vikundi</title>' . vk_favicon_tags()
             . '<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;'
             . 'background:#f5f7fa;color:#1b2733;font:16px/1.5 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;padding:24px}'
             . '.c{max-width:520px;background:#fff;border:1px solid #e4e9ef;border-radius:12px;padding:32px 36px}'

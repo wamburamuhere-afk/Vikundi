@@ -4,6 +4,22 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-11-04 — Favicon
+
+**Branch:** `feat/favicon`
+**Developer:** Claude Code / Jabir Mussa
+
+**What changed:** Vikundi had no browser-tab icon. The icon is the square "people + coin" mark from the Vikundi logo (`assets/images/logo1.png`), cropped and resized:
+- `favicon.ico` (16/32/48) at the web root, and `assets/images/icons/` (32, 192, and a 180 apple-touch icon on white);
+- `includes/favicon.php`: `vk_favicon_tags()` writes the tags (through `getUrl()`, so a sub-folder install works). It's used by `header.php` (every signed-in page), login, register, forgot/reset password, privacy, the group guide, and the offline and feature-off pages;
+- the super-admin panel has its own web root, so it gets its own copy (`superadmin/public/favicon.ico`, `assets/icons/`). Its CSP already allows `img-src 'self'`.
+
+`.htaccess` already lets existing `.ico`/`.png` files through. Checked on a local server: the tags appear on every page, and the files are served with the right types.
+
+**Tests:** `FaviconTest` (4). Suite: 2,843 tests pass, 15 skipped.
+
+---
+
 ## Session — 2026-11-02 — Wise Wallet goes live at the same address
 
 **Branch:** `chore/wisewallet-go-live`
