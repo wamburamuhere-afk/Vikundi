@@ -4,6 +4,48 @@ This file tracks every development session, modification, and significant change
 
 ---
 
+## Session — 2026-11-24 — M-Koba "Digital Group Saving Reports" import
+
+**Branch:** `feat/mkoba-dgs-statement`
+**Developer:** Claude Code / Jabir Mussa
+
+**Why:** UKUU's new M-Koba export (`DGS_Report_*.xlsx`) has a different layout:
+- a title line above the headers;
+- the columns `Date | Receipt | Name | Member Number | Amount | TransType | Blc.Before | Blc.After | Status`;
+- dates like `2025-12-01 14:36:43.0`;
+- the types `Kuchangia` (payment) and `Hamisho` (money out, with a negative amount).
+
+The importer read 0 of its 3,261 rows.
+
+**What changed** (`includes/transaction_import.php`):
+- `mkoba_header_index()` finds the header row below a title line;
+- `mkoba_normalize_assoc()` maps a row to the older statement's column names, so matching, duplicate checks and the reconciliation view read both exports the same way. The receipt is used as the transaction id;
+- `mkoba_parse_date()` reads both date formats;
+- Hamisho and rows whose status isn't a success are excluded, with a reason in the reconciliation view. Without this, the stripped minus sign would have counted Hamisho as a payment.
+
+The same handling is in `actions/import_contributions.php` and `database/import_mkoba_oneoff.php`.
+
+**Speed:** a year's statement took 98 s, which would hit PHP's usual 30 s web limit on the server. It now takes about 12 s:
+- `txn_phone_index()` loads members' phones once, instead of a `LIKE '%…'` search per row. Shared phones still go unmatched, never guessed;
+- the reconciliation mirror is written in one transaction;
+- a new index `idx_contrib_mkoba_receipt` (in `add_contributions_indexes.php`, run on deploy).
+
+**Checked end to end** on a scratch database with UKUU's 402 members, uploading the real file through the import page:
+- 2,609 payments imported (TSh 35,287,781, 1 Dec 2025 to 19 Nov 2026), all pending approval;
+- 489 unmatched (no member with that phone) and 140 unmatched (shared phones);
+- 23 Hamisho rows excluded;
+- uploading it again skipped all 2,609 as already on record;
+- the reconciliation, transactions, ledger and dashboard pages load. The scratch database was restored afterwards.
+
+**Found in the statement (for UKUU):**
+- an opening balance of TSh 27,323,000 with no per-member split;
+- the balance doesn't add up by TSh 986,000;
+- 81 phones that pay aren't on the member list.
+
+**Tests:** `MkobaDgsStatementTest` (9); `TransactionImportTest` updated for the phone index. Suite: 2,852 tests pass, 15 skipped.
+
+---
+
 ## Session — 2026-11-04 — Favicon
 
 **Branch:** `feat/favicon`

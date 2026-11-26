@@ -147,7 +147,9 @@ class TransactionImportTest extends TestCase
     {
         $src = (string) file_get_contents(__DIR__ . '/../../actions/import_contributions.php');
         $this->assertStringNotContainsString("c.phone LIKE ?\n        LIMIT 1", $src);
-        $this->assertStringContainsString('[$member_id, $whyUnmatched] = txn_pick_member($findMember->fetchAll(PDO::FETCH_COLUMN));', $src);
+        // Every member on the phone comes back (the index keeps them all), and the rule decides.
+        $this->assertStringContainsString('[$member_id, $whyUnmatched] = txn_pick_member($phoneIndex[$p[\'phone\']] ?? []);', $src);
+        $this->assertStringContainsString('$phoneIndex = txn_phone_index(', $src);
         $this->assertStringContainsString("'reason'     => \$whyUnmatched,", $src);
     }
 }

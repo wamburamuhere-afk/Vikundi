@@ -37,14 +37,69 @@ function mkoba_parse_amount(string $raw): float
     return (float) preg_replace('/[^0-9.]/', '', trim($raw));
 }
 
-/** Parse an M-Koba date ("28/02/2026 23:50" -> "2026-02-28"); null if unparseable. */
+/**
+ * Parse an M-Koba date; null if unparseable. Both exports are accepted:
+ * the older statement ("28/02/2026 23:50") and the Digital Group Saving report
+ * ("2025-12-01 14:36:43.0"). Both give "Y-m-d".
+ */
 function mkoba_parse_date(string $raw): ?string
 {
     $s = trim($raw);
     if ($s === '') return null;
     $datePart = explode(' ', $s)[0]; // drop the time
-    $dt = \DateTime::createFromFormat('d/m/Y', $datePart);
-    return ($dt && $dt->format('d/m/Y') === $datePart) ? $dt->format('Y-m-d') : null;
+    foreach (['d/m/Y', 'Y-m-d'] as $fmt) {
+        $dt = \DateTime::createFromFormat($fmt, $datePart);
+        if ($dt && $dt->format($fmt) === $datePart) {
+            return $dt->format('Y-m-d');
+        }
+    }
+    return null;
+}
+
+/**
+ * Which row holds the column names. The older statement starts with them; the
+ * Digital Group Saving report puts a title line first ("Digital Group Saving
+ * Reports"). The header is the first row naming both an amount and a type column.
+ * Null when there is none.
+ */
+function mkoba_header_index(array $rows): ?int
+{
+    foreach (array_slice($rows, 0, 10, true) as $i => $row) {
+        $cells = array_map(static fn($c) => strtolower(trim(str_replace("\xEF\xBB\xBF", '', (string) $c))), (array) $row);
+        if (in_array('amount', $cells, true) && (in_array('trans type', $cells, true) || in_array('transtype', $cells, true))) {
+            return $i;
+        }
+    }
+    return null;
+}
+
+/**
+ * Give a row of the Digital Group Saving report the older statement's column names,
+ * so every step after this (matching, duplicates, the reconciliation view) reads
+ * both exports the same way. A row of the older statement is returned unchanged.
+ *
+ *   Member Number -> member id   Name -> member name   TransType -> trans type
+ *   Receipt -> receipt and trans_id   Status: anything not "success" is a failed row.
+ */
+function mkoba_normalize_assoc(array $assoc): array
+{
+    if (!array_key_exists('transtype', $assoc) && !array_key_exists('member number', $assoc)) {
+        return $assoc; // the older statement
+    }
+    $status = strtolower(trim((string) ($assoc['status'] ?? 'success')));
+    return [
+        'no'          => '',
+        'trans_id'    => trim((string) ($assoc['receipt'] ?? '')),
+        'receipt'     => trim((string) ($assoc['receipt'] ?? '')),
+        'date'        => (string) ($assoc['date'] ?? ''),
+        'member name' => (string) ($assoc['name'] ?? ''),
+        'member id'   => (string) ($assoc['member number'] ?? ''),
+        'source'      => (string) ($assoc['member number'] ?? ''),
+        'destination' => '',
+        'amount'      => (string) ($assoc['amount'] ?? ''),
+        'trans type'  => (string) ($assoc['transtype'] ?? ''),
+        'failed'      => $status !== '' && !str_contains($status, 'success'),
+    ];
 }
 
 /**
@@ -69,7 +124,8 @@ function mkoba_is_contribution(string $transType): bool
 {
     $t = strtolower(trim($transType));
     if ($t === '') return false; // blank rows are balance/failed entries
-    $skip = ['opening an account on cbs', 'group transfer'];
+    // Hamisho (Digital Group Saving report) is money going OUT of the group account.
+    $skip = ['opening an account on cbs', 'group transfer', 'hamisho'];
     return !in_array($t, $skip, true);
 }
 
@@ -80,7 +136,7 @@ function mkoba_is_contribution(string $transType): bool
 function mkoba_parse_row(array $assoc): ?array
 {
     $transType = (string) ($assoc['trans type'] ?? '');
-    if (!mkoba_is_contribution($transType)) return null;
+    if (!mkoba_is_contribution($transType) || !empty($assoc['failed'])) return null;
 
     $phone  = mkoba_normalize_phone((string) ($assoc['member id'] ?? ''));
     $amount = mkoba_parse_amount((string) ($assoc['amount'] ?? ''));
@@ -133,6 +189,28 @@ function unmatched_rows_to_csv(array $rows): string
 }
 
 /**
+ * Every member's phone, as its last 9 digits => the members using it. Built once per
+ * import from [customer_id, phone] rows, so each statement row is a lookup instead
+ * of a search through every member (a 3,000-row statement took over a minute).
+ * A phone two members share keeps both, so txn_pick_member() still refuses to guess.
+ *
+ * @param array $rows each [customer_id, phone] (or ['customer_id' => …, 'phone' => …])
+ * @return array<string,int[]>
+ */
+function txn_phone_index(array $rows): array
+{
+    $index = [];
+    foreach ($rows as $r) {
+        $id    = (int) ($r['customer_id'] ?? $r[0] ?? 0);
+        $phone = mkoba_normalize_phone((string) ($r['phone'] ?? $r[1] ?? ''));
+        if ($id > 0 && strlen($phone) === 9) {
+            $index[$phone][] = $id;
+        }
+    }
+    return $index;
+}
+
+/**
  * Which member a payment belongs to, from the members whose phone matched.
  * One match → that member. None → unmatched. More than one (a phone shared by
  * several members, e.g. spouses) → unmatched too, with the reason, so a leader
@@ -157,11 +235,13 @@ function txn_pick_member(array $customerIds): array
  * Why an M-Koba row is NOT a member contribution (so it's kept for the tie-out
  * but never counted in the books). Returns '' for rows that ARE contributions.
  */
-function mkoba_exclusion_reason(string $transType, string $phone, float $amount): string
+function mkoba_exclusion_reason(string $transType, string $phone, float $amount, bool $failed = false): string
 {
     $t = strtolower(trim($transType));
     if ($t === '')                             return 'No transaction type (balance / non-payment row)';
+    if ($failed)                               return 'Failed transaction (status is not success)';
     if ($t === 'group transfer')               return 'Group transfer (not a member contribution)';
+    if ($t === 'hamisho')                      return 'Hamisho: money out of the group account (not a member contribution)';
     if ($t === 'opening an account on cbs')    return 'Account opening (no money moved)';
     if ($phone === '')                         return 'No member phone on the row';
     if ($amount <= 0)                          return 'Zero amount';
@@ -181,7 +261,7 @@ function mkoba_mirror_row(array $assoc): array
     $transType = trim((string) ($assoc['trans type'] ?? ''));
     $phone  = mkoba_normalize_phone((string) ($assoc['member id'] ?? ''));
     $amount = mkoba_parse_amount((string) ($assoc['amount'] ?? ''));
-    $reason = mkoba_exclusion_reason($transType, $phone, $amount);
+    $reason = mkoba_exclusion_reason($transType, $phone, $amount, !empty($assoc['failed']));
     return [
         'sno'             => trim((string) ($assoc['no'] ?? '')),
         'trans_id'        => mkoba_repair_trans_id((string) ($assoc['trans_id'] ?? ''), (string) ($assoc['receipt'] ?? '')),

@@ -58,6 +58,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['upload_file'])) {
         exit;
     }
 
+    // An M-Koba export may carry a title line above the column names (the Digital
+    // Group Saving report does): start at the real header row.
+    if ($isMkoba && ($h = mkoba_header_index($allRows)) !== null) {
+        $allRows = array_slice($allRows, $h);
+    }
+
     // Header row → lowercased, trimmed names (handles a UTF-8 BOM on col 1).
     $headers = array_map(function ($h) {
         return strtolower(trim(str_replace("\xEF\xBB\xBF", '', (string) $h)));
@@ -67,12 +73,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['upload_file'])) {
     $imported = 0; $skipped = 0; $duplicates = 0; $unmatched = []; $sciTransIds = 0;
     unset($_SESSION['import_unmatched']); // clear any rejects held from a prior import
 
-    $findMember = $pdo->prepare("
-        SELECT c.customer_id FROM customers c
+    // Every active member's phone, read once (a lookup per row instead of a search).
+    // More than one member on a phone = a shared phone: never guess (txn_pick_member).
+    $phoneIndex = txn_phone_index($pdo->query("
+        SELECT c.customer_id, c.phone FROM customers c
         JOIN users u ON c.user_id = u.user_id
-        WHERE u.status = 'active' AND c.is_deceased = 0 AND c.phone LIKE ?
-        LIMIT 5
-    ");  // more than one row = a shared phone: never guess (txn_pick_member)
+        WHERE u.status = 'active' AND c.is_deceased = 0 AND c.phone IS NOT NULL AND c.phone <> ''
+    ")->fetchAll(PDO::FETCH_ASSOC));
     $dupByReceipt = $pdo->prepare("SELECT COUNT(*) FROM contributions WHERE mkoba_receipt = ? AND member_id = ?");
     $dupByRow     = $pdo->prepare("SELECT COUNT(*) FROM contributions WHERE member_id = ? AND amount = ? AND contribution_date = ?");
     $insert = $pdo->prepare("
@@ -99,6 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['upload_file'])) {
                 if ($key !== '') $assoc[$key] = $data[$i] ?? '';
             }
             if ($isMkoba) {
+                $assoc = mkoba_normalize_assoc($assoc); // both M-Koba exports read the same from here
                 $mkobaRows[] = $assoc;
                 // Flag Excel-corrupted Trans IDs so we can warn (and nudge to .xlsx / raw CSV).
                 if (preg_match('/^\d+(\.\d+)?[eE][+\-]?\d+$/', trim((string) ($assoc['trans_id'] ?? '')))) $sciTransIds++;
@@ -107,8 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['upload_file'])) {
             $p = $isMkoba ? mkoba_parse_row($assoc) : txn_template_parse_row($assoc);
             if ($p === null) { $skipped++; continue; } // non-contribution / missing phone or amount
 
-            $findMember->execute(['%' . $p['phone']]);
-            [$member_id, $whyUnmatched] = txn_pick_member($findMember->fetchAll(PDO::FETCH_COLUMN));
+            [$member_id, $whyUnmatched] = txn_pick_member($phoneIndex[$p['phone']] ?? []);
             if (!$member_id) {
                 $unmatched[] = [
                     'name'       => $p['name'],
