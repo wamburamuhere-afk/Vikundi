@@ -64,13 +64,17 @@ if (preg_match('/\.xlsx$/i', $csvPath)) {
     while (($r = fgetcsv($fh)) !== false) { $allRows[] = $r; }
     fclose($fh);
 }
+// The Digital Group Saving report has a title line above the column names.
+if (($h = mkoba_header_index($allRows)) !== null) {
+    $allRows = array_slice($allRows, $h);
+}
 $headers = array_map(fn($x) => strtolower(trim(str_replace("\xEF\xBB\xBF", '', (string) $x))), array_shift($allRows) ?: []);
 $rows = [];
 foreach ($allRows as $r) {
     if (count(array_filter($r, fn($v) => trim((string) $v) !== '')) === 0) continue;
     $a = [];
     foreach ($headers as $i => $k) if ($k !== '') $a[$k] = $r[$i] ?? '';
-    $rows[] = $a;
+    $rows[] = mkoba_normalize_assoc($a); // both M-Koba exports read the same from here
 }
 
 $batch = basename($csvPath);

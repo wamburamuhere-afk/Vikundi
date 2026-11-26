@@ -22,29 +22,45 @@ if (!function_exists('mkoba_populate_mirror')) {
      */
     function mkoba_populate_mirror(PDO $pdo, array $rows, string $batch): array
     {
-        $pdo->prepare("DELETE FROM mkoba_statement_rows WHERE batch = ?")->execute([$batch]);
-        $byReceipt = $pdo->prepare("SELECT contribution_id FROM contributions WHERE mkoba_receipt = ? LIMIT 1");
-        $ins = $pdo->prepare("INSERT INTO mkoba_statement_rows
-            (batch, sno, trans_id, receipt, trans_date, member_name, member_id, source, destination, amount, trans_type, outcome, reason, contribution_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stats = ['imported' => 0, 'excluded' => 0, 'missing' => 0];
-        foreach ($rows as $a) {
-            $m = mkoba_mirror_row($a);
-            $cid = null;
-            if ($m['is_contribution']) {
-                if ($m['receipt'] !== '') { $byReceipt->execute([$m['receipt']]); $cid = $byReceipt->fetchColumn() ?: null; }
-                $outcome = $cid ? 'imported' : 'missing';
-                $reason  = $cid ? '' : 'Contribution row not found in the ledger';
-            } else {
-                $outcome = 'excluded';
-                $reason  = $m['reason'];
+        // One transaction: thousands of rows saved together, not each on its own
+        // (that alone took over a minute for a year's statement).
+        $own = !$pdo->inTransaction();
+        if ($own) {
+            $pdo->beginTransaction();
+        }
+        try {
+            $pdo->prepare("DELETE FROM mkoba_statement_rows WHERE batch = ?")->execute([$batch]);
+            $byReceipt = $pdo->prepare("SELECT contribution_id FROM contributions WHERE mkoba_receipt = ? LIMIT 1");
+            $ins = $pdo->prepare("INSERT INTO mkoba_statement_rows
+                (batch, sno, trans_id, receipt, trans_date, member_name, member_id, source, destination, amount, trans_type, outcome, reason, contribution_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stats = ['imported' => 0, 'excluded' => 0, 'missing' => 0];
+            foreach ($rows as $a) {
+                $m = mkoba_mirror_row($a);
+                $cid = null;
+                if ($m['is_contribution']) {
+                    if ($m['receipt'] !== '') { $byReceipt->execute([$m['receipt']]); $cid = $byReceipt->fetchColumn() ?: null; }
+                    $outcome = $cid ? 'imported' : 'missing';
+                    $reason  = $cid ? '' : 'Contribution row not found in the ledger';
+                } else {
+                    $outcome = 'excluded';
+                    $reason  = $m['reason'];
+                }
+                $stats[$outcome]++;
+                $ins->execute([
+                    $batch, $m['sno'] ?: null, $m['trans_id'] ?: null, $m['receipt'] ?: null, $m['trans_date'],
+                    $m['member_name'] ?: null, $m['member_id'] ?: null, $m['source'] ?: null, $m['destination'] ?: null,
+                    $m['amount'], $m['trans_type'] ?: null, $outcome, $reason ?: null, $cid,
+                ]);
             }
-            $stats[$outcome]++;
-            $ins->execute([
-                $batch, $m['sno'] ?: null, $m['trans_id'] ?: null, $m['receipt'] ?: null, $m['trans_date'],
-                $m['member_name'] ?: null, $m['member_id'] ?: null, $m['source'] ?: null, $m['destination'] ?: null,
-                $m['amount'], $m['trans_type'] ?: null, $outcome, $reason ?: null, $cid,
-            ]);
+            if ($own) {
+                $pdo->commit();
+            }
+        } catch (Throwable $e) {
+            if ($own && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
         }
         return $stats;
     }

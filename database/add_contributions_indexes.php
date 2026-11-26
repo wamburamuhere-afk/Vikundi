@@ -30,6 +30,8 @@ $indexes = [
     'idx_contrib_status'      => '(`status`)',
     'idx_contrib_created'     => '(`created_at`)',
     'idx_contrib_status_date' => '(`status`, `contribution_date`)',
+    // The M-Koba import and its reconciliation look rows up by receipt.
+    'idx_contrib_mkoba_receipt' => '(`mkoba_receipt`)',
 ];
 
 $tableExists = $pdo->prepare("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?");
